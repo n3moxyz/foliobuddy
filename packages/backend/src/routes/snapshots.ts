@@ -1,0 +1,114 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { prisma } from '../index.js';
+import { snapshotService } from '../services/snapshotService.js';
+import { AppError } from '../middleware/errorHandler.js';
+
+const router = Router();
+
+const DEFAULT_USER_ID = 'default-user';
+
+// GET /api/snapshots - Get all snapshots
+router.get('/', async (req, res, next) => {
+  try {
+    const { type, from, to, limit } = req.query;
+
+    const where: any = { userId: DEFAULT_USER_ID };
+
+    if (type) {
+      where.snapshotType = type;
+    }
+
+    if (from || to) {
+      where.timestamp = {};
+      if (from) where.timestamp.gte = new Date(from as string);
+      if (to) where.timestamp.lte = new Date(to as string);
+    }
+
+    const snapshots = await prisma.snapshot.findMany({
+      where,
+      orderBy: { timestamp: 'desc' },
+      take: limit ? parseInt(limit as string) : 100,
+    });
+
+    res.json(snapshots);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/snapshots/performance - Get performance chart data
+router.get('/performance', async (req, res, next) => {
+  try {
+    const days = parseInt(req.query.days as string) || 30;
+    const history = await snapshotService.getPerformanceHistory(DEFAULT_USER_ID, days);
+    res.json(history);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/snapshots/monthly - Get monthly returns
+router.get('/monthly', async (req, res, next) => {
+  try {
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+    const returns = await snapshotService.getMonthlyReturns(DEFAULT_USER_ID, year);
+    res.json(returns);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/snapshots/:id - Get a single snapshot
+router.get('/:id', async (req, res, next) => {
+  try {
+    const snapshot = await prisma.snapshot.findUnique({
+      where: { id: req.params.id },
+      include: {
+        positions: true,
+      },
+    });
+
+    if (!snapshot) {
+      throw new AppError('Snapshot not found', 404);
+    }
+
+    res.json(snapshot);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/snapshots - Create a new snapshot manually
+router.post('/', async (req, res, next) => {
+  try {
+    const { type } = req.body;
+
+    const snapshotType = type || 'DAILY';
+    const snapshotId = await snapshotService.createSnapshot(DEFAULT_USER_ID, snapshotType);
+
+    const snapshot = await prisma.snapshot.findUnique({
+      where: { id: snapshotId },
+      include: { positions: true },
+    });
+
+    res.status(201).json(snapshot);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/snapshots/:id - Delete a snapshot
+router.delete('/:id', async (req, res, next) => {
+  try {
+    await prisma.snapshot.delete({
+      where: { id: req.params.id },
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;

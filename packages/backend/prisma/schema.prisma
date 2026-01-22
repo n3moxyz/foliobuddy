@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model - supports multi-user if needed
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  positions Position[]
+  trades    Trade[]
+  investors Investor[]
+  snapshots Snapshot[]
+}
+
+// Asset model - represents any tradeable asset
+// category: LIQUID_CRYPTO | STABLECOIN | NFT | ANGEL | CASH
+model Asset {
+  id              String         @id @default(cuid())
+  coingeckoId     String?        @unique
+  symbol          String
+  name            String
+  category        String         @default("LIQUID_CRYPTO")
+  currentPriceUsd Float?
+  priceUpdatedAt  DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  positions       Position[]
+  trades          Trade[]
+  priceHistory    PriceHistory[]
+
+  @@index([symbol])
+  @@index([coingeckoId])
+}
+
+// Price history for tracking asset prices over time
+model PriceHistory {
+  id        String   @id @default(cuid())
+  assetId   String
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  priceUsd  Float
+  timestamp DateTime @default(now())
+
+  @@index([assetId, timestamp])
+}
+
+// Position model - represents a holding of an asset
+// storageType: WALLET | CEX | DEFI | BANK
+model Position {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetId          String
+  asset            Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  quantity         Float
+  avgCostUsd       Float    @default(0)
+  storageType      String   @default("WALLET")
+  storageLocation  String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Computed fields (stored for performance)
+  marketValueUsd   Float?
+  unrealizedPnL    Float?
+  unrealizedPnLPct Float?
+
+  @@unique([userId, assetId, storageType, storageLocation])
+  @@index([userId])
+  @@index([assetId])
+}
+
+// Trade model - represents a single trade
+// direction: LONG | SHORT
+// status: OPEN | CLOSED
+model Trade {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetId         String
+  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  direction       String    @default("LONG")
+  entryPrice      Float
+  exitPrice       Float?
+  quantity        Float
+  positionSizeUsd Float
+  entryDate       DateTime
+  exitDate        DateTime?
+  realizedPnL     Float?
+  realizedPnLPct  Float?
+  status          String    @default("OPEN")
+  notes           String?
+  tags            String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([assetId])
+  @@index([status])
+  @@index([entryDate])
+}
+
+// Investor model - for tracking external investors/stakeholders
+model Investor {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  stakePercentage Float           @default(0)
+  initialCapital  Float           @default(0)
+  currentValue    Float?
+  totalReturn     Float?
+  totalReturnPct  Float?
+  joinDate        DateTime        @default(now())
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  stakes          InvestorStake[]
+
+  @@index([userId])
+}
+
+// InvestorStake - tracks stake changes over time
+model InvestorStake {
+  id              String   @id @default(cuid())
+  investorId      String
+  investor        Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  stakePercentage Float
+  valueAtTime     Float
+  timestamp       DateTime @default(now())
+
+  @@index([investorId, timestamp])
+}
+
+// Snapshot model - for tracking portfolio value over time
+// snapshotType: DAILY | WEEKLY | MONTHLY
+model Snapshot {
+  id                String             @id @default(cuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp         DateTime           @default(now())
+  snapshotType      String             @default("DAILY")
+  totalValueUsd     Float
+  totalValueSgd     Float?
+  usdSgdRate        Float?
+  totalCostBasis    Float?
+  unrealizedPnL     Float?
+  realizedPnL       Float?
+  dailyReturn       Float?
+  weeklyReturn      Float?
+  monthlyReturn     Float?
+  ytdReturn         Float?
+  athValueUsd       Float?
+  btcPrice          Float?
+  ethPrice          Float?
+  btcOutperform     Float?
+  ethOutperform     Float?
+  notes             String?
+  positions         SnapshotPosition[]
+
+  @@index([userId, timestamp])
+  @@index([snapshotType])
+}
+
+// SnapshotPosition - captures position state at snapshot time
+model SnapshotPosition {
+  id            String   @id @default(cuid())
+  snapshotId    String
+  snapshot      Snapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  assetSymbol   String
+  quantity      Float
+  priceUsd      Float
+  valueUsd      Float
+  allocation    Float
+
+  @@index([snapshotId])
+}
+
+// FX Rate model - for currency conversion
+model FxRate {
+  id        String   @id @default(cuid())
+  fromCcy   String
+  toCcy     String
+  rate      Float
+  timestamp DateTime @default(now())
+
+  @@unique([fromCcy, toCcy])
+  @@index([fromCcy, toCcy])
+}
+
+// Settings model - for app configuration
+model Settings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}

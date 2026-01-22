@@ -1,0 +1,89 @@
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency, formatNumber, getPnLColorClass } from '@/lib/utils';
+import type { TradeAnalytics } from '@/lib/api';
+
+interface TradeStatsCardProps {
+  analytics: TradeAnalytics;
+}
+
+export function TradeStatsCard({ analytics }: TradeStatsCardProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Trade Statistics</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Main Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Total Trades</p>
+            <p className="text-2xl font-bold">{analytics.totalTrades}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Win Rate</p>
+            <p className="text-2xl font-bold">
+              {formatNumber(analytics.winRate)}%
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Profit Factor</p>
+            <p className="text-2xl font-bold">
+              {analytics.profitFactor === Infinity ? 'N/A' : formatNumber(analytics.profitFactor)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Total P&L</p>
+            <p className={`text-2xl font-bold ${getPnLColorClass(analytics.totalPnL)}`}>
+              {formatCurrency(analytics.totalPnL, 'USD')}
+            </p>
+          </div>
+        </div>
+
+        {/* Breakdown */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Breakdown</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-1">
+              <p className="text-muted-foreground">Long Trades</p>
+              <p>Count: {analytics.breakdown.long.count}</p>
+              <p>Win Rate: {formatNumber(analytics.breakdown.long.winRate)}%</p>
+              <p className={getPnLColorClass(analytics.breakdown.long.pnl)}>
+                P&L: {formatCurrency(analytics.breakdown.long.pnl, 'USD')}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-muted-foreground">Short Trades</p>
+              <p>Count: {analytics.breakdown.short.count}</p>
+              <p>Win Rate: {formatNumber(analytics.breakdown.short.winRate)}%</p>
+              <p className={getPnLColorClass(analytics.breakdown.short.pnl)}>
+                P&L: {formatCurrency(analytics.breakdown.short.pnl, 'USD')}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Averages */}
+        <div className="grid grid-cols-3 gap-4 text-sm border-t pt-4">
+          <div>
+            <p className="text-muted-foreground">Avg P&L</p>
+            <p className={`font-medium ${getPnLColorClass(analytics.avgPnL)}`}>
+              {formatCurrency(analytics.avgPnL, 'USD')}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Avg Win</p>
+            <p className="font-medium text-profit">
+              {formatCurrency(analytics.avgWin, 'USD')}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Avg Loss</p>
+            <p className="font-medium text-loss">
+              -{formatCurrency(analytics.avgLoss, 'USD')}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

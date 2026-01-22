@@ -1,0 +1,19 @@
+{
+  "name": "pa-portfolio-dash",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=@pa-portfolio/backend",
+    "dev:frontend": "npm run dev --workspace=@pa-portfolio/frontend",
+    "build": "npm run build --workspaces",
+    "db:migrate": "npm run db:migrate --workspace=@pa-portfolio/backend",
+    "db:seed": "npm run db:seed --workspace=@pa-portfolio/backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
