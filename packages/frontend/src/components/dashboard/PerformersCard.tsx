@@ -7,9 +7,17 @@ interface PerformersCardProps {
   title: string;
   performers: Performer[];
   type: 'top' | 'worst';
+  currency?: 'USD' | 'SGD';
+  fxRate?: number;
 }
 
-export function PerformersCard({ title, performers, type }: PerformersCardProps) {
+export function PerformersCard({ title, performers, type, currency = 'USD', fxRate = 1 }: PerformersCardProps) {
+  // Helper to convert values based on currency
+  const convert = (usdValue: number | null | undefined) => {
+    if (usdValue === null || usdValue === undefined) return usdValue;
+    return currency === 'SGD' ? usdValue * fxRate : usdValue;
+  };
+
   if (performers.length === 0) {
     return (
       <Card>
@@ -62,7 +70,7 @@ export function PerformersCard({ title, performers, type }: PerformersCardProps)
               </div>
               <div className="text-right">
                 <p className={`font-medium ${getPnLColorClass(performer.unrealizedPnL)}`}>
-                  {formatCurrency(performer.unrealizedPnL, 'USD')}
+                  {formatCurrency(convert(performer.unrealizedPnL), currency)}
                 </p>
                 <p className={`text-sm ${getPnLColorClass(performer.unrealizedPnLPct)}`}>
                   {formatPercent(performer.unrealizedPnLPct)}

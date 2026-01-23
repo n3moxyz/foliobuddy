@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { usePortfolioSummary, useAllocationByCategory, useTopPerformers, useWorstPerformers } from '@/hooks/usePortfolio';
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
@@ -15,6 +16,20 @@ export default function Dashboard() {
   const { data: topPerformers } = useTopPerformers(5);
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: analytics } = useTradeAnalytics();
+
+  // Calculate FX rate from summary
+  const fxRate = useMemo(() => {
+    if (summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0) {
+      return summary.totalValueSgd / summary.totalValueUsd;
+    }
+    return 1.35; // Default fallback rate
+  }, [summary]);
+
+  // Helper to convert values based on currency
+  const convert = (usdValue: number | null | undefined) => {
+    if (usdValue === null || usdValue === undefined) return usdValue;
+    return currency === 'SGD' ? usdValue * fxRate : usdValue;
+  };
 
   if (summaryLoading) {
     return (
@@ -43,7 +58,7 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <CardDescription>Total Cost Basis</CardDescription>
             <CardTitle className="text-2xl">
-              {formatCurrency(summary?.totalCostBasis, 'USD')}
+              {formatCurrency(convert(summary?.totalCostBasis), currency)}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -52,7 +67,7 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <CardDescription>Unrealized P&L</CardDescription>
             <CardTitle className={`text-2xl ${getPnLColorClass(summary?.unrealizedPnL)}`}>
-              {formatCurrency(summary?.unrealizedPnL, 'USD')}
+              {formatCurrency(convert(summary?.unrealizedPnL), currency)}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -96,7 +111,7 @@ export default function Dashboard() {
         )}
 
         {/* Trade Stats */}
-        {analytics && <TradeStatsCard analytics={analytics} />}
+        {analytics && <TradeStatsCard analytics={analytics} currency={currency} fxRate={fxRate} />}
       </div>
 
       {/* Performers */}
@@ -106,6 +121,8 @@ export default function Dashboard() {
             title="Top Performers"
             performers={topPerformers}
             type="top"
+            currency={currency}
+            fxRate={fxRate}
           />
         )}
         {worstPerformers && (
@@ -113,6 +130,8 @@ export default function Dashboard() {
             title="Worst Performers"
             performers={worstPerformers}
             type="worst"
+            currency={currency}
+            fxRate={fxRate}
           />
         )}
       </div>

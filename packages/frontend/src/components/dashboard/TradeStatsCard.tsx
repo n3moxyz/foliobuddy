@@ -4,9 +4,17 @@ import type { TradeAnalytics } from '@/lib/api';
 
 interface TradeStatsCardProps {
   analytics: TradeAnalytics;
+  currency?: 'USD' | 'SGD';
+  fxRate?: number;
 }
 
-export function TradeStatsCard({ analytics }: TradeStatsCardProps) {
+export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: TradeStatsCardProps) {
+  // Helper to convert values based on currency
+  const convert = (usdValue: number | null | undefined) => {
+    if (usdValue === null || usdValue === undefined) return usdValue;
+    return currency === 'SGD' ? usdValue * fxRate : usdValue;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -34,7 +42,7 @@ export function TradeStatsCard({ analytics }: TradeStatsCardProps) {
           <div>
             <p className="text-sm text-muted-foreground">Total P&L</p>
             <p className={`text-2xl font-bold ${getPnLColorClass(analytics.totalPnL)}`}>
-              {formatCurrency(analytics.totalPnL, 'USD')}
+              {formatCurrency(convert(analytics.totalPnL), currency)}
             </p>
           </div>
         </div>
@@ -48,7 +56,7 @@ export function TradeStatsCard({ analytics }: TradeStatsCardProps) {
               <p>Count: {analytics.breakdown.long.count}</p>
               <p>Win Rate: {formatNumber(analytics.breakdown.long.winRate)}%</p>
               <p className={getPnLColorClass(analytics.breakdown.long.pnl)}>
-                P&L: {formatCurrency(analytics.breakdown.long.pnl, 'USD')}
+                P&L: {formatCurrency(convert(analytics.breakdown.long.pnl), currency)}
               </p>
             </div>
             <div className="space-y-1">
@@ -56,7 +64,7 @@ export function TradeStatsCard({ analytics }: TradeStatsCardProps) {
               <p>Count: {analytics.breakdown.short.count}</p>
               <p>Win Rate: {formatNumber(analytics.breakdown.short.winRate)}%</p>
               <p className={getPnLColorClass(analytics.breakdown.short.pnl)}>
-                P&L: {formatCurrency(analytics.breakdown.short.pnl, 'USD')}
+                P&L: {formatCurrency(convert(analytics.breakdown.short.pnl), currency)}
               </p>
             </div>
           </div>
@@ -67,19 +75,19 @@ export function TradeStatsCard({ analytics }: TradeStatsCardProps) {
           <div>
             <p className="text-muted-foreground">Avg P&L</p>
             <p className={`font-medium ${getPnLColorClass(analytics.avgPnL)}`}>
-              {formatCurrency(analytics.avgPnL, 'USD')}
+              {formatCurrency(convert(analytics.avgPnL), currency)}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Avg Win</p>
             <p className="font-medium text-profit">
-              {formatCurrency(analytics.avgWin, 'USD')}
+              {formatCurrency(convert(analytics.avgWin), currency)}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Avg Loss</p>
             <p className="font-medium text-loss">
-              -{formatCurrency(analytics.avgLoss, 'USD')}
+              -{formatCurrency(convert(analytics.avgLoss), currency)}
             </p>
           </div>
         </div>

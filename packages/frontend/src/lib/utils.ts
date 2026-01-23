@@ -14,13 +14,20 @@ export function formatCurrency(
 
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency,
+    currency: 'USD', // Always use USD formatting
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     ...options,
   });
 
-  return formatter.format(value);
+  const formatted = formatter.format(value);
+
+  // For SGD, replace $ with S$
+  if (currency === 'SGD') {
+    return formatted.replace('$', 'S$');
+  }
+
+  return formatted;
 }
 
 export function formatNumber(

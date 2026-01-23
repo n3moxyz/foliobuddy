@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
@@ -9,7 +10,21 @@ interface NetWorthCardProps {
 }
 
 export function NetWorthCard({ summary, currency }: NetWorthCardProps) {
-  const value = currency === 'USD' ? summary.totalValueUsd : summary.totalValueSgd;
+  // Calculate FX rate from summary
+  const fxRate = useMemo(() => {
+    if (summary.totalValueUsd > 0 && summary.totalValueSgd > 0) {
+      return summary.totalValueSgd / summary.totalValueUsd;
+    }
+    return 1.35;
+  }, [summary]);
+
+  // Helper to convert values based on currency
+  const convert = (usdValue: number | null | undefined) => {
+    if (usdValue === null || usdValue === undefined) return usdValue;
+    return currency === 'SGD' ? usdValue * fxRate : usdValue;
+  };
+
+  const value = convert(summary.totalValueUsd);
   const isPositive = summary.unrealizedPnL >= 0;
 
   return (
@@ -40,24 +55,27 @@ export function NetWorthCard({ summary, currency }: NetWorthCardProps) {
           <div>
             <p className="text-muted-foreground">Unrealized P&L</p>
             <p className={`font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}>
-              {formatCurrency(summary.unrealizedPnL, 'USD')}
+              {formatCurrency(convert(summary.unrealizedPnL), currency)}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Cost Basis</p>
             <p className="font-medium">
-              {formatCurrency(summary.totalCostBasis, 'USD')}
+              {formatCurrency(convert(summary.totalCostBasis), currency)}
             </p>
           </div>
         </div>
 
-        {currency === 'USD' && summary.totalValueSgd > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <p className="text-sm text-muted-foreground">
-              SGD Value: {formatCurrency(summary.totalValueSgd, 'SGD')}
-            </p>
-          </div>
-        )}
+        {/* Show alternate currency value */}
+        <div className="mt-4 pt-4 border-t">
+          <p className="text-sm text-muted-foreground">
+            {currency === 'USD' ? 'SGD' : 'USD'} Value:{' '}
+            {formatCurrency(
+              currency === 'USD' ? summary.totalValueSgd : summary.totalValueUsd,
+              currency === 'USD' ? 'SGD' : 'USD'
+            )}
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

@@ -20,7 +20,7 @@ export function useSearchCoins(query: string) {
   return useQuery({
     queryKey: ['coins', 'search', query],
     queryFn: () => api.searchCoins(query),
-    enabled: query.length >= 2,
+    enabled: query.length >= 1,
     staleTime: 60000, // 1 minute
   });
 }

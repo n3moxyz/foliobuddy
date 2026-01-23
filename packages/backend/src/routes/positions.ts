@@ -163,6 +163,9 @@ router.post('/', async (req, res, next) => {
       ? (unrealizedPnL / costBasis) * 100
       : null;
 
+    // Convert empty string to null for storageLocation
+    const storageLocation = data.storageLocation?.trim() || null;
+
     const position = await prisma.position.create({
       data: {
         userId: DEFAULT_USER_ID,
@@ -170,7 +173,7 @@ router.post('/', async (req, res, next) => {
         quantity: data.quantity,
         avgCostUsd: data.avgCostUsd,
         storageType: data.storageType,
-        storageLocation: data.storageLocation,
+        storageLocation,
         notes: data.notes,
         marketValueUsd,
         unrealizedPnL,
@@ -214,10 +217,18 @@ router.put('/:id', async (req, res, next) => {
       ? (unrealizedPnL / costBasis) * 100
       : null;
 
+    // Convert empty string to null for storageLocation
+    const updateData = {
+      ...data,
+      storageLocation: data.storageLocation !== undefined
+        ? (data.storageLocation?.trim() || null)
+        : undefined,
+    };
+
     const position = await prisma.position.update({
       where: { id: req.params.id },
       data: {
-        ...data,
+        ...updateData,
         marketValueUsd,
         unrealizedPnL,
         unrealizedPnLPct,
