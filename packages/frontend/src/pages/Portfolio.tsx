@@ -7,13 +7,24 @@ import { Button } from '@/components/ui/button';
 import { PositionTable } from '@/components/portfolio/PositionTable';
 import { PositionForm } from '@/components/portfolio/PositionForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+
+const PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
 
 export default function Portfolio() {
   const { currency } = useCurrencyStore();
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: summary } = usePortfolioSummary();
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Perp exposure state
+  const [perpExposure, setPerpExposure] = useState(() => {
+    const saved = localStorage.getItem(PERP_EXPOSURE_KEY);
+    return saved ? parseFloat(saved) : 0;
+  });
+  const [editingPerp, setEditingPerp] = useState(false);
+  const [perpInput, setPerpInput] = useState('');
 
   // Calculate FX rate from summary
   const fxRate = useMemo(() => {
@@ -27,6 +38,27 @@ export default function Portfolio() {
   const convertValue = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
+  };
+
+  // Handle perp exposure edit
+  const handlePerpEdit = () => {
+    setPerpInput(perpExposure.toString());
+    setEditingPerp(true);
+  };
+
+  const handlePerpSave = () => {
+    const value = parseFloat(perpInput) || 0;
+    setPerpExposure(value);
+    localStorage.setItem(PERP_EXPOSURE_KEY, value.toString());
+    setEditingPerp(false);
+  };
+
+  const handlePerpKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handlePerpSave();
+    } else if (e.key === 'Escape') {
+      setEditingPerp(false);
+    }
   };
 
   // Split positions by category and calculate totals
@@ -69,12 +101,12 @@ export default function Portfolio() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid gap-2 md:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-5">
           <Card className="py-2">
             <CardHeader className="py-2 px-4">
               <p className="text-xs text-muted-foreground">Total Value</p>
               <CardTitle className="text-lg">
-                {formatCurrency(convertValue(summary.totalValueUsd), currency)}
+                {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -83,7 +115,7 @@ export default function Portfolio() {
             <CardHeader className="py-2 px-4">
               <p className="text-xs text-muted-foreground">Cost Basis</p>
               <CardTitle className="text-lg">
-                {formatCurrency(convertValue(summary.totalCostBasis), currency)}
+                {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -94,6 +126,17 @@ export default function Portfolio() {
               <CardTitle className={`text-lg ${getPnLColorClass(summary.unrealizedPnL)}`}>
                 {formatCurrency(convertValue(summary.unrealizedPnL), currency)}
                 <span className="text-sm ml-1">({formatPercent(summary.unrealizedPnLPct)})</span>
+              </CardTitle>
+            </CardHeader>
+          </Card>
+
+          <Card className="py-2">
+            <CardHeader className="py-2 px-4">
+              <p className="text-xs text-muted-foreground">Exposure</p>
+              <CardTitle className="text-lg">
+                {summary.totalValueUsd > 0
+                  ? `${(((cryptoTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
+                  : '0%'}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -136,7 +179,7 @@ export default function Portfolio() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Crypto</CardTitle>
               <span className="text-sm font-semibold text-muted-foreground">
-                {formatCurrency(convertValue(cryptoTotal), currency)}
+                {formatCurrency(convertValue(cryptoTotal), currency, 0)}
               </span>
             </div>
           </CardHeader>
@@ -151,10 +194,33 @@ export default function Portfolio() {
         <Card>
           <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Stables</CardTitle>
-              <span className="text-sm font-semibold text-muted-foreground">
-                {formatCurrency(convertValue(stablesTotal), currency)}
-              </span>
+              <div>
+                <CardTitle className="text-base">Stables</CardTitle>
+                {perpExposure > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Available: {formatCurrency(convertValue(stablesTotal - perpExposure), currency, 0)}
+                  </p>
+                )}
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-semibold text-muted-foreground">
+                  {formatCurrency(convertValue(stablesTotal), currency, 0)}
+                </span>
+                <div className="flex items-center justify-end gap-2 mt-1">
+                  {perpExposure > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      Perp: {formatCurrency(convertValue(perpExposure), currency, 0)}
+                    </span>
+                  )}
+                  <button
+                    onClick={handlePerpEdit}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    {perpExposure > 0 ? 'Edit' : 'Add Perp'}
+                  </button>
+                </div>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
@@ -165,11 +231,48 @@ export default function Portfolio() {
 
       {/* Add Position Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Position</DialogTitle>
           </DialogHeader>
-          <PositionForm onSuccess={() => setShowAddForm(false)} />
+          <PositionForm
+            onSuccess={() => setShowAddForm(false)}
+            cryptoCount={cryptoPositions.length}
+            stablesCount={stablesPositions.length}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Perp Exposure Dialog */}
+      <Dialog open={editingPerp} onOpenChange={setEditingPerp}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Perp Exposure</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Enter your total open perp position size in USD. This will be added to your crypto exposure.
+            </p>
+            <div className="space-y-1">
+              <label className="text-sm">Position Size (USD)</label>
+              <Input
+                type="number"
+                value={perpInput}
+                onChange={(e) => setPerpInput(e.target.value)}
+                onKeyDown={handlePerpKeyDown}
+                placeholder="0"
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditingPerp(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handlePerpSave}>
+                Save
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

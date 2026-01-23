@@ -153,6 +153,26 @@ router.post('/', async (req, res, next) => {
       throw new AppError('Asset not found', 404);
     }
 
+    // Check position limit (20 per category)
+    const isStablecoin = asset.category === 'STABLECOIN' || asset.category === 'CASH';
+    const categoryPositions = await prisma.position.findMany({
+      where: {
+        userId: DEFAULT_USER_ID,
+        asset: {
+          category: isStablecoin
+            ? { in: ['STABLECOIN', 'CASH'] }
+            : { notIn: ['STABLECOIN', 'CASH'] }
+        }
+      },
+    });
+
+    if (categoryPositions.length >= 20) {
+      throw new AppError(
+        `Maximum 20 ${isStablecoin ? 'stables' : 'crypto'} positions allowed`,
+        400
+      );
+    }
+
     // Calculate market value if asset has price
     const marketValueUsd = asset.currentPriceUsd
       ? data.quantity * asset.currentPriceUsd

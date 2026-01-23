@@ -191,6 +191,8 @@ export interface Position {
   marketValueUsd: number | null;
   unrealizedPnL: number | null;
   unrealizedPnLPct: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Trade {

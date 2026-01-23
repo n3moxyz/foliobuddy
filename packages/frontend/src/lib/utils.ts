@@ -8,16 +8,15 @@ export function cn(...inputs: ClassValue[]) {
 export function formatCurrency(
   value: number | null | undefined,
   currency: 'USD' | 'SGD' = 'USD',
-  options?: Intl.NumberFormatOptions
+  decimals: number = 2
 ): string {
   if (value === null || value === undefined) return '-';
 
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD', // Always use USD formatting
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    ...options,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   });
 
   const formatted = formatter.format(value);

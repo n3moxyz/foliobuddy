@@ -16,6 +16,8 @@ import type { Position, Asset, CoinSearchResult } from '@/lib/api';
 interface PositionFormProps {
   position?: Position;
   onSuccess: () => void;
+  cryptoCount?: number;
+  stablesCount?: number;
 }
 
 type CategoryType = 'crypto' | 'cash';
@@ -38,7 +40,9 @@ const TOP_STABLECOINS = [
   { id: 'dai', symbol: 'DAI', name: 'Dai' },
 ];
 
-export function PositionForm({ position, onSuccess }: PositionFormProps) {
+const MAX_POSITIONS_PER_CATEGORY = 20;
+
+export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCount = 0 }: PositionFormProps) {
   // Category state
   const [category, setCategory] = useState<CategoryType>(() => {
     if (position?.asset.category === 'STABLECOIN' || position?.asset.category === 'CASH') {
@@ -46,6 +50,9 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
     }
     return 'crypto';
   });
+
+  // Error state
+  const [error, setError] = useState<string | null>(null);
 
   // Asset selection state
   const [assetId, setAssetId] = useState(position?.assetId || '');
@@ -85,6 +92,7 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
     }
     return '';
   });
+  const [notes, setNotes] = useState(position?.notes || '');
 
   // Hooks
   const { data: assets } = useAssets();
@@ -179,12 +187,20 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
     setShowDropdown(false);
   };
 
+  // Track stablecoin selection separately for immediate UI feedback
+  const [selectedStablecoinId, setSelectedStablecoinId] = useState<string>(
+    position?.asset.coingeckoId || ''
+  );
+
   // Handle selecting a stablecoin (for cash category)
   const handleSelectStablecoin = async (coinId: string) => {
+    setSelectedStablecoinId(coinId); // Immediate UI update
+    setError(null);
+
     const stablecoin = TOP_STABLECOINS.find(s => s.id === coinId);
     if (!stablecoin) return;
 
-    // Check if asset already exists
+    // Check if asset already exists in our database
     const existingAsset = assets?.find(a => a.coingeckoId === coinId);
     if (existingAsset) {
       setAssetId(existingAsset.id);
@@ -192,16 +208,21 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
       return;
     }
 
-    // Create new asset
-    const asset = await createAssetFromCoinGecko.mutateAsync({
-      coingeckoId: stablecoin.id,
-      symbol: stablecoin.symbol,
-      name: stablecoin.name,
-      category: 'STABLECOIN',
-    });
+    // Create new asset from CoinGecko
+    try {
+      const asset = await createAssetFromCoinGecko.mutateAsync({
+        coingeckoId: stablecoin.id,
+        symbol: stablecoin.symbol,
+        name: stablecoin.name,
+        category: 'STABLECOIN',
+      });
 
-    setAssetId(asset.id);
-    setSelectedAsset(asset);
+      setAssetId(asset.id);
+      setSelectedAsset(asset);
+    } catch (err) {
+      setError('Failed to load stablecoin data. Please try again.');
+      setSelectedStablecoinId('');
+    }
   };
 
   // Reset form when category changes
@@ -209,9 +230,11 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
     if (!isEditing) {
       setAssetId('');
       setSelectedAsset(null);
+      setSelectedStablecoinId('');
       setSearchQuery('');
       setQuantity('');
       setTotalCost('');
+      setError(null);
     }
   }, [category, isEditing]);
 
@@ -228,6 +251,16 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    // Check position limit before submitting
+    if (!isEditing) {
+      const currentCount = category === 'crypto' ? cryptoCount : stablesCount;
+      if (currentCount >= MAX_POSITIONS_PER_CATEGORY) {
+        setError(`Maximum ${MAX_POSITIONS_PER_CATEGORY} ${category === 'crypto' ? 'crypto' : 'stables'} positions allowed`);
+        return;
+      }
+    }
 
     // Determine final storage location value
     const finalStorageLocation = storageLocation === 'Others'
@@ -240,23 +273,28 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
       avgCostUsd: category === 'crypto' ? (parseFloat(avgCostUsd) || 0) : 1,
       storageType: storageType as 'WALLET' | 'CEX' | 'DEFI' | 'BANK',
       storageLocation: finalStorageLocation || undefined,
+      notes: notes.trim() || undefined,
     };
 
-    if (isEditing) {
-      await updatePosition.mutateAsync({ id: position.id, data });
-    } else {
-      await createPosition.mutateAsync(data);
+    try {
+      if (isEditing) {
+        await updatePosition.mutateAsync({ id: position.id, data });
+      } else {
+        await createPosition.mutateAsync(data);
+      }
+      onSuccess();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save position';
+      setError(errorMessage);
     }
-
-    onSuccess();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3">
       {/* Category Selection */}
       {!isEditing && (
-        <div className="space-y-2">
-          <Label>Category</Label>
+        <div className="space-y-1">
+          <Label className="text-sm">Category</Label>
           <Select value={category} onValueChange={(v) => setCategory(v as CategoryType)}>
             <SelectTrigger>
               <SelectValue />
@@ -271,8 +309,8 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
 
       {/* Asset Selection - Different UI for Crypto vs Cash */}
       {category === 'crypto' ? (
-        <div className="space-y-2">
-          <Label>Asset</Label>
+        <div className="space-y-1">
+          <Label className="text-sm">Asset</Label>
           {isEditing ? (
             <Input
               value={`${position.asset.symbol} - ${position.asset.name}`}
@@ -375,8 +413,8 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
         </div>
       ) : (
         /* Cash / Stablecoin Selection */
-        <div className="space-y-2">
-          <Label>Stablecoin</Label>
+        <div className="space-y-1">
+          <Label className="text-sm">Stablecoin</Label>
           {isEditing ? (
             <Input
               value={`${position.asset.symbol} - ${position.asset.name}`}
@@ -385,11 +423,12 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
             />
           ) : (
             <Select
-              value={selectedAsset?.coingeckoId || ''}
+              value={selectedStablecoinId}
               onValueChange={handleSelectStablecoin}
+              disabled={createAssetFromCoinGecko.isPending}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a stablecoin" />
+                <SelectValue placeholder={createAssetFromCoinGecko.isPending ? "Loading..." : "Select a stablecoin"} />
               </SelectTrigger>
               <SelectContent>
                 {TOP_STABLECOINS.map((coin) => (
@@ -404,8 +443,8 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
       )}
 
       {/* Quantity / Amount */}
-      <div className="space-y-2">
-        <Label htmlFor="quantity">
+      <div className="space-y-1">
+        <Label htmlFor="quantity" className="text-sm">
           {category === 'crypto' ? 'Quantity' : 'Amount'}
         </Label>
         <Input
@@ -421,9 +460,9 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
 
       {/* Total Cost & Average Cost (Crypto only) */}
       {category === 'crypto' && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="totalCost">Total Cost (USD)</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="totalCost" className="text-sm">Total Cost (USD)</Label>
             <Input
               id="totalCost"
               type="number"
@@ -433,8 +472,8 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
               placeholder="0.00"
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="avgCost">Average Cost (USD)</Label>
+          <div className="space-y-1">
+            <Label htmlFor="avgCost" className="text-sm">Average Cost (USD)</Label>
             <Input
               id="avgCost"
               type="number"
@@ -449,8 +488,8 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
       )}
 
       {/* Storage Type */}
-      <div className="space-y-2">
-        <Label>Storage Type</Label>
+      <div className="space-y-1">
+        <Label className="text-sm">Storage Type</Label>
         <Select value={storageType} onValueChange={setStorageType}>
           <SelectTrigger>
             <SelectValue />
@@ -466,8 +505,8 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
       </div>
 
       {/* Storage Location */}
-      <div className="space-y-2">
-        <Label>Storage Location (Optional)</Label>
+      <div className="space-y-1">
+        <Label className="text-sm">Storage Location (Optional)</Label>
         <Select value={storageLocation} onValueChange={(v) => {
           setStorageLocation(v);
           if (v !== 'Others') {
@@ -497,8 +536,35 @@ export function PositionForm({ position, onSuccess }: PositionFormProps) {
         )}
       </div>
 
+      {/* Notes */}
+      <div className="space-y-1">
+        <Label htmlFor="notes" className="text-sm">Notes (Optional)</Label>
+        <textarea
+          id="notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Add any notes..."
+          rows={2}
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+        />
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+          {error}
+        </div>
+      )}
+
+      {/* Position Limit Info */}
+      {!isEditing && (
+        <div className="text-xs text-muted-foreground">
+          {category === 'crypto' ? cryptoCount : stablesCount} / {MAX_POSITIONS_PER_CATEGORY} {category === 'crypto' ? 'crypto' : 'stables'} positions
+        </div>
+      )}
+
       {/* Submit */}
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="flex justify-end gap-2 pt-2">
         <Button type="submit" disabled={isLoading || !assetId}>
           {isLoading ? 'Saving...' : isEditing ? 'Update Position' : 'Add Position'}
         </Button>
