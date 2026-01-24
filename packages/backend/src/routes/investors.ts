@@ -6,8 +6,6 @@ import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-const DEFAULT_USER_ID = 'default-user';
-
 // Validation schemas
 const createInvestorSchema = z.object({
   name: z.string().min(1),
@@ -23,10 +21,10 @@ const updateInvestorSchema = createInvestorSchema.partial();
 router.get('/', async (req, res, next) => {
   try {
     // Get current portfolio value
-    const summary = await portfolioService.getSummary(DEFAULT_USER_ID);
+    const summary = await portfolioService.getSummary(req.userId!);
 
     const investors = await prisma.investor.findMany({
-      where: { userId: DEFAULT_USER_ID },
+      where: { userId: req.userId! },
       orderBy: { stakePercentage: 'desc' },
     });
 
@@ -70,7 +68,7 @@ router.get('/:id', async (req, res, next) => {
     }
 
     // Calculate current value
-    const summary = await portfolioService.getSummary(DEFAULT_USER_ID);
+    const summary = await portfolioService.getSummary(req.userId!);
     const currentValue = summary.totalValueUsd * (investor.stakePercentage / 100);
     const totalReturn = currentValue - investor.initialCapital;
     const totalReturnPct = investor.initialCapital > 0
@@ -100,7 +98,7 @@ router.get('/:id/report', async (req, res, next) => {
     }
 
     // Get current portfolio summary
-    const summary = await portfolioService.getSummary(DEFAULT_USER_ID);
+    const summary = await portfolioService.getSummary(req.userId!);
     const currentValue = summary.totalValueUsd * (investor.stakePercentage / 100);
 
     // Get historical stake values
@@ -112,7 +110,7 @@ router.get('/:id/report', async (req, res, next) => {
     // Get portfolio snapshots for performance tracking
     const snapshots = await prisma.snapshot.findMany({
       where: {
-        userId: DEFAULT_USER_ID,
+        userId: req.userId!,
         timestamp: { gte: investor.joinDate },
       },
       orderBy: { timestamp: 'asc' },
@@ -168,7 +166,7 @@ router.post('/', async (req, res, next) => {
 
     // Verify total stake doesn't exceed 100%
     const existingInvestors = await prisma.investor.findMany({
-      where: { userId: DEFAULT_USER_ID },
+      where: { userId: req.userId! },
     });
 
     const currentTotalStake = existingInvestors.reduce(
@@ -184,12 +182,12 @@ router.post('/', async (req, res, next) => {
     }
 
     // Get current portfolio value
-    const summary = await portfolioService.getSummary(DEFAULT_USER_ID);
+    const summary = await portfolioService.getSummary(req.userId!);
     const currentValue = summary.totalValueUsd * (data.stakePercentage / 100);
 
     const investor = await prisma.investor.create({
       data: {
-        userId: DEFAULT_USER_ID,
+        userId: req.userId!,
         name: data.name,
         stakePercentage: data.stakePercentage,
         initialCapital: data.initialCapital,
@@ -235,7 +233,7 @@ router.put('/:id', async (req, res, next) => {
     if (data.stakePercentage !== undefined) {
       const otherInvestors = await prisma.investor.findMany({
         where: {
-          userId: DEFAULT_USER_ID,
+          userId: req.userId!,
           id: { not: req.params.id },
         },
       });
@@ -253,7 +251,7 @@ router.put('/:id', async (req, res, next) => {
       }
 
       // Record stake change
-      const summary = await portfolioService.getSummary(DEFAULT_USER_ID);
+      const summary = await portfolioService.getSummary(req.userId!);
       const newValue = summary.totalValueUsd * (data.stakePercentage / 100);
 
       await prisma.investorStake.create({

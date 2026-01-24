@@ -6,14 +6,12 @@ import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-const DEFAULT_USER_ID = 'default-user';
-
 // GET /api/snapshots - Get all snapshots
 router.get('/', async (req, res, next) => {
   try {
     const { type, from, to, limit } = req.query;
 
-    const where: any = { userId: DEFAULT_USER_ID };
+    const where: any = { userId: req.userId! };
 
     if (type) {
       where.snapshotType = type;
@@ -41,7 +39,7 @@ router.get('/', async (req, res, next) => {
 router.get('/performance', async (req, res, next) => {
   try {
     const days = parseInt(req.query.days as string) || 30;
-    const history = await snapshotService.getPerformanceHistory(DEFAULT_USER_ID, days);
+    const history = await snapshotService.getPerformanceHistory(req.userId!, days);
     res.json(history);
   } catch (error) {
     next(error);
@@ -52,7 +50,7 @@ router.get('/performance', async (req, res, next) => {
 router.get('/monthly', async (req, res, next) => {
   try {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
-    const returns = await snapshotService.getMonthlyReturns(DEFAULT_USER_ID, year);
+    const returns = await snapshotService.getMonthlyReturns(req.userId!, year);
     res.json(returns);
   } catch (error) {
     next(error);
@@ -85,7 +83,7 @@ router.post('/', async (req, res, next) => {
     const { type } = req.body;
 
     const snapshotType = type || 'DAILY';
-    const snapshotId = await snapshotService.createSnapshot(DEFAULT_USER_ID, snapshotType);
+    const snapshotId = await snapshotService.createSnapshot(req.userId!, snapshotType);
 
     const snapshot = await prisma.snapshot.findUnique({
       where: { id: snapshotId },

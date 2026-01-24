@@ -6,9 +6,6 @@ import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-// Default user ID for now (would come from auth in production)
-const DEFAULT_USER_ID = 'default-user';
-
 // Validation schemas
 const createPositionSchema = z.object({
   assetId: z.string().min(1),
@@ -21,30 +18,13 @@ const createPositionSchema = z.object({
 
 const updatePositionSchema = createPositionSchema.partial();
 
-// Ensure default user exists
-async function ensureDefaultUser() {
-  const user = await prisma.user.findUnique({
-    where: { id: DEFAULT_USER_ID },
-  });
-
-  if (!user) {
-    await prisma.user.create({
-      data: {
-        id: DEFAULT_USER_ID,
-        email: 'default@portfolio.app',
-        name: 'Default User',
-      },
-    });
-  }
-}
-
 // GET /api/positions - Get all positions
 router.get('/', async (req, res, next) => {
   try {
-    await ensureDefaultUser();
+    const userId = req.userId!;
 
     const positions = await prisma.position.findMany({
-      where: { userId: DEFAULT_USER_ID },
+      where: { userId },
       include: {
         asset: true,
       },
@@ -63,8 +43,7 @@ router.get('/', async (req, res, next) => {
 // GET /api/positions/summary - Get portfolio summary
 router.get('/summary', async (req, res, next) => {
   try {
-    await ensureDefaultUser();
-    const summary = await portfolioService.getSummary(DEFAULT_USER_ID);
+    const summary = await portfolioService.getSummary(req.userId!);
     res.json(summary);
   } catch (error) {
     next(error);
@@ -74,8 +53,7 @@ router.get('/summary', async (req, res, next) => {
 // GET /api/positions/allocation/category - Get allocation by category
 router.get('/allocation/category', async (req, res, next) => {
   try {
-    await ensureDefaultUser();
-    const allocation = await portfolioService.getAllocationByCategory(DEFAULT_USER_ID);
+    const allocation = await portfolioService.getAllocationByCategory(req.userId!);
     res.json(allocation);
   } catch (error) {
     next(error);
@@ -85,8 +63,7 @@ router.get('/allocation/category', async (req, res, next) => {
 // GET /api/positions/allocation/storage - Get allocation by storage
 router.get('/allocation/storage', async (req, res, next) => {
   try {
-    await ensureDefaultUser();
-    const allocation = await portfolioService.getAllocationByStorage(DEFAULT_USER_ID);
+    const allocation = await portfolioService.getAllocationByStorage(req.userId!);
     res.json(allocation);
   } catch (error) {
     next(error);
@@ -96,9 +73,8 @@ router.get('/allocation/storage', async (req, res, next) => {
 // GET /api/positions/performers/top - Get top performers
 router.get('/performers/top', async (req, res, next) => {
   try {
-    await ensureDefaultUser();
     const limit = parseInt(req.query.limit as string) || 5;
-    const performers = await portfolioService.getTopPerformers(DEFAULT_USER_ID, limit);
+    const performers = await portfolioService.getTopPerformers(req.userId!, limit);
     res.json(performers);
   } catch (error) {
     next(error);
@@ -108,9 +84,8 @@ router.get('/performers/top', async (req, res, next) => {
 // GET /api/positions/performers/worst - Get worst performers
 router.get('/performers/worst', async (req, res, next) => {
   try {
-    await ensureDefaultUser();
     const limit = parseInt(req.query.limit as string) || 5;
-    const performers = await portfolioService.getWorstPerformers(DEFAULT_USER_ID, limit);
+    const performers = await portfolioService.getWorstPerformers(req.userId!, limit);
     res.json(performers);
   } catch (error) {
     next(error);
@@ -140,8 +115,6 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/positions - Create a new position
 router.post('/', async (req, res, next) => {
   try {
-    await ensureDefaultUser();
-
     const data = createPositionSchema.parse(req.body);
 
     // Verify asset exists
@@ -157,7 +130,7 @@ router.post('/', async (req, res, next) => {
     const isStablecoin = asset.category === 'STABLECOIN' || asset.category === 'CASH';
     const categoryPositions = await prisma.position.findMany({
       where: {
-        userId: DEFAULT_USER_ID,
+        userId: req.userId!,
         asset: {
           category: isStablecoin
             ? { in: ['STABLECOIN', 'CASH'] }
@@ -188,7 +161,7 @@ router.post('/', async (req, res, next) => {
 
     const position = await prisma.position.create({
       data: {
-        userId: DEFAULT_USER_ID,
+        userId: req.userId!,
         assetId: data.assetId,
         quantity: data.quantity,
         avgCostUsd: data.avgCostUsd,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -53,6 +53,33 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
   };
 
+  // Split positions into CEX and Onchain sections
+  const { cexPositions, onchainPositions } = useMemo(() => {
+    const cex: Position[] = [];
+    const onchain: Position[] = [];
+
+    positions.forEach(pos => {
+      if (pos.storageType === 'CEX') {
+        cex.push(pos);
+      } else {
+        onchain.push(pos);
+      }
+    });
+
+    // Sort CEX by market value (largest first)
+    cex.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
+
+    // Sort Onchain: Ledger first, then by market value
+    onchain.sort((a, b) => {
+      const aIsLedger = a.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
+      const bIsLedger = b.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
+      if (aIsLedger !== bIsLedger) return bIsLedger - aIsLedger;
+      return (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
+    });
+
+    return { cexPositions: cex, onchainPositions: onchain };
+  }, [positions]);
+
   const handleDeleteClick = (position: Position) => {
     if (skipConfirm) {
       deletePositionMutation.mutate(position.id);
@@ -74,103 +101,150 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
     setDontAskAgain(false);
   };
 
+  // Render a position row
+  const renderPositionRow = (position: Position) => {
+    const totalCost = position.quantity * position.avgCostUsd;
+    const isStable = position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH';
+    return (
+      <TableRow
+        key={position.id}
+        className="cursor-pointer hover:bg-muted/50"
+        onClick={() => setViewPosition(position)}
+      >
+        <TableCell>
+          <div className="truncate">
+            <p className="font-medium text-sm">{position.asset.symbol}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {position.asset.name}
+            </p>
+          </div>
+        </TableCell>
+        <TableCell className="text-right font-mono text-sm">
+          {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
+        </TableCell>
+        <TableCell className="text-right font-mono text-sm">
+          {formatCurrency(convert(position.avgCostUsd), currency)}
+        </TableCell>
+        <TableCell className="text-right font-mono text-sm">
+          {formatCurrency(convert(totalCost), currency)}
+        </TableCell>
+        <TableCell className="text-right font-mono text-sm text-slate-500 dark:text-slate-400">
+          {formatCurrency(convert(position.asset.currentPriceUsd), currency)}
+        </TableCell>
+        <TableCell className="text-right font-mono text-sm font-medium">
+          {formatCurrency(convert(position.marketValueUsd), currency)}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className={getPnLColorClass(position.unrealizedPnL)}>
+            <p className="font-mono text-sm">
+              {formatCurrency(convert(position.unrealizedPnL), currency)}
+            </p>
+            <p className="text-xs">
+              {formatPercent(position.unrealizedPnLPct)}
+            </p>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="truncate">
+            <p className="text-sm">
+              {STORAGE_TYPE_LABELS[position.storageType] || position.storageType}
+            </p>
+            {position.storageLocation && (
+              <p className="text-xs text-muted-foreground italic truncate">
+                {position.storageLocation}
+              </p>
+            )}
+          </div>
+        </TableCell>
+        <TableCell onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-end gap-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setEditPosition(position)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => handleDeleteClick(position)}
+            >
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  };
+
+  // Render table header
+  const renderTableHeader = () => (
+    <TableHeader>
+      <TableRow>
+        <TableHead style={{width: '12%'}}>Asset</TableHead>
+        <TableHead style={{width: '10%'}} className="text-right">Quantity</TableHead>
+        <TableHead style={{width: '11%'}} className="text-right">Avg Cost</TableHead>
+        <TableHead style={{width: '12%'}} className="text-right">Total Cost</TableHead>
+        <TableHead style={{width: '11%'}} className="text-right">Price</TableHead>
+        <TableHead style={{width: '12%'}} className="text-right">Value</TableHead>
+        <TableHead style={{width: '12%'}} className="text-right">P&L</TableHead>
+        <TableHead style={{width: '12%'}}>Storage</TableHead>
+        <TableHead style={{width: '8%'}} className="text-right">Actions</TableHead>
+      </TableRow>
+    </TableHeader>
+  );
+
   return (
     <>
-      <div className="rounded-md border overflow-hidden">
-        <Table className="table-fixed w-full">
-          <TableHeader>
-            <TableRow>
-              <TableHead style={{width: '12%'}}>Asset</TableHead>
-              <TableHead style={{width: '10%'}} className="text-right">Quantity</TableHead>
-              <TableHead style={{width: '11%'}} className="text-right">Avg Cost</TableHead>
-              <TableHead style={{width: '12%'}} className="text-right">Total Cost</TableHead>
-              <TableHead style={{width: '11%'}} className="text-right">Price</TableHead>
-              <TableHead style={{width: '12%'}} className="text-right">Value</TableHead>
-              <TableHead style={{width: '12%'}} className="text-right">P&L</TableHead>
-              <TableHead style={{width: '12%'}}>Storage</TableHead>
-              <TableHead style={{width: '8%'}} className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {positions.map((position) => {
-              const totalCost = position.quantity * position.avgCostUsd;
-              const isStable = position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH';
-              return (
-                <TableRow
-                  key={position.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setViewPosition(position)}
-                >
-                  <TableCell>
-                    <div className="truncate">
-                      <p className="font-medium text-sm">{position.asset.symbol}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {position.asset.name}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(convert(position.avgCostUsd), currency)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(convert(totalCost), currency)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-slate-500 dark:text-slate-400">
-                    {formatCurrency(convert(position.asset.currentPriceUsd), currency)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm font-medium">
-                    {formatCurrency(convert(position.marketValueUsd), currency)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className={getPnLColorClass(position.unrealizedPnL)}>
-                      <p className="font-mono text-sm">
-                        {formatCurrency(convert(position.unrealizedPnL), currency)}
-                      </p>
-                      <p className="text-xs">
-                        {formatPercent(position.unrealizedPnLPct)}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="truncate">
-                      <p className="text-sm">
-                        {STORAGE_TYPE_LABELS[position.storageType] || position.storageType}
-                      </p>
-                      {position.storageLocation && (
-                        <p className="text-xs text-muted-foreground italic truncate">
-                          {position.storageLocation}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setEditPosition(position)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleDeleteClick(position)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
+      <div className="space-y-4">
+        {/* CEX Section */}
+        {cexPositions.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">CEX</p>
+            <div className="rounded-md border overflow-hidden">
+              <Table className="table-fixed w-full">
+                {renderTableHeader()}
+                <TableBody>
+                  {cexPositions.map(renderPositionRow)}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        {/* Onchain Section */}
+        {onchainPositions.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Onchain</p>
+            <div className="rounded-md border overflow-hidden">
+              <Table className="table-fixed w-full">
+                {renderTableHeader()}
+                <TableBody>
+                  {onchainPositions.map(renderPositionRow)}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {cexPositions.length === 0 && onchainPositions.length === 0 && (
+          <div className="rounded-md border overflow-hidden">
+            <Table className="table-fixed w-full">
+              {renderTableHeader()}
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    No positions yet
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       {/* Edit Dialog */}

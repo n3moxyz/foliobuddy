@@ -1,12 +1,21 @@
 import { Routes, Route } from 'react-router-dom';
+import {
+  SignedIn,
+  SignedOut,
+  SignIn,
+} from '@clerk/clerk-react';
 import { AppShell } from './components/layout/AppShell';
+import { useAuthSetup } from './hooks/useAuthSetup';
 import Dashboard from './pages/Dashboard';
 import Portfolio from './pages/Portfolio';
 import Trades from './pages/Trades';
 import Investors from './pages/Investors';
 import Settings from './pages/Settings';
 
-function App() {
+// Component to set up auth and render children
+function AuthenticatedApp() {
+  useAuthSetup();
+
   return (
     <AppShell>
       <Routes>
@@ -17,6 +26,39 @@ function App() {
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </AppShell>
+  );
+}
+
+function App() {
+  return (
+    <>
+      {/* Show sign-in when not authenticated */}
+      <SignedOut>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center space-y-6">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold">PA Portfolio Dashboard</h1>
+              <p className="text-muted-foreground">
+                Sign in to track your portfolio
+              </p>
+            </div>
+            <SignIn
+              appearance={{
+                elements: {
+                  rootBox: 'mx-auto',
+                  card: 'shadow-lg',
+                },
+              }}
+            />
+          </div>
+        </div>
+      </SignedOut>
+
+      {/* Show app when authenticated */}
+      <SignedIn>
+        <AuthenticatedApp />
+      </SignedIn>
+    </>
   );
 }
 

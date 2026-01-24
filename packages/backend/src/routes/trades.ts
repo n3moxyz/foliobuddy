@@ -5,8 +5,6 @@ import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-const DEFAULT_USER_ID = 'default-user';
-
 // Validation schemas
 const createTradeSchema = z.object({
   assetId: z.string().min(1),
@@ -63,7 +61,7 @@ router.get('/', async (req, res, next) => {
   try {
     const { status, assetId, direction, from, to } = req.query;
 
-    const where: any = { userId: DEFAULT_USER_ID };
+    const where: any = { userId: req.userId! };
 
     if (status) {
       where.status = status;
@@ -105,7 +103,7 @@ router.get('/analytics', async (req, res, next) => {
     const { from, to } = req.query;
 
     const where: any = {
-      userId: DEFAULT_USER_ID,
+      userId: req.userId!,
       status: 'CLOSED',
     };
 
@@ -278,7 +276,7 @@ router.post('/', async (req, res, next) => {
 
     const trade = await prisma.trade.create({
       data: {
-        userId: DEFAULT_USER_ID,
+        userId: req.userId!,
         assetId: data.assetId,
         direction: data.direction,
         entryPrice: data.entryPrice,

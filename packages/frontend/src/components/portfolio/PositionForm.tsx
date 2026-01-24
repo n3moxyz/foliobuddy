@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,15 +59,22 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(position?.asset || null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Validation state
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Form fields
   const [quantity, setQuantity] = useState(position?.quantity?.toString() || '');
+  const [costInputMode, setCostInputMode] = useState<'total' | 'avg'>('total');
   const [totalCost, setTotalCost] = useState(() => {
     if (position?.quantity && position?.avgCostUsd) {
       return (position.quantity * position.avgCostUsd).toString();
     }
     return '';
   });
+  const [avgCostInput, setAvgCostInput] = useState(position?.avgCostUsd?.toString() || '');
   const [storageType, setStorageType] = useState(position?.storageType || 'CEX');
   const [storageLocation, setStorageLocation] = useState(() => {
     if (!position?.storageLocation) return '';
@@ -104,15 +111,40 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   const isEditing = !!position;
   const isLoading = createPosition.isPending || updatePosition.isPending || createAssetFromCoinGecko.isPending;
 
-  // Calculate average cost automatically
-  const avgCostUsd = useMemo(() => {
-    const qty = parseFloat(quantity);
-    const total = parseFloat(totalCost);
-    if (qty > 0 && total > 0) {
-      return (total / qty).toFixed(2);
+  // Form validation
+  const isFormValid = useMemo(() => {
+    if (!assetId) return false;
+    if (!quantity || parseFloat(quantity) <= 0) return false;
+    return true;
+  }, [assetId, quantity]);
+
+  // Calculate the derived cost value based on input mode
+  const calculatedAvgCost = useMemo(() => {
+    if (costInputMode === 'total') {
+      const qty = parseFloat(quantity);
+      const total = parseFloat(totalCost);
+      if (qty > 0 && total > 0) {
+        return (total / qty).toFixed(2);
+      }
+      return '';
     }
-    return '';
-  }, [quantity, totalCost]);
+    return avgCostInput;
+  }, [quantity, totalCost, costInputMode, avgCostInput]);
+
+  const calculatedTotalCost = useMemo(() => {
+    if (costInputMode === 'avg') {
+      const qty = parseFloat(quantity);
+      const avg = parseFloat(avgCostInput);
+      if (qty > 0 && avg > 0) {
+        return (qty * avg).toFixed(2);
+      }
+      return '';
+    }
+    return totalCost;
+  }, [quantity, avgCostInput, costInputMode, totalCost]);
+
+  // Final avg cost for form submission
+  const avgCostUsd = costInputMode === 'total' ? calculatedAvgCost : avgCostInput;
 
   // Filter existing assets based on search and category
   const filteredAssets = useMemo(() => {
@@ -187,6 +219,56 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     setShowDropdown(false);
   };
 
+  // Reset highlighted index when results change
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [combinedResults.length, searchQuery]);
+
+  // Keyboard navigation handler for search dropdown
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown || combinedResults.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev =>
+          prev < combinedResults.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev =>
+          prev > 0 ? prev - 1 : combinedResults.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < combinedResults.length) {
+          const result = combinedResults[highlightedIndex];
+          if (result.type === 'existing') {
+            handleSelectExistingAsset(result.asset!);
+          } else {
+            handleSelectCoin(result.coin!);
+          }
+        }
+        break;
+      case 'Escape':
+        setShowDropdown(false);
+        setHighlightedIndex(-1);
+        break;
+    }
+  };
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && dropdownRef.current) {
+      const items = dropdownRef.current.querySelectorAll('button');
+      if (items[highlightedIndex]) {
+        items[highlightedIndex].scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [highlightedIndex]);
+
   // Track stablecoin selection separately for immediate UI feedback
   const [selectedStablecoinId, setSelectedStablecoinId] = useState<string>(
     position?.asset.coingeckoId || ''
@@ -252,6 +334,17 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setValidationError(null);
+
+    // Validate required fields
+    if (!isFormValid) {
+      if (!assetId) {
+        setValidationError('Please select an asset');
+      } else if (!quantity || parseFloat(quantity) <= 0) {
+        setValidationError('Please enter a valid quantity');
+      }
+      return;
+    }
 
     // Check position limit before submitting
     if (!isEditing) {
@@ -346,23 +439,32 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
                       setShowDropdown(true);
+                      setValidationError(null);
                     }}
                     onFocus={() => setShowDropdown(true)}
                     onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                    onKeyDown={handleSearchKeyDown}
                   />
 
                   {showDropdown && (
-                    <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                    <div
+                      ref={dropdownRef}
+                      className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
+                    >
                       {searchLoading && searchQuery.length >= 1 ? (
                         <div className="p-3 text-sm text-muted-foreground">
                           Searching...
                         </div>
                       ) : combinedResults.length > 0 ? (
-                        combinedResults.map((result) => (
+                        combinedResults.map((result, index) => (
                           <button
                             key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
                             type="button"
-                            className="w-full px-3 py-2 text-left hover:bg-muted flex items-center justify-between"
+                            className={`w-full px-3 py-2 text-left flex items-center justify-between ${
+                              index === highlightedIndex
+                                ? 'bg-muted'
+                                : 'hover:bg-muted'
+                            }`}
                             onClick={() => {
                               if (result.type === 'existing') {
                                 handleSelectExistingAsset(result.asset!);
@@ -370,6 +472,7 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
                                 handleSelectCoin(result.coin!);
                               }
                             }}
+                            onMouseEnter={() => setHighlightedIndex(index)}
                           >
                             <span>
                               <span className="font-medium">
@@ -452,7 +555,10 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
           type="number"
           step="any"
           value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
+          onChange={(e) => {
+            setQuantity(e.target.value);
+            setValidationError(null);
+          }}
           placeholder="0.00"
           required
         />
@@ -460,29 +566,63 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
       {/* Total Cost & Average Cost (Crypto only) */}
       {category === 'crypto' && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="totalCost" className="text-sm">Total Cost (USD)</Label>
-            <Input
-              id="totalCost"
-              type="number"
-              step="any"
-              value={totalCost}
-              onChange={(e) => setTotalCost(e.target.value)}
-              placeholder="0.00"
-            />
+        <div className="space-y-2">
+          {/* Toggle for cost input mode */}
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-muted-foreground">Enter:</span>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
+                name="costMode"
+                checked={costInputMode === 'total'}
+                onChange={() => setCostInputMode('total')}
+                className="w-3.5 h-3.5 accent-primary"
+              />
+              <span className={costInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'}>
+                Total Cost
+              </span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
+                name="costMode"
+                checked={costInputMode === 'avg'}
+                onChange={() => setCostInputMode('avg')}
+                className="w-3.5 h-3.5 accent-primary"
+              />
+              <span className={costInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'}>
+                Avg Cost
+              </span>
+            </label>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="avgCost" className="text-sm">Average Cost (USD)</Label>
-            <Input
-              id="avgCost"
-              type="number"
-              step="any"
-              value={avgCostUsd}
-              disabled
-              className="bg-muted"
-              placeholder="Auto-calculated"
-            />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="totalCost" className="text-sm">Total Cost (USD)</Label>
+              <Input
+                id="totalCost"
+                type="number"
+                step="any"
+                value={costInputMode === 'total' ? totalCost : calculatedTotalCost}
+                onChange={(e) => setTotalCost(e.target.value)}
+                placeholder="0.00"
+                disabled={costInputMode !== 'total'}
+                className={costInputMode !== 'total' ? 'bg-muted' : ''}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="avgCost" className="text-sm">Average Cost (USD)</Label>
+              <Input
+                id="avgCost"
+                type="number"
+                step="any"
+                value={costInputMode === 'avg' ? avgCostInput : calculatedAvgCost}
+                onChange={(e) => setAvgCostInput(e.target.value)}
+                placeholder="0.00"
+                disabled={costInputMode !== 'avg'}
+                className={costInputMode !== 'avg' ? 'bg-muted' : ''}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -556,6 +696,13 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
         </div>
       )}
 
+      {/* Validation Error Display */}
+      {validationError && (
+        <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
+          {validationError}
+        </div>
+      )}
+
       {/* Position Limit Info */}
       {!isEditing && (
         <div className="text-xs text-muted-foreground">
@@ -565,7 +712,11 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
       {/* Submit */}
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="submit" disabled={isLoading || !assetId}>
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className={!isFormValid && !isLoading ? 'opacity-50 cursor-not-allowed' : ''}
+        >
           {isLoading ? 'Saving...' : isEditing ? 'Update Position' : 'Add Position'}
         </Button>
       </div>

@@ -1,14 +1,25 @@
 const API_BASE = '/api';
 
+// Token getter - will be set by the auth provider
+let getToken: (() => Promise<string | null>) | null = null;
+
+export function setTokenGetter(getter: () => Promise<string | null>) {
+  getToken = getter;
+}
+
 async function request<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
 
+  // Get auth token if available
+  const token = getToken ? await getToken() : null;
+
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
     ...options,

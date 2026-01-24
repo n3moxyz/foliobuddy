@@ -5,13 +5,11 @@ import { portfolioService } from '../services/portfolioService.js';
 
 const router = Router();
 
-const DEFAULT_USER_ID = 'default-user';
-
 // GET /api/export/csv/positions - Export positions as CSV
 router.get('/csv/positions', async (req, res, next) => {
   try {
     const positions = await prisma.position.findMany({
-      where: { userId: DEFAULT_USER_ID },
+      where: { userId: req.userId! },
       include: { asset: true },
       orderBy: { marketValueUsd: 'desc' },
     });
@@ -46,7 +44,7 @@ router.get('/csv/trades', async (req, res, next) => {
   try {
     const { status, from, to } = req.query;
 
-    const where: any = { userId: DEFAULT_USER_ID };
+    const where: any = { userId: req.userId! };
     if (status) where.status = status;
     if (from || to) {
       where.entryDate = {};
@@ -92,24 +90,24 @@ router.get('/excel', async (req, res, next) => {
     // Gather all data
     const [positions, trades, investors, snapshots, summary] = await Promise.all([
       prisma.position.findMany({
-        where: { userId: DEFAULT_USER_ID },
+        where: { userId: req.userId! },
         include: { asset: true },
         orderBy: { marketValueUsd: 'desc' },
       }),
       prisma.trade.findMany({
-        where: { userId: DEFAULT_USER_ID },
+        where: { userId: req.userId! },
         include: { asset: true },
         orderBy: { entryDate: 'desc' },
       }),
       prisma.investor.findMany({
-        where: { userId: DEFAULT_USER_ID },
+        where: { userId: req.userId! },
       }),
       prisma.snapshot.findMany({
-        where: { userId: DEFAULT_USER_ID },
+        where: { userId: req.userId! },
         orderBy: { timestamp: 'desc' },
         take: 52, // Last year of weekly snapshots
       }),
-      portfolioService.getSummary(DEFAULT_USER_ID),
+      portfolioService.getSummary(req.userId!),
     ]);
 
     // Create workbook

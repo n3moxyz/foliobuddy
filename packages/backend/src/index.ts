@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
 import positionsRouter from './routes/positions.js';
 import assetsRouter from './routes/assets.js';
@@ -11,9 +13,13 @@ import pricesRouter from './routes/prices.js';
 import fxRouter from './routes/fx.js';
 import exportRouter from './routes/export.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { clerkMiddleware, ensureUser } from './middleware/auth.js';
 import { startPriceRefreshJob, startSnapshotJob } from './services/scheduler.js';
 
-dotenv.config();
+// Load .env from packages/backend directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -25,20 +31,23 @@ export const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
-// Health check
+// Clerk authentication middleware
+app.use(clerkMiddleware());
+
+// Health check (public)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Routes
-app.use('/api/positions', positionsRouter);
-app.use('/api/assets', assetsRouter);
-app.use('/api/trades', tradesRouter);
-app.use('/api/investors', investorsRouter);
-app.use('/api/snapshots', snapshotsRouter);
-app.use('/api/prices', pricesRouter);
-app.use('/api/fx', fxRouter);
-app.use('/api/export', exportRouter);
+// API Routes (protected - require authentication)
+app.use('/api/positions', ensureUser, positionsRouter);
+app.use('/api/assets', assetsRouter); // Assets are shared, no auth needed
+app.use('/api/trades', ensureUser, tradesRouter);
+app.use('/api/investors', ensureUser, investorsRouter);
+app.use('/api/snapshots', ensureUser, snapshotsRouter);
+app.use('/api/prices', pricesRouter); // Prices are shared, no auth needed
+app.use('/api/fx', fxRouter); // FX rates are shared, no auth needed
+app.use('/api/export', ensureUser, exportRouter);
 
 // Error handling middleware
 app.use(errorHandler);

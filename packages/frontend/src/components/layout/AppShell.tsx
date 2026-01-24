@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Download,
 } from 'lucide-react';
+import { UserButton } from '@clerk/clerk-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -157,6 +158,18 @@ export function AppShell({ children }: AppShellProps) {
           <Button variant="ghost" size="icon" onClick={handleExport}>
             <Download className="h-4 w-4" />
           </Button>
+
+          <Separator orientation="vertical" className="h-6" />
+
+          {/* User menu */}
+          <UserButton
+            afterSignOutUrl="/"
+            appearance={{
+              elements: {
+                avatarBox: 'h-8 w-8',
+              },
+            }}
+          />
         </header>
 
         {/* Page content */}
