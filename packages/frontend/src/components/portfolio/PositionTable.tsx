@@ -123,21 +123,21 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
           {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
         </TableCell>
         <TableCell className="text-right font-mono text-sm">
-          {formatCurrency(convert(position.avgCostUsd), currency)}
+          {formatCurrency(convert(position.avgCostUsd), currency, 0)}
         </TableCell>
         <TableCell className="text-right font-mono text-sm">
-          {formatCurrency(convert(totalCost), currency)}
+          {formatCurrency(convert(totalCost), currency, 0)}
         </TableCell>
         <TableCell className="text-right font-mono text-sm text-slate-500 dark:text-slate-400">
-          {formatCurrency(convert(position.asset.currentPriceUsd), currency)}
+          {formatCurrency(convert(position.asset.currentPriceUsd), currency, 0)}
         </TableCell>
         <TableCell className="text-right font-mono text-sm font-medium">
-          {formatCurrency(convert(position.marketValueUsd), currency)}
+          {formatCurrency(convert(position.marketValueUsd), currency, 0)}
         </TableCell>
         <TableCell className="text-right">
           <div className={getPnLColorClass(position.unrealizedPnL)}>
             <p className="font-mono text-sm">
-              {formatCurrency(convert(position.unrealizedPnL), currency)}
+              {formatCurrency(convert(position.unrealizedPnL), currency, 0)}
             </p>
             <p className="text-xs">
               {formatPercent(position.unrealizedPnLPct)}
@@ -334,31 +334,31 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Current Price</p>
                   <p className="font-mono font-medium text-slate-500 dark:text-slate-400">
-                    {formatCurrency(convert(viewPosition.asset.currentPriceUsd), currency)}
+                    {formatCurrency(convert(viewPosition.asset.currentPriceUsd), currency, 0)}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Average Cost</p>
                   <p className="font-mono">
-                    {formatCurrency(convert(viewPosition.avgCostUsd), currency)}
+                    {formatCurrency(convert(viewPosition.avgCostUsd), currency, 0)}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Total Cost</p>
                   <p className="font-mono">
-                    {formatCurrency(convert(viewPosition.quantity * viewPosition.avgCostUsd), currency)}
+                    {formatCurrency(convert(viewPosition.quantity * viewPosition.avgCostUsd), currency, 0)}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Market Value</p>
                   <p className="font-mono font-medium">
-                    {formatCurrency(convert(viewPosition.marketValueUsd), currency)}
+                    {formatCurrency(convert(viewPosition.marketValueUsd), currency, 0)}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Unrealized P&L</p>
                   <p className={`font-mono font-medium ${getPnLColorClass(viewPosition.unrealizedPnL)}`}>
-                    {formatCurrency(convert(viewPosition.unrealizedPnL), currency)}
+                    {formatCurrency(convert(viewPosition.unrealizedPnL), currency, 0)}
                     <span className="text-xs ml-1">({formatPercent(viewPosition.unrealizedPnLPct)})</span>
                   </p>
                 </div>

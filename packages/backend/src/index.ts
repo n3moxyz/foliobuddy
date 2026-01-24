@@ -14,7 +14,7 @@ import fxRouter from './routes/fx.js';
 import exportRouter from './routes/export.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { clerkMiddleware, ensureUser } from './middleware/auth.js';
-import { startPriceRefreshJob, startSnapshotJob } from './services/scheduler.js';
+import { startPriceRefreshJob, startSnapshotJob, createMissingSnapshots } from './services/scheduler.js';
 
 // Load .env from packages/backend directory
 const __filename = fileURLToPath(import.meta.url);
@@ -72,6 +72,12 @@ app.listen(port, () => {
   if (process.env.NODE_ENV !== 'test') {
     startPriceRefreshJob();
     startSnapshotJob();
+
+    // Create missing snapshots on startup (catch-up for days server wasn't running)
+    // Delay slightly to ensure database connection is ready
+    setTimeout(() => {
+      createMissingSnapshots();
+    }, 2000);
   }
 });
 

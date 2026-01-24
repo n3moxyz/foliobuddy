@@ -7,9 +7,10 @@ import type { PortfolioSummary } from '@/lib/api';
 interface NetWorthCardProps {
   summary: PortfolioSummary;
   currency: 'USD' | 'SGD';
+  stakeMultiplier?: number;
 }
 
-export function NetWorthCard({ summary, currency }: NetWorthCardProps) {
+export function NetWorthCard({ summary, currency, stakeMultiplier = 1 }: NetWorthCardProps) {
   // Calculate FX rate from summary
   const fxRate = useMemo(() => {
     if (summary.totalValueUsd > 0 && summary.totalValueSgd > 0) {
@@ -18,14 +19,20 @@ export function NetWorthCard({ summary, currency }: NetWorthCardProps) {
     return 1.35;
   }, [summary]);
 
-  // Helper to convert values based on currency
+  // Helper to convert values based on currency and apply stake multiplier
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
-    return currency === 'SGD' ? usdValue * fxRate : usdValue;
+    const converted = currency === 'SGD' ? usdValue * fxRate : usdValue;
+    return converted * stakeMultiplier;
   };
 
   const value = convert(summary.totalValueUsd);
   const isPositive = summary.unrealizedPnL >= 0;
+
+  // Alternate currency value with stake multiplier
+  const altValue = currency === 'USD'
+    ? summary.totalValueSgd * stakeMultiplier
+    : summary.totalValueUsd * stakeMultiplier;
 
   return (
     <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
@@ -37,7 +44,7 @@ export function NetWorthCard({ summary, currency }: NetWorthCardProps) {
       <CardContent>
         <div className="flex items-baseline gap-4">
           <span className="text-4xl font-bold tracking-tight">
-            {formatCurrency(value, currency)}
+            {formatCurrency(value, currency, 0)}
           </span>
           <div className={`flex items-center gap-1 ${getPnLColorClass(summary.unrealizedPnL)}`}>
             {isPositive ? (
@@ -55,13 +62,13 @@ export function NetWorthCard({ summary, currency }: NetWorthCardProps) {
           <div>
             <p className="text-muted-foreground">Unrealized P&L</p>
             <p className={`font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}>
-              {formatCurrency(convert(summary.unrealizedPnL), currency)}
+              {formatCurrency(convert(summary.unrealizedPnL), currency, 0)}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Cost Basis</p>
             <p className="font-medium">
-              {formatCurrency(convert(summary.totalCostBasis), currency)}
+              {formatCurrency(convert(summary.totalCostBasis), currency, 0)}
             </p>
           </div>
         </div>
@@ -71,8 +78,9 @@ export function NetWorthCard({ summary, currency }: NetWorthCardProps) {
           <p className="text-sm text-muted-foreground">
             {currency === 'USD' ? 'SGD' : 'USD'} Value:{' '}
             {formatCurrency(
-              currency === 'USD' ? summary.totalValueSgd : summary.totalValueUsd,
-              currency === 'USD' ? 'SGD' : 'USD'
+              altValue,
+              currency === 'USD' ? 'SGD' : 'USD',
+              0
             )}
           </p>
         </div>

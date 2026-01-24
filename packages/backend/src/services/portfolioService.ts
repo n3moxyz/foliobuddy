@@ -172,13 +172,13 @@ class PortfolioService {
   }
 
   /**
-   * Get top performing positions
+   * Get top performing positions (only those with positive PnL)
    */
   async getTopPerformers(userId: string, limit = 5): Promise<TopPerformer[]> {
     const positions = await prisma.position.findMany({
       where: {
         userId,
-        unrealizedPnL: { not: null },
+        unrealizedPnL: { gt: 0 },
       },
       include: {
         asset: true,
@@ -200,13 +200,13 @@ class PortfolioService {
   }
 
   /**
-   * Get worst performing positions
+   * Get worst performing positions (only those with negative PnL)
    */
   async getWorstPerformers(userId: string, limit = 5): Promise<TopPerformer[]> {
     const positions = await prisma.position.findMany({
       where: {
         userId,
-        unrealizedPnL: { not: null },
+        unrealizedPnL: { lt: 0 },
       },
       include: {
         asset: true,

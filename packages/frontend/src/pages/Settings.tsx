@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatDateTime } from '@/lib/utils';
@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { RefreshCw, Download, Camera, Database } from 'lucide-react';
+import { RefreshCw, Download, Camera } from 'lucide-react';
 
 export default function Settings() {
   const queryClient = useQueryClient();

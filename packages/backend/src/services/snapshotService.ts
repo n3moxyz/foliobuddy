@@ -170,7 +170,7 @@ class SnapshotService {
   }
 
   /**
-   * Get historical performance data for charts
+   * Get historical performance data for charts (by number of days)
    */
   async getPerformanceHistory(
     userId: string,
@@ -186,6 +186,40 @@ class SnapshotService {
           gte: startDate,
         },
       },
+      orderBy: {
+        timestamp: 'asc',
+      },
+      select: {
+        timestamp: true,
+        totalValueUsd: true,
+        totalValueSgd: true,
+        unrealizedPnL: true,
+        btcPrice: true,
+        ethPrice: true,
+      },
+    });
+
+    return snapshots;
+  }
+
+  /**
+   * Get historical performance data for charts (by date range)
+   */
+  async getPerformanceHistoryByRange(
+    userId: string,
+    fromDate?: Date,
+    toDate?: Date
+  ) {
+    const where: any = { userId };
+
+    if (fromDate || toDate) {
+      where.timestamp = {};
+      if (fromDate) where.timestamp.gte = fromDate;
+      if (toDate) where.timestamp.lte = toDate;
+    }
+
+    const snapshots = await prisma.snapshot.findMany({
+      where,
       orderBy: {
         timestamp: 'asc',
       },

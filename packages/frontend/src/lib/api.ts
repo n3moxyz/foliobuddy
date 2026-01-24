@@ -144,8 +144,14 @@ export const api = {
     const query = searchParams.toString();
     return request<Snapshot[]>(`/snapshots${query ? `?${query}` : ''}`);
   },
-  getPerformanceHistory: (days = 30) =>
-    request<PerformancePoint[]>(`/snapshots/performance?days=${days}`),
+  getPerformanceHistory: (params?: { days?: number; from?: string; to?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.days) searchParams.set('days', params.days.toString());
+    if (params?.from) searchParams.set('from', params.from);
+    if (params?.to) searchParams.set('to', params.to);
+    const query = searchParams.toString();
+    return request<PerformancePoint[]>(`/snapshots/performance${query ? `?${query}` : ''}`);
+  },
   getMonthlyReturns: (year?: number) =>
     request<MonthlyReturn[]>(`/snapshots/monthly${year ? `?year=${year}` : ''}`),
   createSnapshot: (type?: string) =>
@@ -230,8 +236,9 @@ export interface Investor {
   stakePercentage: number;
   initialCapital: number;
   currentValue: number | null;
-  totalReturn: number | null;
-  totalReturnPct: number | null;
+  capitalAtYearStart: number | null;
+  ytdReturn: number | null;
+  ytdReturnPct: number | null;
   joinDate: string;
   notes: string | null;
 }

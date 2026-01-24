@@ -38,8 +38,20 @@ router.get('/', async (req, res, next) => {
 // GET /api/snapshots/performance - Get performance chart data
 router.get('/performance', async (req, res, next) => {
   try {
-    const days = parseInt(req.query.days as string) || 30;
-    const history = await snapshotService.getPerformanceHistory(req.userId!, days);
+    const { days, from, to } = req.query;
+
+    let history;
+    if (from || to) {
+      // Use date range if provided
+      const fromDate = from ? new Date(from as string) : undefined;
+      const toDate = to ? new Date(to as string) : undefined;
+      history = await snapshotService.getPerformanceHistoryByRange(req.userId!, fromDate, toDate);
+    } else {
+      // Fall back to days parameter
+      const numDays = parseInt(days as string) || 30;
+      history = await snapshotService.getPerformanceHistory(req.userId!, numDays);
+    }
+
     res.json(history);
   } catch (error) {
     next(error);

@@ -28,19 +28,22 @@ router.get('/', async (req, res, next) => {
       orderBy: { stakePercentage: 'desc' },
     });
 
-    // Calculate current values based on stake percentage
+    // Calculate current values and YTD returns based on stake percentage
     const investorsWithValues = investors.map(investor => {
       const currentValue = summary.totalValueUsd * (investor.stakePercentage / 100);
-      const totalReturn = currentValue - investor.initialCapital;
-      const totalReturnPct = investor.initialCapital > 0
-        ? (totalReturn / investor.initialCapital) * 100
-        : 0;
+      // Use initialCapital as capital at start of year (if set)
+      const capitalAtYearStart = investor.initialCapital || 0;
+      const ytdReturn = capitalAtYearStart > 0 ? currentValue - capitalAtYearStart : null;
+      const ytdReturnPct = capitalAtYearStart > 0
+        ? (ytdReturn! / capitalAtYearStart) * 100
+        : null;
 
       return {
         ...investor,
         currentValue,
-        totalReturn,
-        totalReturnPct,
+        capitalAtYearStart,
+        ytdReturn,
+        ytdReturnPct,
       };
     });
 

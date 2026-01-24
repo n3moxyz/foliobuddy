@@ -8,15 +8,20 @@ export function cn(...inputs: ClassValue[]) {
 export function formatCurrency(
   value: number | null | undefined,
   currency: 'USD' | 'SGD' = 'USD',
-  decimals: number = 2
+  compact: boolean | number = false
 ): string {
   if (value === null || value === undefined) return '-';
+
+  // Handle compact = number (for decimals) or boolean
+  const decimals = typeof compact === 'number' ? compact : 2;
+  const useCompact = compact === true;
 
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD', // Always use USD formatting
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
+    notation: useCompact ? 'compact' : 'standard',
+    minimumFractionDigits: useCompact ? 0 : decimals,
+    maximumFractionDigits: useCompact ? 1 : decimals,
   });
 
   const formatted = formatter.format(value);

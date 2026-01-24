@@ -9,13 +9,15 @@ interface PerformersCardProps {
   type: 'top' | 'worst';
   currency?: 'USD' | 'SGD';
   fxRate?: number;
+  stakeMultiplier?: number;
 }
 
-export function PerformersCard({ title, performers, type, currency = 'USD', fxRate = 1 }: PerformersCardProps) {
-  // Helper to convert values based on currency
+export function PerformersCard({ title, performers, type, currency = 'USD', fxRate = 1, stakeMultiplier = 1 }: PerformersCardProps) {
+  // Helper to convert values based on currency and apply stake multiplier
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
-    return currency === 'SGD' ? usdValue * fxRate : usdValue;
+    const converted = currency === 'SGD' ? usdValue * fxRate : usdValue;
+    return converted * stakeMultiplier;
   };
 
   if (performers.length === 0) {
@@ -70,7 +72,7 @@ export function PerformersCard({ title, performers, type, currency = 'USD', fxRa
               </div>
               <div className="text-right">
                 <p className={`font-medium ${getPnLColorClass(performer.unrealizedPnL)}`}>
-                  {formatCurrency(convert(performer.unrealizedPnL), currency)}
+                  {formatCurrency(convert(performer.unrealizedPnL), currency, 0)}
                 </p>
                 <p className={`text-sm ${getPnLColorClass(performer.unrealizedPnLPct)}`}>
                   {formatPercent(performer.unrealizedPnLPct)}

@@ -4,6 +4,61 @@ import { snapshotService } from './snapshotService.js';
 import { prisma } from '../index.js';
 
 /**
+ * Check and create missing daily snapshots on server startup
+ * This ensures snapshots are created even if the server wasn't running at midnight
+ */
+export async function createMissingSnapshots(): Promise<void> {
+  try {
+    console.log('[Snapshot] Checking for missing daily snapshots...');
+
+    // Get all users
+    const users = await prisma.user.findMany({
+      select: { id: true },
+    });
+
+    if (users.length === 0) {
+      console.log('[Snapshot] No users found, skipping catch-up');
+      return;
+    }
+
+    // Check today's date (start of day in UTC)
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
+    for (const user of users) {
+      try {
+        // Check if snapshot exists for today
+        const existingSnapshot = await prisma.snapshot.findFirst({
+          where: {
+            userId: user.id,
+            snapshotType: 'DAILY',
+            timestamp: {
+              gte: today,
+              lt: tomorrow,
+            },
+          },
+        });
+
+        if (!existingSnapshot) {
+          const snapshotId = await snapshotService.createSnapshot(user.id, 'DAILY');
+          console.log(`[Snapshot] Created catch-up daily snapshot ${snapshotId} for user ${user.id}`);
+        } else {
+          console.log(`[Snapshot] Daily snapshot already exists for user ${user.id}`);
+        }
+      } catch (error) {
+        console.error(`[Snapshot] Error checking/creating snapshot for user ${user.id}:`, error);
+      }
+    }
+
+    console.log('[Snapshot] Catch-up check complete');
+  } catch (error) {
+    console.error('[Snapshot] Error in catch-up process:', error);
+  }
+}
+
+/**
  * Start the price refresh job (every 60 seconds)
  */
 export function startPriceRefreshJob(): void {

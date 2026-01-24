@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useTrades, useTradeAnalytics } from '@/hooks/useTrades';
+import { useCurrencyStore } from '@/stores/currencyStore';
+import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { formatCurrency, formatPercent, formatDate, getPnLColorClass } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -14,16 +16,24 @@ import {
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TradeForm } from '@/components/trades/TradeForm';
+import { TradeStatsCard } from '@/components/dashboard/TradeStatsCard';
 import { Plus, TrendingUp, TrendingDown } from 'lucide-react';
 
 export default function Trades() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [filter, setFilter] = useState<'all' | 'OPEN' | 'CLOSED'>('all');
 
+  const { currency } = useCurrencyStore();
+  const { data: summary } = usePortfolioSummary();
   const { data: trades, isLoading } = useTrades(
     filter === 'all' ? undefined : { status: filter }
   );
   const { data: analytics } = useTradeAnalytics();
+
+  // Calculate FX rate from summary
+  const fxRate = summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
+    ? summary.totalValueSgd / summary.totalValueUsd
+    : 1.35;
 
   const openTrades = trades?.filter((t) => t.status === 'OPEN') || [];
   const closedTrades = trades?.filter((t) => t.status === 'CLOSED') || [];
@@ -44,59 +54,9 @@ export default function Trades() {
         </Button>
       </div>
 
-      {/* Analytics Summary */}
+      {/* Trade Statistics */}
       {analytics && (
-        <div className="grid gap-4 md:grid-cols-5">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total P&L</CardDescription>
-              <CardTitle className={`text-xl ${getPnLColorClass(analytics.totalPnL)}`}>
-                {formatCurrency(analytics.totalPnL, 'USD')}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Win Rate</CardDescription>
-              <CardTitle className="text-xl">
-                {analytics.winRate.toFixed(1)}%
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">
-                {analytics.winningTrades}W / {analytics.losingTrades}L
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Profit Factor</CardDescription>
-              <CardTitle className="text-xl">
-                {analytics.profitFactor === Infinity ? 'N/A' : analytics.profitFactor.toFixed(2)}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Avg Win</CardDescription>
-              <CardTitle className="text-xl text-profit">
-                {formatCurrency(analytics.avgWin, 'USD')}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Avg Loss</CardDescription>
-              <CardTitle className="text-xl text-loss">
-                -{formatCurrency(analytics.avgLoss, 'USD')}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
+        <TradeStatsCard analytics={analytics} currency={currency} fxRate={fxRate} />
       )}
 
       {/* Trade Tables */}

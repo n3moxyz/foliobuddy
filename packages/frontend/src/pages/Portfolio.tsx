@@ -124,7 +124,7 @@ export default function Portfolio() {
             <CardHeader className="py-2 px-4">
               <p className="text-xs text-muted-foreground">Unrealized P&L</p>
               <CardTitle className={`text-lg ${getPnLColorClass(summary.unrealizedPnL)}`}>
-                {formatCurrency(convertValue(summary.unrealizedPnL), currency)}
+                {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}
                 <span className="text-sm ml-1">({formatPercent(summary.unrealizedPnLPct)})</span>
               </CardTitle>
             </CardHeader>

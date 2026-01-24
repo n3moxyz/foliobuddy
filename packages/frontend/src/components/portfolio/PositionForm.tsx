@@ -630,7 +630,7 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
       {/* Storage Type */}
       <div className="space-y-1">
         <Label className="text-sm">Storage Type</Label>
-        <Select value={storageType} onValueChange={setStorageType}>
+        <Select value={storageType} onValueChange={(value) => setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK')}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>

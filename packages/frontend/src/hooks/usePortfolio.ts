@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, CreatePositionData, Position } from '@/lib/api';
+import { api, CreatePositionData } from '@/lib/api';
 
 export function usePositions() {
   return useQuery({
@@ -86,5 +86,19 @@ export function useDeletePosition() {
       queryClient.invalidateQueries({ queryKey: ['positions'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
     },
+  });
+}
+
+export function usePerformanceHistory(params?: { days?: number; from?: string; to?: string }) {
+  return useQuery({
+    queryKey: ['portfolio', 'performance', params],
+    queryFn: () => api.getPerformanceHistory(params),
+  });
+}
+
+export function useInvestors() {
+  return useQuery({
+    queryKey: ['investors'],
+    queryFn: api.getInvestors,
   });
 }
