@@ -56,20 +56,45 @@ Personal portfolio dashboard tracking positions and net worth across crypto, equ
 - `src/lib/api.ts` - API client and types
 - `src/stores/` - Zustand stores
 
+## First Run Setup
+
+```bash
+# 1. Install all dependencies (from root)
+npm install
+
+# 2. Setup Backend
+cd packages/backend
+cp .env.example .env
+# Fill in .env: DATABASE_URL, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, ALLOWED_ORIGINS
+
+# 3. Setup Database
+npx prisma migrate dev   # Creates tables
+
+# 4. Setup Frontend
+cd ../frontend
+cp .env.example .env
+# Fill in .env: VITE_API_URL, VITE_CLERK_PUBLISHABLE_KEY
+
+# 5. Start both servers (in separate terminals)
+# Terminal 1 (backend):
+cd packages/backend && npm run dev
+
+# Terminal 2 (frontend):
+cd packages/frontend && npm run dev
+```
+
 ## Commands
 ```bash
 # Root (monorepo)
 npm install              # Install all dependencies
 
-# Backend
-cd packages/backend
+# Backend (packages/backend/)
 npm run dev              # Start dev server (port 3001)
 npm run build            # Compile TypeScript
 npx prisma migrate dev   # Run migrations
 npx prisma studio        # Database GUI
 
-# Frontend
-cd packages/frontend
+# Frontend (packages/frontend/)
 npm run dev              # Start Vite dev server (port 5173)
 npm run build            # Production build
 ```
