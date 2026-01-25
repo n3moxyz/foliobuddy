@@ -37,3 +37,7 @@ coverage/
 # Temp files
 *.tmp
 *.temp
+
+# Claude Code workspace
+.claude/
+_ul*
