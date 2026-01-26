@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { priceService } from './priceService.js';
 import { snapshotService } from './snapshotService.js';
+import { socketService } from './socketService.js';
 import { prisma } from '../index.js';
 
 /**
@@ -71,9 +72,26 @@ export function startPriceRefreshJob(): void {
       const result = await priceService.refreshAllPrices();
       console.log(`[Price Refresh] Updated ${result.updated} prices, ${result.errors} errors`);
 
+      // Broadcast price update to all connected clients
+      socketService.broadcastPriceUpdate(result.updated);
+
       // Update position market values
       await priceService.updatePositionValues();
       console.log('[Price Refresh] Position values updated');
+
+      // Get all users with positions and send portfolio updates
+      const usersWithPositions = await prisma.user.findMany({
+        where: {
+          positions: {
+            some: {},
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of usersWithPositions) {
+        socketService.broadcastPortfolioUpdate(user.id);
+      }
     } catch (error) {
       console.error('[Price Refresh] Error:', error);
     }

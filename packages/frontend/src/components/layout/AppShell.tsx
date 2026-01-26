@@ -22,6 +22,8 @@ import { useCurrencyStore } from '@/stores/currencyStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { api } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
 
 interface AppShellProps {
   children: ReactNode;
@@ -48,6 +50,7 @@ export function AppShell({ children }: AppShellProps) {
   const { currency, toggleCurrency } = useCurrencyStore();
   const { theme, cycleTheme } = useThemeStore();
   const queryClient = useQueryClient();
+  const { status: wsStatus, lastUpdate } = useWebSocket();
   const ThemeIcon = themeIcons[theme];
 
   const handleRefreshPrices = async () => {
@@ -173,6 +176,9 @@ export function AppShell({ children }: AppShellProps) {
           >
             <ThemeIcon className="h-4 w-4" />
           </Button>
+
+          {/* Connection status */}
+          <ConnectionStatus status={wsStatus} lastUpdate={lastUpdate} />
 
           <Separator orientation="vertical" className="h-6" />
 
