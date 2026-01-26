@@ -499,6 +499,27 @@ export const useCurrencyStore = create(
     { name: 'currency-preference' }  // Persists to localStorage
   )
 );
+
+// Theme store for dark mode
+export const useThemeStore = create(
+  persist(
+    (set, get) => ({
+      theme: 'system',  // 'light' | 'dark' | 'system'
+      setTheme: (theme) => set({ theme }),
+      cycleTheme: () => {
+        const current = get().theme;
+        const next = current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light';
+        set({ theme: next });
+      }
+    }),
+    {
+      name: 'theme-storage',
+      onRehydrateStorage: () => (state) => {
+        if (state) applyTheme(state.theme);  // Apply theme on load
+      }
+    }
+  )
+);
 ```
 
 **Why not just use one?** Because they solve different problems:
@@ -813,17 +834,70 @@ Vercel provides:
 
 I added shadcn/ui components as needed. Should have set up a complete design system from day one—typography, spacing, color tokens.
 
-### 2. Better Error Tracking
-
-Console.log debugging works locally. In production, you need Sentry or similar. Should have added it earlier.
-
-### 3. API Versioning
+### 2. API Versioning
 
 If I need to make breaking changes, I have no versioning strategy. Future me will regret this. Should be `/api/v1/positions`.
 
-### 4. Integration Tests
+### 3. Integration Tests
 
 Unit tests are good. But testing the full flow (create position → check snapshot → verify P&L) would catch more bugs.
+
+---
+
+## Quality of Life Features
+
+### Dark Mode
+
+Implemented using Zustand with a theme store that supports three modes: `light`, `dark`, and `system` (follows OS preference).
+
+**Key implementation details:**
+- Theme is applied by adding/removing the `dark` class on `document.documentElement`
+- A script in `index.html` runs before React loads to prevent flash of wrong theme
+- `useThemeEffect` hook listens for system preference changes via `matchMedia`
+- Theme persists to localStorage via Zustand's `persist` middleware
+
+```typescript
+// Flash prevention script in index.html
+(function() {
+  var stored = localStorage.getItem('theme-storage');
+  var theme = stored ? JSON.parse(stored).state.theme : 'system';
+  var isDark = theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  if (isDark) document.documentElement.classList.add('dark');
+})();
+```
+
+### Keyboard Shortcuts
+
+Using `react-hotkeys-hook` for global keyboard shortcuts:
+
+| Key | Action |
+|-----|--------|
+| `D` | Navigate to Dashboard |
+| `P` | Navigate to Portfolio |
+| `T` | Navigate to Trades |
+| `I` | Navigate to Investors |
+| `S` | Navigate to Settings |
+| `/` | Cycle theme (light → dark → system) |
+| `Cmd/Ctrl + K` | Show shortcuts help modal |
+
+Shortcuts are disabled when typing in input fields via `enableOnFormTags: false`.
+
+### Error Tracking with Sentry
+
+Integrated Sentry for production error monitoring:
+- Initializes only when `VITE_SENTRY_DSN` is set (silent skip in development)
+- Includes browser tracing and session replay integrations
+- Custom `ErrorFallback` component shows user-friendly error UI with error ID
+- Wrap the entire app in `Sentry.ErrorBoundary`
+
+### CSV Export
+
+Added convenient export buttons on Portfolio and Trades pages:
+- **Portfolio page:** "Export CSV" button downloads all positions
+- **Trades page:** Dropdown menu with options for "All Trades", "Open Trades", "Closed Trades"
+
+These use the existing backend `/api/export/csv/positions` and `/api/export/csv/trades` endpoints.
 
 ---
 
@@ -836,6 +910,12 @@ Features I want to add:
 - [ ] Risk metrics (VaR, Sharpe ratio, correlation matrix)
 - [ ] Multi-portfolio support
 - [ ] Mobile app (React Native, sharing the codebase)
+
+Recently completed:
+- [x] Dark mode with system preference detection
+- [x] Keyboard shortcuts for power users
+- [x] Sentry error tracking for production monitoring
+- [x] CSV export buttons on Portfolio and Trades pages
 
 ---
 

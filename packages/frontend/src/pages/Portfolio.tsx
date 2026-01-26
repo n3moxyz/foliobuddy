@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { PositionTable } from '@/components/portfolio/PositionTable';
 import { PositionForm } from '@/components/portfolio/PositionForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Pencil } from 'lucide-react';
+import { Plus, Pencil, Download } from 'lucide-react';
+import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 
 const PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
@@ -93,10 +94,20 @@ export default function Portfolio() {
             Manage your positions and holdings
           </p>
         </div>
-        <Button size="sm" onClick={() => setShowAddForm(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          Add Position
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(api.exportPositionsCsv(), '_blank')}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export CSV
+          </Button>
+          <Button size="sm" onClick={() => setShowAddForm(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Position
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}

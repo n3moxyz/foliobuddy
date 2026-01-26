@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCurrencyStore } from '@/stores/currencyStore';
+import { useThemeStore, Theme } from '@/stores/themeStore';
 import { formatDateTime } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { RefreshCw, Download, Camera } from 'lucide-react';
 export default function Settings() {
   const queryClient = useQueryClient();
   const { currency, setCurrency } = useCurrencyStore();
+  const { theme, setTheme } = useThemeStore();
   const [refreshingPrices, setRefreshingPrices] = useState(false);
   const [refreshingFx, setRefreshingFx] = useState(false);
   const [creatingSnapshot, setCreatingSnapshot] = useState(false);
@@ -118,6 +120,27 @@ export default function Settings() {
               </p>
             </div>
           )}
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Appearance</Label>
+              <p className="text-sm text-muted-foreground">
+                Choose your preferred theme
+              </p>
+            </div>
+            <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+                <SelectItem value="system">System</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 
