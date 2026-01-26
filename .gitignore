@@ -44,3 +44,4 @@ coverage/
 # Claude Code workspace
 .claude/
 _ul*
+nul
