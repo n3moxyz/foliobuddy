@@ -769,6 +769,28 @@ asset = await api.createAssetFromCoinGecko({
 
 **Key lesson:** Background jobs exist for a reason. If a scheduler is already fetching prices every minute, don't duplicate that work during user-facing operations. The tradeoff (60-second delay for new asset prices) is far better than blocking the UI.
 
+### Lesson 11: Vercel Doesn't Proxy WebSockets to External Backends
+
+**The bug:** WebSocket showed "Offline" on production even though the backend was running with Socket.io.
+
+**The investigation:** We had configured Vercel rewrites to proxy `/socket.io/*` to Railway:
+```json
+{ "source": "/socket.io/:path*", "destination": "https://railway-backend.app/socket.io/:path*" }
+```
+
+But when testing, the rewrite returned `index.html` instead of proxying. Vercel rewrites work for HTTP requests, but **WebSocket protocol upgrades to external destinations are not supported**.
+
+**The fix:** Connect directly to the Railway backend for WebSocket connections:
+```typescript
+// useWebSocket.ts
+const RAILWAY_BACKEND = 'https://old-backend.example.com';
+const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : RAILWAY_BACKEND;
+```
+
+Also had to ensure `ALLOWED_ORIGINS` on Railway included the Vercel frontend URL for CORS to work.
+
+**Key lesson:** Vercel's rewrites are HTTP-only. For WebSocket connections to external backends, connect directly and configure CORS on the backend. This is a common pattern—HTTP APIs go through the proxy, WebSockets connect directly.
+
 ---
 
 ## Best Practices That Paid Off
