@@ -625,6 +625,37 @@ const unrealizedPnLPct = ((marketValue - costBasis) / costBasis) * 100;
 // Returns: +23.5% or -12.3%
 ```
 
+### Lesson 5: Railway Deployment Gotchas
+
+**The bug:** Backend returning 502 errors after deployment.
+
+**The investigation:** Multiple issues compounded:
+1. `prisma migrate deploy` failed because no migration files existed (we used `db push` locally)
+2. Missing environment variables (CLERK keys, ALLOWED_ORIGINS)
+3. Port mismatch—server defaulted to 8080, but Railway networking expected 3001
+
+**The fix:**
+- Use `prisma db push` in start command (syncs schema without migrations)
+- Add ALL required env vars via Railway dashboard
+- Explicitly set `PORT=3001` to match Railway's networking config
+
+**Key lesson:** Railway doesn't auto-detect your port. If your app listens on a different port than Railway expects, you get silent 502s.
+
+### Lesson 6: Position Uniqueness
+
+**The bug:** Could accidentally create duplicate positions for the same asset in the same storage location.
+
+**The fix:** Add a composite unique constraint in Prisma:
+
+```prisma
+model Position {
+  // ... fields ...
+  @@unique([userId, assetId, storageType, storageLocation])
+}
+```
+
+This enforces at the database level that you can't have two BTC positions on Binance—they must be merged or in different locations.
+
 ---
 
 ## Best Practices That Paid Off
@@ -728,34 +759,51 @@ throw new AppError(
 {
   "build": { "builder": "NIXPACKS" },
   "deploy": {
-    "startCommand": "npm run start",
-    "healthcheckPath": "/health"
+    "startCommand": "npx prisma db push && npm run start",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
   }
 }
 ```
 
+**Why `prisma db push` instead of `prisma migrate deploy`?**
+We use `db push` because it syncs the schema directly without requiring migration files. This is simpler for a personal project where we're the only developer. The tradeoff: no migration history, but also no migration conflicts.
+
 Railway provides:
-- PostgreSQL database
-- Auto-deploy on push
-- Environment variables
-- Health checks
+- PostgreSQL database (auto-provisioned, DATABASE_URL injected)
+- Manual deploy via `railway up --service empowering-curiosity`
+- Environment variables management
+- Health checks and restart policies
+
+**Current production URLs:**
+- Backend: `https://empowering-curiosity-production-9eff.up.railway.app`
+- Health check: `/api/health` returns `{"status":"ok"}`
 
 ### Frontend → Vercel
 
 ```json
 // vercel.json
 {
-  "rewrites": [{
-    "source": "/api/:path*",
-    "destination": "https://api.your-railway-url.com/:path*"
-  }]
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://empowering-curiosity-production-9eff.up.railway.app/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
 ```
+
+**The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Railway backend. This avoids CORS issues and keeps the backend URL hidden from the client.
+
+**Current production URL:**
+- Frontend: `https://frontend-jade-beta-85.vercel.app`
 
 Vercel provides:
 - Edge deployment
 - Preview deployments for PRs
 - Automatic HTTPS
+- SPA routing (all paths → index.html)
 
 ---
 
