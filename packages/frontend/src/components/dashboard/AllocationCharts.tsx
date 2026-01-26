@@ -27,7 +27,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
   const [hiddenStables, setHiddenStables] = useState<Set<string>>(new Set());
 
   // Calculate all allocations from positions
-  const { assetAllocation, storageAllocation, stablesAllocation, totalValue } = useMemo(() => {
+  const { assetAllocation, storageAllocation, stablesAllocation } = useMemo(() => {
     if (!positions || positions.length === 0) {
       return { assetAllocation: [], storageAllocation: [], stablesAllocation: [], totalValue: 0 };
     }
