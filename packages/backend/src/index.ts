@@ -38,7 +38,9 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.some(allowed => origin.startsWith(allowed) || allowed === '*')) {
+    // Use exact matching to prevent subdomain attacks (e.g., evil-example.com matching example.com)
+    // Only allow wildcard (*) as an explicit entry
+    if (allowedOrigins.some(allowed => origin === allowed || allowed === '*')) {
       return callback(null, true);
     }
     callback(new Error('Not allowed by CORS'));
@@ -53,41 +55,6 @@ app.use(clerkMiddleware());
 // Health check (public)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Admin endpoint to drop position unique constraint
-app.get('/admin/drop-position-constraint', async (req, res) => {
-  try {
-    // First, list all constraints on Position table for debugging
-    const constraints = await prisma.$queryRaw`
-      SELECT conname, contype
-      FROM pg_constraint
-      WHERE conrelid = '"Position"'::regclass
-    `;
-    console.log('Current constraints:', constraints);
-
-    // Drop the constraint
-    await prisma.$executeRawUnsafe(`
-      ALTER TABLE "Position" DROP CONSTRAINT IF EXISTS "Position_userId_assetId_storageType_storageLocation_key"
-    `);
-
-    // Check constraints again after drop
-    const constraintsAfter = await prisma.$queryRaw`
-      SELECT conname, contype
-      FROM pg_constraint
-      WHERE conrelid = '"Position"'::regclass
-    `;
-
-    res.json({
-      success: true,
-      message: 'Constraint dropped (if it existed)',
-      constraintsBefore: constraints,
-      constraintsAfter: constraintsAfter
-    });
-  } catch (error: any) {
-    console.error('Error dropping constraint:', error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // API Routes (protected - require authentication)
