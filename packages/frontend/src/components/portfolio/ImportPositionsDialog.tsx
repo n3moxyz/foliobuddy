@@ -94,10 +94,11 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
     setImporting(true);
     const importResults: ImportResult[] = [];
 
-    // First, fetch existing assets to check what already exists
-    const existingAssets = await api.getAssets();
+    try {
+      // First, fetch existing assets to check what already exists
+      const existingAssets = await api.getAssets();
 
-    for (const pos of parsedPositions) {
+      for (const pos of parsedPositions) {
       try {
         // Find existing asset by coingeckoId or symbol
         let asset = existingAssets.find(
@@ -144,8 +145,13 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
       }
     }
 
-    setResults(importResults);
-    setImporting(false);
+      setResults(importResults);
+    } catch (e) {
+      // Handle errors from getAssets or other unexpected errors
+      setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
+    } finally {
+      setImporting(false);
+    }
 
     // Refresh positions data
     queryClient.invalidateQueries({ queryKey: ['positions'] });
