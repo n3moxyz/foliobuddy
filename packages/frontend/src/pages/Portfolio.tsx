@@ -4,10 +4,11 @@ import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PositionTable } from '@/components/portfolio/PositionTable';
+import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
+import { ImportPositionsDialog } from '@/components/portfolio/ImportPositionsDialog';
 import { PositionForm } from '@/components/portfolio/PositionForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Pencil, Download } from 'lucide-react';
+import { Plus, Pencil, Download, Copy, Check, Upload } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 
@@ -18,6 +19,8 @@ export default function Portfolio() {
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: summary } = usePortfolioSummary();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
 
   // Perp exposure state
   const [perpExposure, setPerpExposure] = useState(() => {
@@ -95,6 +98,35 @@ export default function Portfolio() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (positions && positions.length > 0) {
+                const success = await copyPositionsToClipboard(positions);
+                if (success) {
+                  setCopiedAll(true);
+                  setTimeout(() => setCopiedAll(false), 2000);
+                }
+              }
+            }}
+            disabled={!positions || positions.length === 0}
+          >
+            {copiedAll ? (
+              <Check className="h-4 w-4 mr-1 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4 mr-1" />
+            )}
+            {copiedAll ? 'Copied!' : 'Copy All'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowImportDialog(true)}
+          >
+            <Upload className="h-4 w-4 mr-1" />
+            Import
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -286,6 +318,12 @@ export default function Portfolio() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Import Positions Dialog */}
+      <ImportPositionsDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+      />
     </div>
   );
 }
