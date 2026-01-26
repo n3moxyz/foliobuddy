@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createServer } from 'http';
 import { PrismaClient } from '@prisma/client';
 import positionsRouter from './routes/positions.js';
 import assetsRouter from './routes/assets.js';
@@ -15,6 +16,7 @@ import exportRouter from './routes/export.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { clerkMiddleware, ensureUser } from './middleware/auth.js';
 import { startPriceRefreshJob, startSnapshotJob, createMissingSnapshots } from './services/scheduler.js';
+import { socketService } from './services/socketService.js';
 
 // Load .env from packages/backend directory
 const __filename = fileURLToPath(import.meta.url);
@@ -22,13 +24,16 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
+const server = createServer(app);
 const port = process.env.PORT || 3001;
 
 // Initialize Prisma client
 export const prisma = new PrismaClient();
 
-// Middleware
+// CORS allowed origins
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
+
+// Middleware
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl)
@@ -74,10 +79,14 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
+// Initialize Socket.io
+socketService.initialize(server, allowedOrigins);
+
 // Start server
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
   console.log(`📊 API available at http://localhost:${port}/api`);
+  console.log(`🔌 WebSocket server ready`);
 
   // Start scheduled jobs
   if (process.env.NODE_ENV !== 'test') {
@@ -92,4 +101,5 @@ app.listen(port, () => {
   }
 });
 
+export { server };
 export default app;

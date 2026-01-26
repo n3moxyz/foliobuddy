@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { initSentry, Sentry } from './lib/sentry';
 import App from './App';
 import { ErrorFallback } from './components/ErrorFallback';
@@ -35,9 +36,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     )}>
       <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <TooltipProvider delayDuration={300}>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </TooltipProvider>
         </QueryClientProvider>
       </ClerkProvider>
     </Sentry.ErrorBoundary>
