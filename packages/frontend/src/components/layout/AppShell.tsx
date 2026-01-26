@@ -10,12 +10,16 @@ import {
   X,
   RefreshCw,
   Download,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import { UserButton } from '@clerk/clerk-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCurrencyStore } from '@/stores/currencyStore';
+import { useThemeStore, Theme } from '@/stores/themeStore';
 import { api } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -24,19 +28,27 @@ interface AppShellProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Portfolio', href: '/portfolio', icon: Wallet },
-  { name: 'Trades', href: '/trades', icon: TrendingUp },
-  { name: 'Investors', href: '/investors', icon: Users },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, shortcut: 'D' },
+  { name: 'Portfolio', href: '/portfolio', icon: Wallet, shortcut: 'P' },
+  { name: 'Trades', href: '/trades', icon: TrendingUp, shortcut: 'T' },
+  { name: 'Investors', href: '/investors', icon: Users, shortcut: 'I' },
+  { name: 'Settings', href: '/settings', icon: Settings, shortcut: 'S' },
 ];
+
+const themeIcons: Record<Theme, typeof Sun> = {
+  light: Sun,
+  dark: Moon,
+  system: Monitor,
+};
 
 export function AppShell({ children }: AppShellProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { currency, toggleCurrency } = useCurrencyStore();
+  const { theme, cycleTheme } = useThemeStore();
   const queryClient = useQueryClient();
+  const ThemeIcon = themeIcons[theme];
 
   const handleRefreshPrices = async () => {
     setRefreshing(true);
@@ -97,15 +109,25 @@ export function AppShell({ children }: AppShellProps) {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                  'flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
-                <item.icon className="h-5 w-5" />
-                {item.name}
+                <span className="flex items-center gap-3">
+                  <item.icon className="h-5 w-5" />
+                  {item.name}
+                </span>
+                <kbd className={cn(
+                  'hidden lg:inline-block text-xs px-1.5 py-0.5 rounded',
+                  isActive
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                )}>
+                  {item.shortcut}
+                </kbd>
               </Link>
             );
           })}
@@ -140,6 +162,16 @@ export function AppShell({ children }: AppShellProps) {
             className="font-mono"
           >
             {currency}
+          </Button>
+
+          {/* Theme toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={cycleTheme}
+            title={`Theme: ${theme}`}
+          >
+            <ThemeIcon className="h-4 w-4" />
           </Button>
 
           <Separator orientation="vertical" className="h-6" />
