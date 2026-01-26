@@ -4,12 +4,15 @@ const COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
 const RATE_LIMIT_DELAY = 2100; // 2.1 seconds between calls (30 calls/min limit)
 const BATCH_SIZE = 50; // Max coins per request
 const CACHE_DURATION_MS = 30000; // 30 seconds cache
+const MAX_CACHE_ENTRIES = 500; // Prevent unbounded memory growth
+
+interface PriceCacheEntry {
+  price: number;
+  timestamp: number;
+}
 
 interface PriceCache {
-  [coingeckoId: string]: {
-    price: number;
-    timestamp: number;
-  };
+  [coingeckoId: string]: PriceCacheEntry;
 }
 
 interface CoinGeckoPriceResponse {
@@ -119,6 +122,31 @@ class PriceService {
   }
 
   /**
+   * Evict expired entries and enforce max cache size (LRU-style)
+   */
+  private evictStaleEntries(): void {
+    const now = Date.now();
+    const entries = Object.entries(this.priceCache);
+
+    // First, remove all expired entries
+    for (const [id, entry] of entries) {
+      if (now - entry.timestamp >= CACHE_DURATION_MS) {
+        delete this.priceCache[id];
+      }
+    }
+
+    // If still over limit, remove oldest entries
+    const remainingEntries = Object.entries(this.priceCache);
+    if (remainingEntries.length > MAX_CACHE_ENTRIES) {
+      // Sort by timestamp (oldest first) and remove excess
+      remainingEntries
+        .sort((a, b) => a[1].timestamp - b[1].timestamp)
+        .slice(0, remainingEntries.length - MAX_CACHE_ENTRIES)
+        .forEach(([id]) => delete this.priceCache[id]);
+    }
+  }
+
+  /**
    * Get current prices for multiple coins
    */
   async getPrices(coingeckoIds: string[]): Promise<Map<string, number>> {
@@ -136,6 +164,9 @@ class PriceService {
 
     // Fetch missing prices in batches
     if (idsToFetch.length > 0) {
+      // Evict stale entries before adding new ones to prevent unbounded growth
+      this.evictStaleEntries();
+
       for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
         const batch = idsToFetch.slice(i, i + BATCH_SIZE);
         const batchPrices = await this.fetchBatchPrices(batch);
