@@ -791,6 +791,38 @@ Also had to ensure `ALLOWED_ORIGINS` on Railway included the Vercel frontend URL
 
 **Key lesson:** Vercel's rewrites are HTTP-only. For WebSocket connections to external backends, connect directly and configure CORS on the backend. This is a common pattern—HTTP APIs go through the proxy, WebSockets connect directly.
 
+### Lesson 12: Prisma `db push` Doesn't Drop Database Constraints
+
+**The bug:** Import feature failed with "A record with this value already exists" even after removing the `@@unique` constraint from schema.prisma.
+
+**The context:** The Position model originally had a unique constraint to prevent duplicate positions:
+```prisma
+@@unique([userId, assetId, storageType, storageLocation])
+```
+
+When the user wanted to track multiple positions of the same asset (e.g., two BTC purchases at different prices), we removed this constraint. But deployments kept failing.
+
+**The investigation:**
+1. Removed `@@unique` from schema.prisma ✓
+2. Ran `prisma db push --accept-data-loss` ✓
+3. Import still failed with unique constraint error ✗
+
+Turns out, `prisma db push` only **adds** constraints and **modifies** columns—it doesn't **drop** existing database constraints. The constraint was still in PostgreSQL even though it was gone from the schema.
+
+**The fix:** Drop the constraint explicitly using raw SQL on server startup:
+```typescript
+// index.ts - server startup
+await prisma.$executeRawUnsafe(`
+  ALTER TABLE "Position" DROP CONSTRAINT IF EXISTS "Position_userId_assetId_storageType_storageLocation_key"
+`);
+```
+
+Also added a diagnostic endpoint `/admin/drop-position-constraint` for debugging constraint issues.
+
+**Bonus bug:** The TypeScript build failed because `importExcel.ts` and `seed.ts` still used `prisma.position.upsert()` with the compound unique key. When you remove a `@@unique` constraint, you must also update any code that relies on it for upserts.
+
+**Key lesson:** Database schema changes in Prisma are not always bidirectional. Adding constraints via `db push` works, but removing them requires manual SQL. Always verify constraint changes directly in the database, not just in your schema file.
+
 ---
 
 ## Best Practices That Paid Off
