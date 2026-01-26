@@ -56,6 +56,7 @@ PA-portfolio-dash/
 | **PostgreSQL** | Production-ready relational database. SQLite for development (portable, no setup). |
 | **Clerk** | Authentication without rolling my own JWT system. Secure by default. |
 | **node-cron** | Background jobs for automated snapshots and price updates. |
+| **Socket.io** | Real-time WebSocket updates with auto-reconnection and polling fallback. |
 | **Zod** | Runtime validation that matches TypeScript types. Trust no input. |
 
 ### Frontend
@@ -899,19 +900,81 @@ Added convenient export buttons on Portfolio and Trades pages:
 
 These use the existing backend `/api/export/csv/positions` and `/api/export/csv/trades` endpoints.
 
+### Real-Time WebSocket Updates
+
+No more waiting 60 seconds for price updates. The dashboard now receives instant updates via WebSocket when prices refresh.
+
+**Architecture:**
+```
+Frontend (React)
+    ↕ Socket.io (WebSocket/polling fallback)
+Backend (Express + Socket.io)
+    ↓ Broadcasts after price refresh
+All connected clients
+```
+
+**Key implementation details:**
+
+1. **Backend Socket Service** (`socketService.ts`):
+   - Socket.io server initialized with CORS config matching the Express app
+   - Clerk JWT verification on WebSocket handshake (same auth as REST API)
+   - Users join a `user:{userId}` room for targeted messages
+   - Two broadcast methods: `prices:updated` (all clients) and `portfolio:updated` (user-specific)
+
+2. **Scheduler Integration**:
+   - After `priceService.refreshAllPrices()`: broadcast price update to all clients
+   - After `priceService.updatePositionValues()`: send portfolio update to each user with positions
+
+3. **Frontend Hook** (`useWebSocket.ts`):
+   - Connects with Clerk token on mount
+   - Auto-reconnection with exponential backoff (Socket.io handles this)
+   - On `prices:updated`: invalidates React Query cache for portfolio/positions/prices
+   - On `portfolio:updated`: invalidates user-specific queries
+   - Returns connection status and last update timestamp
+
+4. **Connection Status Indicator**:
+   - Green pulsing dot + "Live" when connected
+   - Yellow dot + "Connecting..." during reconnection
+   - Gray dot + "Offline" when disconnected (React Query polling continues as fallback)
+   - Tooltip shows last update time
+
+**The fallback pattern:**
+```typescript
+// React Query config in main.tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchInterval: 60000,  // Still polls every 60s as fallback
+    },
+  },
+});
+
+// When WebSocket is connected, we invalidate queries immediately
+// When disconnected, React Query's polling kicks in automatically
+```
+
+**Why Socket.io instead of native WebSockets?**
+- Auto-reconnection with exponential backoff
+- Fallback to HTTP long-polling if WebSockets blocked
+- Room system for user-specific messages
+- Built-in heartbeat to detect stale connections
+
+---
+
+## Pre-Launch Checklist
+
+Before making the app public:
+- [ ] **Set up Sentry error tracking** - Add `VITE_SENTRY_DSN` to Vercel env vars (code is already in place, just needs DSN)
+
 ---
 
 ## The Road Ahead
 
 Features I want to add:
-- [ ] Real-time WebSocket updates (currently polling via React Query)
-- [ ] Tax lot tracking (FIFO, LIFO, specific identification)
-- [ ] Tax loss harvesting suggestions
-- [ ] Risk metrics (VaR, Sharpe ratio, correlation matrix)
-- [ ] Multi-portfolio support
 - [ ] Mobile app (React Native, sharing the codebase)
 
 Recently completed:
+- [x] Real-time WebSocket updates with Socket.io
 - [x] Dark mode with system preference detection
 - [x] Keyboard shortcuts for power users
 - [x] Sentry error tracking for production monitoring
