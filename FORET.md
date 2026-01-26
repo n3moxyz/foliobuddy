@@ -818,7 +818,7 @@ Railway provides:
 **The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Railway backend. This avoids CORS issues and keeps the backend URL hidden from the client.
 
 **Current production URL:**
-- Frontend: `https://frontend-jade-beta-85.vercel.app`
+- Frontend: `https://portfolioxyx.vercel.app`
 
 Vercel provides:
 - Edge deployment
