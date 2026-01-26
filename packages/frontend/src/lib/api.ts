@@ -75,7 +75,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  createAssetFromCoinGecko: (data: { coingeckoId: string; symbol: string; name: string; category?: string }) =>
+  createAssetFromCoinGecko: (data: { coingeckoId: string; symbol: string; name: string; category?: string; skipPriceFetch?: boolean }) =>
     request<Asset>('/assets/from-coingecko', {
       method: 'POST',
       body: JSON.stringify(data),

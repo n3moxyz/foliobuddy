@@ -125,7 +125,7 @@ router.post('/', async (req, res, next) => {
 // POST /api/assets/from-coingecko - Create asset from CoinGecko search result
 router.post('/from-coingecko', async (req, res, next) => {
   try {
-    const { coingeckoId, symbol, name, category } = req.body;
+    const { coingeckoId, symbol, name, category, skipPriceFetch } = req.body;
 
     if (!coingeckoId || !symbol || !name) {
       throw new AppError('coingeckoId, symbol, and name are required', 400);
@@ -146,8 +146,12 @@ router.post('/from-coingecko', async (req, res, next) => {
       return res.json(existing);
     }
 
-    // Fetch current price
-    const currentPriceUsd = await priceService.getPrice(coingeckoId);
+    // Fetch current price unless skipPriceFetch is true (for bulk imports)
+    // The scheduler will update prices within a minute anyway
+    let currentPriceUsd = null;
+    if (!skipPriceFetch) {
+      currentPriceUsd = await priceService.getPrice(coingeckoId);
+    }
 
     const asset = await prisma.asset.create({
       data: {

@@ -113,6 +113,7 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
               symbol: pos.asset.symbol,
               name: pos.asset.name,
               category: pos.asset.category,
+              skipPriceFetch: true, // Skip price fetch for faster imports - scheduler updates prices
             });
           } else {
             asset = await api.createAsset({
