@@ -5,10 +5,9 @@ import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
-import { ImportPositionsDialog } from '@/components/portfolio/ImportPositionsDialog';
 import { PositionForm } from '@/components/portfolio/PositionForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Pencil, Download, Copy, Check, Upload } from 'lucide-react';
+import { Plus, Pencil, Download, Copy, Check } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 
@@ -19,7 +18,6 @@ export default function Portfolio() {
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: summary } = usePortfolioSummary();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
 
   // Perp exposure state
@@ -118,14 +116,6 @@ export default function Portfolio() {
               <Copy className="h-4 w-4 mr-1" />
             )}
             {copiedAll ? 'Copied!' : 'Copy All'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowImportDialog(true)}
-          >
-            <Upload className="h-4 w-4 mr-1" />
-            Import
           </Button>
           <Button
             variant="outline"
@@ -276,7 +266,7 @@ export default function Portfolio() {
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Position</DialogTitle>
+            <DialogTitle>Add Position</DialogTitle>
           </DialogHeader>
           <PositionForm
             onSuccess={() => setShowAddForm(false)}
@@ -318,12 +308,6 @@ export default function Portfolio() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Import Positions Dialog */}
-      <ImportPositionsDialog
-        open={showImportDialog}
-        onOpenChange={setShowImportDialog}
-      />
     </div>
   );
 }
