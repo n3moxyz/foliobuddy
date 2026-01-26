@@ -185,20 +185,9 @@ async function importPositions(
       const assetId = await getOrCreateAsset(symbol, name, category);
       const storageType = parseStorageType(storageTypeStr);
 
-      await prisma.position.upsert({
-        where: {
-          userId_assetId_storageType_storageLocation: {
-            userId: DEFAULT_USER_ID,
-            assetId,
-            storageType,
-            storageLocation: storageLocation ?? '',
-          },
-        },
-        update: {
-          quantity,
-          avgCostUsd: avgCost,
-        },
-        create: {
+      // Create position (duplicates allowed)
+      await prisma.position.create({
+        data: {
           userId: DEFAULT_USER_ID,
           assetId,
           quantity,

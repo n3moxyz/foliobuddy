@@ -64,18 +64,22 @@ async function seed() {
   const eth = await prisma.asset.findFirst({ where: { symbol: 'ETH' } });
   const sol = await prisma.asset.findFirst({ where: { symbol: 'SOL' } });
 
-  if (btc) {
-    await prisma.position.upsert({
-      where: {
-        userId_assetId_storageType_storageLocation: {
-          userId: DEFAULT_USER_ID,
-          assetId: btc.id,
-          storageType: 'WALLET',
-          storageLocation: 'Ledger',
-        },
-      },
-      update: {},
-      create: {
+  // Check if sample positions exist to avoid duplicates on re-run
+  const existingBtcPosition = btc ? await prisma.position.findFirst({
+    where: { userId: DEFAULT_USER_ID, assetId: btc.id, storageLocation: 'Ledger' }
+  }) : null;
+
+  const existingEthPosition = eth ? await prisma.position.findFirst({
+    where: { userId: DEFAULT_USER_ID, assetId: eth.id, storageLocation: 'Binance' }
+  }) : null;
+
+  const existingSolPosition = sol ? await prisma.position.findFirst({
+    where: { userId: DEFAULT_USER_ID, assetId: sol.id, storageLocation: 'Phantom' }
+  }) : null;
+
+  if (btc && !existingBtcPosition) {
+    await prisma.position.create({
+      data: {
         userId: DEFAULT_USER_ID,
         assetId: btc.id,
         quantity: 0.5,
@@ -86,18 +90,9 @@ async function seed() {
     });
   }
 
-  if (eth) {
-    await prisma.position.upsert({
-      where: {
-        userId_assetId_storageType_storageLocation: {
-          userId: DEFAULT_USER_ID,
-          assetId: eth.id,
-          storageType: 'CEX',
-          storageLocation: 'Binance',
-        },
-      },
-      update: {},
-      create: {
+  if (eth && !existingEthPosition) {
+    await prisma.position.create({
+      data: {
         userId: DEFAULT_USER_ID,
         assetId: eth.id,
         quantity: 5,
@@ -108,18 +103,9 @@ async function seed() {
     });
   }
 
-  if (sol) {
-    await prisma.position.upsert({
-      where: {
-        userId_assetId_storageType_storageLocation: {
-          userId: DEFAULT_USER_ID,
-          assetId: sol.id,
-          storageType: 'WALLET',
-          storageLocation: 'Phantom',
-        },
-      },
-      update: {},
-      create: {
+  if (sol && !existingSolPosition) {
+    await prisma.position.create({
+      data: {
         userId: DEFAULT_USER_ID,
         assetId: sol.id,
         quantity: 50,
