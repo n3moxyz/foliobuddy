@@ -900,6 +900,52 @@ Added convenient export buttons on Portfolio and Trades pages:
 
 These use the existing backend `/api/export/csv/positions` and `/api/export/csv/trades` endpoints.
 
+### Copy/Paste Positions
+
+Need to transfer positions between accounts or share with investors? The copy/paste system makes it easy.
+
+**Copy features:**
+| Location | Action |
+|----------|--------|
+| Position row | Click clipboard icon in Actions column |
+| Position detail modal | Click "Copy" button |
+| Portfolio header | "Copy All" button copies all positions |
+
+**The clipboard format (JSON):**
+```json
+[
+  {
+    "asset": {
+      "coingeckoId": "bitcoin",
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "category": "LIQUID_CRYPTO"
+    },
+    "quantity": 6.2315,
+    "avgCostUsd": 88888,
+    "storageType": "CEX",
+    "storageLocation": "Binance",
+    "notes": "Spot"
+  }
+]
+```
+
+The format includes full asset info (coingeckoId, symbol, name, category) so positions can be recreated even if the asset doesn't exist in the target account.
+
+**Import features:**
+- **Import button** in Portfolio header opens the import dialog
+- **Paste from Clipboard** - One-click paste button
+- **Manual input** - Paste or type JSON in textarea
+- **Validation** - Checks JSON format, required fields, positive quantities
+- **Preview** - Shows all positions to be imported before confirming
+- **Auto-create assets** - If an asset doesn't exist, creates it from CoinGecko
+- **Results view** - Shows success/failure for each imported position
+
+**Visual feedback:**
+- Copy buttons show a green checkmark for 2 seconds after successful copy
+- Button text changes to "Copied!" temporarily
+- Import dialog shows count of positions ready to import
+
 ### Real-Time WebSocket Updates
 
 No more waiting 60 seconds for price updates. The dashboard now receives instant updates via WebSocket when prices refresh.
@@ -974,6 +1020,7 @@ Features I want to add:
 - [ ] Mobile app (React Native, sharing the codebase)
 
 Recently completed:
+- [x] Copy/paste positions between accounts with JSON format
 - [x] Real-time WebSocket updates with Socket.io
 - [x] Dark mode with system preference detection
 - [x] Keyboard shortcuts for power users
