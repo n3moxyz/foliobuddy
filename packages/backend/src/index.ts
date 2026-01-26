@@ -55,6 +55,41 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Admin endpoint to drop position unique constraint
+app.get('/admin/drop-position-constraint', async (req, res) => {
+  try {
+    // First, list all constraints on Position table for debugging
+    const constraints = await prisma.$queryRaw`
+      SELECT conname, contype
+      FROM pg_constraint
+      WHERE conrelid = '"Position"'::regclass
+    `;
+    console.log('Current constraints:', constraints);
+
+    // Drop the constraint
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Position" DROP CONSTRAINT IF EXISTS "Position_userId_assetId_storageType_storageLocation_key"
+    `);
+
+    // Check constraints again after drop
+    const constraintsAfter = await prisma.$queryRaw`
+      SELECT conname, contype
+      FROM pg_constraint
+      WHERE conrelid = '"Position"'::regclass
+    `;
+
+    res.json({
+      success: true,
+      message: 'Constraint dropped (if it existed)',
+      constraintsBefore: constraints,
+      constraintsAfter: constraintsAfter
+    });
+  } catch (error: any) {
+    console.error('Error dropping constraint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // API Routes (protected - require authentication)
 app.use('/api/positions', ensureUser, positionsRouter);
 app.use('/api/assets', assetsRouter); // Assets are shared, no auth needed
@@ -83,10 +118,20 @@ process.on('SIGTERM', async () => {
 socketService.initialize(server, allowedOrigins);
 
 // Start server
-server.listen(port, () => {
+server.listen(port, async () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
   console.log(`📊 API available at http://localhost:${port}/api`);
   console.log(`🔌 WebSocket server ready`);
+
+  // Drop the unique constraint on Position table to allow duplicate positions
+  try {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Position" DROP CONSTRAINT IF EXISTS "Position_userId_assetId_storageType_storageLocation_key"
+    `);
+    console.log('✓ Position unique constraint dropped (if it existed)');
+  } catch (error) {
+    console.log('Note: Could not drop Position constraint (may already be gone):', error);
+  }
 
   // Start scheduled jobs
   if (process.env.NODE_ENV !== 'test') {
