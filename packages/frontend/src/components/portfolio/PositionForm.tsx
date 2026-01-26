@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -11,7 +12,10 @@ import {
 } from '@/components/ui/select';
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
 import { useCreatePosition, useUpdatePosition } from '@/hooks/usePortfolio';
+import { api } from '@/lib/api';
 import type { Position, Asset, CoinSearchResult } from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface PositionFormProps {
   position?: Position;
@@ -21,6 +25,27 @@ interface PositionFormProps {
 }
 
 type CategoryType = 'crypto' | 'cash';
+type FormMode = 'add' | 'import';
+
+interface ImportedPosition {
+  asset: {
+    coingeckoId: string | null;
+    symbol: string;
+    name: string;
+    category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
+  };
+  quantity: number;
+  avgCostUsd: number;
+  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
+  storageLocation: string | null;
+  notes: string | null;
+}
+
+interface ImportResult {
+  success: boolean;
+  symbol: string;
+  error?: string;
+}
 
 const STORAGE_TYPES = [
   { value: 'CEX', label: 'CEX' },
@@ -43,6 +68,17 @@ const TOP_STABLECOINS = [
 const MAX_POSITIONS_PER_CATEGORY = 20;
 
 export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCount = 0 }: PositionFormProps) {
+  // Form mode state (add new or import)
+  const [mode, setMode] = useState<FormMode>('add');
+  const queryClient = useQueryClient();
+
+  // Import state
+  const [jsonInput, setJsonInput] = useState('');
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [parsedPositions, setParsedPositions] = useState<ImportedPosition[] | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
+
   // Category state
   const [category, setCategory] = useState<CategoryType>(() => {
     if (position?.asset.category === 'STABLECOIN' || position?.asset.category === 'CASH') {
@@ -117,6 +153,128 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     if (!quantity || parseFloat(quantity) <= 0) return false;
     return true;
   }, [assetId, quantity]);
+
+  // Import functions
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setJsonInput(text);
+      parseJson(text);
+    } catch {
+      setParseError('Failed to read clipboard. Please paste manually.');
+    }
+  };
+
+  const parseJson = (text: string) => {
+    setParseError(null);
+    setParsedPositions(null);
+    setImportResults(null);
+
+    if (!text.trim()) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      const positions = Array.isArray(parsed) ? parsed : [parsed];
+
+      // Validate structure
+      for (const pos of positions) {
+        if (!pos.asset?.symbol || !pos.asset?.name) {
+          throw new Error('Invalid format: missing asset symbol or name');
+        }
+        if (typeof pos.quantity !== 'number' || pos.quantity <= 0) {
+          throw new Error('Invalid format: quantity must be a positive number');
+        }
+        if (typeof pos.avgCostUsd !== 'number' || pos.avgCostUsd < 0) {
+          throw new Error('Invalid format: avgCostUsd must be a non-negative number');
+        }
+      }
+
+      setParsedPositions(positions);
+    } catch (e) {
+      setParseError(e instanceof Error ? e.message : 'Invalid JSON format');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!parsedPositions) return;
+
+    setImporting(true);
+    const results: ImportResult[] = [];
+
+    try {
+      // First, fetch existing assets to check what already exists
+      const existingAssets = await api.getAssets();
+
+      for (const pos of parsedPositions) {
+        try {
+          // Find existing asset by coingeckoId or symbol
+          let asset = existingAssets.find(
+            a => (pos.asset.coingeckoId && a.coingeckoId === pos.asset.coingeckoId) ||
+                 a.symbol.toUpperCase() === pos.asset.symbol.toUpperCase()
+          );
+
+          // Create asset if it doesn't exist
+          if (!asset) {
+            if (pos.asset.coingeckoId) {
+              asset = await api.createAssetFromCoinGecko({
+                coingeckoId: pos.asset.coingeckoId,
+                symbol: pos.asset.symbol,
+                name: pos.asset.name,
+                category: pos.asset.category,
+                skipPriceFetch: true,
+              });
+            } else {
+              asset = await api.createAsset({
+                symbol: pos.asset.symbol,
+                name: pos.asset.name,
+                category: pos.asset.category,
+              });
+            }
+          }
+
+          // Create position
+          await api.createPosition({
+            assetId: asset.id,
+            quantity: pos.quantity,
+            avgCostUsd: pos.avgCostUsd,
+            storageType: pos.storageType || 'CEX',
+            storageLocation: pos.storageLocation || undefined,
+            notes: pos.notes || undefined,
+          });
+
+          results.push({ success: true, symbol: pos.asset.symbol });
+        } catch (e) {
+          results.push({
+            success: false,
+            symbol: pos.asset.symbol,
+            error: e instanceof Error ? e.message : 'Unknown error',
+          });
+        }
+      }
+
+      setImportResults(results);
+    } catch (e) {
+      setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
+    } finally {
+      setImporting(false);
+    }
+
+    // Refresh positions data
+    queryClient.invalidateQueries({ queryKey: ['positions'] });
+    queryClient.invalidateQueries({ queryKey: ['portfolio-summary'] });
+  };
+
+  const resetImportState = () => {
+    setJsonInput('');
+    setParseError(null);
+    setParsedPositions(null);
+    setImportResults(null);
+  };
+
+  const successCount = importResults?.filter(r => r.success).length ?? 0;
+  const failCount = importResults?.filter(r => !r.success).length ?? 0;
 
   // Calculate the derived cost value based on input mode
   const calculatedAvgCost = useMemo(() => {
@@ -320,6 +478,13 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     }
   }, [category, isEditing]);
 
+  // Reset import state when mode changes
+  useEffect(() => {
+    if (mode === 'add') {
+      resetImportState();
+    }
+  }, [mode]);
+
   // Reset storage location when storage type changes
   useEffect(() => {
     if (!isEditing) {
@@ -382,23 +547,168 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     }
   };
 
+  // If showing import results, show the results UI
+  if (mode === 'import' && importResults) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-4">
+          {failCount === 0 ? (
+            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
+          ) : (
+            <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
+          )}
+          <p className="font-medium">
+            {successCount} imported successfully
+            {failCount > 0 && `, ${failCount} failed`}
+          </p>
+        </div>
+
+        <div className="max-h-60 overflow-y-auto space-y-1">
+          {importResults.map((result, i) => (
+            <div
+              key={i}
+              className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
+                result.success ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'
+              }`}
+            >
+              {result.success ? (
+                <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+              )}
+              <span className="font-medium">{result.symbol}</span>
+              {result.error && (
+                <span className="text-red-600 dark:text-red-400 text-xs">
+                  {result.error}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end">
+          <Button onClick={onSuccess}>Done</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      {/* Category Selection */}
+    <div className="space-y-3">
+      {/* Mode Selection (Add New vs Import) - only show when not editing */}
       {!isEditing && (
-        <div className="space-y-1">
-          <Label className="text-sm">Category</Label>
-          <Select value={category} onValueChange={(v) => setCategory(v as CategoryType)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="crypto">Crypto</SelectItem>
-              <SelectItem value="cash">Stables</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex border-b mb-2">
+          <button
+            type="button"
+            onClick={() => setMode('add')}
+            className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+              mode === 'add'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Add New
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('import')}
+            className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+              mode === 'import'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Import
+          </button>
         </div>
       )}
+
+      {/* Import Mode UI */}
+      {mode === 'import' && !isEditing ? (
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={handlePaste}>
+              <Upload className="h-4 w-4 mr-1" />
+              Paste from Clipboard
+            </Button>
+          </div>
+
+          <Textarea
+            placeholder='[{"asset": {"symbol": "BTC", ...}, "quantity": 1, ...}]'
+            value={jsonInput}
+            onChange={(e) => {
+              setJsonInput(e.target.value);
+              parseJson(e.target.value);
+            }}
+            rows={6}
+            className="font-mono text-xs"
+          />
+
+          {parseError && (
+            <div className="flex items-start gap-2 text-destructive text-sm">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>{parseError}</span>
+            </div>
+          )}
+
+          {parsedPositions && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                Ready to import {parsedPositions.length} position{parsedPositions.length !== 1 ? 's' : ''}:
+              </p>
+              <div className="max-h-40 overflow-y-auto space-y-1">
+                {parsedPositions.map((pos, i) => (
+                  <div key={i} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
+                    <span className="font-medium">{pos.asset.symbol}</span>
+                    <span className="text-muted-foreground ml-2">
+                      {pos.quantity} @ ${pos.avgCostUsd.toLocaleString()}
+                    </span>
+                    {pos.storageLocation && (
+                      <span className="text-muted-foreground ml-2">
+                        ({pos.storageLocation})
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={handleImport}
+              disabled={!parsedPositions || importing}
+            >
+              {importing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>Import {parsedPositions?.length ?? 0} Position{parsedPositions?.length !== 1 ? 's' : ''}</>
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* Add New Mode - Original Form */
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Category Selection */}
+          {!isEditing && (
+            <div className="space-y-1">
+              <Label className="text-sm">Category</Label>
+              <Select value={category} onValueChange={(v) => setCategory(v as CategoryType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="crypto">Crypto</SelectItem>
+                  <SelectItem value="cash">Stables</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
       {/* Asset Selection - Different UI for Crypto vs Cash */}
       {category === 'crypto' ? (
@@ -710,16 +1020,18 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
         </div>
       )}
 
-      {/* Submit */}
-      <div className="flex justify-end gap-2 pt-2">
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className={!isFormValid && !isLoading ? 'opacity-50 cursor-not-allowed' : ''}
-        >
-          {isLoading ? 'Saving...' : isEditing ? 'Update Position' : 'Add Position'}
-        </Button>
-      </div>
-    </form>
+          {/* Submit */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className={!isFormValid && !isLoading ? 'opacity-50 cursor-not-allowed' : ''}
+            >
+              {isLoading ? 'Saving...' : isEditing ? 'Update Position' : 'Add Position'}
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
