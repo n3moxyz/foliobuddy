@@ -327,7 +327,7 @@ router.put('/:id', async (req, res, next) => {
 
     if (exitPrice && (data.entryPrice || data.exitPrice || data.quantity || data.direction)) {
       status = 'CLOSED';
-      const pnlResult = calculateTradePnL(direction, entryPrice, exitPrice, quantity);
+      const pnlResult = calculateTradePnL(direction as 'LONG' | 'SHORT', entryPrice, exitPrice, quantity);
       realizedPnL = pnlResult.pnl;
       realizedPnLPct = pnlResult.pnlPct;
     }
@@ -373,7 +373,7 @@ router.patch('/:id/close', async (req, res, next) => {
     }
 
     const pnlResult = calculateTradePnL(
-      existing.direction,
+      existing.direction as 'LONG' | 'SHORT',
       existing.entryPrice,
       data.exitPrice,
       existing.quantity
