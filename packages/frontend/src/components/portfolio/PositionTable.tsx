@@ -19,10 +19,41 @@ import {
 import { formatCurrency, formatNumber, formatPercent, formatDateTime, getPnLColorClass } from '@/lib/utils';
 import { useDeletePosition } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Copy, Check } from 'lucide-react';
 import type { Position } from '@/lib/api';
 
 const SKIP_DELETE_CONFIRM_KEY = 'pa-portfolio-skip-delete-confirm';
+
+// Format position(s) for clipboard - includes asset info for recreating
+export function formatPositionsForClipboard(positions: Position | Position[]) {
+  const posArray = Array.isArray(positions) ? positions : [positions];
+
+  const formatted = posArray.map(p => ({
+    asset: {
+      coingeckoId: p.asset.coingeckoId,
+      symbol: p.asset.symbol,
+      name: p.asset.name,
+      category: p.asset.category,
+    },
+    quantity: p.quantity,
+    avgCostUsd: p.avgCostUsd,
+    storageType: p.storageType,
+    storageLocation: p.storageLocation,
+    notes: p.notes,
+  }));
+
+  return JSON.stringify(formatted, null, 2);
+}
+
+export async function copyPositionsToClipboard(positions: Position | Position[]): Promise<boolean> {
+  try {
+    const text = formatPositionsForClipboard(positions);
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 interface PositionTableProps {
   positions: Position[];
@@ -45,7 +76,17 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
   const [skipConfirm, setSkipConfirm] = useState(() => {
     return localStorage.getItem(SKIP_DELETE_CONFIRM_KEY) === 'true';
   });
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const deletePositionMutation = useDeletePosition();
+
+  const handleCopy = async (position: Position, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const success = await copyPositionsToClipboard(position);
+    if (success) {
+      setCopiedId(position.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
 
   // Helper to convert USD values to selected currency
   const convert = (usdValue: number | null | undefined) => {
@@ -158,6 +199,19 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
         </TableCell>
         <TableCell onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-end gap-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={(e) => handleCopy(position, e)}
+              title="Copy position"
+            >
+              {copiedId === position.id ? (
+                <Check className="h-3.5 w-3.5 text-green-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -400,6 +454,24 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
 
               {/* Actions */}
               <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const success = await copyPositionsToClipboard(viewPosition);
+                    if (success) {
+                      setCopiedId(viewPosition.id);
+                      setTimeout(() => setCopiedId(null), 2000);
+                    }
+                  }}
+                >
+                  {copiedId === viewPosition.id ? (
+                    <Check className="h-3.5 w-3.5 mr-1 text-green-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  {copiedId === viewPosition.id ? 'Copied!' : 'Copy'}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
