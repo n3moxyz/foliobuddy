@@ -37,8 +37,9 @@ export function useWebSocket(): UseWebSocketReturn {
         return;
       }
 
-      // Determine WebSocket URL based on environment
-      const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3001';
+      // In production, connect to same origin (Vercel rewrites /socket.io to Railway)
+      // In development, connect to local backend
+      const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
 
       setStatus('connecting');
 
