@@ -253,8 +253,8 @@ async function importTrades(
       // Parse dates (Excel dates are numbers)
       let entryDate: Date;
       if (typeof entryDateRaw === 'number') {
-        entryDate = XLSX.SSF.parse_date_code(entryDateRaw);
-        entryDate = new Date(entryDate.y, entryDate.m - 1, entryDate.d);
+        const parsedEntry = XLSX.SSF.parse_date_code(entryDateRaw);
+        entryDate = new Date(parsedEntry.y, parsedEntry.m - 1, parsedEntry.d);
       } else {
         entryDate = new Date(entryDateRaw);
       }
@@ -291,7 +291,7 @@ async function importTrades(
         data: {
           userId: DEFAULT_USER_ID,
           assetId,
-          direction: direction as TradeDirection,
+          direction,
           entryPrice,
           exitPrice,
           quantity,
