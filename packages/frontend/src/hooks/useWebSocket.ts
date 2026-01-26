@@ -39,7 +39,8 @@ export function useWebSocket(): UseWebSocketReturn {
 
       // In production, connect directly to Railway backend (Vercel doesn't proxy WebSockets)
       // In development, connect to local backend
-      const RAILWAY_BACKEND = 'https://old-backend.example.com';
+      // Use VITE_WS_BACKEND_URL env var for production backend, fallback to default Railway URL
+      const RAILWAY_BACKEND = import.meta.env.VITE_WS_BACKEND_URL || 'https://old-backend.example.com';
       const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : RAILWAY_BACKEND;
 
       setStatus('connecting');

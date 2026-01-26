@@ -845,6 +845,33 @@ Now Vercel runs `npm run build` from inside `packages/frontend`, the dist folder
 
 **Key lesson:** In a monorepo, always configure the Root Directory in Vercel to point to the specific package you're deploying. The vercel.json in that package directory will be used, and paths (like `outputDirectory: "dist"`) will be relative to that root. This is a common gotcha—the build succeeds but Vercel can't find the output because it's looking in the wrong place.
 
+### Lesson 14: CORS Origin Validation Vulnerability
+
+**The bug (security):** CORS was configured with `origin.startsWith(allowed)`, which allowed malicious subdomains to pass CORS checks.
+
+**The risk:** An attacker could create `evil-myapp.vercel.app` which would match `myapp.vercel.app` because of the prefix check. This would allow cross-origin requests from malicious domains.
+
+**The fix:** Use exact string matching:
+```typescript
+// Before (vulnerable)
+if (allowedOrigins.some(allowed => origin.startsWith(allowed) || allowed === '*'))
+
+// After (secure)
+if (allowedOrigins.some(allowed => origin === allowed || allowed === '*'))
+```
+
+**Key lesson:** Never use prefix matching for security boundaries. CORS origin validation must be exact. If you need wildcard subdomains, use explicit patterns like `*.myapp.com` with proper regex matching.
+
+### Lesson 15: Exposed Admin Endpoint
+
+**The bug (security):** The `/admin/drop-position-constraint` endpoint had no authentication, meaning anyone could execute database modifications.
+
+**The investigation:** This endpoint was added as a debugging tool during development (Lesson 12) but was left in production code without auth protection.
+
+**The fix:** Removed the endpoint entirely. The same constraint-dropping code already runs on server startup, making the admin endpoint redundant. For future admin tools, always use authentication middleware.
+
+**Key lesson:** Development debugging tools must be removed or secured before production. If you need admin endpoints, protect them with authentication AND authorization (not just "is logged in" but "is admin").
+
 ---
 
 ## Best Practices That Paid Off
