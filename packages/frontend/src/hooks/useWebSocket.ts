@@ -37,9 +37,10 @@ export function useWebSocket(): UseWebSocketReturn {
         return;
       }
 
-      // In production, connect to same origin (Vercel rewrites /socket.io to Railway)
+      // In production, connect directly to Railway backend (Vercel doesn't proxy WebSockets)
       // In development, connect to local backend
-      const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
+      const RAILWAY_BACKEND = 'https://empowering-curiosity-production-9eff.up.railway.app';
+      const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : RAILWAY_BACKEND;
 
       setStatus('connecting');
 
