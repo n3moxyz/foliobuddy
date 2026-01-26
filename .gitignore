@@ -15,6 +15,9 @@ packages/backend/prisma/*.db-journal
 # Build output
 dist/
 build/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
 # Logs
 logs/
