@@ -678,6 +678,97 @@ model Position {
 
 This enforces at the database level that you can't have two BTC positions on Binance—they must be merged or in different locations.
 
+### Lesson 7: Environment Variables Pointing to Wrong Backend
+
+**The bug:** Import feature worked locally but failed on production with CORS errors. Console showed requests going to `poker-api-production-2770.up.railway.app` instead of the correct backend.
+
+**The investigation:** The Vercel dashboard had a `VITE_API_URL` environment variable accidentally set to a different project's Railway backend (from a previous deployment experiment).
+
+**The fix:** Deleted the `VITE_API_URL` env var from Vercel. The frontend code defaults to `/api` which uses Vercel rewrites (configured in `vercel.json`) to proxy to the correct Railway backend.
+
+**Key lesson:** When debugging CORS errors or wrong API calls, always check environment variables in your hosting provider's dashboard. Build-time env vars (like `VITE_*`) get baked into the JavaScript bundle, so you need to redeploy after changing them.
+
+### Lesson 8: WebSocket URL Hardcoded to Localhost
+
+**The bug:** WebSocket connection status showed "Offline" on production even though the backend was running with Socket.io.
+
+**The investigation:** The `useWebSocket.ts` hook had a fallback URL that always defaulted to `'http://localhost:3001'`:
+```typescript
+// Before (broken)
+const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+```
+
+In production, `VITE_API_URL` was undefined (intentionally, per Lesson 7), so it connected to localhost, which doesn't exist in the browser.
+
+**The fix:** Use `window.location.origin` in production:
+```typescript
+// After (works)
+const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
+```
+
+In production, this connects to `https://portfolioxyx.vercel.app`, and Vercel's rewrites route `/socket.io/*` to the Railway backend.
+
+### Lesson 9: Infinite Spinner on Import Errors
+
+**The bug:** When importing positions on production, if an error occurred during the fetch of existing assets, the import button would spin forever.
+
+**The investigation:** The `handleImport` function set `setImporting(true)` but the `setImporting(false)` was only in a finally block INSIDE the try-catch for individual positions—not wrapping the outer `api.getAssets()` call:
+```typescript
+// Before (broken)
+const handleImport = async () => {
+  setImporting(true);
+  const existingAssets = await api.getAssets(); // <- If this throws, setImporting(false) never runs!
+  // ... rest of function
+};
+```
+
+**The fix:** Wrap the entire import logic in try-catch-finally:
+```typescript
+// After (works)
+const handleImport = async () => {
+  setImporting(true);
+  try {
+    const existingAssets = await api.getAssets();
+    // ... rest of function
+  } catch (e) {
+    setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
+  } finally {
+    setImporting(false);  // Always resets spinner
+  }
+};
+```
+
+**Key lesson:** Any async function that sets loading state MUST have that state reset in a `finally` block that wraps ALL the async code, not just some of it.
+
+### Lesson 10: CoinGecko Rate Limiting During Bulk Import
+
+**The bug:** Importing multiple positions was extremely slow (2+ seconds per position), making bulk imports take minutes.
+
+**The investigation:** When creating assets from CoinGecko search results, the `createAssetFromCoinGecko` endpoint fetched the current price from the CoinGecko API. With 2.1-second rate limiting per request, importing 10 positions took 20+ seconds.
+
+**The fix:** Added `skipPriceFetch` option to the endpoint:
+```typescript
+// Backend: routes/assets.ts
+const { coingeckoId, symbol, name, category, skipPriceFetch } = req.body;
+let currentPriceUsd = null;
+if (!skipPriceFetch) {
+  currentPriceUsd = await priceService.getPrice(coingeckoId);
+}
+```
+
+```typescript
+// Frontend: ImportPositionsDialog.tsx
+asset = await api.createAssetFromCoinGecko({
+  coingeckoId: pos.asset.coingeckoId,
+  symbol: pos.asset.symbol,
+  name: pos.asset.name,
+  category: pos.asset.category,
+  skipPriceFetch: true,  // Skip price fetch - scheduler updates prices within 1 minute
+});
+```
+
+**Key lesson:** Background jobs exist for a reason. If a scheduler is already fetching prices every minute, don't duplicate that work during user-facing operations. The tradeoff (60-second delay for new asset prices) is far better than blocking the UI.
+
 ---
 
 ## Best Practices That Paid Off
