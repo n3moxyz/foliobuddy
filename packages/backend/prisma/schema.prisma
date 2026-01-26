@@ -72,7 +72,6 @@ model Position {
   unrealizedPnL    Float?
   unrealizedPnLPct Float?
 
-  @@unique([userId, assetId, storageType, storageLocation])
   @@index([userId])
   @@index([assetId])
 }
