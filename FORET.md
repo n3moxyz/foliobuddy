@@ -823,6 +823,28 @@ Also added a diagnostic endpoint `/admin/drop-position-constraint` for debugging
 
 **Key lesson:** Database schema changes in Prisma are not always bidirectional. Adding constraints via `db push` works, but removing them requires manual SQL. Always verify constraint changes directly in the database, not just in your schema file.
 
+### Lesson 13: Vercel Root Directory for Monorepos
+
+**The bug:** Vercel deployments started failing with "No Output Directory named 'dist' found after the Build completed" even though the build logs showed the dist folder was created successfully.
+
+**The context:** This is a monorepo with `packages/frontend` and `packages/backend`. Vercel was configured to build the frontend, but the Root Directory setting was empty (pointing to the repository root).
+
+**The investigation:**
+1. Build logs showed `vite build` completed successfully: `✓ built in 7.20s`
+2. Build logs showed dist files created: `dist/index.html`, `dist/assets/index-*.js`
+3. But Vercel reported: "No Output Directory named 'dist' found"
+
+The issue: When Root Directory is empty, Vercel runs commands at the repo root. The monorepo's `npm run build` triggers the workspace build, which creates `packages/frontend/dist`. But Vercel was looking for `dist` at the repo root—not inside the frontend package.
+
+**The fix:** Set the Root Directory to `packages/frontend` in Vercel's Build and Deployment settings:
+- Go to Project Settings → Build and Deployment
+- Set Root Directory to `packages/frontend`
+- Redeploy
+
+Now Vercel runs `npm run build` from inside `packages/frontend`, the dist folder appears exactly where Vercel expects it, and deployments succeed.
+
+**Key lesson:** In a monorepo, always configure the Root Directory in Vercel to point to the specific package you're deploying. The vercel.json in that package directory will be used, and paths (like `outputDirectory: "dist"`) will be relative to that root. This is a common gotcha—the build succeeds but Vercel can't find the output because it's looking in the wrong place.
+
 ---
 
 ## Best Practices That Paid Off
