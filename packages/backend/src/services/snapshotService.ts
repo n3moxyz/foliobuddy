@@ -45,6 +45,7 @@ class SnapshotService {
       data: {
         userId,
         snapshotType,
+        source: 'AUTOMATIC',
         totalValueUsd: summary.totalValueUsd,
         totalValueSgd: summary.totalValueUsd * usdSgdRate,
         usdSgdRate,

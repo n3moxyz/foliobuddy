@@ -1,0 +1,331 @@
+import { useState } from 'react';
+import { useSnapshots, useDeleteSnapshot } from '@/hooks/useSnapshots';
+import { useCurrencyStore } from '@/stores/currencyStore';
+import { usePortfolioSummary } from '@/hooks/usePortfolio';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { SnapshotForm } from '@/components/history/SnapshotForm';
+import { Plus, Bot, Clock, Pencil, Trash2, History as HistoryIcon } from 'lucide-react';
+import { Snapshot } from '@/lib/api';
+
+type SourceFilter = 'all' | 'AUTOMATIC' | 'MANUAL';
+
+export default function History() {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingSnapshot, setEditingSnapshot] = useState<Snapshot | null>(null);
+  const [deletingSnapshot, setDeletingSnapshot] = useState<Snapshot | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+
+  const { currency } = useCurrencyStore();
+  const { data: summary } = usePortfolioSummary();
+  // Always fetch all snapshots - filter client-side for correct counts
+  const { data: allSnapshots, isLoading } = useSnapshots();
+  const deleteSnapshot = useDeleteSnapshot();
+
+  // Calculate FX rate from summary
+  const fxRate = summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
+    ? summary.totalValueSgd / summary.totalValueUsd
+    : 1.35;
+
+  // Calculate counts from full data
+  const automaticSnapshots = allSnapshots?.filter((s) => s.source === 'AUTOMATIC') || [];
+  const manualSnapshots = allSnapshots?.filter((s) => s.source === 'MANUAL') || [];
+  const totalCount = allSnapshots?.length || 0;
+  const automaticCount = automaticSnapshots.length;
+  const manualCount = manualSnapshots.length;
+
+  // Get filtered snapshots based on current tab
+  const filteredSnapshots = sourceFilter === 'all'
+    ? allSnapshots || []
+    : sourceFilter === 'AUTOMATIC'
+      ? automaticSnapshots
+      : manualSnapshots;
+
+  const handleDelete = async () => {
+    if (!deletingSnapshot) return;
+    await deleteSnapshot.mutateAsync(deletingSnapshot.id);
+    setDeletingSnapshot(null);
+  };
+
+  const displayValue = (value: number) => {
+    return currency === 'SGD'
+      ? formatCurrency(value * fxRate, 'SGD')
+      : formatCurrency(value, 'USD');
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Snapshot History</h1>
+          <p className="text-muted-foreground">
+            View and manage portfolio snapshots
+          </p>
+        </div>
+        <Button onClick={() => setShowAddForm(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Snapshot
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Snapshots</CardTitle>
+            <HistoryIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Automatic</CardTitle>
+            <Bot className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{automaticCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Manual</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{manualCount}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Snapshot Table with Tabs */}
+      <Tabs defaultValue="all" onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
+        <TabsList>
+          <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
+          <TabsTrigger value="AUTOMATIC">Automatic ({automaticCount})</TabsTrigger>
+          <TabsTrigger value="MANUAL">Manual ({manualCount})</TabsTrigger>
+        </TabsList>
+
+        <div className="mt-4">
+          <SnapshotTable
+            snapshots={filteredSnapshots}
+            isLoading={isLoading}
+            displayValue={displayValue}
+            liveValueUsd={summary?.totalValueUsd}
+            onEdit={setEditingSnapshot}
+            onDelete={setDeletingSnapshot}
+          />
+        </div>
+      </Tabs>
+
+      {/* Add Snapshot Dialog */}
+      <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Historical Snapshot</DialogTitle>
+            <DialogDescription>
+              Manually add a portfolio snapshot for a specific date.
+            </DialogDescription>
+          </DialogHeader>
+          <SnapshotForm
+            fxRate={fxRate}
+            onSuccess={() => setShowAddForm(false)}
+            onCancel={() => setShowAddForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Snapshot Dialog */}
+      <Dialog open={!!editingSnapshot} onOpenChange={(open) => !open && setEditingSnapshot(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Snapshot</DialogTitle>
+            <DialogDescription>
+              Update the snapshot details.
+            </DialogDescription>
+          </DialogHeader>
+          {editingSnapshot && (
+            <SnapshotForm
+              snapshot={editingSnapshot}
+              fxRate={fxRate}
+              onSuccess={() => setEditingSnapshot(null)}
+              onCancel={() => setEditingSnapshot(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingSnapshot} onOpenChange={(open) => !open && setDeletingSnapshot(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Snapshot</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this snapshot from {deletingSnapshot && formatDate(deletingSnapshot.timestamp)}?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingSnapshot(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteSnapshot.isPending}
+            >
+              {deleteSnapshot.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+interface SnapshotTableProps {
+  snapshots: Snapshot[];
+  isLoading: boolean;
+  displayValue: (value: number) => string;
+  liveValueUsd?: number;
+  onEdit: (snapshot: Snapshot) => void;
+  onDelete: (snapshot: Snapshot) => void;
+}
+
+// Helper to check if a date is today
+function isToday(dateString: string): boolean {
+  const date = new Date(dateString);
+  const today = new Date();
+  return date.toDateString() === today.toDateString();
+}
+
+function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdit, onDelete }: SnapshotTableProps) {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center h-32">
+          <div className="animate-pulse text-muted-foreground">Loading snapshots...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (snapshots.length === 0) {
+    return (
+      <Card>
+        <CardContent className="text-center py-12">
+          <p className="text-muted-foreground">No snapshots yet</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+                <TableHead className="text-right">Cost Basis</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {snapshots.map((snapshot) => (
+                <TableRow key={snapshot.id}>
+                  <TableCell className="font-medium">
+                    {formatDate(snapshot.timestamp)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {/* Show live value if today's snapshot has $0 */}
+                    {snapshot.totalValueUsd === 0 && isToday(snapshot.timestamp) && liveValueUsd ? (
+                      <span className="text-green-600 dark:text-green-400" title="Live portfolio value">
+                        {displayValue(liveValueUsd)}
+                        <span className="text-xs ml-1">(Live)</span>
+                      </span>
+                    ) : (
+                      displayValue(snapshot.totalValueUsd)
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {snapshot.totalCostBasis
+                      ? displayValue(snapshot.totalCostBasis)
+                      : '-'}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs px-2 py-1 rounded-full bg-muted">
+                      {snapshot.snapshotType}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`flex items-center gap-1 text-xs ${
+                      snapshot.source === 'AUTOMATIC'
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-orange-600 dark:text-orange-400'
+                    }`}>
+                      {snapshot.source === 'AUTOMATIC' ? (
+                        <Bot className="h-3 w-3" />
+                      ) : (
+                        <Clock className="h-3 w-3" />
+                      )}
+                      {snapshot.source}
+                    </span>
+                  </TableCell>
+                  <TableCell className="max-w-[150px] truncate">
+                    {snapshot.notes || '-'}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => onEdit(snapshot)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => onDelete(snapshot)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

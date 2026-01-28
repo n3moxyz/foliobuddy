@@ -135,9 +135,10 @@ export const api = {
     request<void>(`/investors/${id}`, { method: 'DELETE' }),
 
   // Snapshots
-  getSnapshots: (params?: { type?: string; from?: string; to?: string; limit?: number }) => {
+  getSnapshots: (params?: { type?: string; source?: string; from?: string; to?: string; limit?: number }) => {
     const searchParams = new URLSearchParams();
     if (params?.type) searchParams.set('type', params.type);
+    if (params?.source) searchParams.set('source', params.source);
     if (params?.from) searchParams.set('from', params.from);
     if (params?.to) searchParams.set('to', params.to);
     if (params?.limit) searchParams.set('limit', params.limit.toString());
@@ -159,6 +160,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ type }),
     }),
+  createManualSnapshot: (data: CreateManualSnapshotData) =>
+    request<Snapshot>('/snapshots', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateSnapshot: (id: string, data: UpdateSnapshotData) =>
+    request<Snapshot>(`/snapshots/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteSnapshot: (id: string) =>
+    request<void>(`/snapshots/${id}`, { method: 'DELETE' }),
 
   // Prices
   getCurrentPrices: () => request<AssetPrice[]>('/prices/current'),
@@ -247,13 +260,16 @@ export interface Snapshot {
   id: string;
   timestamp: string;
   snapshotType: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  source: 'AUTOMATIC' | 'MANUAL';
   totalValueUsd: number;
   totalValueSgd: number | null;
   usdSgdRate: number | null;
+  totalCostBasis: number | null;
   monthlyReturn: number | null;
   ytdReturn: number | null;
   btcOutperform: number | null;
   ethOutperform: number | null;
+  notes: string | null;
 }
 
 export interface PortfolioSummary {
@@ -413,5 +429,22 @@ export interface CreateInvestorData {
   stakePercentage: number;
   initialCapital?: number;
   joinDate?: string;
+  notes?: string;
+}
+
+export interface CreateManualSnapshotData {
+  manual: true;
+  timestamp: string;
+  snapshotType?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  totalValueUsd: number;
+  totalCostBasis?: number;
+  notes?: string;
+}
+
+export interface UpdateSnapshotData {
+  timestamp?: string;
+  snapshotType?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  totalValueUsd?: number;
+  totalCostBasis?: number;
   notes?: string;
 }
