@@ -67,8 +67,8 @@ export default function History() {
 
   const displayValue = (value: number) => {
     return currency === 'SGD'
-      ? formatCurrency(value * fxRate, 'SGD')
-      : formatCurrency(value, 'USD');
+      ? formatCurrency(value * fxRate, 'SGD', 0)
+      : formatCurrency(value, 'USD', 0);
   };
 
   return (
@@ -249,8 +249,6 @@ function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdi
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Value</TableHead>
-                <TableHead className="text-right">Cost Basis</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Notes</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
@@ -272,16 +270,6 @@ function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdi
                     ) : (
                       displayValue(snapshot.totalValueUsd)
                     )}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {snapshot.totalCostBasis
-                      ? displayValue(snapshot.totalCostBasis)
-                      : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-xs px-2 py-1 rounded-full bg-muted">
-                      {snapshot.snapshotType}
-                    </span>
                   </TableCell>
                   <TableCell>
                     <span className={`flex items-center gap-1 text-xs ${

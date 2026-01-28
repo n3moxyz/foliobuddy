@@ -67,7 +67,7 @@ export function formatDate(date: Date | string | null | undefined): string {
 
   const d = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('en-GB', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -79,7 +79,7 @@ export function formatDateTime(date: Date | string | null | undefined): string {
 
   const d = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('en-GB', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

@@ -72,17 +72,25 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
       };
     });
 
-    // Append live data point if the last snapshot is not from today
+    // Handle live data: either append or replace today's $0 snapshot
     if (liveValueUsd && data.length > 0) {
       const lastPoint = data[data.length - 1];
       const lastDate = new Date(lastPoint.timestamp);
       const today = new Date();
-
-      // Check if last snapshot is from a different day
       const isSameDay = lastDate.toDateString() === today.toDateString();
+      const liveBaseValue = currency === 'SGD' ? liveValueUsd * fxRate : liveValueUsd;
 
-      if (!isSameDay) {
-        const liveBaseValue = currency === 'SGD' ? liveValueUsd * fxRate : liveValueUsd;
+      if (isSameDay && lastPoint.value === 0) {
+        // Replace today's $0 snapshot with live value
+        data[data.length - 1] = {
+          date: formatDate(today.toISOString()),
+          timestamp: today.toISOString(),
+          value: liveBaseValue * stakeMultiplier,
+          fullValue: liveBaseValue,
+          isLive: true,
+        };
+      } else if (!isSameDay) {
+        // Append live data point if no snapshot for today
         data.push({
           date: formatDate(today.toISOString()),
           timestamp: today.toISOString(),

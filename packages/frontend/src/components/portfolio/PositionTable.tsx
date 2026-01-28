@@ -94,6 +94,13 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
   };
 
+  // Smart decimal formatting: 3 digits or less = 2dp, 4+ digits = 0dp
+  const getSmartDecimals = (value: number | null | undefined): number => {
+    if (value === null || value === undefined) return 2;
+    const absValue = Math.abs(value);
+    return absValue < 1000 ? 2 : 0;
+  };
+
   // Split positions into CEX and Onchain sections
   const { cexPositions, onchainPositions } = useMemo(() => {
     const cex: Position[] = [];
@@ -164,13 +171,13 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
           {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
         </TableCell>
         <TableCell className="text-right font-mono text-sm">
-          {formatCurrency(convert(position.avgCostUsd), currency, 0)}
+          {formatCurrency(convert(position.avgCostUsd), currency, getSmartDecimals(convert(position.avgCostUsd)))}
         </TableCell>
         <TableCell className="text-right font-mono text-sm">
           {formatCurrency(convert(totalCost), currency, 0)}
         </TableCell>
         <TableCell className="text-right font-mono text-sm text-slate-500 dark:text-slate-400">
-          {formatCurrency(convert(position.asset.currentPriceUsd), currency, 0)}
+          {formatCurrency(convert(position.asset.currentPriceUsd), currency, getSmartDecimals(convert(position.asset.currentPriceUsd)))}
         </TableCell>
         <TableCell className="text-right font-mono text-sm font-medium">
           {formatCurrency(convert(position.marketValueUsd), currency, 0)}
@@ -388,13 +395,13 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Current Price</p>
                   <p className="font-mono font-medium text-slate-500 dark:text-slate-400">
-                    {formatCurrency(convert(viewPosition.asset.currentPriceUsd), currency, 0)}
+                    {formatCurrency(convert(viewPosition.asset.currentPriceUsd), currency, getSmartDecimals(convert(viewPosition.asset.currentPriceUsd)))}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Average Cost</p>
                   <p className="font-mono">
-                    {formatCurrency(convert(viewPosition.avgCostUsd), currency, 0)}
+                    {formatCurrency(convert(viewPosition.avgCostUsd), currency, getSmartDecimals(convert(viewPosition.avgCostUsd)))}
                   </p>
                 </div>
                 <div className="space-y-1">
