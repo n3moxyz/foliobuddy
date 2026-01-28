@@ -13,6 +13,7 @@ import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
 import Dashboard from './pages/Dashboard';
 import Portfolio from './pages/Portfolio';
 import Trades from './pages/Trades';
+import History from './pages/History';
 import Investors from './pages/Investors';
 import Settings from './pages/Settings';
 
@@ -33,6 +34,7 @@ function AuthenticatedApp() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/trades" element={<Trades />} />
+          <Route path="/history" element={<History />} />
           <Route path="/investors" element={<Investors />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

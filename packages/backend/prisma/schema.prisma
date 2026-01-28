@@ -140,12 +140,14 @@ model InvestorStake {
 
 // Snapshot model - for tracking portfolio value over time
 // snapshotType: DAILY | WEEKLY | MONTHLY
+// source: AUTOMATIC | MANUAL
 model Snapshot {
   id                String             @id @default(cuid())
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   timestamp         DateTime           @default(now())
   snapshotType      String             @default("DAILY")
+  source            String             @default("AUTOMATIC")
   totalValueUsd     Float
   totalValueSgd     Float?
   usdSgdRate        Float?

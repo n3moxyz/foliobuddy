@@ -6,15 +6,36 @@ import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
+// Validation schemas
+const createManualSnapshotSchema = z.object({
+  timestamp: z.string().transform((s) => new Date(s)),
+  snapshotType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).default('DAILY'),
+  totalValueUsd: z.number().positive(),
+  totalCostBasis: z.number().optional(),
+  notes: z.string().optional(),
+});
+
+const updateSnapshotSchema = z.object({
+  timestamp: z.string().transform((s) => new Date(s)).optional(),
+  snapshotType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).optional(),
+  totalValueUsd: z.number().positive().optional(),
+  totalCostBasis: z.number().optional(),
+  notes: z.string().optional(),
+});
+
 // GET /api/snapshots - Get all snapshots
 router.get('/', async (req, res, next) => {
   try {
-    const { type, from, to, limit } = req.query;
+    const { type, source, from, to, limit } = req.query;
 
     const where: any = { userId: req.userId! };
 
     if (type) {
       where.snapshotType = type;
+    }
+
+    if (source) {
+      where.source = source;
     }
 
     if (from || to) {
@@ -89,20 +110,79 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/snapshots - Create a new snapshot manually
+// POST /api/snapshots - Create a new snapshot
 router.post('/', async (req, res, next) => {
   try {
-    const { type } = req.body;
+    const { manual } = req.body;
 
-    const snapshotType = type || 'DAILY';
-    const snapshotId = await snapshotService.createSnapshot(req.userId!, snapshotType);
+    if (manual) {
+      // Manual snapshot with user-provided data
+      const parsed = createManualSnapshotSchema.parse(req.body);
 
-    const snapshot = await prisma.snapshot.findUnique({
-      where: { id: snapshotId },
-      include: { positions: true },
+      const snapshot = await prisma.snapshot.create({
+        data: {
+          userId: req.userId!,
+          timestamp: parsed.timestamp,
+          snapshotType: parsed.snapshotType,
+          source: 'MANUAL',
+          totalValueUsd: parsed.totalValueUsd,
+          totalCostBasis: parsed.totalCostBasis,
+          notes: parsed.notes,
+        },
+      });
+
+      res.status(201).json(snapshot);
+    } else {
+      // Automatic snapshot from current portfolio state
+      const { type } = req.body;
+      const snapshotType = type || 'DAILY';
+      const snapshotId = await snapshotService.createSnapshot(req.userId!, snapshotType);
+
+      const snapshot = await prisma.snapshot.findUnique({
+        where: { id: snapshotId },
+        include: { positions: true },
+      });
+
+      res.status(201).json(snapshot);
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /api/snapshots/:id - Update a snapshot
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Verify ownership
+    const existing = await prisma.snapshot.findFirst({
+      where: { id, userId: req.userId! },
     });
 
-    res.status(201).json(snapshot);
+    if (!existing) {
+      throw new AppError('Snapshot not found', 404);
+    }
+
+    const parsed = updateSnapshotSchema.parse(req.body);
+
+    // Only allow timestamp changes for manual snapshots
+    if (parsed.timestamp && existing.source === 'AUTOMATIC') {
+      throw new AppError('Cannot change timestamp of automatic snapshots', 400);
+    }
+
+    const snapshot = await prisma.snapshot.update({
+      where: { id },
+      data: {
+        ...(parsed.timestamp && { timestamp: parsed.timestamp }),
+        ...(parsed.snapshotType && { snapshotType: parsed.snapshotType }),
+        ...(parsed.totalValueUsd !== undefined && { totalValueUsd: parsed.totalValueUsd }),
+        ...(parsed.totalCostBasis !== undefined && { totalCostBasis: parsed.totalCostBasis }),
+        ...(parsed.notes !== undefined && { notes: parsed.notes }),
+      },
+    });
+
+    res.json(snapshot);
   } catch (error) {
     next(error);
   }
@@ -111,8 +191,19 @@ router.post('/', async (req, res, next) => {
 // DELETE /api/snapshots/:id - Delete a snapshot
 router.delete('/:id', async (req, res, next) => {
   try {
+    const { id } = req.params;
+
+    // Verify ownership
+    const existing = await prisma.snapshot.findFirst({
+      where: { id, userId: req.userId! },
+    });
+
+    if (!existing) {
+      throw new AppError('Snapshot not found', 404);
+    }
+
     await prisma.snapshot.delete({
-      where: { id: req.params.id },
+      where: { id },
     });
 
     res.status(204).send();

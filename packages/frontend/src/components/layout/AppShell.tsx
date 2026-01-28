@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  History,
 } from 'lucide-react';
 import { UserButton } from '@clerk/clerk-react';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, shortcut: 'D' },
   { name: 'Portfolio', href: '/portfolio', icon: Wallet, shortcut: 'P' },
   { name: 'Trades', href: '/trades', icon: TrendingUp, shortcut: 'T' },
+  { name: 'History', href: '/history', icon: History, shortcut: 'H' },
   { name: 'Investors', href: '/investors', icon: Users, shortcut: 'I' },
   { name: 'Settings', href: '/settings', icon: Settings, shortcut: 'S' },
 ];

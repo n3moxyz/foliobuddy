@@ -185,7 +185,12 @@ export default function Dashboard() {
       </div>
 
       {/* Portfolio Value Chart */}
-      <PortfolioChart currency={currency} fxRate={fxRate} stakeMultiplier={stakeMultiplier} />
+      <PortfolioChart
+        currency={currency}
+        fxRate={fxRate}
+        stakeMultiplier={stakeMultiplier}
+        liveValueUsd={summary?.totalValueUsd}
+      />
 
       {/* Allocation Charts */}
       {positions && (

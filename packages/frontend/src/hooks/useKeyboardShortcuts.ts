@@ -16,6 +16,7 @@ export function useKeyboardShortcuts({ onShowHelp }: UseKeyboardShortcutsOptions
   useHotkeys('d', () => navigate('/'), options);
   useHotkeys('p', () => navigate('/portfolio'), options);
   useHotkeys('t', () => navigate('/trades'), options);
+  useHotkeys('h', () => navigate('/history'), options);
   useHotkeys('i', () => navigate('/investors'), options);
   useHotkeys('s', () => navigate('/settings'), options);
 
@@ -30,6 +31,7 @@ export const shortcuts = [
   { key: 'D', description: 'Go to Dashboard' },
   { key: 'P', description: 'Go to Portfolio' },
   { key: 'T', description: 'Go to Trades' },
+  { key: 'H', description: 'Go to History' },
   { key: 'I', description: 'Go to Investors' },
   { key: 'S', description: 'Go to Settings' },
   { key: '/', description: 'Toggle theme' },

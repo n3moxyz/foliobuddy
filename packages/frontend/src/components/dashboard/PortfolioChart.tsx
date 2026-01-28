@@ -19,6 +19,7 @@ interface PortfolioChartProps {
   currency?: 'USD' | 'SGD';
   fxRate?: number;
   stakeMultiplier?: number;
+  liveValueUsd?: number;
 }
 
 function getDateRange(period: TimePeriod): { from?: string; to?: string; days?: number } {
@@ -47,7 +48,7 @@ function getDateRange(period: TimePeriod): { from?: string; to?: string; days?: 
   }
 }
 
-export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier = 1 }: PortfolioChartProps) {
+export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier = 1, liveValueUsd }: PortfolioChartProps) {
   const [period, setPeriod] = useState<TimePeriod>('1M');
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
@@ -57,7 +58,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
   const chartData = useMemo(() => {
     if (!performanceData || performanceData.length === 0) return [];
 
-    return performanceData.map((point) => {
+    const data = performanceData.map((point) => {
       const baseValue = currency === 'SGD'
         ? (point.totalValueSgd ?? point.totalValueUsd * fxRate)
         : point.totalValueUsd;
@@ -67,9 +68,33 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
         timestamp: point.timestamp,
         value: baseValue * stakeMultiplier,
         fullValue: baseValue,
+        isLive: false,
       };
     });
-  }, [performanceData, stakeMultiplier, currency, fxRate]);
+
+    // Append live data point if the last snapshot is not from today
+    if (liveValueUsd && data.length > 0) {
+      const lastPoint = data[data.length - 1];
+      const lastDate = new Date(lastPoint.timestamp);
+      const today = new Date();
+
+      // Check if last snapshot is from a different day
+      const isSameDay = lastDate.toDateString() === today.toDateString();
+
+      if (!isSameDay) {
+        const liveBaseValue = currency === 'SGD' ? liveValueUsd * fxRate : liveValueUsd;
+        data.push({
+          date: formatDate(today.toISOString()),
+          timestamp: today.toISOString(),
+          value: liveBaseValue * stakeMultiplier,
+          fullValue: liveBaseValue,
+          isLive: true,
+        });
+      }
+    }
+
+    return data;
+  }, [performanceData, stakeMultiplier, currency, fxRate, liveValueUsd]);
 
   // Calculate change from first to last point
   const valueChange = useMemo(() => {
@@ -157,7 +182,10 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
                   const data = payload[0].payload;
                   return (
                     <div className="rounded-lg border bg-background p-3 shadow-md">
-                      <p className="text-xs text-muted-foreground mb-1">{data.date}</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {data.date}
+                        {data.isLive && <span className="ml-1 text-green-600">(Live)</span>}
+                      </p>
                       <p className="font-mono font-medium">
                         {formatCurrency(data.value, currency, 0)}
                       </p>
