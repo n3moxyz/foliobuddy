@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { PrismaClient } from '@prisma/client';
-import * as fs from 'fs';
 import * as path from 'path';
 
 type AssetCategory = 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
@@ -148,36 +147,78 @@ function parseCategory(value: string): AssetCategory {
   return 'LIQUID_CRYPTO';
 }
 
+function getCellValue(row: ExcelJS.Row, colIndex: number): any {
+  const cell = row.getCell(colIndex);
+  if (cell.value === null || cell.value === undefined) return null;
+
+  // Handle rich text
+  if (typeof cell.value === 'object' && 'richText' in cell.value) {
+    return (cell.value as ExcelJS.CellRichTextValue).richText.map(rt => rt.text).join('');
+  }
+
+  // Handle formula results
+  if (typeof cell.value === 'object' && 'result' in cell.value) {
+    return (cell.value as ExcelJS.CellFormulaValue).result;
+  }
+
+  return cell.value;
+}
+
+function parseDate(value: any): Date | null {
+  if (!value) return null;
+
+  // ExcelJS automatically converts Excel dates to JavaScript Date objects
+  if (value instanceof Date) {
+    return value;
+  }
+
+  // Handle string dates
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  // Handle Excel serial date numbers (days since 1900-01-01)
+  if (typeof value === 'number') {
+    // Excel's epoch is January 1, 1900, but there's a leap year bug
+    const excelEpoch = new Date(1899, 11, 30);
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    return new Date(excelEpoch.getTime() + value * millisecondsPerDay);
+  }
+
+  return null;
+}
+
 async function importPositions(
-  workbook: XLSX.WorkBook,
+  workbook: ExcelJS.Workbook,
   sheetName: string,
   startRow: number,
   endRow: number
 ): Promise<{ count: number; errors: string[] }> {
-  const sheet = workbook.Sheets[sheetName];
+  const sheet = workbook.getWorksheet(sheetName);
   if (!sheet) {
     return { count: 0, errors: [`Sheet '${sheetName}' not found`] };
   }
 
-  const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
   let count = 0;
   const errors: string[] = [];
 
-  for (let i = startRow - 1; i < Math.min(endRow, data.length); i++) {
-    const row = data[i];
-    if (!row || !row[0]) continue;
+  for (let i = startRow; i <= Math.min(endRow, sheet.rowCount); i++) {
+    const row = sheet.getRow(i);
+    const firstCell = getCellValue(row, 1);
+    if (!firstCell) continue;
 
     try {
-      // Assuming columns: Symbol, Name, Quantity, Avg Cost, Storage Type, Storage Location
-      const symbol = String(row[0] || '').trim();
+      // Assuming columns: Symbol, Name, Quantity, Avg Cost, Storage Type, Storage Location, Category
+      const symbol = String(firstCell).trim();
       if (!symbol) continue;
 
-      const name = String(row[1] || symbol);
-      const quantity = parseFloat(row[2]) || 0;
-      const avgCost = parseFloat(row[3]) || 0;
-      const storageTypeStr = String(row[4] || 'WALLET');
-      const storageLocation = row[5] ? String(row[5]) : null;
-      const categoryStr = String(row[6] || 'LIQUID_CRYPTO');
+      const name = String(getCellValue(row, 2) || symbol);
+      const quantity = parseFloat(getCellValue(row, 3)) || 0;
+      const avgCost = parseFloat(getCellValue(row, 4)) || 0;
+      const storageTypeStr = String(getCellValue(row, 5) || 'WALLET');
+      const storageLocation = getCellValue(row, 6) ? String(getCellValue(row, 6)) : null;
+      const categoryStr = String(getCellValue(row, 7) || 'LIQUID_CRYPTO');
 
       if (quantity <= 0) continue;
 
@@ -199,7 +240,7 @@ async function importPositions(
 
       count++;
     } catch (error) {
-      errors.push(`Row ${i + 1}: ${error}`);
+      errors.push(`Row ${i}: ${error}`);
     }
   }
 
@@ -207,56 +248,42 @@ async function importPositions(
 }
 
 async function importTrades(
-  workbook: XLSX.WorkBook,
+  workbook: ExcelJS.Workbook,
   sheetName: string,
   startRow: number
 ): Promise<{ count: number; errors: string[] }> {
-  const sheet = workbook.Sheets[sheetName];
+  const sheet = workbook.getWorksheet(sheetName);
   if (!sheet) {
     return { count: 0, errors: [`Sheet '${sheetName}' not found`] };
   }
 
-  const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
   let count = 0;
   const errors: string[] = [];
 
-  for (let i = startRow - 1; i < data.length; i++) {
-    const row = data[i];
-    if (!row || !row[0]) continue;
+  for (let i = startRow; i <= sheet.rowCount; i++) {
+    const row = sheet.getRow(i);
+    const firstCell = getCellValue(row, 1);
+    if (!firstCell) continue;
 
     try {
       // Assuming columns: Asset, Direction, Entry Date, Exit Date, Entry Price, Exit Price, Quantity, Notes
-      const symbol = String(row[0] || '').trim();
+      const symbol = String(firstCell).trim();
       if (!symbol) continue;
 
-      const direction = String(row[1] || 'LONG').toUpperCase().includes('SHORT') ? 'SHORT' : 'LONG';
-      const entryDateRaw = row[2];
-      const exitDateRaw = row[3];
-      const entryPrice = parseFloat(row[4]) || 0;
-      const exitPrice = row[5] ? parseFloat(row[5]) : null;
-      const quantity = parseFloat(row[6]) || 0;
-      const notes = row[7] ? String(row[7]) : null;
+      const direction = String(getCellValue(row, 2) || 'LONG').toUpperCase().includes('SHORT') ? 'SHORT' : 'LONG';
+      const entryDateRaw = getCellValue(row, 3);
+      const exitDateRaw = getCellValue(row, 4);
+      const entryPrice = parseFloat(getCellValue(row, 5)) || 0;
+      const exitPrice = getCellValue(row, 6) ? parseFloat(getCellValue(row, 6)) : null;
+      const quantity = parseFloat(getCellValue(row, 7)) || 0;
+      const notes = getCellValue(row, 8) ? String(getCellValue(row, 8)) : null;
 
       if (!entryPrice || !quantity) continue;
 
-      // Parse dates (Excel dates are numbers)
-      let entryDate: Date;
-      if (typeof entryDateRaw === 'number') {
-        const parsedEntry = XLSX.SSF.parse_date_code(entryDateRaw);
-        entryDate = new Date(parsedEntry.y, parsedEntry.m - 1, parsedEntry.d);
-      } else {
-        entryDate = new Date(entryDateRaw);
-      }
+      const entryDate = parseDate(entryDateRaw);
+      if (!entryDate) continue;
 
-      let exitDate: Date | null = null;
-      if (exitDateRaw) {
-        if (typeof exitDateRaw === 'number') {
-          const parsed = XLSX.SSF.parse_date_code(exitDateRaw);
-          exitDate = new Date(parsed.y, parsed.m - 1, parsed.d);
-        } else {
-          exitDate = new Date(exitDateRaw);
-        }
-      }
+      const exitDate = parseDate(exitDateRaw);
 
       const assetId = await getOrCreateAsset(symbol);
 
@@ -296,7 +323,7 @@ async function importTrades(
 
       count++;
     } catch (error) {
-      errors.push(`Row ${i + 1}: ${error}`);
+      errors.push(`Row ${i}: ${error}`);
     }
   }
 
@@ -304,44 +331,39 @@ async function importTrades(
 }
 
 async function importSnapshots(
-  workbook: XLSX.WorkBook,
+  workbook: ExcelJS.Workbook,
   sheetName: string,
   startRow: number,
   endRow: number,
   snapshotType: SnapshotType
 ): Promise<{ count: number; errors: string[] }> {
-  const sheet = workbook.Sheets[sheetName];
+  const sheet = workbook.getWorksheet(sheetName);
   if (!sheet) {
     return { count: 0, errors: [`Sheet '${sheetName}' not found`] };
   }
 
-  const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
   let count = 0;
   const errors: string[] = [];
 
-  for (let i = startRow - 1; i < Math.min(endRow, data.length); i++) {
-    const row = data[i];
-    if (!row || !row[0]) continue;
+  for (let i = startRow; i <= Math.min(endRow, sheet.rowCount); i++) {
+    const row = sheet.getRow(i);
+    const firstCell = getCellValue(row, 1);
+    if (!firstCell) continue;
 
     try {
       // Assuming columns: Date, Total USD, Total SGD, Monthly Return, YTD Return, BTC Outperform, ETH Outperform
-      const dateRaw = row[0];
-      const totalUsd = parseFloat(row[1]) || 0;
-      const totalSgd = row[2] ? parseFloat(row[2]) : null;
-      const monthlyReturn = row[3] ? parseFloat(row[3]) : null;
-      const ytdReturn = row[4] ? parseFloat(row[4]) : null;
-      const btcOutperform = row[5] ? parseFloat(row[5]) : null;
-      const ethOutperform = row[6] ? parseFloat(row[6]) : null;
+      const dateRaw = firstCell;
+      const totalUsd = parseFloat(getCellValue(row, 2)) || 0;
+      const totalSgd = getCellValue(row, 3) ? parseFloat(getCellValue(row, 3)) : null;
+      const monthlyReturn = getCellValue(row, 4) ? parseFloat(getCellValue(row, 4)) : null;
+      const ytdReturn = getCellValue(row, 5) ? parseFloat(getCellValue(row, 5)) : null;
+      const btcOutperform = getCellValue(row, 6) ? parseFloat(getCellValue(row, 6)) : null;
+      const ethOutperform = getCellValue(row, 7) ? parseFloat(getCellValue(row, 7)) : null;
 
       if (!totalUsd) continue;
 
-      let timestamp: Date;
-      if (typeof dateRaw === 'number') {
-        const parsed = XLSX.SSF.parse_date_code(dateRaw);
-        timestamp = new Date(parsed.y, parsed.m - 1, parsed.d);
-      } else {
-        timestamp = new Date(dateRaw);
-      }
+      const timestamp = parseDate(dateRaw);
+      if (!timestamp) continue;
 
       await prisma.snapshot.create({
         data: {
@@ -359,7 +381,7 @@ async function importSnapshots(
 
       count++;
     } catch (error) {
-      errors.push(`Row ${i + 1}: ${error}`);
+      errors.push(`Row ${i}: ${error}`);
     }
   }
 
@@ -367,31 +389,31 @@ async function importSnapshots(
 }
 
 async function importInvestors(
-  workbook: XLSX.WorkBook,
+  workbook: ExcelJS.Workbook,
   sheetName: string,
   startRow: number,
   endRow: number
 ): Promise<{ count: number; errors: string[] }> {
-  const sheet = workbook.Sheets[sheetName];
+  const sheet = workbook.getWorksheet(sheetName);
   if (!sheet) {
     return { count: 0, errors: [`Sheet '${sheetName}' not found`] };
   }
 
-  const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
   let count = 0;
   const errors: string[] = [];
 
-  for (let i = startRow - 1; i < Math.min(endRow, data.length); i++) {
-    const row = data[i];
-    if (!row || !row[0]) continue;
+  for (let i = startRow; i <= Math.min(endRow, sheet.rowCount); i++) {
+    const row = sheet.getRow(i);
+    const firstCell = getCellValue(row, 1);
+    if (!firstCell) continue;
 
     try {
       // Assuming columns: Name, Stake %, Initial Capital
-      const name = String(row[0] || '').trim();
+      const name = String(firstCell).trim();
       if (!name) continue;
 
-      const stakePercentage = parseFloat(row[1]) || 0;
-      const initialCapital = parseFloat(row[2]) || 0;
+      const stakePercentage = parseFloat(getCellValue(row, 2)) || 0;
+      const initialCapital = parseFloat(getCellValue(row, 3)) || 0;
 
       await prisma.investor.create({
         data: {
@@ -404,7 +426,7 @@ async function importInvestors(
 
       count++;
     } catch (error) {
-      errors.push(`Row ${i + 1}: ${error}`);
+      errors.push(`Row ${i}: ${error}`);
     }
   }
 
@@ -421,15 +443,17 @@ async function importFromExcel(filePath: string): Promise<ImportResult> {
     errors: [],
   };
 
-  if (!fs.existsSync(filePath)) {
-    result.errors.push(`File not found: ${filePath}`);
+  console.log(`Importing from: ${filePath}`);
+
+  const workbook = new ExcelJS.Workbook();
+  try {
+    await workbook.xlsx.readFile(filePath);
+  } catch (err) {
+    result.errors.push(`Failed to read file: ${err}`);
     return result;
   }
 
-  console.log(`Importing from: ${filePath}`);
-  const workbook = XLSX.readFile(filePath);
-
-  console.log('Available sheets:', workbook.SheetNames);
+  console.log('Available sheets:', workbook.worksheets.map(ws => ws.name));
 
   await ensureDefaultUser();
 

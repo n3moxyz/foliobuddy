@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { prisma } from '../index.js';
 import { portfolioService } from '../services/portfolioService.js';
 
@@ -14,22 +14,37 @@ router.get('/csv/positions', async (req, res, next) => {
       orderBy: { marketValueUsd: 'desc' },
     });
 
-    const csvData = positions.map(p => ({
-      Symbol: p.asset.symbol,
-      Name: p.asset.name,
-      Category: p.asset.category,
-      Quantity: p.quantity,
-      'Avg Cost (USD)': p.avgCostUsd,
-      'Current Price (USD)': p.asset.currentPriceUsd ?? '',
-      'Market Value (USD)': p.marketValueUsd ?? '',
-      'Unrealized P&L': p.unrealizedPnL ?? '',
-      'P&L %': p.unrealizedPnLPct ? `${p.unrealizedPnLPct.toFixed(2)}%` : '',
-      'Storage Type': p.storageType,
-      'Storage Location': p.storageLocation ?? '',
-    }));
+    const headers = [
+      'Symbol',
+      'Name',
+      'Category',
+      'Quantity',
+      'Avg Cost (USD)',
+      'Current Price (USD)',
+      'Market Value (USD)',
+      'Unrealized P&L',
+      'P&L %',
+      'Storage Type',
+      'Storage Location',
+    ];
 
-    const ws = XLSX.utils.json_to_sheet(csvData);
-    const csv = XLSX.utils.sheet_to_csv(ws);
+    const rows = positions.map(p => [
+      p.asset.symbol,
+      p.asset.name,
+      p.asset.category,
+      p.quantity,
+      p.avgCostUsd,
+      p.asset.currentPriceUsd ?? '',
+      p.marketValueUsd ?? '',
+      p.unrealizedPnL ?? '',
+      p.unrealizedPnLPct ? `${p.unrealizedPnLPct.toFixed(2)}%` : '',
+      p.storageType,
+      p.storageLocation ?? '',
+    ]);
+
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=positions.csv');
@@ -58,23 +73,39 @@ router.get('/csv/trades', async (req, res, next) => {
       orderBy: { entryDate: 'desc' },
     });
 
-    const csvData = trades.map(t => ({
-      Asset: t.asset.symbol,
-      Direction: t.direction,
-      Status: t.status,
-      'Entry Date': t.entryDate.toISOString().split('T')[0],
-      'Exit Date': t.exitDate?.toISOString().split('T')[0] ?? '',
-      'Entry Price': t.entryPrice,
-      'Exit Price': t.exitPrice ?? '',
-      Quantity: t.quantity,
-      'Position Size (USD)': t.positionSizeUsd,
-      'Realized P&L': t.realizedPnL ?? '',
-      'P&L %': t.realizedPnLPct ? `${t.realizedPnLPct.toFixed(2)}%` : '',
-      Notes: t.notes ?? '',
-    }));
+    const headers = [
+      'Asset',
+      'Direction',
+      'Status',
+      'Entry Date',
+      'Exit Date',
+      'Entry Price',
+      'Exit Price',
+      'Quantity',
+      'Position Size (USD)',
+      'Realized P&L',
+      'P&L %',
+      'Notes',
+    ];
 
-    const ws = XLSX.utils.json_to_sheet(csvData);
-    const csv = XLSX.utils.sheet_to_csv(ws);
+    const rows = trades.map(t => [
+      t.asset.symbol,
+      t.direction,
+      t.status,
+      t.entryDate.toISOString().split('T')[0],
+      t.exitDate?.toISOString().split('T')[0] ?? '',
+      t.entryPrice,
+      t.exitPrice ?? '',
+      t.quantity,
+      t.positionSizeUsd,
+      t.realizedPnL ?? '',
+      t.realizedPnLPct ? `${t.realizedPnLPct.toFixed(2)}%` : '',
+      t.notes ?? '',
+    ]);
+
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=trades.csv');
@@ -111,89 +142,140 @@ router.get('/excel', async (req, res, next) => {
     ]);
 
     // Create workbook
-    const wb = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Portfolio Dashboard';
+    workbook.created = new Date();
 
     // Summary sheet
-    const summaryData = [
-      ['Portfolio Summary'],
-      [''],
-      ['Total Value (USD)', summary.totalValueUsd],
-      ['Total Value (SGD)', summary.totalValueSgd],
-      ['Total Cost Basis', summary.totalCostBasis],
-      ['Unrealized P&L', summary.unrealizedPnL],
-      ['P&L %', `${summary.unrealizedPnLPct.toFixed(2)}%`],
-      ['Position Count', summary.positionCount],
-      ['Last Updated', summary.lastUpdated.toISOString()],
-    ];
-    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+    const summarySheet = workbook.addWorksheet('Summary');
+    summarySheet.addRow(['Portfolio Summary']);
+    summarySheet.addRow([]);
+    summarySheet.addRow(['Total Value (USD)', summary.totalValueUsd]);
+    summarySheet.addRow(['Total Value (SGD)', summary.totalValueSgd]);
+    summarySheet.addRow(['Total Cost Basis', summary.totalCostBasis]);
+    summarySheet.addRow(['Unrealized P&L', summary.unrealizedPnL]);
+    summarySheet.addRow(['P&L %', `${summary.unrealizedPnLPct.toFixed(2)}%`]);
+    summarySheet.addRow(['Position Count', summary.positionCount]);
+    summarySheet.addRow(['Last Updated', summary.lastUpdated.toISOString()]);
 
     // Positions sheet
-    const positionsData = positions.map(p => ({
-      Symbol: p.asset.symbol,
-      Name: p.asset.name,
-      Category: p.asset.category,
-      Quantity: p.quantity,
-      'Avg Cost': p.avgCostUsd,
-      'Current Price': p.asset.currentPriceUsd ?? 0,
-      'Market Value': p.marketValueUsd ?? 0,
-      'Unrealized P&L': p.unrealizedPnL ?? 0,
-      'P&L %': p.unrealizedPnLPct ?? 0,
-      Storage: p.storageType,
-      Location: p.storageLocation ?? '',
-    }));
-    const positionsWs = XLSX.utils.json_to_sheet(positionsData);
-    XLSX.utils.book_append_sheet(wb, positionsWs, 'Positions');
+    const positionsSheet = workbook.addWorksheet('Positions');
+    positionsSheet.columns = [
+      { header: 'Symbol', key: 'symbol', width: 10 },
+      { header: 'Name', key: 'name', width: 20 },
+      { header: 'Category', key: 'category', width: 15 },
+      { header: 'Quantity', key: 'quantity', width: 15 },
+      { header: 'Avg Cost', key: 'avgCost', width: 12 },
+      { header: 'Current Price', key: 'currentPrice', width: 15 },
+      { header: 'Market Value', key: 'marketValue', width: 15 },
+      { header: 'Unrealized P&L', key: 'unrealizedPnL', width: 15 },
+      { header: 'P&L %', key: 'pnlPct', width: 10 },
+      { header: 'Storage', key: 'storage', width: 10 },
+      { header: 'Location', key: 'location', width: 20 },
+    ];
+    positions.forEach(p => {
+      positionsSheet.addRow({
+        symbol: p.asset.symbol,
+        name: p.asset.name,
+        category: p.asset.category,
+        quantity: p.quantity,
+        avgCost: p.avgCostUsd,
+        currentPrice: p.asset.currentPriceUsd ?? 0,
+        marketValue: p.marketValueUsd ?? 0,
+        unrealizedPnL: p.unrealizedPnL ?? 0,
+        pnlPct: p.unrealizedPnLPct ?? 0,
+        storage: p.storageType,
+        location: p.storageLocation ?? '',
+      });
+    });
 
     // Trades sheet
-    const tradesData = trades.map(t => ({
-      Asset: t.asset.symbol,
-      Direction: t.direction,
-      Status: t.status,
-      'Entry Date': t.entryDate,
-      'Exit Date': t.exitDate ?? '',
-      'Entry Price': t.entryPrice,
-      'Exit Price': t.exitPrice ?? '',
-      Quantity: t.quantity,
-      'Position Size': t.positionSizeUsd,
-      'Realized P&L': t.realizedPnL ?? '',
-      'P&L %': t.realizedPnLPct ?? '',
-      Notes: t.notes ?? '',
-    }));
-    const tradesWs = XLSX.utils.json_to_sheet(tradesData);
-    XLSX.utils.book_append_sheet(wb, tradesWs, 'Trades');
+    const tradesSheet = workbook.addWorksheet('Trades');
+    tradesSheet.columns = [
+      { header: 'Asset', key: 'asset', width: 10 },
+      { header: 'Direction', key: 'direction', width: 10 },
+      { header: 'Status', key: 'status', width: 10 },
+      { header: 'Entry Date', key: 'entryDate', width: 12 },
+      { header: 'Exit Date', key: 'exitDate', width: 12 },
+      { header: 'Entry Price', key: 'entryPrice', width: 12 },
+      { header: 'Exit Price', key: 'exitPrice', width: 12 },
+      { header: 'Quantity', key: 'quantity', width: 12 },
+      { header: 'Position Size', key: 'positionSize', width: 15 },
+      { header: 'Realized P&L', key: 'realizedPnL', width: 12 },
+      { header: 'P&L %', key: 'pnlPct', width: 10 },
+      { header: 'Notes', key: 'notes', width: 30 },
+    ];
+    trades.forEach(t => {
+      tradesSheet.addRow({
+        asset: t.asset.symbol,
+        direction: t.direction,
+        status: t.status,
+        entryDate: t.entryDate,
+        exitDate: t.exitDate ?? '',
+        entryPrice: t.entryPrice,
+        exitPrice: t.exitPrice ?? '',
+        quantity: t.quantity,
+        positionSize: t.positionSizeUsd,
+        realizedPnL: t.realizedPnL ?? '',
+        pnlPct: t.realizedPnLPct ?? '',
+        notes: t.notes ?? '',
+      });
+    });
 
     // Investors sheet
-    const investorsData = investors.map(i => ({
-      Name: i.name,
-      'Stake %': i.stakePercentage,
-      'Initial Capital': i.initialCapital,
-      'Current Value': i.currentValue ?? 0,
-      'Total Return': i.totalReturn ?? 0,
-      'Return %': i.totalReturnPct ?? 0,
-      'Join Date': i.joinDate,
-    }));
-    const investorsWs = XLSX.utils.json_to_sheet(investorsData);
-    XLSX.utils.book_append_sheet(wb, investorsWs, 'Investors');
+    const investorsSheet = workbook.addWorksheet('Investors');
+    investorsSheet.columns = [
+      { header: 'Name', key: 'name', width: 20 },
+      { header: 'Stake %', key: 'stakePct', width: 10 },
+      { header: 'Initial Capital', key: 'initialCapital', width: 15 },
+      { header: 'Current Value', key: 'currentValue', width: 15 },
+      { header: 'Total Return', key: 'totalReturn', width: 15 },
+      { header: 'Return %', key: 'returnPct', width: 10 },
+      { header: 'Join Date', key: 'joinDate', width: 12 },
+    ];
+    investors.forEach(i => {
+      investorsSheet.addRow({
+        name: i.name,
+        stakePct: i.stakePercentage,
+        initialCapital: i.initialCapital,
+        currentValue: i.currentValue ?? 0,
+        totalReturn: i.totalReturn ?? 0,
+        returnPct: i.totalReturnPct ?? 0,
+        joinDate: i.joinDate,
+      });
+    });
 
     // Snapshots sheet
-    const snapshotsData = snapshots.map(s => ({
-      Date: s.timestamp,
-      Type: s.snapshotType,
-      'Total USD': s.totalValueUsd,
-      'Total SGD': s.totalValueSgd ?? '',
-      'Daily Return': s.dailyReturn ?? '',
-      'Weekly Return': s.weeklyReturn ?? '',
-      'Monthly Return': s.monthlyReturn ?? '',
-      'YTD Return': s.ytdReturn ?? '',
-      'BTC Outperform': s.btcOutperform ?? '',
-      'ETH Outperform': s.ethOutperform ?? '',
-    }));
-    const snapshotsWs = XLSX.utils.json_to_sheet(snapshotsData);
-    XLSX.utils.book_append_sheet(wb, snapshotsWs, 'History');
+    const snapshotsSheet = workbook.addWorksheet('History');
+    snapshotsSheet.columns = [
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Type', key: 'type', width: 10 },
+      { header: 'Total USD', key: 'totalUsd', width: 15 },
+      { header: 'Total SGD', key: 'totalSgd', width: 15 },
+      { header: 'Daily Return', key: 'dailyReturn', width: 12 },
+      { header: 'Weekly Return', key: 'weeklyReturn', width: 12 },
+      { header: 'Monthly Return', key: 'monthlyReturn', width: 15 },
+      { header: 'YTD Return', key: 'ytdReturn', width: 12 },
+      { header: 'BTC Outperform', key: 'btcOutperform', width: 15 },
+      { header: 'ETH Outperform', key: 'ethOutperform', width: 15 },
+    ];
+    snapshots.forEach(s => {
+      snapshotsSheet.addRow({
+        date: s.timestamp,
+        type: s.snapshotType,
+        totalUsd: s.totalValueUsd,
+        totalSgd: s.totalValueSgd ?? '',
+        dailyReturn: s.dailyReturn ?? '',
+        weeklyReturn: s.weeklyReturn ?? '',
+        monthlyReturn: s.monthlyReturn ?? '',
+        ytdReturn: s.ytdReturn ?? '',
+        btcOutperform: s.btcOutperform ?? '',
+        ethOutperform: s.ethOutperform ?? '',
+      });
+    });
 
     // Write to buffer
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const buffer = await workbook.xlsx.writeBuffer();
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=portfolio_${new Date().toISOString().split('T')[0]}.xlsx`);
