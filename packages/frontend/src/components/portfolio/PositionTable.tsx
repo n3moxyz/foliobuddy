@@ -185,7 +185,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
             </p>
           </div>
         </TableCell>
-        <TableCell>
+        <TableCell className="text-right">
           <div className="truncate">
             <p className="text-sm">
               {STORAGE_TYPE_LABELS[position.storageType] || position.storageType}
@@ -198,35 +198,35 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
           </div>
         </TableCell>
         <TableCell onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-end gap-0">
+          <div className="flex items-center justify-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-8 w-8"
               onClick={(e) => handleCopy(position, e)}
               title="Copy position"
             >
               {copiedId === position.id ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
+                <Check className="h-4 w-4 text-green-500" />
               ) : (
-                <Copy className="h-3.5 w-3.5" />
+                <Copy className="h-4 w-4" />
               )}
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-8 w-8"
               onClick={() => setEditPosition(position)}
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-8 w-8"
               onClick={() => handleDeleteClick(position)}
             >
-              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           </div>
         </TableCell>
@@ -238,15 +238,15 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
   const renderTableHeader = () => (
     <TableHeader>
       <TableRow>
-        <TableHead style={{width: '12%'}}>Asset</TableHead>
-        <TableHead style={{width: '10%'}} className="text-right">Quantity</TableHead>
-        <TableHead style={{width: '11%'}} className="text-right">Avg Cost</TableHead>
+        <TableHead style={{width: '9%'}}>Asset</TableHead>
+        <TableHead style={{width: '12%'}} className="text-right">Quantity</TableHead>
+        <TableHead style={{width: '10%'}} className="text-right">Avg Cost</TableHead>
         <TableHead style={{width: '12%'}} className="text-right">Total Cost</TableHead>
-        <TableHead style={{width: '11%'}} className="text-right">Price</TableHead>
+        <TableHead style={{width: '10%'}} className="text-right">Price</TableHead>
         <TableHead style={{width: '12%'}} className="text-right">Value</TableHead>
-        <TableHead style={{width: '12%'}} className="text-right">P&L</TableHead>
-        <TableHead style={{width: '12%'}}>Storage</TableHead>
-        <TableHead style={{width: '8%'}} className="text-right">Actions</TableHead>
+        <TableHead style={{width: '11%'}} className="text-right">P&L</TableHead>
+        <TableHead style={{width: '9%'}} className="text-right">Storage</TableHead>
+        <TableHead style={{width: '15%'}} className="text-center">Actions</TableHead>
       </TableRow>
     </TableHeader>
   );
