@@ -250,4 +250,121 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
+// Bulk import schema
+const bulkImportPositionSchema = z.object({
+  asset: z.object({
+    coingeckoId: z.string().nullable().optional(),
+    symbol: z.string().min(1),
+    name: z.string().min(1),
+    category: z.enum(['LIQUID_CRYPTO', 'STABLECOIN', 'NFT', 'ANGEL', 'CASH']).default('LIQUID_CRYPTO'),
+  }),
+  quantity: z.number().positive(),
+  avgCostUsd: z.number().min(0).default(0),
+  storageType: z.enum(['WALLET', 'CEX', 'DEFI', 'BANK']).default('CEX'),
+  storageLocation: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+const bulkImportSchema = z.object({
+  positions: z.array(bulkImportPositionSchema),
+});
+
+// POST /api/positions/bulk - Bulk import positions
+router.post('/bulk', async (req, res, next) => {
+  try {
+    const userId = req.userId!;
+    const { positions } = bulkImportSchema.parse(req.body);
+
+    const results: Array<{ success: boolean; symbol: string; error?: string }> = [];
+
+    // Get all existing assets once
+    const existingAssets = await prisma.asset.findMany();
+    const assetMap = new Map(existingAssets.map(a => [a.symbol.toUpperCase(), a]));
+    const coingeckoMap = new Map(
+      existingAssets.filter(a => a.coingeckoId).map(a => [a.coingeckoId!, a])
+    );
+
+    // Process all positions
+    for (const pos of positions) {
+      try {
+        // Find existing asset by coingeckoId or symbol
+        let asset = (pos.asset.coingeckoId && coingeckoMap.get(pos.asset.coingeckoId)) ||
+                    assetMap.get(pos.asset.symbol.toUpperCase());
+
+        // Create asset if it doesn't exist
+        if (!asset) {
+          asset = await prisma.asset.create({
+            data: {
+              coingeckoId: pos.asset.coingeckoId || null,
+              symbol: pos.asset.symbol.toUpperCase(),
+              name: pos.asset.name,
+              category: pos.asset.category,
+              currentPriceUsd: null,
+            },
+          });
+          // Add to maps for subsequent positions
+          assetMap.set(asset.symbol.toUpperCase(), asset);
+          if (asset.coingeckoId) {
+            coingeckoMap.set(asset.coingeckoId, asset);
+          }
+        }
+
+        // Calculate market value if asset has price
+        const marketValueUsd = asset.currentPriceUsd
+          ? pos.quantity * asset.currentPriceUsd
+          : null;
+        const costBasis = pos.quantity * pos.avgCostUsd;
+        const unrealizedPnL = marketValueUsd !== null ? marketValueUsd - costBasis : null;
+        const unrealizedPnLPct = costBasis > 0 && unrealizedPnL !== null
+          ? (unrealizedPnL / costBasis) * 100
+          : null;
+
+        // Create position
+        await prisma.position.create({
+          data: {
+            userId,
+            assetId: asset.id,
+            quantity: pos.quantity,
+            avgCostUsd: pos.avgCostUsd,
+            storageType: pos.storageType,
+            storageLocation: pos.storageLocation?.trim() || null,
+            notes: pos.notes || null,
+            marketValueUsd,
+            unrealizedPnL,
+            unrealizedPnLPct,
+          },
+        });
+
+        results.push({ success: true, symbol: pos.asset.symbol });
+      } catch (e) {
+        results.push({
+          success: false,
+          symbol: pos.asset.symbol,
+          error: e instanceof Error ? e.message : 'Unknown error',
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    res.status(201).json({ results, successCount, totalCount: positions.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/positions - Delete all positions for the user
+router.delete('/', async (req, res, next) => {
+  try {
+    const userId = req.userId!;
+
+    const result = await prisma.position.deleteMany({
+      where: { userId },
+    });
+
+    res.json({ count: result.count });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

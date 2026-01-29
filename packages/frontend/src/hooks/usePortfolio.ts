@@ -89,6 +89,18 @@ export function useDeletePosition() {
   });
 }
 
+export function useDeleteAllPositions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.deleteAllPositions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+    },
+  });
+}
+
 export function usePerformanceHistory(params?: { days?: number; from?: string; to?: string }) {
   return useQuery({
     queryKey: ['portfolio', 'performance', params],
