@@ -11,9 +11,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 
-type TimePeriod = '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD' | 'ALL';
+// CoinGecko-style time periods
+type TimePeriod = '7D' | '1M' | '3M' | '1Y' | 'YTD' | 'Max';
 
 interface PortfolioChartProps {
   currency?: 'USD' | 'SGD';
@@ -27,25 +28,53 @@ function getDateRange(period: TimePeriod): { from?: string; to?: string; days?: 
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   switch (period) {
-    case '1W':
+    case '7D':
       return { days: 7 };
     case '1M':
       return { days: 30 };
     case '3M':
       return { days: 90 };
-    case '6M':
-      return { days: 180 };
     case '1Y':
       return { days: 365 };
     case 'YTD': {
       const startOfYear = new Date(now.getFullYear(), 0, 1);
       return { from: startOfYear.toISOString(), to: today.toISOString() };
     }
-    case 'ALL':
+    case 'Max':
       return {}; // No date filter - get all data
     default:
       return { days: 30 };
   }
+}
+
+// Format date for X-axis based on data range (CoinGecko style)
+// The format depends on the SPAN of data, not just the selected period
+function formatXAxisDate(timestamp: string, totalDays: number): string {
+  const date = new Date(timestamp);
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const year = date.getFullYear();
+
+  if (totalDays <= 14) {
+    // Very short range: "23 Jan"
+    return `${day} ${month}`;
+  } else if (totalDays <= 60) {
+    // Short/medium range: "23 Jan"
+    return `${day} ${month}`;
+  } else {
+    // Longer range (3M+): "Jan 2026"
+    return `${month} ${year}`;
+  }
+}
+
+// Format date for tooltip (always show full date)
+function formatTooltipDate(timestamp: string): string {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier = 1, liveValueUsd }: PortfolioChartProps) {
@@ -53,6 +82,14 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const { data: performanceData, isLoading } = usePerformanceHistory(dateRange);
+
+  // Calculate the date range span in days
+  const dataSpanDays = useMemo(() => {
+    if (!performanceData || performanceData.length < 2) return 30;
+    const firstDate = new Date(performanceData[0].timestamp);
+    const lastDate = new Date(performanceData[performanceData.length - 1].timestamp);
+    return Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+  }, [performanceData]);
 
   // Calculate chart data with stake multiplier from parent
   const chartData = useMemo(() => {
@@ -64,7 +101,8 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
         : point.totalValueUsd;
 
       return {
-        date: formatDate(point.timestamp),
+        date: formatXAxisDate(point.timestamp, dataSpanDays),
+        tooltipDate: formatTooltipDate(point.timestamp),
         timestamp: point.timestamp,
         value: baseValue * stakeMultiplier,
         fullValue: baseValue,
@@ -83,7 +121,8 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
       if (isSameDay && lastPoint.value === 0) {
         // Replace today's $0 snapshot with live value
         data[data.length - 1] = {
-          date: formatDate(today.toISOString()),
+          date: formatXAxisDate(today.toISOString(), dataSpanDays),
+          tooltipDate: formatTooltipDate(today.toISOString()),
           timestamp: today.toISOString(),
           value: liveBaseValue * stakeMultiplier,
           fullValue: liveBaseValue,
@@ -92,7 +131,8 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
       } else if (!isSameDay) {
         // Append live data point if no snapshot for today
         data.push({
-          date: formatDate(today.toISOString()),
+          date: formatXAxisDate(today.toISOString(), dataSpanDays),
+          tooltipDate: formatTooltipDate(today.toISOString()),
           timestamp: today.toISOString(),
           value: liveBaseValue * stakeMultiplier,
           fullValue: liveBaseValue,
@@ -102,7 +142,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
     }
 
     return data;
-  }, [performanceData, stakeMultiplier, currency, fxRate, liveValueUsd]);
+  }, [performanceData, stakeMultiplier, currency, fxRate, liveValueUsd, dataSpanDays]);
 
   // Calculate change from first to last point
   const valueChange = useMemo(() => {
@@ -114,7 +154,34 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
     return { change, changePercent };
   }, [chartData]);
 
-  const periods: TimePeriod[] = ['1W', '1M', '3M', '6M', '1Y', 'YTD', 'ALL'];
+  // Calculate Y-axis domain with padding to show fluctuations
+  const yAxisDomain = useMemo(() => {
+    if (chartData.length === 0) return [0, 100];
+
+    const values = chartData.map(d => d.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min;
+
+    // Add 10% padding on each side, but don't go below 0
+    const padding = range > 0 ? range * 0.1 : max * 0.05;
+    const domainMin = Math.max(0, min - padding);
+    const domainMax = max + padding;
+
+    return [domainMin, domainMax];
+  }, [chartData]);
+
+  // Determine tick interval - always aim for ~5-6 evenly spaced ticks (CoinGecko style)
+  // This ensures consistent visual density regardless of data granularity
+  const tickInterval = useMemo(() => {
+    const dataLength = chartData.length;
+    if (dataLength <= 6) return 0; // Show all ticks for very short data
+    // Calculate interval to show approximately 5-6 ticks
+    const targetTicks = 5;
+    return Math.max(1, Math.floor((dataLength - 1) / targetTicks));
+  }, [chartData.length]);
+
+  const periods: TimePeriod[] = ['7D', '1M', '3M', '1Y', 'YTD', 'Max'];
 
   return (
     <Card className="col-span-2">
@@ -135,7 +202,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
               </div>
             )}
           </div>
-          {/* Time Period Selector */}
+          {/* Time Period Selector - CoinGecko style */}
           <div className="flex rounded-md border">
             {periods.map((p) => (
               <Button
@@ -161,8 +228,10 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
         ) : chartData.length === 0 ? (
           <div className="h-[300px] flex items-center justify-center">
             <div className="text-center text-muted-foreground">
-              <p>No performance data available</p>
-              <p className="text-xs mt-1">Create a snapshot to start tracking your portfolio</p>
+              <p>No data for {period} period</p>
+              <p className="text-xs mt-1">
+                {period === 'Max' ? 'Create a snapshot to start tracking your portfolio' : 'Try selecting a longer time period'}
+              </p>
             </div>
           </div>
         ) : (
@@ -175,8 +244,10 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
                 tickLine={false}
                 axisLine={false}
                 className="text-muted-foreground"
+                interval={tickInterval}
               />
               <YAxis
+                domain={yAxisDomain}
                 tickFormatter={(value) => formatCurrency(value, currency, true)}
                 tick={{ fontSize: 12 }}
                 tickLine={false}
@@ -191,7 +262,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
                   return (
                     <div className="rounded-lg border bg-background p-3 shadow-md">
                       <p className="text-xs text-muted-foreground mb-1">
-                        {data.date}
+                        {data.tooltipDate}
                         {data.isLive && <span className="ml-1 text-green-600">(Live)</span>}
                       </p>
                       <p className="font-mono font-medium">
