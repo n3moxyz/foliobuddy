@@ -92,62 +92,12 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
     if (!parsedPositions) return;
 
     setImporting(true);
-    const importResults: ImportResult[] = [];
 
     try {
-      // First, fetch existing assets to check what already exists
-      const existingAssets = await api.getAssets();
-
-      for (const pos of parsedPositions) {
-      try {
-        // Find existing asset by coingeckoId or symbol
-        let asset = existingAssets.find(
-          a => (pos.asset.coingeckoId && a.coingeckoId === pos.asset.coingeckoId) ||
-               a.symbol.toUpperCase() === pos.asset.symbol.toUpperCase()
-        );
-
-        // Create asset if it doesn't exist
-        if (!asset) {
-          if (pos.asset.coingeckoId) {
-            asset = await api.createAssetFromCoinGecko({
-              coingeckoId: pos.asset.coingeckoId,
-              symbol: pos.asset.symbol,
-              name: pos.asset.name,
-              category: pos.asset.category,
-              skipPriceFetch: true, // Skip price fetch for faster imports - scheduler updates prices
-            });
-          } else {
-            asset = await api.createAsset({
-              symbol: pos.asset.symbol,
-              name: pos.asset.name,
-              category: pos.asset.category,
-            });
-          }
-        }
-
-        // Create position
-        await api.createPosition({
-          assetId: asset.id,
-          quantity: pos.quantity,
-          avgCostUsd: pos.avgCostUsd,
-          storageType: pos.storageType || 'CEX',
-          storageLocation: pos.storageLocation || undefined,
-          notes: pos.notes || undefined,
-        });
-
-        importResults.push({ success: true, symbol: pos.asset.symbol });
-      } catch (e) {
-        importResults.push({
-          success: false,
-          symbol: pos.asset.symbol,
-          error: e instanceof Error ? e.message : 'Unknown error',
-        });
-      }
-    }
-
-      setResults(importResults);
+      // Use bulk import endpoint for faster processing
+      const response = await api.bulkImportPositions(parsedPositions);
+      setResults(response.results);
     } catch (e) {
-      // Handle errors from getAssets or other unexpected errors
       setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
     } finally {
       setImporting(false);
@@ -155,7 +105,7 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
 
     // Refresh positions data
     queryClient.invalidateQueries({ queryKey: ['positions'] });
-    queryClient.invalidateQueries({ queryKey: ['portfolio-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['portfolio'] });
   };
 
   const handleClose = () => {

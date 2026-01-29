@@ -1,13 +1,19 @@
 import { useState, useMemo } from 'react';
-import { usePositions, usePortfolioSummary } from '@/hooks/usePortfolio';
+import { usePositions, usePortfolioSummary, useDeleteAllPositions } from '@/hooks/usePortfolio';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
 import { PositionForm } from '@/components/portfolio/PositionForm';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Pencil, Download, Copy, Check } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Plus, Pencil, Download, Copy, Check, Trash2, MoreVertical, FileSpreadsheet } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 
@@ -17,7 +23,9 @@ export default function Portfolio() {
   const { currency } = useCurrencyStore();
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: summary } = usePortfolioSummary();
+  const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
 
   // Perp exposure state
@@ -118,17 +126,35 @@ export default function Portfolio() {
             {copiedAll ? 'Copied!' : 'Copy All'}
           </Button>
           <Button
-            variant="outline"
+            variant="destructive"
             size="sm"
-            onClick={() => window.open(api.exportPositionsCsv(), '_blank')}
+            onClick={() => setShowDeleteAllConfirm(true)}
+            disabled={!positions || positions.length === 0}
           >
-            <Download className="h-4 w-4 mr-1" />
-            Export CSV
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete All
           </Button>
           <Button size="sm" onClick={() => setShowAddForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Add Position
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => window.open(api.exportPositionsCsv(), '_blank')}>
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.open(api.exportExcel(), '_blank')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -303,6 +329,48 @@ export default function Portfolio() {
               </Button>
               <Button size="sm" onClick={handlePerpSave}>
                 Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete All Positions</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete all <span className="font-semibold text-foreground">{positions?.length || 0}</span> positions?
+              This will permanently remove all your portfolio data.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteAllConfirm(false)}
+                disabled={deleteAllMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  deleteAllMutation.mutate(undefined, {
+                    onSuccess: () => {
+                      setShowDeleteAllConfirm(false);
+                    },
+                  });
+                }}
+                disabled={deleteAllMutation.isPending}
+              >
+                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All'}
               </Button>
             </div>
           </div>

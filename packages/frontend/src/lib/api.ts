@@ -59,6 +59,13 @@ export const api = {
     }),
   deletePosition: (id: string) =>
     request<void>(`/positions/${id}`, { method: 'DELETE' }),
+  deleteAllPositions: () =>
+    request<{ count: number }>('/positions', { method: 'DELETE' }),
+  bulkImportPositions: (positions: BulkImportPosition[]) =>
+    request<BulkImportResult>('/positions/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ positions }),
+    }),
 
   // Assets
   getAssets: (params?: { category?: string; search?: string }) => {
@@ -447,4 +454,24 @@ export interface UpdateSnapshotData {
   totalValueUsd?: number;
   totalCostBasis?: number;
   notes?: string;
+}
+
+export interface BulkImportPosition {
+  asset: {
+    coingeckoId: string | null;
+    symbol: string;
+    name: string;
+    category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
+  };
+  quantity: number;
+  avgCostUsd: number;
+  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
+  storageLocation: string | null;
+  notes: string | null;
+}
+
+export interface BulkImportResult {
+  results: Array<{ success: boolean; symbol: string; error?: string }>;
+  successCount: number;
+  totalCount: number;
 }
