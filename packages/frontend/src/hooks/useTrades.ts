@@ -80,3 +80,14 @@ export function useDeleteTrade() {
     },
   });
 }
+
+export function useDeleteAllTrades() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.deleteAllTrades(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trades'] });
+    },
+  });
+}

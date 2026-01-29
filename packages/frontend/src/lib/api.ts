@@ -123,6 +123,8 @@ export const api = {
     }),
   deleteTrade: (id: string) =>
     request<void>(`/trades/${id}`, { method: 'DELETE' }),
+  deleteAllTrades: () =>
+    request<{ count: number }>('/trades', { method: 'DELETE' }),
 
   // Investors
   getInvestors: () => request<Investor[]>('/investors'),
@@ -179,6 +181,8 @@ export const api = {
     }),
   deleteSnapshot: (id: string) =>
     request<void>(`/snapshots/${id}`, { method: 'DELETE' }),
+  deleteAllSnapshots: () =>
+    request<{ count: number }>('/snapshots', { method: 'DELETE' }),
 
   // Prices
   getCurrentPrices: () => request<AssetPrice[]>('/prices/current'),

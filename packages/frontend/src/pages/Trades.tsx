@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTrades, useTradeAnalytics } from '@/hooks/useTrades';
+import { useTrades, useTradeAnalytics, useDeleteAllTrades } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { formatCurrency, formatPercent, formatDate, getPnLColorClass } from '@/lib/utils';
@@ -14,11 +14,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { TradeForm } from '@/components/trades/TradeForm';
 import { TradeStatsCard } from '@/components/dashboard/TradeStatsCard';
-import { Plus, TrendingUp, TrendingDown, Download, ChevronDown } from 'lucide-react';
-import { api } from '@/lib/api';
+import { Plus, TrendingUp, TrendingDown, Download, Copy, Check, Trash2, MoreVertical } from 'lucide-react';
+import { api, Trade } from '@/lib/api';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,9 +32,43 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+// Format trades for clipboard - includes asset info for recreating
+function formatTradesForClipboard(trades: Trade[]) {
+  const formatted = trades.map(t => ({
+    asset: {
+      coingeckoId: t.asset.coingeckoId,
+      symbol: t.asset.symbol,
+      name: t.asset.name,
+      category: t.asset.category,
+    },
+    direction: t.direction,
+    entryPrice: t.entryPrice,
+    exitPrice: t.exitPrice,
+    quantity: t.quantity,
+    entryDate: t.entryDate,
+    exitDate: t.exitDate,
+    status: t.status,
+    notes: t.notes,
+    tags: t.tags,
+  }));
+  return JSON.stringify(formatted, null, 2);
+}
+
+async function copyTradesToClipboard(trades: Trade[]): Promise<boolean> {
+  try {
+    const text = formatTradesForClipboard(trades);
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function Trades() {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [filter, setFilter] = useState<'all' | 'OPEN' | 'CLOSED'>('all');
+  const [copiedAll, setCopiedAll] = useState(false);
 
   const { currency } = useCurrencyStore();
   const { data: summary } = usePortfolioSummary();
@@ -36,6 +76,7 @@ export default function Trades() {
     filter === 'all' ? undefined : { status: filter }
   );
   const { data: analytics } = useTradeAnalytics();
+  const deleteAllMutation = useDeleteAllTrades();
 
   // Calculate FX rate from summary
   const fxRate = summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
@@ -56,30 +97,61 @@ export default function Trades() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (trades && trades.length > 0) {
+                const success = await copyTradesToClipboard(trades);
+                if (success) {
+                  setCopiedAll(true);
+                  setTimeout(() => setCopiedAll(false), 2000);
+                }
+              }
+            }}
+            disabled={!trades || trades.length === 0}
+          >
+            {copiedAll ? (
+              <Check className="h-4 w-4 mr-1 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4 mr-1" />
+            )}
+            {copiedAll ? 'Copied!' : 'Copy All'}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteAllConfirm(true)}
+            disabled={!trades || trades.length === 0}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete All
+          </Button>
+          <Button size="sm" onClick={() => setShowAddForm(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Log Trade
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-                <ChevronDown className="h-4 w-4 ml-2" />
+              <Button variant="outline" size="sm">
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => window.open(api.exportTradesCsv(), '_blank')}>
-                All Trades
+                <Download className="h-4 w-4 mr-2" />
+                Export All Trades
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.open(api.exportTradesCsv({ status: 'OPEN' }), '_blank')}>
-                Open Trades
+                <Download className="h-4 w-4 mr-2" />
+                Export Open Trades
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.open(api.exportTradesCsv({ status: 'CLOSED' }), '_blank')}>
-                Closed Trades
+                <Download className="h-4 w-4 mr-2" />
+                Export Closed Trades
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => setShowAddForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Log Trade
-          </Button>
         </div>
       </div>
 
@@ -116,6 +188,48 @@ export default function Trades() {
             <DialogTitle>Log New Trade</DialogTitle>
           </DialogHeader>
           <TradeForm onSuccess={() => setShowAddForm(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete All Trades</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete all <span className="font-semibold text-foreground">{trades?.length || 0}</span> trades?
+              This will permanently remove all your trade history.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteAllConfirm(false)}
+                disabled={deleteAllMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  deleteAllMutation.mutate(undefined, {
+                    onSuccess: () => {
+                      setShowDeleteAllConfirm(false);
+                    },
+                  });
+                }}
+                disabled={deleteAllMutation.isPending}
+              >
+                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
