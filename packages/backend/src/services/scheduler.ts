@@ -6,11 +6,20 @@ import { prisma } from '../index.js';
 
 /**
  * Check and create missing daily snapshots on server startup
- * This ensures snapshots are created even if the server wasn't running at midnight
+ * Only creates catch-up snapshot if we're past 9pm SGT (1pm UTC) and no snapshot exists for today
  */
 export async function createMissingSnapshots(): Promise<void> {
   try {
     console.log('[Snapshot] Checking for missing daily snapshots...');
+
+    const now = new Date();
+    const currentHourUTC = now.getUTCHours();
+
+    // Only run catch-up if we're past 1pm UTC (9pm SGT)
+    if (currentHourUTC < 13) {
+      console.log('[Snapshot] Before 9pm SGT - skipping catch-up (scheduled snapshot not due yet)');
+      return;
+    }
 
     // Get all users
     const users = await prisma.user.findMany({
@@ -99,13 +108,13 @@ export function startPriceRefreshJob(): void {
 }
 
 /**
- * Start the snapshot job (daily at midnight UTC)
+ * Start the snapshot job (daily at 9pm SGT / 1pm UTC)
  */
 export function startSnapshotJob(): void {
-  console.log('📸 Starting snapshot scheduler');
+  console.log('📸 Starting snapshot scheduler (9pm SGT / 1pm UTC)');
 
-  // Run daily at 00:00 UTC
-  cron.schedule('0 0 * * *', async () => {
+  // Run daily at 13:00 UTC (9pm SGT)
+  cron.schedule('0 13 * * *', async () => {
     try {
       console.log('[Snapshot] Creating daily snapshots...');
 

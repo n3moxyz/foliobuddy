@@ -50,3 +50,15 @@ export function useDeleteSnapshot() {
     },
   });
 }
+
+export function useDeleteAllSnapshots() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.deleteAllSnapshots(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['snapshots'] });
+      queryClient.invalidateQueries({ queryKey: ['performance'] });
+    },
+  });
+}

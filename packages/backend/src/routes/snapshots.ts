@@ -212,4 +212,19 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
+// DELETE /api/snapshots - Delete all snapshots for the user
+router.delete('/', async (req, res, next) => {
+  try {
+    const userId = req.userId!;
+
+    const result = await prisma.snapshot.deleteMany({
+      where: { userId },
+    });
+
+    res.json({ count: result.count });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
