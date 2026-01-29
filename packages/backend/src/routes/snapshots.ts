@@ -90,6 +90,90 @@ router.get('/monthly', async (req, res, next) => {
   }
 });
 
+// Bulk import schema
+const bulkImportSnapshotSchema = z.object({
+  timestamp: z.string(),
+  snapshotType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).default('DAILY'),
+  totalValueUsd: z.number().min(0),
+  totalCostBasis: z.number().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+const bulkImportSchema = z.object({
+  snapshots: z.array(bulkImportSnapshotSchema),
+});
+
+// POST /api/snapshots/bulk - Bulk import snapshots (must be before /:id routes)
+router.post('/bulk', async (req, res, next) => {
+  try {
+    const userId = req.userId!;
+    const { snapshots } = bulkImportSchema.parse(req.body);
+
+    const results: Array<{ success: boolean; timestamp: string; error?: string }> = [];
+
+    for (const snap of snapshots) {
+      try {
+        const timestamp = new Date(snap.timestamp);
+
+        // Check if snapshot already exists for this date
+        const startOfDay = new Date(timestamp);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const endOfDay = new Date(timestamp);
+        endOfDay.setUTCHours(23, 59, 59, 999);
+
+        const existing = await prisma.snapshot.findFirst({
+          where: {
+            userId,
+            timestamp: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        });
+
+        if (existing) {
+          // Update existing snapshot
+          await prisma.snapshot.update({
+            where: { id: existing.id },
+            data: {
+              totalValueUsd: snap.totalValueUsd,
+              totalCostBasis: snap.totalCostBasis ?? undefined,
+              notes: snap.notes ?? undefined,
+              source: 'MANUAL',
+            },
+          });
+          results.push({ success: true, timestamp: snap.timestamp });
+        } else {
+          // Create new snapshot
+          await prisma.snapshot.create({
+            data: {
+              userId,
+              timestamp,
+              snapshotType: snap.snapshotType,
+              source: 'MANUAL',
+              totalValueUsd: snap.totalValueUsd,
+              totalCostBasis: snap.totalCostBasis ?? undefined,
+              notes: snap.notes ?? undefined,
+            },
+          });
+          results.push({ success: true, timestamp: snap.timestamp });
+        }
+      } catch (e) {
+        results.push({
+          success: false,
+          timestamp: snap.timestamp,
+          error: e instanceof Error ? e.message : 'Unknown error',
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    res.status(201).json({ results, successCount, totalCount: snapshots.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/snapshots/:id - Get a single snapshot
 router.get('/:id', async (req, res, next) => {
   try {

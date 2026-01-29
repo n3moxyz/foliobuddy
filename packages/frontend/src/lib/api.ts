@@ -183,6 +183,11 @@ export const api = {
     request<void>(`/snapshots/${id}`, { method: 'DELETE' }),
   deleteAllSnapshots: () =>
     request<{ count: number }>('/snapshots', { method: 'DELETE' }),
+  bulkImportSnapshots: (snapshots: BulkImportSnapshot[]) =>
+    request<BulkImportSnapshotResult>('/snapshots/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ snapshots }),
+    }),
 
   // Prices
   getCurrentPrices: () => request<AssetPrice[]>('/prices/current'),
@@ -476,6 +481,20 @@ export interface BulkImportPosition {
 
 export interface BulkImportResult {
   results: Array<{ success: boolean; symbol: string; error?: string }>;
+  successCount: number;
+  totalCount: number;
+}
+
+export interface BulkImportSnapshot {
+  timestamp: string;
+  snapshotType?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  totalValueUsd: number;
+  totalCostBasis?: number | null;
+  notes?: string | null;
+}
+
+export interface BulkImportSnapshotResult {
+  results: Array<{ success: boolean; timestamp: string; error?: string }>;
   successCount: number;
   totalCount: number;
 }
