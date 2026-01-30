@@ -3,11 +3,12 @@ import { prisma } from '../index.js';
 interface PortfolioSummary {
   totalValueUsd: number;
   totalValueSgd: number;
-  totalCostBasis: number;
-  unrealizedPnL: number;
-  unrealizedPnLPct: number;
+  totalCostBasis: number; // Now represents YTD starting value (earliest snapshot of current year)
+  unrealizedPnL: number;  // Now represents YTD P&L
+  unrealizedPnLPct: number; // Now represents YTD return %
   positionCount: number;
   lastUpdated: Date;
+  ytdStartDate: string | null; // The date of the earliest snapshot used for YTD calculation
 }
 
 interface AllocationByCategory {
@@ -37,6 +38,7 @@ interface TopPerformer {
 class PortfolioService {
   /**
    * Get portfolio summary for a user
+   * Cost basis is now YTD-based: the portfolio value on the earliest snapshot of the current year
    */
   async getSummary(userId: string): Promise<PortfolioSummary> {
     const positions = await prisma.position.findMany({
@@ -58,16 +60,34 @@ class PortfolioService {
 
     const usdSgdRate = fxRate?.rate ?? 1.35; // Default rate if not found
 
+    // Calculate current total value
     let totalValueUsd = 0;
-    let totalCostBasis = 0;
-
     for (const position of positions) {
       const marketValue = position.marketValueUsd ?? (position.quantity * (position.asset.currentPriceUsd ?? 0));
-      const costBasis = position.quantity * position.avgCostUsd;
-
       totalValueUsd += marketValue;
-      totalCostBasis += costBasis;
     }
+
+    // Get YTD cost basis: earliest snapshot of the current year
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(currentYear, 0, 1); // Jan 1 of current year
+    const yearEnd = new Date(currentYear + 1, 0, 1); // Jan 1 of next year
+
+    const earliestYtdSnapshot = await prisma.snapshot.findFirst({
+      where: {
+        userId,
+        timestamp: {
+          gte: yearStart,
+          lt: yearEnd,
+        },
+      },
+      orderBy: {
+        timestamp: 'asc',
+      },
+    });
+
+    // Use earliest YTD snapshot value as cost basis, or current value if no snapshots
+    const totalCostBasis = earliestYtdSnapshot?.totalValueUsd ?? totalValueUsd;
+    const ytdStartDate = earliestYtdSnapshot?.timestamp?.toISOString() ?? null;
 
     const unrealizedPnL = totalValueUsd - totalCostBasis;
     const unrealizedPnLPct = totalCostBasis > 0 ? (unrealizedPnL / totalCostBasis) * 100 : 0;
@@ -80,6 +100,7 @@ class PortfolioService {
       unrealizedPnLPct,
       positionCount: positions.length,
       lastUpdated: new Date(),
+      ytdStartDate,
     };
   }
 
