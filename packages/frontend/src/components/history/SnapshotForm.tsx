@@ -243,37 +243,43 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
     );
   }
 
+  // Handle paste from clipboard
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setJsonInput(text);
+      handleJsonChange(text);
+    } catch {
+      setParseError('Failed to read clipboard. Please paste manually.');
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* Mode Toggle */}
-      <div className="flex rounded-md border overflow-hidden w-fit">
-        <Button
+      {/* Mode Toggle - Tab style to match PositionForm */}
+      <div className="flex border-b mb-2">
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
-          className={`h-8 px-4 rounded-none ${
-            mode === 'add'
-              ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
-              : 'hover:bg-muted'
-          }`}
           onClick={() => { setMode('add'); resetImportState(); }}
+          className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+            mode === 'add'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
         >
           Add New
-        </Button>
-        <Button
+        </button>
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
-          className={`h-8 px-4 rounded-none border-l ${
-            mode === 'import'
-              ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
-              : 'hover:bg-muted'
-          }`}
           onClick={() => setMode('import')}
+          className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+            mode === 'import'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
         >
-          <Upload className="h-3.5 w-3.5 mr-1.5" />
           Import
-        </Button>
+        </button>
       </div>
 
       {mode === 'import' ? (
@@ -281,76 +287,97 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
         <div className="space-y-4">
           {importResults ? (
             /* Import Results */
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span>
-                  Imported {importResults.filter(r => r.success).length} of {importResults.length} snapshots
-                </span>
+            <div className="space-y-4">
+              <div className="text-center py-4">
+                {importResults.every(r => r.success) ? (
+                  <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
+                ) : (
+                  <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
+                )}
+                <p className="font-medium">
+                  {importResults.filter(r => r.success).length} imported successfully
+                  {importResults.some(r => !r.success) && `, ${importResults.filter(r => !r.success).length} failed`}
+                </p>
               </div>
 
-              {importResults.some(r => !r.success) && (
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-destructive">Failed imports:</p>
-                  {importResults
-                    .filter(r => !r.success)
-                    .map((r, i) => (
-                      <p key={i} className="text-xs text-muted-foreground">
-                        {r.timestamp}: {r.error}
-                      </p>
-                    ))}
-                </div>
-              )}
+              <div className="max-h-60 overflow-y-auto space-y-1">
+                {importResults.map((r, i) => (
+                  <div
+                    key={i}
+                    className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
+                      r.success ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'
+                    }`}
+                  >
+                    {r.success ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    )}
+                    <span className="font-medium">{r.timestamp}</span>
+                    {r.error && (
+                      <span className="text-red-600 dark:text-red-400 text-xs">
+                        {r.error}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={() => { resetImportState(); }}>
-                  Import More
-                </Button>
-                <Button size="sm" onClick={onSuccess}>
-                  Done
-                </Button>
+              <div className="flex justify-end">
+                <Button onClick={onSuccess}>Done</Button>
               </div>
             </div>
           ) : (
             /* Import Input */
-            <>
-              <div className="space-y-2">
-                <Label>Paste JSON</Label>
-                <Textarea
-                  value={jsonInput}
-                  onChange={(e) => handleJsonChange(e.target.value)}
-                  placeholder={`[
-  { "timestamp": "2026-01-01", "totalValueUsd": 100000 },
-  { "timestamp": "2026-01-02", "totalValueUsd": 102000, "notes": "ATH" }
-]`}
-                  rows={8}
-                  className="font-mono text-xs"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Required: timestamp, totalValueUsd. Optional: snapshotType, totalCostBasis, notes
-                </p>
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={handlePaste}>
+                  <Upload className="h-4 w-4 mr-1" />
+                  Paste from Clipboard
+                </Button>
               </div>
 
+              <Textarea
+                value={jsonInput}
+                onChange={(e) => handleJsonChange(e.target.value)}
+                placeholder='[{"timestamp": "2026-01-01", "totalValueUsd": 100000}, ...]'
+                rows={6}
+                className="font-mono text-xs"
+              />
+
               {parseError && (
-                <div className="flex items-center gap-2 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  {parseError}
+                <div className="flex items-start gap-2 text-destructive text-sm">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{parseError}</span>
                 </div>
               )}
 
               {parsedSnapshots && (
-                <div className="text-sm text-muted-foreground">
-                  <CheckCircle2 className="h-4 w-4 inline mr-1 text-green-500" />
-                  {parsedSnapshots.length} snapshot{parsedSnapshots.length !== 1 ? 's' : ''} ready to import
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    Ready to import {parsedSnapshots.length} snapshot{parsedSnapshots.length !== 1 ? 's' : ''}:
+                  </p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {parsedSnapshots.map((snap, i) => (
+                      <div key={i} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
+                        <span className="font-medium">{snap.timestamp}</span>
+                        <span className="text-muted-foreground ml-2">
+                          ${snap.totalValueUsd.toLocaleString()}
+                        </span>
+                        {snap.notes && (
+                          <span className="text-muted-foreground ml-2">
+                            ({snap.notes})
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={onCancel}>
-                  Cancel
-                </Button>
+              <div className="flex justify-end">
                 <Button
-                  size="sm"
+                  type="button"
                   onClick={handleImport}
                   disabled={!parsedSnapshots || importing}
                 >
@@ -364,7 +391,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                   )}
                 </Button>
               </div>
-            </>
+            </div>
           )}
         </div>
       ) : (
