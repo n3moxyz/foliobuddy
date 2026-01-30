@@ -106,6 +106,7 @@ const bulkImportSchema = z.object({
 // POST /api/snapshots/bulk - Bulk import snapshots (must be before /:id routes)
 router.post('/bulk', async (req, res, next) => {
   try {
+    console.log('Bulk import request received:', JSON.stringify(req.body).substring(0, 200));
     const userId = req.userId!;
     const { snapshots } = bulkImportSchema.parse(req.body);
 
