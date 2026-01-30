@@ -30,15 +30,21 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function useSearchCoins(query: string) {
-  // Debounce search query by 300ms to avoid excessive API calls while typing
-  const debouncedQuery = useDebounce(query, 300);
+  // Short debounce since backend now uses cached local filtering
+  const debouncedQuery = useDebounce(query, 150);
 
-  return useQuery({
+  const result = useQuery({
     queryKey: ['coins', 'search', debouncedQuery],
     queryFn: () => api.searchCoins(debouncedQuery),
-    enabled: debouncedQuery.length >= 2, // Require at least 2 chars
-    staleTime: 60000, // 1 minute cache
+    enabled: debouncedQuery.length >= 1, // Search with 1+ chars
+    staleTime: 30000, // 30 second cache (backend caches coin list for 24h)
   });
+
+  // Return actual fetching state - true only when actively fetching
+  return {
+    ...result,
+    isLoading: result.isFetching && debouncedQuery.length >= 1,
+  };
 }
 
 export function useCreateAsset() {
