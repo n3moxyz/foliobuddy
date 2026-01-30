@@ -67,17 +67,18 @@ class PortfolioService {
       totalValueUsd += marketValue;
     }
 
-    // Get YTD cost basis: earliest snapshot of the current year, or last snapshot of previous year
+    // Get YTD cost basis: earliest snapshot around the start of current year
     const currentYear = new Date().getFullYear();
-    const yearStart = new Date(Date.UTC(currentYear, 0, 1)); // Jan 1 of current year UTC
+    // Use Dec 31 of previous year to account for timezone differences (e.g., SGT snapshots stored as UTC)
+    const yearStartWindow = new Date(Date.UTC(currentYear - 1, 11, 31)); // Dec 31 of previous year UTC
     const yearEnd = new Date(Date.UTC(currentYear + 1, 0, 1)); // Jan 1 of next year UTC
 
-    // First, try to find earliest snapshot of current year
+    // Find the earliest snapshot from around Jan 1 of current year (accounting for timezones)
     let ytdSnapshot = await prisma.snapshot.findFirst({
       where: {
         userId,
         timestamp: {
-          gte: yearStart,
+          gte: yearStartWindow,
           lt: yearEnd,
         },
       },
@@ -86,13 +87,13 @@ class PortfolioService {
       },
     });
 
-    // If no current year snapshots, get the latest snapshot from previous year
+    // If no snapshots found in that range, get the latest snapshot before the window
     if (!ytdSnapshot) {
       ytdSnapshot = await prisma.snapshot.findFirst({
         where: {
           userId,
           timestamp: {
-            lt: yearStart,
+            lt: yearStartWindow,
           },
         },
         orderBy: {
