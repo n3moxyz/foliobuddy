@@ -155,7 +155,7 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Total Cost Basis</CardDescription>
+            <CardDescription>YTD Start</CardDescription>
             <CardTitle className="text-2xl">
               {formatCurrency(convert(summary?.totalCostBasis), currency, 0)}
             </CardTitle>
@@ -164,7 +164,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Unrealized P&L</CardDescription>
+            <CardDescription>YTD P&L</CardDescription>
             <CardTitle className={`text-2xl ${getPnLColorClass(summary?.unrealizedPnL)}`}>
               {formatCurrency(convert(summary?.unrealizedPnL), currency, 0)}
             </CardTitle>
