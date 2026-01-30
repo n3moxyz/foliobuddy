@@ -119,7 +119,16 @@ export default function History() {
             size="sm"
             onClick={async () => {
               if (allSnapshots && allSnapshots.length > 0) {
-                const success = await copySnapshotsToClipboard(allSnapshots);
+                // Filter out "pending" snapshots (today's snapshots before 9pm SGT)
+                const completedSnapshots = allSnapshots.filter(s => {
+                  const snapshotDate = new Date(s.timestamp);
+                  const today = new Date();
+                  const isSnapshotToday = snapshotDate.toDateString() === today.toDateString();
+                  const isBeforeSnapshotTime = today.getUTCHours() < 13; // Before 1pm UTC = 9pm SGT
+                  // Exclude today's snapshots if we're before snapshot time
+                  return !(isSnapshotToday && isBeforeSnapshotTime);
+                });
+                const success = await copySnapshotsToClipboard(completedSnapshots);
                 if (success) {
                   setCopiedAll(true);
                   setTimeout(() => setCopiedAll(false), 2000);
