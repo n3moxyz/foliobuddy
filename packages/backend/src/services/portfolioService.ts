@@ -67,44 +67,32 @@ class PortfolioService {
       totalValueUsd += marketValue;
     }
 
-    // Get YTD cost basis: earliest snapshot around the start of current year
-    const currentYear = new Date().getFullYear();
-    // Use Dec 31 of previous year to account for timezone differences (e.g., SGT snapshots stored as UTC)
-    const yearStartWindow = new Date(Date.UTC(currentYear - 1, 11, 31)); // Dec 31 of previous year UTC
-    const yearEnd = new Date(Date.UTC(currentYear + 1, 0, 1)); // Jan 1 of next year UTC
-
-    // Find the earliest snapshot from around Jan 1 of current year (accounting for timezones)
-    let ytdSnapshot = await prisma.snapshot.findFirst({
-      where: {
-        userId,
-        timestamp: {
-          gte: yearStartWindow,
-          lt: yearEnd,
-        },
-      },
-      orderBy: {
-        timestamp: 'asc',
-      },
+    // Get YTD cost basis: earliest snapshot of this year
+    // First, get ALL snapshots for this user to debug
+    const allSnapshots = await prisma.snapshot.findMany({
+      where: { userId },
+      orderBy: { timestamp: 'asc' },
+      select: { id: true, timestamp: true, totalValueUsd: true },
     });
 
-    // If no snapshots found in that range, get the latest snapshot before the window
-    if (!ytdSnapshot) {
-      ytdSnapshot = await prisma.snapshot.findFirst({
-        where: {
-          userId,
-          timestamp: {
-            lt: yearStartWindow,
-          },
-        },
-        orderBy: {
-          timestamp: 'desc',
-        },
-      });
-    }
+    console.log('[YTD Debug] All snapshots for user:', allSnapshots.map(s => ({
+      timestamp: s.timestamp.toISOString(),
+      value: s.totalValueUsd
+    })));
 
-    // Use YTD snapshot value as cost basis, or current value if no snapshots at all
+    // Find the earliest snapshot (should be the YTD start)
+    const ytdSnapshot = allSnapshots.length > 0 ? allSnapshots[0] : null;
+
+    console.log('[YTD Debug] Using earliest snapshot:', ytdSnapshot ? {
+      timestamp: ytdSnapshot.timestamp.toISOString(),
+      totalValueUsd: ytdSnapshot.totalValueUsd,
+    } : 'NONE');
+
+    // Use earliest snapshot value as cost basis, or current value if no snapshots at all
     const totalCostBasis = ytdSnapshot?.totalValueUsd ?? totalValueUsd;
     const ytdStartDate = ytdSnapshot?.timestamp?.toISOString() ?? null;
+
+    console.log('[YTD Debug] Final totalCostBasis:', totalCostBasis);
 
     const unrealizedPnL = totalValueUsd - totalCostBasis;
     const unrealizedPnLPct = totalCostBasis > 0 ? (unrealizedPnL / totalCostBasis) * 100 : 0;
