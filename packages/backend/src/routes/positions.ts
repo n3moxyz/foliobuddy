@@ -114,6 +114,7 @@ const bulkImportSchema = z.object({
 // POST /api/positions/bulk - Bulk import positions (must be before /:id routes)
 router.post('/bulk', async (req, res, next) => {
   try {
+    console.log('Bulk position import request received:', JSON.stringify(req.body).substring(0, 200));
     const userId = req.userId!;
     const { positions } = bulkImportSchema.parse(req.body);
 
