@@ -31,6 +31,12 @@ interface CoinGeckoSearchResult {
   }>;
 }
 
+interface CoinListItem {
+  id: string;
+  symbol: string;
+  name: string;
+}
+
 interface CoinGeckoExchangeRates {
   rates: {
     [currency: string]: {
@@ -47,6 +53,11 @@ class PriceService {
   private lastRequestTime = 0;
   private requestQueue: Array<() => Promise<void>> = [];
   private isProcessingQueue = false;
+
+  // Cached coin list for fast local filtering
+  private coinList: CoinListItem[] = [];
+  private coinListLastFetch = 0;
+  private coinListCacheDuration = 24 * 60 * 60 * 1000; // 24 hours
 
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
@@ -212,37 +223,76 @@ class PriceService {
   }
 
   /**
-   * Search for coins by name or symbol
-   * Uses direct fetch (not rate-limited queue) for responsive UX
-   * User searches are infrequent and won't hit rate limits
+   * Get full coin list from CoinGecko (cached for 24 hours)
    */
-  async searchCoins(query: string): Promise<Array<{ id: string; symbol: string; name: string; rank: number | null }>> {
-    const url = `${COINGECKO_BASE_URL}/search?query=${encodeURIComponent(query)}`;
+  private async getCoinList(): Promise<CoinListItem[]> {
+    const now = Date.now();
+
+    // Return cached list if still valid
+    if (this.coinList.length > 0 && (now - this.coinListLastFetch) < this.coinListCacheDuration) {
+      return this.coinList;
+    }
+
+    const url = `${COINGECKO_BASE_URL}/coins/list`;
 
     try {
-      // Direct fetch for responsive search - bypasses the rate limit queue
+      console.log('[CoinGecko] Fetching full coin list...');
       const response = await fetch(url, { headers: this.getHeaders() });
 
       if (!response.ok) {
         if (response.status === 429) {
-          console.warn('Search rate limited by CoinGecko');
-          return [];
+          console.warn('Coin list rate limited by CoinGecko');
+          return this.coinList; // Return stale cache if available
         }
         throw new Error(`CoinGecko API error: ${response.status}`);
       }
 
-      const data: CoinGeckoSearchResult = await response.json();
-
-      return data.coins.slice(0, 20).map(coin => ({
-        id: coin.id,
-        symbol: coin.symbol.toUpperCase(),
-        name: coin.name,
-        rank: coin.market_cap_rank,
-      }));
+      const data: CoinListItem[] = await response.json();
+      this.coinList = data;
+      this.coinListLastFetch = now;
+      console.log(`[CoinGecko] Cached ${data.length} coins`);
+      return data;
     } catch (error) {
-      console.error('Error searching coins:', error);
-      return [];
+      console.error('Error fetching coin list:', error);
+      return this.coinList; // Return stale cache if available
     }
+  }
+
+  /**
+   * Search for coins by name or symbol
+   * Uses cached coin list for instant local filtering
+   */
+  async searchCoins(query: string): Promise<Array<{ id: string; symbol: string; name: string; rank: number | null }>> {
+    const coins = await this.getCoinList();
+    const lowerQuery = query.toLowerCase();
+
+    // Filter locally - instant results
+    const matches = coins.filter(coin =>
+      coin.symbol.toLowerCase().includes(lowerQuery) ||
+      coin.name.toLowerCase().includes(lowerQuery)
+    );
+
+    // Sort: exact symbol matches first, then by name length (shorter = more relevant)
+    matches.sort((a, b) => {
+      const aSymbolExact = a.symbol.toLowerCase() === lowerQuery;
+      const bSymbolExact = b.symbol.toLowerCase() === lowerQuery;
+      if (aSymbolExact && !bSymbolExact) return -1;
+      if (bSymbolExact && !aSymbolExact) return 1;
+
+      const aSymbolMatch = a.symbol.toLowerCase().includes(lowerQuery);
+      const bSymbolMatch = b.symbol.toLowerCase().includes(lowerQuery);
+      if (aSymbolMatch && !bSymbolMatch) return -1;
+      if (bSymbolMatch && !aSymbolMatch) return 1;
+
+      return a.name.length - b.name.length;
+    });
+
+    return matches.slice(0, 20).map(coin => ({
+      id: coin.id,
+      symbol: coin.symbol.toUpperCase(),
+      name: coin.name,
+      rank: null, // Coin list doesn't include rank
+    }));
   }
 
   /**
