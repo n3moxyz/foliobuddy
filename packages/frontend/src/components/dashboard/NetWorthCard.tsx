@@ -60,13 +60,13 @@ export function NetWorthCard({ summary, currency, stakeMultiplier = 1 }: NetWort
 
         <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-muted-foreground">Unrealized P&L</p>
+            <p className="text-muted-foreground">YTD P&L</p>
             <p className={`font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}>
               {formatCurrency(convert(summary.unrealizedPnL), currency, 0)}
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Cost Basis</p>
+            <p className="text-muted-foreground">YTD Start</p>
             <p className="font-medium">
               {formatCurrency(convert(summary.totalCostBasis), currency, 0)}
             </p>

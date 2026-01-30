@@ -291,11 +291,12 @@ export interface Snapshot {
 export interface PortfolioSummary {
   totalValueUsd: number;
   totalValueSgd: number;
-  totalCostBasis: number;
-  unrealizedPnL: number;
-  unrealizedPnLPct: number;
+  totalCostBasis: number; // YTD starting value (earliest snapshot of current year)
+  unrealizedPnL: number;  // YTD P&L
+  unrealizedPnLPct: number; // YTD return %
   positionCount: number;
   lastUpdated: string;
+  ytdStartDate: string | null; // Date of the earliest snapshot used for YTD
 }
 
 export interface CategoryAllocation {
