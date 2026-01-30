@@ -377,10 +377,10 @@ function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdi
                   <TableCell className="text-right font-mono">
                     {/* Show live value if today AND before 9pm SGT (snapshot not taken yet) */}
                     {isToday(snapshot.timestamp) && isBeforeSnapshotTime() && liveValueUsd ? (
-                      <span className="text-green-600 dark:text-green-400" title="Live portfolio value (snapshot at 9pm SGT)">
-                        {displayValue(liveValueUsd)}
-                        <span className="text-xs ml-1">(Live)</span>
-                      </span>
+                      <div className="text-green-600 dark:text-green-400" title="Live portfolio value (snapshot at 9pm SGT)">
+                        <div>{displayValue(liveValueUsd)}</div>
+                        <div className="text-xs">(Live)</div>
+                      </div>
                     ) : snapshot.totalValueUsd === 0 && snapshot.source === 'AUTOMATIC' ? (
                       <TooltipProvider>
                         <Tooltip>
