@@ -213,12 +213,25 @@ class PriceService {
 
   /**
    * Search for coins by name or symbol
+   * Uses direct fetch (not rate-limited queue) for responsive UX
+   * User searches are infrequent and won't hit rate limits
    */
   async searchCoins(query: string): Promise<Array<{ id: string; symbol: string; name: string; rank: number | null }>> {
     const url = `${COINGECKO_BASE_URL}/search?query=${encodeURIComponent(query)}`;
 
     try {
-      const data = await this.rateLimitedFetch<CoinGeckoSearchResult>(url);
+      // Direct fetch for responsive search - bypasses the rate limit queue
+      const response = await fetch(url, { headers: this.getHeaders() });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          console.warn('Search rate limited by CoinGecko');
+          return [];
+        }
+        throw new Error(`CoinGecko API error: ${response.status}`);
+      }
+
+      const data: CoinGeckoSearchResult = await response.json();
 
       return data.coins.slice(0, 20).map(coin => ({
         id: coin.id,
