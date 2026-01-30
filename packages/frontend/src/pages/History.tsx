@@ -334,6 +334,11 @@ function isBeforeSnapshotTime(): boolean {
 }
 
 function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdit, onDelete }: SnapshotTableProps) {
+  // Check if there's already a snapshot for today
+  const hasTodaySnapshot = snapshots.some(s => isToday(s.timestamp));
+  // Show live row if: before snapshot time, no today snapshot, and we have live value
+  const showLiveRow = isBeforeSnapshotTime() && !hasTodaySnapshot && liveValueUsd !== undefined;
+
   if (isLoading) {
     return (
       <Card>
@@ -344,7 +349,7 @@ function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdi
     );
   }
 
-  if (snapshots.length === 0) {
+  if (snapshots.length === 0 && !showLiveRow) {
     return (
       <Card>
         <CardContent className="text-center py-12">
@@ -369,19 +374,41 @@ function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdi
               </TableRow>
             </TableHeader>
             <TableBody>
+              {/* Virtual "Today (Live)" row when no snapshot exists yet */}
+              {showLiveRow && (
+                <TableRow className="bg-green-50 dark:bg-green-950/20">
+                  <TableCell className="font-medium">
+                    {formatDate(new Date().toISOString())}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    <div className="text-green-600 dark:text-green-400" title="Live portfolio value (snapshot at 9pm SGT)">
+                      <div>{displayValue(liveValueUsd!)}</div>
+                      <div className="text-xs">(Live)</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                      <Clock className="h-3 w-3 animate-pulse" />
+                      PENDING
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    Snapshot at 9pm SGT
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs">
+                      -
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
               {snapshots.map((snapshot) => (
                 <TableRow key={snapshot.id}>
                   <TableCell className="font-medium">
                     {formatDate(snapshot.timestamp)}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {/* Show live value if today AND before 9pm SGT (snapshot not taken yet) */}
-                    {isToday(snapshot.timestamp) && isBeforeSnapshotTime() && liveValueUsd ? (
-                      <div className="text-green-600 dark:text-green-400" title="Live portfolio value (snapshot at 9pm SGT)">
-                        <div>{displayValue(liveValueUsd)}</div>
-                        <div className="text-xs">(Live)</div>
-                      </div>
-                    ) : snapshot.totalValueUsd === 0 && snapshot.source === 'AUTOMATIC' ? (
+                    {snapshot.totalValueUsd === 0 && snapshot.source === 'AUTOMATIC' ? (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -395,9 +422,7 @@ function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdi
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                    ) : (
-                      displayValue(snapshot.totalValueUsd)
-                    )}
+                    ) : displayValue(snapshot.totalValueUsd)}
                   </TableCell>
                   <TableCell>
                     <span className={`flex items-center gap-1 text-xs ${
