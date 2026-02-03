@@ -270,6 +270,7 @@ export interface Investor {
   ytdReturnPct: number | null;
   joinDate: string;
   notes: string | null;
+  isOwner: boolean;
 }
 
 export interface Snapshot {
@@ -447,6 +448,7 @@ export interface CreateInvestorData {
   initialCapital?: number;
   joinDate?: string;
   notes?: string;
+  isOwner?: boolean;
 }
 
 export interface CreateManualSnapshotData {

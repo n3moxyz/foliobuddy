@@ -13,6 +13,7 @@ const createInvestorSchema = z.object({
   initialCapital: z.number().min(0).default(0),
   joinDate: z.string().transform(s => new Date(s)).optional(),
   notes: z.string().optional(),
+  isOwner: z.boolean().optional(),
 });
 
 const updateInvestorSchema = createInvestorSchema.partial();
@@ -167,6 +168,14 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createInvestorSchema.parse(req.body);
 
+    // If setting as owner, clear existing owner first
+    if (data.isOwner) {
+      await prisma.investor.updateMany({
+        where: { userId: req.userId!, isOwner: true },
+        data: { isOwner: false },
+      });
+    }
+
     // Get current portfolio value
     const summary = await portfolioService.getSummary(req.userId!);
     const currentValue = summary.totalValueUsd * (data.stakePercentage / 100);
@@ -184,6 +193,7 @@ router.post('/', async (req, res, next) => {
           : 0,
         joinDate: data.joinDate ?? new Date(),
         notes: data.notes,
+        isOwner: data.isOwner ?? false,
       },
     });
 
@@ -213,6 +223,14 @@ router.put('/:id', async (req, res, next) => {
 
     if (!existing) {
       throw new AppError('Investor not found', 404);
+    }
+
+    // If setting as owner, clear existing owner first
+    if (data.isOwner) {
+      await prisma.investor.updateMany({
+        where: { userId: req.userId!, isOwner: true, id: { not: req.params.id } },
+        data: { isOwner: false },
+      });
     }
 
     // Record stake change if stake percentage is being updated
