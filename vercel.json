@@ -4,5 +4,11 @@
   "outputDirectory": "packages/frontend/dist",
   "installCommand": "npm install",
   "framework": "vite",
-  "alias": ["pa-port.vercel.app"]
+  "alias": ["pa-port.vercel.app"],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://empowering-curiosity-production-9eff.up.railway.app/api/:path*"
+    }
+  ]
 }
