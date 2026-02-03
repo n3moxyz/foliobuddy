@@ -167,23 +167,6 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createInvestorSchema.parse(req.body);
 
-    // Verify total stake doesn't exceed 100%
-    const existingInvestors = await prisma.investor.findMany({
-      where: { userId: req.userId! },
-    });
-
-    const currentTotalStake = existingInvestors.reduce(
-      (sum, inv) => sum + inv.stakePercentage,
-      0
-    );
-
-    if (currentTotalStake + data.stakePercentage > 100) {
-      throw new AppError(
-        `Total stake percentage cannot exceed 100%. Current: ${currentTotalStake}%, New: ${data.stakePercentage}%`,
-        400
-      );
-    }
-
     // Get current portfolio value
     const summary = await portfolioService.getSummary(req.userId!);
     const currentValue = summary.totalValueUsd * (data.stakePercentage / 100);
@@ -232,28 +215,8 @@ router.put('/:id', async (req, res, next) => {
       throw new AppError('Investor not found', 404);
     }
 
-    // Check stake percentage change
+    // Record stake change if stake percentage is being updated
     if (data.stakePercentage !== undefined) {
-      const otherInvestors = await prisma.investor.findMany({
-        where: {
-          userId: req.userId!,
-          id: { not: req.params.id },
-        },
-      });
-
-      const otherTotalStake = otherInvestors.reduce(
-        (sum, inv) => sum + inv.stakePercentage,
-        0
-      );
-
-      if (otherTotalStake + data.stakePercentage > 100) {
-        throw new AppError(
-          `Total stake percentage cannot exceed 100%. Others: ${otherTotalStake}%, New: ${data.stakePercentage}%`,
-          400
-        );
-      }
-
-      // Record stake change
       const summary = await portfolioService.getSummary(req.userId!);
       const newValue = summary.totalValueUsd * (data.stakePercentage / 100);
 

@@ -100,19 +100,19 @@ export default function Dashboard() {
         </div>
 
         {/* Investor Filter */}
-        {investors && investors.length > 0 && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="h-9">
-                <Users className="h-4 w-4 mr-2" />
-                {getInvestorLabel()}
-                <ChevronDown className="h-3 w-3 ml-2" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-56">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b">
-                  <span className="text-sm font-medium">Filter by Investor</span>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-9">
+              <Users className="h-4 w-4 mr-2" />
+              {getInvestorLabel()}
+              <ChevronDown className="h-3 w-3 ml-2" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-56">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b">
+                <span className="text-sm font-medium">Filter by Investor</span>
+                {investors && investors.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -121,7 +121,9 @@ export default function Dashboard() {
                   >
                     {selectedInvestors.length === investors.length ? 'Clear' : 'All'}
                   </Button>
-                </div>
+                )}
+              </div>
+              {investors && investors.length > 0 ? (
                 <div className="space-y-2">
                   {investors.map((investor) => (
                     <div key={investor.id} className="flex items-center space-x-2">
@@ -142,10 +144,14 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
+              ) : (
+                <div className="py-2 text-sm text-muted-foreground text-center">
+                  All (no investors added)
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Net Worth Card */}

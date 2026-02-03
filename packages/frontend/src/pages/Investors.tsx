@@ -70,14 +70,6 @@ export default function Investors() {
 
   const totalStake = investors?.reduce((sum, inv) => sum + inv.stakePercentage, 0) || 0;
 
-  // Calculate max stake for editing (current total minus the investor being edited)
-  const getMaxStakeForEdit = (investor: Investor) => {
-    const otherStakes = (investors || [])
-      .filter(inv => inv.id !== investor.id)
-      .reduce((sum, inv) => sum + inv.stakePercentage, 0);
-    return 100 - otherStakes;
-  };
-
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -88,7 +80,7 @@ export default function Investors() {
             Manage investor stakes and track their returns
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)} disabled={totalStake >= 100}>
+        <Button onClick={() => setShowAddForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Investor
         </Button>
@@ -224,11 +216,16 @@ export default function Investors() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Investor</DialogTitle>
+            {totalStake >= 100 && (
+              <DialogDescription>
+                Total stake is currently {formatStakePercentage(totalStake)}%. You may need to rebalance existing investors after adding.
+              </DialogDescription>
+            )}
           </DialogHeader>
           <InvestorForm
-            maxStake={100 - totalStake}
             onSubmit={(data) => createMutation.mutate(data)}
             isLoading={createMutation.isPending}
+            currentTotalStake={totalStake}
           />
         </DialogContent>
       </Dialog>
@@ -241,10 +238,10 @@ export default function Investors() {
           </DialogHeader>
           {editInvestor && (
             <InvestorForm
-              maxStake={getMaxStakeForEdit(editInvestor)}
               onSubmit={(data) => updateMutation.mutate({ id: editInvestor.id, data })}
               isLoading={updateMutation.isPending}
               initialData={editInvestor}
+              currentTotalStake={totalStake}
             />
           )}
         </DialogContent>
@@ -279,15 +276,15 @@ export default function Investors() {
 }
 
 function InvestorForm({
-  maxStake,
   onSubmit,
   isLoading,
   initialData,
+  currentTotalStake = 0,
 }: {
-  maxStake: number;
   onSubmit: (data: CreateInvestorData) => void;
   isLoading: boolean;
   initialData?: Investor;
+  currentTotalStake?: number;
 }) {
   const [name, setName] = useState(initialData?.name || '');
   const [stakePercentage, setStakePercentage] = useState(
@@ -298,6 +295,11 @@ function InvestorForm({
   );
 
   const isEditing = !!initialData;
+  const stakeValue = parseFloat(stakePercentage) || 0;
+  const projectedTotal = isEditing
+    ? (currentTotalStake - (initialData?.stakePercentage || 0) + stakeValue)
+    : (currentTotalStake + stakeValue);
+  const exceedsTotal = projectedTotal > 100;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,15 +330,17 @@ function InvestorForm({
           type="number"
           step="0.00001"
           min="0"
-          max={maxStake}
+          max="100"
           value={stakePercentage}
           onChange={(e) => setStakePercentage(e.target.value)}
-          placeholder={`0 - ${formatStakePercentage(maxStake)}`}
+          placeholder="0 - 100"
           required
         />
-        <p className="text-xs text-muted-foreground">
-          Maximum available: {formatStakePercentage(maxStake)}%
-        </p>
+        {exceedsTotal && (
+          <p className="text-xs text-amber-600">
+            Total will be {formatStakePercentage(projectedTotal)}% - rebalancing needed
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
