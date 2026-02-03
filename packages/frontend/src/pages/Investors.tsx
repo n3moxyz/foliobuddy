@@ -22,7 +22,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Crown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Helper to format stake percentage with up to 5 decimal places (trimming trailing zeros)
 function formatStakePercentage(value: number): string {
@@ -150,7 +151,17 @@ export default function Investors() {
                 <TableBody>
                   {investors.map((investor) => (
                     <TableRow key={investor.id}>
-                      <TableCell className="font-medium">{investor.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {investor.name}
+                          {investor.isOwner && (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950 px-1.5 py-0.5 rounded">
+                              <Crown className="h-3 w-3" />
+                              Owner
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right font-mono">
                         {formatStakePercentage(investor.stakePercentage)}%
                       </TableCell>
@@ -226,6 +237,7 @@ export default function Investors() {
             onSubmit={(data) => createMutation.mutate(data)}
             isLoading={createMutation.isPending}
             currentTotalStake={totalStake}
+            allInvestors={investors || []}
           />
         </DialogContent>
       </Dialog>
@@ -242,6 +254,7 @@ export default function Investors() {
               isLoading={updateMutation.isPending}
               initialData={editInvestor}
               currentTotalStake={totalStake}
+              allInvestors={investors || []}
             />
           )}
         </DialogContent>
@@ -280,11 +293,13 @@ function InvestorForm({
   isLoading,
   initialData,
   currentTotalStake = 0,
+  allInvestors = [],
 }: {
   onSubmit: (data: CreateInvestorData) => void;
   isLoading: boolean;
   initialData?: Investor;
   currentTotalStake?: number;
+  allInvestors?: Investor[];
 }) {
   const [name, setName] = useState(initialData?.name || '');
   const [stakePercentage, setStakePercentage] = useState(
@@ -293,6 +308,7 @@ function InvestorForm({
   const [initialCapital, setInitialCapital] = useState(
     initialData?.initialCapital ? initialData.initialCapital.toString() : ''
   );
+  const [isOwner, setIsOwner] = useState(initialData?.isOwner || false);
 
   const isEditing = !!initialData;
   const stakeValue = parseFloat(stakePercentage) || 0;
@@ -301,13 +317,24 @@ function InvestorForm({
     : (currentTotalStake + stakeValue);
   const exceedsTotal = projectedTotal > 100;
 
+  // Calculate suggested stake for owner (100% - sum of other investors)
+  const otherInvestorsStake = allInvestors
+    .filter(inv => inv.id !== initialData?.id)
+    .reduce((sum, inv) => sum + inv.stakePercentage, 0);
+  const suggestedStake = Math.max(0, 100 - otherInvestorsStake);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       name,
       stakePercentage: parseFloat(stakePercentage),
       initialCapital: initialCapital ? parseFloat(initialCapital) : undefined,
+      isOwner,
     });
+  };
+
+  const handleUseSuggested = () => {
+    setStakePercentage(formatStakePercentage(suggestedStake));
   };
 
   return (
@@ -336,6 +363,18 @@ function InvestorForm({
           placeholder="0 - 100"
           required
         />
+        {isOwner && suggestedStake !== stakeValue && (
+          <p className="text-xs text-muted-foreground">
+            Suggested (balancing): {formatStakePercentage(suggestedStake)}% —{' '}
+            <button
+              type="button"
+              onClick={handleUseSuggested}
+              className="text-red-500 hover:text-red-600 hover:underline"
+            >
+              Use this
+            </button>
+          </p>
+        )}
         {exceedsTotal && (
           <p className="text-xs text-amber-600">
             Total will be {formatStakePercentage(projectedTotal)}% - rebalancing needed
@@ -357,6 +396,17 @@ function InvestorForm({
         <p className="text-xs text-muted-foreground">
           Used to calculate YTD returns
         </p>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="isOwner"
+          checked={isOwner}
+          onCheckedChange={(checked) => setIsOwner(checked === true)}
+        />
+        <Label htmlFor="isOwner" className="text-sm cursor-pointer">
+          Primary owner (stake auto-suggests as balancing figure)
+        </Label>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
