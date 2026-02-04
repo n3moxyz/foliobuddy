@@ -9,6 +9,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://old-backend.example.com/api/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
