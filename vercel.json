@@ -9,6 +9,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://empowering-curiosity-production-9eff.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
