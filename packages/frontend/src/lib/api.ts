@@ -188,6 +188,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ snapshots }),
     }),
+  getSnapshotPositions: (id: string) =>
+    request<SnapshotPosition[]>(`/snapshots/${id}/positions`),
 
   // Prices
   getCurrentPrices: () => request<AssetPrice[]>('/prices/current'),
@@ -270,6 +272,7 @@ export interface Investor {
   ytdReturnPct: number | null;
   joinDate: string;
   notes: string | null;
+  isOwner: boolean;
 }
 
 export interface Snapshot {
@@ -286,6 +289,22 @@ export interface Snapshot {
   btcOutperform: number | null;
   ethOutperform: number | null;
   notes: string | null;
+}
+
+export interface SnapshotPosition {
+  id: string;
+  snapshotId: string;
+  assetSymbol: string;
+  quantity: number;
+  priceUsd: number;
+  valueUsd: number;
+  allocation: number;
+  asset: {
+    coingeckoId: string | null;
+    symbol: string;
+    name: string;
+    category: string;
+  };
 }
 
 export interface PortfolioSummary {
@@ -447,6 +466,7 @@ export interface CreateInvestorData {
   initialCapital?: number;
   joinDate?: string;
   notes?: string;
+  isOwner?: boolean;
 }
 
 export interface CreateManualSnapshotData {

@@ -30,6 +30,24 @@ const port = process.env.PORT || 3001;
 // Initialize Prisma client
 export const prisma = new PrismaClient();
 
+// Database connection with retry logic
+async function connectWithRetry(maxRetries = 5, delayMs = 5000): Promise<boolean> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await prisma.$connect();
+      console.log('✓ Database connected successfully');
+      return true;
+    } catch (error) {
+      console.log(`Database connection attempt ${attempt}/${maxRetries} failed:`, error instanceof Error ? error.message : error);
+      if (attempt < maxRetries) {
+        console.log(`Retrying in ${delayMs / 1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  return false;
+}
+
 // CORS allowed origins
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
 
@@ -84,34 +102,45 @@ process.on('SIGTERM', async () => {
 // Initialize Socket.io
 socketService.initialize(server, allowedOrigins);
 
-// Start server
-server.listen(port, async () => {
-  console.log(`🚀 Server running on http://localhost:${port}`);
-  console.log(`📊 API available at http://localhost:${port}/api`);
-  console.log(`🔌 WebSocket server ready`);
-
-  // Drop the unique constraint on Position table to allow duplicate positions
-  try {
-    await prisma.$executeRawUnsafe(`
-      ALTER TABLE "Position" DROP CONSTRAINT IF EXISTS "Position_userId_assetId_storageType_storageLocation_key"
-    `);
-    console.log('✓ Position unique constraint dropped (if it existed)');
-  } catch (error) {
-    console.log('Note: Could not drop Position constraint (may already be gone):', error);
+// Start server with database connection retry
+async function startServer() {
+  // Connect to database with retry logic
+  const connected = await connectWithRetry(10, 3000);
+  if (!connected) {
+    console.error('❌ Failed to connect to database after multiple attempts. Exiting...');
+    process.exit(1);
   }
 
-  // Start scheduled jobs
-  if (process.env.NODE_ENV !== 'test') {
-    startPriceRefreshJob();
-    startSnapshotJob();
+  server.listen(port, async () => {
+    console.log(`🚀 Server running on http://localhost:${port}`);
+    console.log(`📊 API available at http://localhost:${port}/api`);
+    console.log(`🔌 WebSocket server ready`);
 
-    // Create missing snapshots on startup (catch-up for days server wasn't running)
-    // Delay slightly to ensure database connection is ready
-    setTimeout(() => {
-      createMissingSnapshots();
-    }, 2000);
-  }
-});
+    // Drop the unique constraint on Position table to allow duplicate positions
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Position" DROP CONSTRAINT IF EXISTS "Position_userId_assetId_storageType_storageLocation_key"
+      `);
+      console.log('✓ Position unique constraint dropped (if it existed)');
+    } catch (error) {
+      console.log('Note: Could not drop Position constraint (may already be gone):', error);
+    }
+
+    // Start scheduled jobs
+    if (process.env.NODE_ENV !== 'test') {
+      startPriceRefreshJob();
+      startSnapshotJob();
+
+      // Create missing snapshots on startup (catch-up for days server wasn't running)
+      // Delay slightly to ensure database connection is ready
+      setTimeout(() => {
+        createMissingSnapshots();
+      }, 2000);
+    }
+  });
+}
+
+startServer();
 
 export { server };
 export default app;

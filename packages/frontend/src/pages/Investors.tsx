@@ -29,7 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Crown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Helper to format stake percentage with up to 5 decimal places (trimming trailing zeros)
 function formatStakePercentage(value: number): string {
@@ -80,14 +81,6 @@ export default function Investors() {
 
   const totalStake = investors?.reduce((sum, inv) => sum + inv.stakePercentage, 0) || 0;
 
-  // Calculate max stake for editing (current total minus the investor being edited)
-  const getMaxStakeForEdit = (investor: Investor) => {
-    const otherStakes = (investors || [])
-      .filter(inv => inv.id !== investor.id)
-      .reduce((sum, inv) => sum + inv.stakePercentage, 0);
-    return 100 - otherStakes;
-  };
-
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -98,7 +91,7 @@ export default function Investors() {
             Manage investor stakes and track their returns
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)} disabled={totalStake >= 100}>
+        <Button onClick={() => setShowAddForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Investor
         </Button>
@@ -168,7 +161,17 @@ export default function Investors() {
                 <TableBody>
                   {investors.map((investor) => (
                     <TableRow key={investor.id}>
-                      <TableCell className="font-medium">{investor.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {investor.name}
+                          {investor.isOwner && (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950 px-1.5 py-0.5 rounded">
+                              <Crown className="h-3 w-3" />
+                              Owner
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right font-mono">
                         {formatStakePercentage(investor.stakePercentage)}%
                       </TableCell>
@@ -234,11 +237,17 @@ export default function Investors() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Investor</DialogTitle>
+            {totalStake >= 100 && (
+              <DialogDescription>
+                Total stake is currently {formatStakePercentage(totalStake)}%. You may need to rebalance existing investors after adding.
+              </DialogDescription>
+            )}
           </DialogHeader>
           <InvestorForm
-            maxStake={100 - totalStake}
             onSubmit={(data) => createMutation.mutate(data)}
             isLoading={createMutation.isPending}
+            currentTotalStake={totalStake}
+            allInvestors={investors || []}
           />
         </DialogContent>
       </Dialog>
@@ -251,10 +260,11 @@ export default function Investors() {
           </DialogHeader>
           {editInvestor && (
             <InvestorForm
-              maxStake={getMaxStakeForEdit(editInvestor)}
               onSubmit={(data) => updateMutation.mutate({ id: editInvestor.id, data })}
               isLoading={updateMutation.isPending}
               initialData={editInvestor}
+              currentTotalStake={totalStake}
+              allInvestors={investors || []}
             />
           )}
         </DialogContent>
@@ -343,15 +353,17 @@ export default function Investors() {
 }
 
 function InvestorForm({
-  maxStake,
   onSubmit,
   isLoading,
   initialData,
+  currentTotalStake = 0,
+  allInvestors = [],
 }: {
-  maxStake: number;
   onSubmit: (data: CreateInvestorData) => void;
   isLoading: boolean;
   initialData?: Investor;
+  currentTotalStake?: number;
+  allInvestors?: Investor[];
 }) {
   const [name, setName] = useState(initialData?.name || '');
   const [stakePercentage, setStakePercentage] = useState(
@@ -360,8 +372,20 @@ function InvestorForm({
   const [initialCapital, setInitialCapital] = useState(
     initialData?.initialCapital ? initialData.initialCapital.toString() : ''
   );
+  const [isOwner, setIsOwner] = useState(initialData?.isOwner || false);
 
   const isEditing = !!initialData;
+  const stakeValue = parseFloat(stakePercentage) || 0;
+  const projectedTotal = isEditing
+    ? (currentTotalStake - (initialData?.stakePercentage || 0) + stakeValue)
+    : (currentTotalStake + stakeValue);
+  const exceedsTotal = projectedTotal > 100;
+
+  // Calculate suggested stake for owner (100% - sum of other investors)
+  const otherInvestorsStake = allInvestors
+    .filter(inv => inv.id !== initialData?.id)
+    .reduce((sum, inv) => sum + inv.stakePercentage, 0);
+  const suggestedStake = Math.max(0, 100 - otherInvestorsStake);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -371,15 +395,20 @@ function InvestorForm({
         name,
         stakePercentage: parseFloat(stakePercentage),
         initialCapital: initialCapital ? parseFloat(initialCapital) : undefined,
+        isOwner,
       });
     } else {
       // Add mode: don't send stake percentage, let backend auto-calculate
       onSubmit({
         name,
-        stakePercentage: maxStake, // Will be auto-calculated on backend, but send for type safety
         initialCapital: initialCapital ? parseFloat(initialCapital) : undefined,
+        isOwner,
       });
     }
+  };
+
+  const handleUseSuggested = () => {
+    setStakePercentage(formatStakePercentage(suggestedStake));
   };
 
   return (
@@ -405,21 +434,35 @@ function InvestorForm({
               type="number"
               step="0.00001"
               min="0"
-              max={maxStake}
+              max="100"
               value={stakePercentage}
               onChange={(e) => setStakePercentage(e.target.value)}
-              placeholder={`0 - ${formatStakePercentage(maxStake)}`}
+              placeholder="0 - 100"
               required
             />
-            <p className="text-xs text-muted-foreground">
-              Maximum available: {formatStakePercentage(maxStake)}%
-            </p>
+            {isOwner && suggestedStake !== stakeValue && (
+              <p className="text-xs text-muted-foreground">
+                Suggested (balancing): {formatStakePercentage(suggestedStake)}% —{' '}
+                <button
+                  type="button"
+                  onClick={handleUseSuggested}
+                  className="text-red-500 hover:text-red-600 hover:underline"
+                >
+                  Use this
+                </button>
+              </p>
+            )}
+            {exceedsTotal && (
+              <p className="text-xs text-amber-600">
+                Total will be {formatStakePercentage(projectedTotal)}% - rebalancing needed
+              </p>
+            )}
           </>
         ) : (
           // Add mode: show auto-calculated stake as read-only
           <>
             <div className="flex items-center h-10 px-3 rounded-md border bg-muted font-mono">
-              {formatStakePercentage(maxStake)}%
+              {formatStakePercentage(suggestedStake)}%
             </div>
             <p className="text-xs text-muted-foreground">
               Automatically assigned remaining stake
@@ -442,6 +485,17 @@ function InvestorForm({
         <p className="text-xs text-muted-foreground">
           Used to calculate YTD returns
         </p>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="isOwner"
+          checked={isOwner}
+          onCheckedChange={(checked) => setIsOwner(checked === true)}
+        />
+        <Label htmlFor="isOwner" className="text-sm cursor-pointer">
+          Primary owner (stake auto-suggests as balancing figure)
+        </Label>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
