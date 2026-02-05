@@ -125,6 +125,11 @@ export const api = {
     request<void>(`/trades/${id}`, { method: 'DELETE' }),
   deleteAllTrades: () =>
     request<{ count: number }>('/trades', { method: 'DELETE' }),
+  bulkImportTrades: (trades: BulkImportTrade[]) =>
+    request<BulkImportResult>('/trades/bulk-import', {
+      method: 'POST',
+      body: JSON.stringify(trades),
+    }),
 
   // Investors
   getInvestors: () => request<Investor[]>('/investors'),
@@ -520,6 +525,24 @@ export interface BulkImportSnapshotResult {
   results: Array<{ success: boolean; timestamp: string; error?: string }>;
   successCount: number;
   totalCount: number;
+}
+
+export interface BulkImportTrade {
+  asset: {
+    coingeckoId: string | null;
+    symbol: string;
+    name: string;
+    category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
+  };
+  direction: 'LONG' | 'SHORT';
+  entryPrice: number;
+  exitPrice?: number | null;
+  quantity: number;
+  entryDate: string;
+  exitDate?: string | null;
+  status?: 'OPEN' | 'CLOSED';
+  notes?: string | null;
+  tags?: string[] | null;
 }
 
 export interface BenchmarkHistoricalData {

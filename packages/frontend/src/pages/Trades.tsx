@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTrades, useTradeAnalytics, useDeleteAllTrades } from '@/hooks/useTrades';
+import { useTrades, useTradeAnalytics, useDeleteAllTrades, useDeleteTrade } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { formatCurrency, formatPercent, formatDate, getPnLColorClass } from '@/lib/utils';
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { TradeForm } from '@/components/trades/TradeForm';
 import { TradeStatsCard } from '@/components/dashboard/TradeStatsCard';
-import { Plus, TrendingUp, TrendingDown, Download, Copy, Check, Trash2, MoreVertical } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Download, Copy, Check, Trash2, MoreVertical, Pencil } from 'lucide-react';
 import { api, Trade } from '@/lib/api';
 import {
   DropdownMenu,
@@ -69,6 +69,8 @@ export default function Trades() {
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [filter, setFilter] = useState<'all' | 'OPEN' | 'CLOSED'>('all');
   const [copiedAll, setCopiedAll] = useState(false);
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
+  const [deletingTrade, setDeletingTrade] = useState<Trade | null>(null);
 
   const { currency } = useCurrencyStore();
   const { data: summary } = usePortfolioSummary();
@@ -77,6 +79,7 @@ export default function Trades() {
   );
   const { data: analytics } = useTradeAnalytics();
   const deleteAllMutation = useDeleteAllTrades();
+  const deleteTradeMutation = useDeleteTrade();
 
   // Calculate FX rate from summary
   const fxRate = summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
@@ -169,15 +172,30 @@ export default function Trades() {
         </TabsList>
 
         <TabsContent value="all" className="mt-4">
-          <TradeTable trades={trades || []} isLoading={isLoading} />
+          <TradeTable
+            trades={trades || []}
+            isLoading={isLoading}
+            onEdit={setEditingTrade}
+            onDelete={setDeletingTrade}
+          />
         </TabsContent>
 
         <TabsContent value="OPEN" className="mt-4">
-          <TradeTable trades={openTrades} isLoading={isLoading} />
+          <TradeTable
+            trades={openTrades}
+            isLoading={isLoading}
+            onEdit={setEditingTrade}
+            onDelete={setDeletingTrade}
+          />
         </TabsContent>
 
         <TabsContent value="CLOSED" className="mt-4">
-          <TradeTable trades={closedTrades} isLoading={isLoading} />
+          <TradeTable
+            trades={closedTrades}
+            isLoading={isLoading}
+            onEdit={setEditingTrade}
+            onDelete={setDeletingTrade}
+          />
         </TabsContent>
       </Tabs>
 
@@ -232,11 +250,121 @@ export default function Trades() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Trade Dialog */}
+      <Dialog open={!!editingTrade} onOpenChange={(open) => !open && setEditingTrade(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Trade</DialogTitle>
+          </DialogHeader>
+          {editingTrade && (
+            <TradeForm
+              trade={editingTrade}
+              onSuccess={() => setEditingTrade(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Trade Confirmation Dialog */}
+      <Dialog open={!!deletingTrade} onOpenChange={(open) => !open && setDeletingTrade(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Trade</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete this{' '}
+              <span className="font-semibold text-foreground">
+                {deletingTrade?.asset.symbol} {deletingTrade?.direction}
+              </span>{' '}
+              trade?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeletingTrade(null)}
+                disabled={deleteTradeMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (deletingTrade) {
+                    deleteTradeMutation.mutate(deletingTrade.id, {
+                      onSuccess: () => {
+                        setDeletingTrade(null);
+                      },
+                    });
+                  }
+                }}
+                disabled={deleteTradeMutation.isPending}
+              >
+                {deleteTradeMutation.isPending ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function TradeTable({ trades, isLoading }: { trades: any[]; isLoading: boolean }) {
+// Format a single trade for clipboard (same format as bulk export)
+function formatTradeForClipboard(trade: Trade) {
+  return {
+    asset: {
+      coingeckoId: trade.asset.coingeckoId,
+      symbol: trade.asset.symbol,
+      name: trade.asset.name,
+      category: trade.asset.category,
+    },
+    direction: trade.direction,
+    entryPrice: trade.entryPrice,
+    exitPrice: trade.exitPrice,
+    quantity: trade.quantity,
+    entryDate: trade.entryDate,
+    exitDate: trade.exitDate,
+    status: trade.status,
+    notes: trade.notes,
+    tags: trade.tags,
+  };
+}
+
+async function copyTradeToClipboard(trade: Trade): Promise<boolean> {
+  try {
+    const formatted = formatTradeForClipboard(trade);
+    await navigator.clipboard.writeText(JSON.stringify(formatted, null, 2));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+interface TradeTableProps {
+  trades: Trade[];
+  isLoading: boolean;
+  onEdit: (trade: Trade) => void;
+  onDelete: (trade: Trade) => void;
+}
+
+function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = async (trade: Trade) => {
+    const success = await copyTradeToClipboard(trade);
+    if (success) {
+      setCopiedId(trade.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -272,6 +400,7 @@ function TradeTable({ trades, isLoading }: { trades: any[]; isLoading: boolean }
                 <TableHead className="text-right">P&L</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Notes</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -336,6 +465,41 @@ function TradeTable({ trades, isLoading }: { trades: any[]; isLoading: boolean }
                   </TableCell>
                   <TableCell className="max-w-[150px] truncate">
                     {trade.notes || '-'}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleCopy(trade)}
+                        title="Copy trade"
+                      >
+                        {copiedId === trade.id ? (
+                          <Check className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => onEdit(trade)}
+                        title="Edit trade"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => onDelete(trade)}
+                        title="Delete trade"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
