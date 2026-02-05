@@ -149,8 +149,25 @@ VITE_CLERK_PUBLISHABLE_KEY=  # Clerk frontend key
 - **Backend**: Railway (PostgreSQL included)
 - **Frontend**: Vercel (rewrites API calls to Railway)
 
+## Key Patterns
+
+### Copy/Paste JSON Import Pattern
+All data tables (Portfolio, Trades, History) follow the same copy/import pattern:
+- **Copy individual**: Clipboard icon per row, copies single item as JSON
+- **Copy All**: Button in header, copies all items as JSON array
+- **Import**: Tab in Add/Log dialog with textarea for pasting JSON
+- **Format**: Single unified JSON format used for both copy and import (no simplified versions)
+
+### Trade Form Editing
+`TradeForm` component supports both create and edit modes:
+```typescript
+<TradeForm trade={existingTrade} onSuccess={handleClose} />  // Edit mode
+<TradeForm onSuccess={handleClose} />                         // Create mode
+```
+
 ## Gotchas & Notes
 - Always define `onDelete: Cascade` in Prisma relations to avoid FK errors
 - FX rates need fallback values for when API is slow
 - Snapshots use unique constraint + check-before-create to prevent duplicates
 - Position P&L should display as percentage for clarity
+- Bulk import endpoints skip price fetching (`skipPriceFetch: true`) to avoid rate limiting - scheduler updates prices within 1 minute

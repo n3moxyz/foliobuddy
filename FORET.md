@@ -1094,51 +1094,94 @@ Added convenient export buttons on Portfolio and Trades pages:
 
 These use the existing backend `/api/export/csv/positions` and `/api/export/csv/trades` endpoints.
 
-### Copy/Paste Positions
+### Copy/Paste System (Positions, Trades, History)
 
-Need to transfer positions between accounts or share with investors? The copy/paste system makes it easy.
+Need to transfer data between accounts or back up your records? The copy/paste system is consistent across all major tables.
 
-**Copy features:**
-| Location | Action |
-|----------|--------|
-| Position row | Click clipboard icon in Actions column |
-| Position detail modal | Click "Copy" button |
-| Portfolio header | "Copy All" button copies all positions |
+**The pattern is the same everywhere:**
+| Page | Copy Individual | Copy All | Import Location |
+|------|-----------------|----------|-----------------|
+| Portfolio | Clipboard icon per row | "Copy All" button | Add Position → Import tab |
+| Trades | Clipboard icon per row | "Copy All" button | Log Trade → Import tab |
+| History | Clipboard icon per row | "Copy All" button | Add Snapshot → Import tab |
 
-**The clipboard format (JSON):**
+**Position format (JSON):**
 ```json
-[
-  {
-    "asset": {
-      "coingeckoId": "bitcoin",
-      "symbol": "BTC",
-      "name": "Bitcoin",
-      "category": "LIQUID_CRYPTO"
-    },
-    "quantity": 6.2315,
-    "avgCostUsd": 88888,
-    "storageType": "CEX",
-    "storageLocation": "Binance",
-    "notes": "Spot"
-  }
-]
+[{
+  "asset": { "coingeckoId": "bitcoin", "symbol": "BTC", "name": "Bitcoin", "category": "LIQUID_CRYPTO" },
+  "quantity": 6.2315,
+  "avgCostUsd": 88888,
+  "storageType": "CEX",
+  "storageLocation": "Binance",
+  "notes": "Spot"
+}]
 ```
 
-The format includes full asset info (coingeckoId, symbol, name, category) so positions can be recreated even if the asset doesn't exist in the target account.
+**Trade format (JSON):**
+```json
+[{
+  "asset": { "coingeckoId": "bitcoin", "symbol": "BTC", "name": "Bitcoin", "category": "LIQUID_CRYPTO" },
+  "direction": "LONG",
+  "entryPrice": 50000,
+  "exitPrice": 55000,
+  "quantity": 0.1,
+  "entryDate": "2024-01-15T10:00:00.000Z",
+  "exitDate": "2024-01-20T10:00:00.000Z",
+  "status": "CLOSED",
+  "notes": "Test trade",
+  "tags": ["swing"]
+}]
+```
+
+**Snapshot format (JSON):**
+```json
+[{
+  "timestamp": "2024-01-15T00:00:00.000Z",
+  "snapshotType": "MANUAL",
+  "source": "MANUAL",
+  "totalValueUsd": 50000,
+  "totalCostBasis": 40000,
+  "notes": "Monthly checkpoint"
+}]
+```
+
+**Why one format?** We originally had two formats (simplified for import, full for backup). But maintaining two formats was confusing—users copied in one format and couldn't paste it back. Now there's one unified format per entity type: what you copy is exactly what you can import.
 
 **Import features:**
-- **Import button** in Portfolio header opens the import dialog
 - **Paste from Clipboard** - One-click paste button
 - **Manual input** - Paste or type JSON in textarea
-- **Validation** - Checks JSON format, required fields, positive quantities
-- **Preview** - Shows all positions to be imported before confirming
+- **Validation** - Checks JSON format, required fields, data types
+- **Preview** - Shows count of items to be imported
 - **Auto-create assets** - If an asset doesn't exist, creates it from CoinGecko
-- **Results view** - Shows success/failure for each imported position
+- **Bulk import API** - Backend endpoint handles arrays efficiently
 
 **Visual feedback:**
 - Copy buttons show a green checkmark for 2 seconds after successful copy
 - Button text changes to "Copied!" temporarily
-- Import dialog shows count of positions ready to import
+- Import dialog shows count of items ready to import
+
+### Inline Edit/Delete Actions
+
+Every data table has consistent action buttons per row:
+
+| Icon | Action | Confirmation |
+|------|--------|--------------|
+| 📋 Copy | Copies item to clipboard | Green checkmark feedback |
+| ✏️ Edit | Opens edit dialog with form pre-filled | None (dialog has Cancel) |
+| 🗑️ Delete | Opens confirmation dialog | "Are you sure?" with Cancel/Delete |
+
+**The edit pattern:**
+```typescript
+// Same form component handles both create and edit
+<TradeForm trade={existingTrade} onSuccess={handleClose} />  // Edit mode
+<TradeForm onSuccess={handleClose} />                         // Create mode
+
+// Form detects mode from prop
+const isEditing = !!trade;
+const mutation = isEditing ? useUpdateTrade() : useCreateTrade();
+```
+
+This pattern keeps forms DRY—one component, two modes.
 
 ### Real-Time WebSocket Updates
 
@@ -1214,6 +1257,9 @@ Features I want to add:
 - [ ] Mobile app (React Native, sharing the codebase)
 
 Recently completed:
+- [x] Copy/paste for trades with bulk import API endpoint
+- [x] Edit/delete action buttons per trade row
+- [x] Unified copy format across Portfolio, Trades, and History tabs
 - [x] Copy/paste positions between accounts with JSON format
 - [x] Real-time WebSocket updates with Socket.io
 - [x] Dark mode with system preference detection
