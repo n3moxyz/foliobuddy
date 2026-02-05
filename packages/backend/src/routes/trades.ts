@@ -413,6 +413,105 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
+// POST /api/trades/bulk-import - Bulk import trades
+const bulkImportTradeSchema = z.object({
+  asset: z.object({
+    coingeckoId: z.string().nullable(),
+    symbol: z.string().min(1),
+    name: z.string().min(1),
+    category: z.enum(['LIQUID_CRYPTO', 'STABLECOIN', 'NFT', 'ANGEL', 'CASH']),
+  }),
+  direction: z.enum(['LONG', 'SHORT']),
+  entryPrice: z.number().positive(),
+  exitPrice: z.number().positive().optional().nullable(),
+  quantity: z.number().positive(),
+  entryDate: z.string(),
+  exitDate: z.string().optional().nullable(),
+  status: z.enum(['OPEN', 'CLOSED']).optional(),
+  notes: z.string().optional().nullable(),
+  tags: z.array(z.string()).optional().nullable(),
+});
+
+router.post('/bulk-import', async (req, res, next) => {
+  try {
+    const trades = z.array(bulkImportTradeSchema).parse(req.body);
+    const results: { success: boolean; symbol: string; error?: string }[] = [];
+
+    for (const tradeData of trades) {
+      try {
+        // Find or create asset
+        let asset = await prisma.asset.findFirst({
+          where: tradeData.asset.coingeckoId
+            ? { coingeckoId: tradeData.asset.coingeckoId }
+            : { symbol: tradeData.asset.symbol.toUpperCase() },
+        });
+
+        if (!asset) {
+          asset = await prisma.asset.create({
+            data: {
+              coingeckoId: tradeData.asset.coingeckoId,
+              symbol: tradeData.asset.symbol.toUpperCase(),
+              name: tradeData.asset.name,
+              category: tradeData.asset.category,
+              currentPriceUsd: 0,
+            },
+          });
+        }
+
+        const entryDate = new Date(tradeData.entryDate);
+        const exitDate = tradeData.exitDate ? new Date(tradeData.exitDate) : null;
+        const positionSizeUsd = tradeData.entryPrice * tradeData.quantity;
+
+        let status: 'OPEN' | 'CLOSED' = tradeData.status || (tradeData.exitPrice ? 'CLOSED' : 'OPEN');
+        let realizedPnL: number | null = null;
+        let realizedPnLPct: number | null = null;
+
+        if (tradeData.exitPrice && status === 'CLOSED') {
+          const pnlResult = calculateTradePnL(
+            tradeData.direction,
+            tradeData.entryPrice,
+            tradeData.exitPrice,
+            tradeData.quantity
+          );
+          realizedPnL = pnlResult.pnl;
+          realizedPnLPct = pnlResult.pnlPct;
+        }
+
+        await prisma.trade.create({
+          data: {
+            userId: req.userId!,
+            assetId: asset.id,
+            direction: tradeData.direction,
+            entryPrice: tradeData.entryPrice,
+            exitPrice: tradeData.exitPrice ?? null,
+            quantity: tradeData.quantity,
+            positionSizeUsd,
+            entryDate,
+            exitDate,
+            status,
+            realizedPnL,
+            realizedPnLPct,
+            notes: tradeData.notes ?? null,
+            tags: tradeData.tags ? JSON.stringify(tradeData.tags) : null,
+          },
+        });
+
+        results.push({ success: true, symbol: tradeData.asset.symbol });
+      } catch (err) {
+        results.push({
+          success: false,
+          symbol: tradeData.asset.symbol,
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    }
+
+    res.json({ results });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // DELETE /api/trades - Delete all trades for the user
 router.delete('/', async (req, res, next) => {
   try {

@@ -327,18 +327,21 @@ interface SnapshotTableProps {
   onDelete: (snapshot: Snapshot) => void;
 }
 
-// Format a single snapshot for import (used by SnapshotForm's Import tab)
-function formatSnapshotForImport(snapshot: Snapshot) {
+// Format a single snapshot for clipboard (same format as bulk export)
+function formatSnapshotForClipboard(snapshot: Snapshot) {
   return {
-    timestamp: new Date(snapshot.timestamp).toISOString().split('T')[0],
+    timestamp: snapshot.timestamp,
+    snapshotType: snapshot.snapshotType,
+    source: snapshot.source,
     totalValueUsd: snapshot.totalValueUsd,
-    notes: snapshot.notes || undefined,
+    totalCostBasis: snapshot.totalCostBasis,
+    notes: snapshot.notes,
   };
 }
 
-async function copySnapshotForImport(snapshot: Snapshot): Promise<boolean> {
+async function copySnapshotToClipboard(snapshot: Snapshot): Promise<boolean> {
   try {
-    const formatted = formatSnapshotForImport(snapshot);
+    const formatted = formatSnapshotForClipboard(snapshot);
     await navigator.clipboard.writeText(JSON.stringify(formatted, null, 2));
     return true;
   } catch {
@@ -400,7 +403,7 @@ function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdi
   };
 
   const handleCopySnapshot = async (snapshot: Snapshot) => {
-    const success = await copySnapshotForImport(snapshot);
+    const success = await copySnapshotToClipboard(snapshot);
     if (success) {
       setCopiedSnapshotId(snapshot.id);
       setTimeout(() => setCopiedSnapshotId(null), 2000);
