@@ -67,4 +67,25 @@ router.get('/history/:assetId', async (req, res, next) => {
   }
 });
 
+// GET /api/prices/historical/:coingeckoId - Get historical prices from CoinGecko
+router.get('/historical/:coingeckoId', async (req, res, next) => {
+  try {
+    const { coingeckoId } = req.params;
+    const days = parseInt(req.query.days as string) || 30;
+
+    // Cap at 365 days to avoid excessive API load
+    const cappedDays = Math.min(days, 365);
+
+    const data = await priceService.getHistoricalPrices(coingeckoId, cappedDays);
+
+    res.json({
+      coingeckoId,
+      days: cappedDays,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
