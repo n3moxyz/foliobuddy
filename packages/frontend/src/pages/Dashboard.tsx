@@ -15,6 +15,7 @@ import { NetWorthCard } from '@/components/dashboard/NetWorthCard';
 import { AllocationCharts } from '@/components/dashboard/AllocationCharts';
 import { PerformersCard } from '@/components/dashboard/PerformersCard';
 import { PortfolioChart } from '@/components/dashboard/PortfolioChart';
+import { BenchmarkComparisonChart } from '@/components/dashboard/BenchmarkComparisonChart';
 import { ChevronDown, Users } from 'lucide-react';
 
 export default function Dashboard() {
@@ -197,6 +198,9 @@ export default function Dashboard() {
         stakeMultiplier={stakeMultiplier}
         liveValueUsd={summary?.totalValueUsd}
       />
+
+      {/* Benchmark Comparison Chart */}
+      <BenchmarkComparisonChart />
 
       {/* Allocation Charts */}
       {positions && (

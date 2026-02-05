@@ -5,6 +5,7 @@ const RATE_LIMIT_DELAY = 2100; // 2.1 seconds between calls (30 calls/min limit)
 const BATCH_SIZE = 50; // Max coins per request
 const CACHE_DURATION_MS = 30000; // 30 seconds cache
 const MAX_CACHE_ENTRIES = 500; // Prevent unbounded memory growth
+const HISTORICAL_CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes cache for historical data
 
 interface PriceCacheEntry {
   price: number;
@@ -48,6 +49,20 @@ interface CoinGeckoExchangeRates {
   };
 }
 
+interface CoinGeckoMarketChartResponse {
+  prices: [number, number][]; // [timestamp, price][]
+}
+
+interface HistoricalPricePoint {
+  timestamp: number;
+  price: number;
+}
+
+interface HistoricalPriceCacheEntry {
+  data: HistoricalPricePoint[];
+  fetchedAt: number;
+}
+
 class PriceService {
   private priceCache: PriceCache = {};
   private lastRequestTime = 0;
@@ -58,6 +73,9 @@ class PriceService {
   private coinList: CoinListItem[] = [];
   private coinListLastFetch = 0;
   private coinListCacheDuration = 24 * 60 * 60 * 1000; // 24 hours
+
+  // Historical price cache
+  private historicalCache: Map<string, HistoricalPriceCacheEntry> = new Map();
 
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
@@ -412,10 +430,59 @@ class PriceService {
   }
 
   /**
+   * Get historical prices for a coin from CoinGecko
+   * Uses /coins/{id}/market_chart endpoint
+   */
+  async getHistoricalPrices(coingeckoId: string, days: number): Promise<HistoricalPricePoint[]> {
+    const cacheKey = `${coingeckoId}-${days}`;
+    const cached = this.historicalCache.get(cacheKey);
+
+    // Return cached data if still valid
+    if (cached && Date.now() - cached.fetchedAt < HISTORICAL_CACHE_DURATION_MS) {
+      return cached.data;
+    }
+
+    const url = `${COINGECKO_BASE_URL}/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${days}`;
+
+    try {
+      const response = await this.rateLimitedFetch<CoinGeckoMarketChartResponse>(url);
+
+      const data: HistoricalPricePoint[] = response.prices.map(([timestamp, price]) => ({
+        timestamp,
+        price,
+      }));
+
+      // Cache the result
+      this.historicalCache.set(cacheKey, {
+        data,
+        fetchedAt: Date.now(),
+      });
+
+      // Clean old cache entries (keep max 50)
+      if (this.historicalCache.size > 50) {
+        const entries = Array.from(this.historicalCache.entries());
+        entries.sort((a, b) => a[1].fetchedAt - b[1].fetchedAt);
+        const toRemove = entries.slice(0, entries.length - 50);
+        toRemove.forEach(([key]) => this.historicalCache.delete(key));
+      }
+
+      return data;
+    } catch (error) {
+      console.error(`Error fetching historical prices for ${coingeckoId}:`, error);
+      // Return cached data even if stale, better than nothing
+      if (cached) {
+        return cached.data;
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Clear the price cache
    */
   clearCache(): void {
     this.priceCache = {};
+    this.historicalCache.clear();
   }
 }
 

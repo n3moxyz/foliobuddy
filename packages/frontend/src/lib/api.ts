@@ -195,6 +195,8 @@ export const api = {
   getCurrentPrices: () => request<AssetPrice[]>('/prices/current'),
   refreshPrices: () =>
     request<{ updated: number; errors: number }>('/prices/refresh', { method: 'POST' }),
+  getBenchmarkHistory: (coingeckoId: string, days: number) =>
+    request<BenchmarkHistoricalData>(`/prices/historical/${coingeckoId}?days=${days}`),
 
   // FX
   getFxRates: () => request<FxRate[]>('/fx/rates'),
@@ -462,7 +464,7 @@ export interface CreateTradeData {
 
 export interface CreateInvestorData {
   name: string;
-  stakePercentage: number;
+  stakePercentage?: number;
   initialCapital?: number;
   joinDate?: string;
   notes?: string;
@@ -518,4 +520,10 @@ export interface BulkImportSnapshotResult {
   results: Array<{ success: boolean; timestamp: string; error?: string }>;
   successCount: number;
   totalCount: number;
+}
+
+export interface BenchmarkHistoricalData {
+  coingeckoId: string;
+  days: number;
+  data: Array<{ timestamp: number; price: number }>;
 }
