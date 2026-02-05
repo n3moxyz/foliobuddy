@@ -195,6 +195,51 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+// GET /api/snapshots/:id/positions - Get snapshot positions with enriched asset data
+router.get('/:id/positions', async (req, res, next) => {
+  try {
+    const snapshot = await prisma.snapshot.findUnique({
+      where: { id: req.params.id },
+      include: {
+        positions: true,
+      },
+    });
+
+    if (!snapshot) {
+      throw new AppError('Snapshot not found', 404);
+    }
+
+    // Enrich positions with asset data for import compatibility
+    const enrichedPositions = await Promise.all(
+      snapshot.positions.map(async (pos) => {
+        // Try to find the asset by symbol
+        const asset = await prisma.asset.findFirst({
+          where: { symbol: pos.assetSymbol },
+        });
+
+        return {
+          ...pos,
+          asset: asset ? {
+            coingeckoId: asset.coingeckoId,
+            symbol: asset.symbol,
+            name: asset.name,
+            category: asset.category,
+          } : {
+            coingeckoId: null,
+            symbol: pos.assetSymbol,
+            name: pos.assetSymbol,
+            category: 'LIQUID_CRYPTO',
+          },
+        };
+      })
+    );
+
+    res.json(enrichedPositions);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/snapshots - Create a new snapshot
 router.post('/', async (req, res, next) => {
   try {

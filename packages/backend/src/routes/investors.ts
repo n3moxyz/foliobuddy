@@ -13,6 +13,7 @@ const createInvestorSchema = z.object({
   initialCapital: z.number().min(0).default(0),
   joinDate: z.string().transform(s => new Date(s)).optional(),
   notes: z.string().optional(),
+  isOwner: z.boolean().optional(),
 });
 
 const updateInvestorSchema = createInvestorSchema.partial();
@@ -167,6 +168,14 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createInvestorSchema.parse(req.body);
 
+    // If setting as owner, clear existing owner first
+    if (data.isOwner) {
+      await prisma.investor.updateMany({
+        where: { userId: req.userId!, isOwner: true },
+        data: { isOwner: false },
+      });
+    }
+
     // Get existing investors to calculate available stake
     const existingInvestors = await prisma.investor.findMany({
       where: { userId: req.userId! },
@@ -212,6 +221,7 @@ router.post('/', async (req, res, next) => {
           : 0,
         joinDate: data.joinDate ?? new Date(),
         notes: data.notes,
+        isOwner: data.isOwner ?? false,
       },
     });
 
@@ -243,28 +253,16 @@ router.put('/:id', async (req, res, next) => {
       throw new AppError('Investor not found', 404);
     }
 
-    // Check stake percentage change
-    if (data.stakePercentage !== undefined) {
-      const otherInvestors = await prisma.investor.findMany({
-        where: {
-          userId: req.userId!,
-          id: { not: req.params.id },
-        },
+    // If setting as owner, clear existing owner first
+    if (data.isOwner) {
+      await prisma.investor.updateMany({
+        where: { userId: req.userId!, isOwner: true, id: { not: req.params.id } },
+        data: { isOwner: false },
       });
+    }
 
-      const otherTotalStake = otherInvestors.reduce(
-        (sum, inv) => sum + inv.stakePercentage,
-        0
-      );
-
-      if (otherTotalStake + data.stakePercentage > 100) {
-        throw new AppError(
-          `Total stake percentage cannot exceed 100%. Others: ${otherTotalStake}%, New: ${data.stakePercentage}%`,
-          400
-        );
-      }
-
-      // Record stake change
+    // Record stake change if stake percentage is being updated
+    if (data.stakePercentage !== undefined) {
       const summary = await portfolioService.getSummary(req.userId!);
       const newValue = summary.totalValueUsd * (data.stakePercentage / 100);
 
