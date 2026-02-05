@@ -22,6 +22,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 
 // Helper to format stake percentage with up to 5 decimal places (trimming trailing zeros)
@@ -35,6 +42,7 @@ export default function Investors() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editInvestor, setEditInvestor] = useState<Investor | null>(null);
   const [deleteInvestor, setDeleteInvestor] = useState<Investor | null>(null);
+  const [reassignToId, setReassignToId] = useState<string>('');
 
   const queryClient = useQueryClient();
 
@@ -61,10 +69,12 @@ export default function Investors() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.deleteInvestor(id),
+    mutationFn: ({ id, reassignTo }: { id: string; reassignTo?: string }) =>
+      api.deleteInvestor(id, reassignTo),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investors'] });
       setDeleteInvestor(null);
+      setReassignToId('');
     },
   });
 
@@ -251,7 +261,12 @@ export default function Investors() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteInvestor} onOpenChange={() => setDeleteInvestor(null)}>
+      <Dialog open={!!deleteInvestor} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteInvestor(null);
+          setReassignToId('');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Investor</DialogTitle>
@@ -260,14 +275,63 @@ export default function Investors() {
               This will not affect historical data.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Stake reassignment - only show if there are other investors */}
+          {deleteInvestor && investors && investors.length > 1 && (
+            <div className="space-y-2 py-4">
+              <Label>Reassign {formatStakePercentage(deleteInvestor.stakePercentage)}% stake to:</Label>
+              {investors.length === 2 ? (
+                // Only one other investor - auto-select and show info
+                <p className="text-sm text-muted-foreground">
+                  Stake will be reassigned to{' '}
+                  <span className="font-medium">
+                    {investors.find(inv => inv.id !== deleteInvestor.id)?.name}
+                  </span>
+                </p>
+              ) : (
+                // Multiple other investors - show dropdown
+                <Select value={reassignToId} onValueChange={setReassignToId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an investor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {investors
+                      .filter(inv => inv.id !== deleteInvestor.id)
+                      .map(inv => (
+                        <SelectItem key={inv.id} value={inv.id}>
+                          {inv.name} ({formatStakePercentage(inv.stakePercentage)}%)
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteInvestor(null)}>
+            <Button variant="outline" onClick={() => {
+              setDeleteInvestor(null);
+              setReassignToId('');
+            }}>
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={() => deleteInvestor && deleteMutation.mutate(deleteInvestor.id)}
-              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (!deleteInvestor) return;
+                // Determine reassignTo value
+                let reassignTo: string | undefined;
+                if (investors && investors.length > 1) {
+                  if (investors.length === 2) {
+                    // Auto-select the only other investor
+                    reassignTo = investors.find(inv => inv.id !== deleteInvestor.id)?.id;
+                  } else {
+                    reassignTo = reassignToId || undefined;
+                  }
+                }
+                deleteMutation.mutate({ id: deleteInvestor.id, reassignTo });
+              }}
+              disabled={deleteMutation.isPending || (investors && investors.length > 2 && !reassignToId)}
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </Button>
@@ -301,11 +365,21 @@ function InvestorForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      name,
-      stakePercentage: parseFloat(stakePercentage),
-      initialCapital: initialCapital ? parseFloat(initialCapital) : undefined,
-    });
+    if (isEditing) {
+      // Edit mode: send the stake percentage
+      onSubmit({
+        name,
+        stakePercentage: parseFloat(stakePercentage),
+        initialCapital: initialCapital ? parseFloat(initialCapital) : undefined,
+      });
+    } else {
+      // Add mode: don't send stake percentage, let backend auto-calculate
+      onSubmit({
+        name,
+        stakePercentage: maxStake, // Will be auto-calculated on backend, but send for type safety
+        initialCapital: initialCapital ? parseFloat(initialCapital) : undefined,
+      });
+    }
   };
 
   return (
@@ -323,20 +397,35 @@ function InvestorForm({
 
       <div className="space-y-2">
         <Label htmlFor="stake">Stake Percentage</Label>
-        <Input
-          id="stake"
-          type="number"
-          step="0.00001"
-          min="0"
-          max={maxStake}
-          value={stakePercentage}
-          onChange={(e) => setStakePercentage(e.target.value)}
-          placeholder={`0 - ${formatStakePercentage(maxStake)}`}
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          Maximum available: {formatStakePercentage(maxStake)}%
-        </p>
+        {isEditing ? (
+          // Edit mode: allow changing stake
+          <>
+            <Input
+              id="stake"
+              type="number"
+              step="0.00001"
+              min="0"
+              max={maxStake}
+              value={stakePercentage}
+              onChange={(e) => setStakePercentage(e.target.value)}
+              placeholder={`0 - ${formatStakePercentage(maxStake)}`}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              Maximum available: {formatStakePercentage(maxStake)}%
+            </p>
+          </>
+        ) : (
+          // Add mode: show auto-calculated stake as read-only
+          <>
+            <div className="flex items-center h-10 px-3 rounded-md border bg-muted font-mono">
+              {formatStakePercentage(maxStake)}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Automatically assigned remaining stake
+            </p>
+          </>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -356,7 +445,7 @@ function InvestorForm({
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="submit" disabled={isLoading || !name || !stakePercentage}>
+        <Button type="submit" disabled={isLoading || !name || (isEditing && !stakePercentage)}>
           {isLoading ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Investor')}
         </Button>
       </div>

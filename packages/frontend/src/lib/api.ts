@@ -140,8 +140,8 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  deleteInvestor: (id: string) =>
-    request<void>(`/investors/${id}`, { method: 'DELETE' }),
+  deleteInvestor: (id: string, reassignTo?: string) =>
+    request<void>(`/investors/${id}${reassignTo ? `?reassignTo=${reassignTo}` : ''}`, { method: 'DELETE' }),
 
   // Snapshots
   getSnapshots: (params?: { type?: string; source?: string; from?: string; to?: string; limit?: number }) => {
