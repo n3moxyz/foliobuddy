@@ -9,7 +9,7 @@ const router = Router();
 // Validation schemas
 const createInvestorSchema = z.object({
   name: z.string().min(1),
-  stakePercentage: z.number().min(0).max(100),
+  stakePercentage: z.number().min(0).max(100).optional(), // Optional - will auto-calculate as remainder
   initialCapital: z.number().min(0).default(0),
   joinDate: z.string().transform(s => new Date(s)).optional(),
   notes: z.string().optional(),
@@ -167,7 +167,7 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createInvestorSchema.parse(req.body);
 
-    // Verify total stake doesn't exceed 100%
+    // Get existing investors to calculate available stake
     const existingInvestors = await prisma.investor.findMany({
       where: { userId: req.userId! },
     });
@@ -177,22 +177,33 @@ router.post('/', async (req, res, next) => {
       0
     );
 
-    if (currentTotalStake + data.stakePercentage > 100) {
+    // Auto-calculate stake as remainder if not provided
+    const stakePercentage = data.stakePercentage ?? (100 - currentTotalStake);
+
+    // Verify total stake doesn't exceed 100%
+    if (currentTotalStake + stakePercentage > 100) {
       throw new AppError(
-        `Total stake percentage cannot exceed 100%. Current: ${currentTotalStake}%, New: ${data.stakePercentage}%`,
+        `Total stake percentage cannot exceed 100%. Current: ${currentTotalStake}%, New: ${stakePercentage}%`,
+        400
+      );
+    }
+
+    if (stakePercentage <= 0) {
+      throw new AppError(
+        `No stake available. Current total: ${currentTotalStake}%`,
         400
       );
     }
 
     // Get current portfolio value
     const summary = await portfolioService.getSummary(req.userId!);
-    const currentValue = summary.totalValueUsd * (data.stakePercentage / 100);
+    const currentValue = summary.totalValueUsd * (stakePercentage / 100);
 
     const investor = await prisma.investor.create({
       data: {
         userId: req.userId!,
         name: data.name,
-        stakePercentage: data.stakePercentage,
+        stakePercentage,
         initialCapital: data.initialCapital,
         currentValue,
         totalReturn: currentValue - data.initialCapital,
@@ -208,7 +219,7 @@ router.post('/', async (req, res, next) => {
     await prisma.investorStake.create({
       data: {
         investorId: investor.id,
-        stakePercentage: data.stakePercentage,
+        stakePercentage,
         valueAtTime: currentValue,
       },
     });
@@ -278,8 +289,48 @@ router.put('/:id', async (req, res, next) => {
 });
 
 // DELETE /api/investors/:id - Delete an investor
+// Query param: reassignTo - ID of investor to receive the freed stake
 router.delete('/:id', async (req, res, next) => {
   try {
+    const investorToDelete = await prisma.investor.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!investorToDelete) {
+      throw new AppError('Investor not found', 404);
+    }
+
+    const reassignToId = req.query.reassignTo as string | undefined;
+
+    // If reassignTo is provided, transfer the stake
+    if (reassignToId) {
+      const targetInvestor = await prisma.investor.findUnique({
+        where: { id: reassignToId },
+      });
+
+      if (!targetInvestor) {
+        throw new AppError('Target investor for stake reassignment not found', 404);
+      }
+
+      // Update the target investor's stake
+      const newStake = targetInvestor.stakePercentage + investorToDelete.stakePercentage;
+      await prisma.investor.update({
+        where: { id: reassignToId },
+        data: { stakePercentage: newStake },
+      });
+
+      // Record stake change for the target investor
+      const summary = await portfolioService.getSummary(req.userId!);
+      const newValue = summary.totalValueUsd * (newStake / 100);
+      await prisma.investorStake.create({
+        data: {
+          investorId: reassignToId,
+          stakePercentage: newStake,
+          valueAtTime: newValue,
+        },
+      });
+    }
+
     await prisma.investor.delete({
       where: { id: req.params.id },
     });
