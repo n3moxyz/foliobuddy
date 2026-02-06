@@ -25,7 +25,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const server = createServer(app);
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 4001;
 
 // Initialize Prisma client
 export const prisma = new PrismaClient();

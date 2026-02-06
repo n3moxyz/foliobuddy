@@ -89,13 +89,13 @@ cd packages/frontend && npm run dev
 npm install              # Install all dependencies
 
 # Backend (packages/backend/)
-npm run dev              # Start dev server (port 3001)
+npm run dev              # Start dev server (port 4001)
 npm run build            # Compile TypeScript
 npx prisma migrate dev   # Run migrations
 npx prisma studio        # Database GUI
 
 # Frontend (packages/frontend/)
-npm run dev              # Start Vite dev server (port 5173)
+npm run dev              # Start Vite dev server (port 4000)
 npm run build            # Production build
 ```
 
@@ -136,13 +136,16 @@ Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. 
 ### Backend (`.env`)
 ```
 DATABASE_URL=           # PostgreSQL connection string
+PORT=4001               # Backend port (DO NOT use 3001 — that's reserved for other projects)
 CLERK_SECRET_KEY=       # Clerk backend key
+ALLOWED_ORIGINS=http://localhost:4000
 ```
 
 ### Frontend (`.env`)
 ```
-VITE_API_BASE=          # Backend URL (e.g., http://localhost:3001)
-VITE_CLERK_PUBLISHABLE_KEY=  # Clerk frontend key
+VITE_API_URL=http://localhost:4001/api    # Backend API URL
+VITE_WS_BACKEND_URL=http://localhost:4001 # WebSocket URL
+VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 ```
 
 ## Deployment
