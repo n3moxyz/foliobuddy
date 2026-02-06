@@ -706,7 +706,7 @@ In production, `VITE_API_URL` was undefined (intentionally, per Lesson 7), so it
 const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
 ```
 
-In production, this connects to `https://pa-portfolioxyz.vercel.app`, and Vercel's rewrites route `/socket.io/*` to the Railway backend.
+In production, this connects to `https://pa-port.vercel.app`, and Vercel's rewrites route `/socket.io/*` to the Railway backend.
 
 ### Lesson 9: Infinite Spinner on Import Errors
 
@@ -1013,7 +1013,7 @@ Railway provides:
 **The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Railway backend. This avoids CORS issues and keeps the backend URL hidden from the client.
 
 **Current production URL:**
-- Frontend: `https://pa-portfolioxyz.vercel.app`
+- Frontend: `https://pa-port.vercel.app`
 
 Vercel provides:
 - Edge deployment
