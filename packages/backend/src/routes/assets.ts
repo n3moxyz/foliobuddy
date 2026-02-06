@@ -101,10 +101,10 @@ router.post('/', async (req, res, next) => {
       throw new AppError(`Asset with symbol ${data.symbol} already exists`, 409);
     }
 
-    // Fetch current price if CoinGecko ID provided
+    // Fetch current price if CoinGecko ID provided (direct, bypasses queue)
     let currentPriceUsd: number | null = null;
     if (data.coingeckoId) {
-      currentPriceUsd = await priceService.getPrice(data.coingeckoId);
+      currentPriceUsd = await priceService.getDirectPrice(data.coingeckoId);
     }
 
     const asset = await prisma.asset.create({
@@ -147,10 +147,11 @@ router.post('/from-coingecko', async (req, res, next) => {
     }
 
     // Fetch current price unless skipPriceFetch is true (for bulk imports)
-    // The scheduler will update prices within a minute anyway
+    // Uses direct fetch (bypasses scheduler queue) so user requests are fast
+    // If it fails, scheduler will fill it in within 60s
     let currentPriceUsd = null;
     if (!skipPriceFetch) {
-      currentPriceUsd = await priceService.getPrice(coingeckoId);
+      currentPriceUsd = await priceService.getDirectPrice(coingeckoId);
     }
 
     const asset = await prisma.asset.create({

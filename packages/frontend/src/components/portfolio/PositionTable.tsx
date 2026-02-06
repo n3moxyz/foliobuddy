@@ -19,7 +19,9 @@ import {
 import { formatCurrency, formatNumber, formatPercent, formatDateTime, getPnLColorClass } from '@/lib/utils';
 import { useDeletePosition } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
-import { Pencil, Trash2, Copy, Check } from 'lucide-react';
+import { Pencil, Trash2, Copy, Check, ChevronRight } from 'lucide-react';
+import { useCollapsibleState } from '@/hooks/useCollapsibleState';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { Position } from '@/lib/api';
 
 const SKIP_DELETE_CONFIRM_KEY = 'pa-portfolio-skip-delete-confirm';
@@ -59,6 +61,7 @@ interface PositionTableProps {
   positions: Position[];
   currency?: 'USD' | 'SGD';
   fxRate?: number;
+  sectionPrefix?: string;
 }
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
@@ -68,7 +71,7 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
   BANK: 'Bank',
 };
 
-export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: PositionTableProps) {
+export function PositionTable({ positions, currency = 'USD', fxRate = 1, sectionPrefix }: PositionTableProps) {
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [deletePosition, setDeletePosition] = useState<Position | null>(null);
@@ -101,8 +104,10 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
     return absValue < 1000 ? 2 : 0;
   };
 
-  // Split positions into CEX and Onchain sections
-  const { cexPositions, onchainPositions } = useMemo(() => {
+  const { isExpanded, toggle } = useCollapsibleState();
+
+  // Split positions into CEX and Onchain sections with subtotals
+  const { cexPositions, onchainPositions, cexTotal, onchainTotal } = useMemo(() => {
     const cex: Position[] = [];
     const onchain: Position[] = [];
 
@@ -125,8 +130,22 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
       return (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
     });
 
-    return { cexPositions: cex, onchainPositions: onchain };
+    return {
+      cexPositions: cex,
+      onchainPositions: onchain,
+      cexTotal: cex.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+      onchainTotal: onchain.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+    };
   }, [positions]);
+
+  // Helper to convert for subsection headers
+  const convertSub = (usdValue: number) => {
+    return currency === 'SGD' ? usdValue * fxRate : usdValue;
+  };
+
+  // Subsection IDs based on parent section
+  const cexId = sectionPrefix ? `${sectionPrefix}-cex` : 'cex';
+  const onchainId = sectionPrefix ? `${sectionPrefix}-onchain` : 'onchain';
 
   const handleDeleteClick = (position: Position) => {
     if (skipConfirm) {
@@ -263,32 +282,74 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1 }: Posit
       <div className="space-y-4">
         {/* CEX Section */}
         {cexPositions.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">CEX</p>
-            <div className="rounded-md border overflow-hidden">
-              <Table className="table-fixed w-full">
-                {renderTableHeader()}
-                <TableBody>
-                  {cexPositions.map(renderPositionRow)}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
+          <Collapsible open={isExpanded(cexId)} onOpenChange={() => toggle(cexId)}>
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center gap-2 cursor-pointer select-none group mb-2">
+                <ChevronRight
+                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
+                    isExpanded(cexId) ? 'rotate-90' : ''
+                  }`}
+                />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
+                  CEX
+                </p>
+                <span className="text-xs text-muted-foreground">
+                  ({cexPositions.length})
+                </span>
+                {!isExpanded(cexId) && (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {formatCurrency(convertSub(cexTotal), currency, 0)}
+                  </span>
+                )}
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
+              <div className="rounded-md border overflow-hidden">
+                <Table className="table-fixed w-full">
+                  {renderTableHeader()}
+                  <TableBody>
+                    {cexPositions.map(renderPositionRow)}
+                  </TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {/* Onchain Section */}
         {onchainPositions.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Onchain</p>
-            <div className="rounded-md border overflow-hidden">
-              <Table className="table-fixed w-full">
-                {renderTableHeader()}
-                <TableBody>
-                  {onchainPositions.map(renderPositionRow)}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
+          <Collapsible open={isExpanded(onchainId)} onOpenChange={() => toggle(onchainId)}>
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center gap-2 cursor-pointer select-none group mb-2">
+                <ChevronRight
+                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
+                    isExpanded(onchainId) ? 'rotate-90' : ''
+                  }`}
+                />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
+                  Onchain
+                </p>
+                <span className="text-xs text-muted-foreground">
+                  ({onchainPositions.length})
+                </span>
+                {!isExpanded(onchainId) && (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {formatCurrency(convertSub(onchainTotal), currency, 0)}
+                  </span>
+                )}
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
+              <div className="rounded-md border overflow-hidden">
+                <Table className="table-fixed w-full">
+                  {renderTableHeader()}
+                  <TableBody>
+                    {onchainPositions.map(renderPositionRow)}
+                  </TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {/* Empty state */}
