@@ -102,11 +102,11 @@ npm run build            # Production build
 ## Architecture
 
 ```
-Frontend (React + Vite)
+Vercel (Frontend: React + Vite)
     ↓ HTTP + Clerk JWT
-Backend (Express.js)
+Railway (Backend: Express.js)
     ↓ Prisma ORM
-Database (PostgreSQL/SQLite)
+DigitalOcean/Coolify (Database: PostgreSQL 17)
 
 Background Jobs (node-cron):
 ├── Price refresh (every minute)
@@ -135,7 +135,7 @@ Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. 
 
 ### Backend (`.env`)
 ```
-DATABASE_URL=           # PostgreSQL connection string
+DATABASE_URL=           # PostgreSQL connection string (Coolify on DigitalOcean)
 PORT=4001               # Backend port (DO NOT use 3001 — that's reserved for other projects)
 CLERK_SECRET_KEY=       # Clerk backend key
 ALLOWED_ORIGINS=http://localhost:4000
@@ -149,8 +149,9 @@ VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 ```
 
 ## Deployment
-- **Backend**: Railway (PostgreSQL included)
+- **Backend**: Railway (Express.js API server)
 - **Frontend**: Vercel (rewrites API calls to Railway)
+- **Database**: Self-hosted PostgreSQL on DigitalOcean via Coolify (178.128.88.81:5432)
 
 ## Key Patterns
 
