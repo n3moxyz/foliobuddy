@@ -233,11 +233,49 @@ class PriceService {
   }
 
   /**
-   * Get price for a single coin
+   * Get price for a single coin (uses rate-limited queue — for scheduler use)
    */
   async getPrice(coingeckoId: string): Promise<number | null> {
     const prices = await this.getPrices([coingeckoId]);
     return prices.get(coingeckoId) ?? null;
+  }
+
+  /**
+   * Get price directly, bypassing the queue. Uses cache first, then a direct
+   * fetch with a short timeout. Meant for user-initiated requests that
+   * shouldn't wait behind the scheduler's batch.
+   */
+  async getDirectPrice(coingeckoId: string): Promise<number | null> {
+    // Check cache first — instant if scheduler already fetched it
+    if (this.isCacheValid(coingeckoId)) {
+      return this.priceCache[coingeckoId].price;
+    }
+
+    const url = `${COINGECKO_BASE_URL}/simple/price?ids=${coingeckoId}&vs_currencies=usd`;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+      const response = await fetch(url, {
+        headers: this.getHeaders(),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) return null;
+
+      const data = await response.json() as CoinGeckoPriceResponse;
+      const price = data[coingeckoId]?.usd ?? null;
+
+      if (price !== null) {
+        this.priceCache[coingeckoId] = { price, timestamp: Date.now() };
+      }
+
+      return price;
+    } catch {
+      return null; // Non-blocking — scheduler will fill it in within 60s
+    }
   }
 
   /**

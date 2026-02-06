@@ -5,6 +5,7 @@ import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
+import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { PositionForm } from '@/components/portfolio/PositionForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
@@ -16,8 +17,32 @@ import {
 import { Plus, Pencil, Download, Copy, Check, Trash2, MoreVertical, FileSpreadsheet } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
+import { useCollapsibleState } from '@/hooks/useCollapsibleState';
+import type { Position } from '@/lib/api';
 
 const PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
+
+interface SectionConfig {
+  id: string;
+  label: string;
+  filter: (p: Position) => boolean;
+}
+
+// Section config — add new categories here
+const SECTION_CONFIG: SectionConfig[] = [
+  {
+    id: 'crypto',
+    label: 'Crypto',
+    filter: (p) => p.asset.category !== 'STABLECOIN' && p.asset.category !== 'CASH',
+  },
+  {
+    id: 'stables',
+    label: 'Stables',
+    filter: (p) => p.asset.category === 'STABLECOIN' || p.asset.category === 'CASH',
+  },
+  // Future: just add entries like:
+  // { id: 'equities', label: 'Equities', filter: (p) => p.asset.category === 'EQUITY' },
+];
 
 export default function Portfolio() {
   const { currency } = useCurrencyStore();
@@ -71,27 +96,24 @@ export default function Portfolio() {
     }
   };
 
-  // Split positions by category and calculate totals
-  const { cryptoPositions, stablesPositions, cryptoTotal, stablesTotal } = useMemo(() => {
-    if (!positions) return { cryptoPositions: [], stablesPositions: [], cryptoTotal: 0, stablesTotal: 0 };
+  const { isExpanded, toggle } = useCollapsibleState();
 
-    const crypto = positions.filter(p =>
-      p.asset.category !== 'STABLECOIN' && p.asset.category !== 'CASH'
-    );
-    const stables = positions.filter(p =>
-      p.asset.category === 'STABLECOIN' || p.asset.category === 'CASH'
-    );
-
-    const cryptoVal = crypto.reduce((sum, p) => sum + (p.marketValueUsd || 0), 0);
-    const stablesVal = stables.reduce((sum, p) => sum + (p.marketValueUsd || 0), 0);
-
-    return {
-      cryptoPositions: crypto,
-      stablesPositions: stables,
-      cryptoTotal: cryptoVal,
-      stablesTotal: stablesVal
-    };
+  // Build sections dynamically from config
+  const sections = useMemo(() => {
+    if (!positions) return [];
+    return SECTION_CONFIG.map(config => {
+      const filtered = positions.filter(config.filter);
+      return {
+        ...config,
+        positions: filtered,
+        total: filtered.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+        pnl: filtered.reduce((s, p) => s + (p.unrealizedPnL || 0), 0),
+      };
+    }).filter(s => s.positions.length > 0);
   }, [positions]);
+
+  // Derived total for exposure calc in summary cards
+  const cryptoTotal = sections.find(s => s.id === 'crypto')?.total ?? 0;
 
   return (
     <div className="space-y-3">
@@ -231,62 +253,64 @@ export default function Portfolio() {
         </Card>
       )}
 
-      {/* Crypto Positions Table */}
-      {!positionsLoading && cryptoPositions.length > 0 && (
-        <Card>
-          <CardHeader className="py-3 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Crypto</CardTitle>
+      {/* Position Sections */}
+      {!positionsLoading && sections.map(section => (
+        <CollapsibleCard
+          key={section.id}
+          title={section.label}
+          isExpanded={isExpanded(section.id)}
+          onToggle={() => toggle(section.id)}
+          headerRight={
+            <div className="flex items-center gap-3">
+              {!isExpanded(section.id) && (
+                <>
+                  <span className="text-xs text-muted-foreground">
+                    {section.positions.length} position{section.positions.length !== 1 ? 's' : ''}
+                  </span>
+                  {section.pnl !== 0 && (
+                    <span className={`text-xs font-medium ${getPnLColorClass(section.pnl)}`}>
+                      {formatCurrency(convertValue(section.pnl), currency, 0)}
+                    </span>
+                  )}
+                </>
+              )}
               <span className="text-sm font-semibold text-muted-foreground">
-                {formatCurrency(convertValue(cryptoTotal), currency, 0)}
+                {formatCurrency(convertValue(section.total), currency, 0)}
               </span>
             </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-3 pt-0">
-            <PositionTable positions={cryptoPositions} currency={currency} fxRate={fxRate} />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Stables Positions Table */}
-      {!positionsLoading && stablesPositions.length > 0 && (
-        <Card>
-          <CardHeader className="py-3 px-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Stables</CardTitle>
+          }
+          headerExtra={
+            section.id === 'stables' ? (
+              <div className="flex items-center justify-end gap-2 mt-1">
                 {perpExposure > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Available: {formatCurrency(convertValue(stablesTotal - perpExposure), currency, 0)}
-                  </p>
-                )}
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-semibold text-muted-foreground">
-                  {formatCurrency(convertValue(stablesTotal), currency, 0)}
-                </span>
-                <div className="flex items-center justify-end gap-2 mt-1">
-                  {perpExposure > 0 && (
+                  <>
+                    <span className="text-xs text-muted-foreground">
+                      Available: {formatCurrency(convertValue(section.total - perpExposure), currency, 0)}
+                    </span>
                     <span className="text-xs text-muted-foreground">
                       Perp: {formatCurrency(convertValue(perpExposure), currency, 0)}
                     </span>
-                  )}
-                  <button
-                    onClick={handlePerpEdit}
-                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                  >
-                    <Pencil className="h-3 w-3" />
-                    {perpExposure > 0 ? 'Edit' : 'Add Perp'}
-                  </button>
-                </div>
+                  </>
+                )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); handlePerpEdit(); }}
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                >
+                  <Pencil className="h-3 w-3" />
+                  {perpExposure > 0 ? 'Edit' : 'Add Perp'}
+                </button>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-3 pt-0">
-            <PositionTable positions={stablesPositions} currency={currency} fxRate={fxRate} />
-          </CardContent>
-        </Card>
-      )}
+            ) : undefined
+          }
+        >
+          <PositionTable
+            positions={section.positions}
+            currency={currency}
+            fxRate={fxRate}
+            sectionPrefix={section.id}
+          />
+        </CollapsibleCard>
+      ))}
 
       {/* Add Position Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
@@ -296,8 +320,8 @@ export default function Portfolio() {
           </DialogHeader>
           <PositionForm
             onSuccess={() => setShowAddForm(false)}
-            cryptoCount={cryptoPositions.length}
-            stablesCount={stablesPositions.length}
+            cryptoCount={sections.find(s => s.id === 'crypto')?.positions.length ?? 0}
+            stablesCount={sections.find(s => s.id === 'stables')?.positions.length ?? 0}
           />
         </DialogContent>
       </Dialog>
