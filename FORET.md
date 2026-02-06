@@ -53,7 +53,7 @@ PA-portfolio-dash/
 |------|---------------|
 | **Express.js** | Simple, battle-tested, zero magic. When something breaks, I know exactly where to look. |
 | **Prisma** | Type-safe database access. Auto-generated TypeScript types from the schema. Migrations are painless. |
-| **PostgreSQL** | Production-ready relational database. SQLite for development (portable, no setup). |
+| **PostgreSQL** | Production-ready relational database. Self-hosted on DigitalOcean via Coolify. |
 | **Clerk** | Authentication without rolling my own JWT system. Secure by default. |
 | **node-cron** | Background jobs for automated snapshots and price updates. |
 | **Socket.io** | Real-time WebSocket updates with auto-reconnection and polling fallback. |
@@ -845,7 +845,21 @@ Now Vercel runs `npm run build` from inside `packages/frontend`, the dist folder
 
 **Key lesson:** In a monorepo, always configure the Root Directory in Vercel to point to the specific package you're deploying. The vercel.json in that package directory will be used, and paths (like `outputDirectory: "dist"`) will be relative to that root. This is a common gotcha—the build succeeds but Vercel can't find the output because it's looking in the wrong place.
 
-### Lesson 14: CORS Origin Validation Vulnerability
+### Lesson 14: Database Migration — Always Check the Actual Production DATABASE_URL
+
+**The task:** Migrate the database from a managed service to self-hosted Postgres on DigitalOcean/Coolify.
+
+**The assumption:** Production was using Neon serverless Postgres (matching the local `.env`).
+
+**The reality:** Production `DATABASE_URL` on Railway pointed to Railway's own internal Postgres (`postgres.railway.internal:5432/railway`), not Neon at all. The local `.env` had the Neon URL, but production had a completely different database.
+
+**What almost went wrong:** We dumped data from Neon (1.3MB) and imported it into Coolify. If we hadn't checked the Railway variables, we would have deployed with stale dev data instead of the real production data (8.7MB).
+
+**The fix:** Always check the actual `DATABASE_URL` in your hosting provider's dashboard before migrating. Don't assume it matches your local `.env`.
+
+**Key lesson:** Local environment and production environment can drift silently. When doing database migrations, verify the **actual** production connection string, not what you think it is.
+
+### Lesson 15: CORS Origin Validation Vulnerability
 
 **The bug (security):** CORS was configured with `origin.startsWith(allowed)`, which allowed malicious subdomains to pass CORS checks.
 
@@ -862,7 +876,7 @@ if (allowedOrigins.some(allowed => origin === allowed || allowed === '*'))
 
 **Key lesson:** Never use prefix matching for security boundaries. CORS origin validation must be exact. If you need wildcard subdomains, use explicit patterns like `*.myapp.com` with proper regex matching.
 
-### Lesson 15: Exposed Admin Endpoint
+### Lesson 16: Exposed Admin Endpoint
 
 **The bug (security):** The `/admin/drop-position-constraint` endpoint had no authentication, meaning anyone could execute database modifications.
 
@@ -986,10 +1000,21 @@ throw new AppError(
 We use `db push` because it syncs the schema directly without requiring migration files. This is simpler for a personal project where we're the only developer. The tradeoff: no migration history, but also no migration conflicts.
 
 Railway provides:
-- PostgreSQL database (auto-provisioned, DATABASE_URL injected)
 - Manual deploy via `railway up --service empowering-curiosity`
 - Environment variables management
 - Health checks and restart policies
+
+### Database → DigitalOcean/Coolify (Self-Hosted Postgres)
+
+The database runs as a Docker container on a DigitalOcean droplet managed by Coolify:
+- **Droplet:** 203.0.113.10 (Ubuntu 24.04)
+- **Coolify:** One-click Postgres 17 deployment with persistent volume
+- **Container:** `container-placeholder` (postgres:17-alpine)
+- **Port:** 5432 exposed externally, secured by DO firewall
+- **Firewall:** `pa-portfolio` — allows SSH (22), HTTP (80), HTTPS (443), Postgres (5432)
+
+**Why self-hosted instead of managed Postgres?**
+We originally used Railway's built-in Postgres, but wanted more control and cost savings. Coolify makes self-hosting almost as easy as managed—it handles Docker, persistent volumes, and can host multiple databases on one $6/month droplet. Future projects (like poker-coach) can add their own Postgres service on the same droplet.
 
 **Current production URLs:**
 - Backend: `https://old-backend.example.com`
@@ -1257,6 +1282,7 @@ Features I want to add:
 - [ ] Mobile app (React Native, sharing the codebase)
 
 Recently completed:
+- [x] Database migration from Railway Postgres to self-hosted Coolify/DigitalOcean
 - [x] Copy/paste for trades with bulk import API endpoint
 - [x] Edit/delete action buttons per trade row
 - [x] Unified copy format across Portfolio, Trades, and History tabs
