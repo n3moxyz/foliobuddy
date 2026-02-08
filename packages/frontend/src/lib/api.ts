@@ -221,9 +221,18 @@ export const api = {
     return `${API_BASE}/export/csv/trades${query ? `?${query}` : ''}`;
   },
   exportExcel: () => `${API_BASE}/export/excel`,
+
+  // Health
+  getDbHealth: () => request<DbHealth>('/health/db'),
 };
 
 // Types
+export interface DbHealth {
+  status: 'ok' | 'error';
+  latency_ms: number;
+  message?: string;
+}
+
 export interface Asset {
   id: string;
   coingeckoId: string | null;
