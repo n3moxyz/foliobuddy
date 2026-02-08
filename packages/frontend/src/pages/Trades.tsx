@@ -25,6 +25,9 @@ import { TradeForm } from '@/components/trades/TradeForm';
 import { TradeStatsCard } from '@/components/dashboard/TradeStatsCard';
 import { Plus, TrendingUp, TrendingDown, Download, Copy, Check, Trash2, MoreVertical, Pencil } from 'lucide-react';
 import { api, Trade } from '@/lib/api';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import type { ColumnConfig } from '@/hooks/useTableSort';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -347,6 +350,16 @@ async function copyTradeToClipboard(trade: Trade): Promise<boolean> {
   }
 }
 
+const TRADE_COLUMNS: Record<string, ColumnConfig<Trade>> = {
+  asset: { accessor: (t) => t.asset.symbol, type: 'string' },
+  direction: { accessor: (t) => t.direction, type: 'string' },
+  entryDate: { accessor: (t) => t.entryDate, type: 'date' },
+  exitDate: { accessor: (t) => t.exitDate, type: 'date' },
+  size: { accessor: (t) => t.positionSizeUsd, type: 'number' },
+  pnl: { accessor: (t) => t.realizedPnL, type: 'number' },
+  status: { accessor: (t) => t.status, type: 'string' },
+};
+
 interface TradeTableProps {
   trades: Trade[];
   isLoading: boolean;
@@ -356,6 +369,7 @@ interface TradeTableProps {
 
 function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { sortedItems, sortKey, sortDirection, onSort } = useTableSort(trades, TRADE_COLUMNS);
 
   const handleCopy = async (trade: Trade) => {
     const success = await copyTradeToClipboard(trade);
@@ -392,19 +406,19 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Asset</TableHead>
-                <TableHead>Direction</TableHead>
+                <SortableHeader label="Asset" sortKey="asset" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
+                <SortableHeader label="Direction" sortKey="direction" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
                 <TableHead>Entry</TableHead>
                 <TableHead>Exit</TableHead>
-                <TableHead className="text-right">Size</TableHead>
-                <TableHead className="text-right">P&L</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableHeader label="Size" sortKey="size" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
+                <SortableHeader label="P&L" sortKey="pnl" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
+                <SortableHeader label="Status" sortKey="status" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
                 <TableHead>Notes</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {trades.map((trade) => (
+              {sortedItems.map((trade) => (
                 <TableRow key={trade.id}>
                   <TableCell className="font-medium">{trade.asset.symbol}</TableCell>
                   <TableCell>

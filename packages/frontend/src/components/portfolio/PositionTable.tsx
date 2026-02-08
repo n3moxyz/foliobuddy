@@ -22,6 +22,9 @@ import { PositionForm } from './PositionForm';
 import { Pencil, Trash2, Copy, Check, ChevronRight } from 'lucide-react';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
 import type { Position } from '@/lib/api';
 
 const SKIP_DELETE_CONFIRM_KEY = 'pa-portfolio-skip-delete-confirm';
@@ -71,6 +74,17 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
   BANK: 'Bank',
 };
 
+const POSITION_COLUMNS: Record<string, ColumnConfig<Position>> = {
+  asset: { accessor: (p) => p.asset.symbol, type: 'string' },
+  quantity: { accessor: (p) => p.quantity, type: 'number' },
+  avgCost: { accessor: (p) => p.avgCostUsd, type: 'number' },
+  totalCost: { accessor: (p) => p.quantity * p.avgCostUsd, type: 'number' },
+  price: { accessor: (p) => p.asset.currentPriceUsd, type: 'number' },
+  value: { accessor: (p) => p.marketValueUsd, type: 'number' },
+  pnl: { accessor: (p) => p.unrealizedPnL, type: 'number' },
+  storage: { accessor: (p) => `${p.storageType}-${p.storageLocation || ''}`, type: 'string' },
+};
+
 export function PositionTable({ positions, currency = 'USD', fxRate = 1, sectionPrefix }: PositionTableProps) {
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
@@ -106,8 +120,8 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
 
   const { isExpanded, toggle } = useCollapsibleState();
 
-  // Split positions into CEX and Onchain sections with subtotals
-  const { cexPositions, onchainPositions, cexTotal, onchainTotal } = useMemo(() => {
+  // Split positions into CEX and Onchain sections with default sort + subtotals
+  const { defaultCex, defaultOnchain, cexTotal, onchainTotal } = useMemo(() => {
     const cex: Position[] = [];
     const onchain: Position[] = [];
 
@@ -131,12 +145,18 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
     });
 
     return {
-      cexPositions: cex,
-      onchainPositions: onchain,
+      defaultCex: cex,
+      defaultOnchain: onchain,
       cexTotal: cex.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
       onchainTotal: onchain.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
     };
   }, [positions]);
+
+  // Independent sort hooks for each section
+  const cexSort = useTableSort(defaultCex, POSITION_COLUMNS);
+  const onchainSort = useTableSort(defaultOnchain, POSITION_COLUMNS);
+  const cexPositions = cexSort.sortedItems;
+  const onchainPositions = onchainSort.sortedItems;
 
   // Helper to convert for subsection headers
   const convertSub = (usdValue: number) => {
@@ -260,18 +280,18 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
     );
   };
 
-  // Render table header
-  const renderTableHeader = () => (
+  // Render table header with sort controls
+  const renderTableHeader = (sortState: { sortKey: string | null; sortDirection: SortDirection; onSort: (key: string) => void }) => (
     <TableHeader>
       <TableRow>
-        <TableHead style={{width: '9%'}}>Asset</TableHead>
+        <SortableHeader label="Asset" sortKey="asset" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} style={{width: '9%'}} />
         <TableHead style={{width: '12%'}} className="text-right">Quantity</TableHead>
         <TableHead style={{width: '10%'}} className="text-right">Avg Cost</TableHead>
-        <TableHead style={{width: '12%'}} className="text-right">Total Cost</TableHead>
+        <SortableHeader label="Total Cost" sortKey="totalCost" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '12%'}} />
         <TableHead style={{width: '10%'}} className="text-right">Price</TableHead>
-        <TableHead style={{width: '12%'}} className="text-right">Value</TableHead>
-        <TableHead style={{width: '11%'}} className="text-right">P&L</TableHead>
-        <TableHead style={{width: '9%'}} className="text-right">Storage</TableHead>
+        <SortableHeader label="Value" sortKey="value" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '12%'}} />
+        <SortableHeader label="P&L" sortKey="pnl" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '11%'}} />
+        <SortableHeader label="Storage" sortKey="storage" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '9%'}} />
         <TableHead style={{width: '15%'}} className="text-center">Actions</TableHead>
       </TableRow>
     </TableHeader>
@@ -306,7 +326,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-hidden">
                 <Table className="table-fixed w-full">
-                  {renderTableHeader()}
+                  {renderTableHeader(cexSort)}
                   <TableBody>
                     {cexPositions.map(renderPositionRow)}
                   </TableBody>
@@ -342,7 +362,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-hidden">
                 <Table className="table-fixed w-full">
-                  {renderTableHeader()}
+                  {renderTableHeader(onchainSort)}
                   <TableBody>
                     {onchainPositions.map(renderPositionRow)}
                   </TableBody>
@@ -356,7 +376,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
         {cexPositions.length === 0 && onchainPositions.length === 0 && (
           <div className="rounded-md border overflow-hidden">
             <Table className="table-fixed w-full">
-              {renderTableHeader()}
+              {renderTableHeader(cexSort)}
               <TableBody>
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
