@@ -13,6 +13,7 @@ import snapshotsRouter from './routes/snapshots.js';
 import pricesRouter from './routes/prices.js';
 import fxRouter from './routes/fx.js';
 import exportRouter from './routes/export.js';
+import healthRouter from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { clerkMiddleware, ensureUser } from './middleware/auth.js';
 import { startPriceRefreshJob, startSnapshotJob, createMissingSnapshots } from './services/scheduler.js';
@@ -118,6 +119,9 @@ app.use(clerkMiddleware());
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Database health check (public, no auth)
+app.use('/api/health', healthRouter);
 
 // API Routes (protected - require authentication)
 app.use('/api/positions', ensureUser, positionsRouter);

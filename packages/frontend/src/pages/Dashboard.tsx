@@ -17,6 +17,7 @@ import { PerformersCard } from '@/components/dashboard/PerformersCard';
 import { PortfolioChart } from '@/components/dashboard/PortfolioChart';
 import { BenchmarkComparisonChart } from '@/components/dashboard/BenchmarkComparisonChart';
 import { ChevronDown, Users } from 'lucide-react';
+import { DbStatusBanner } from '@/components/dashboard/DbStatusBanner';
 
 export default function Dashboard() {
   const { currency } = useCurrencyStore();
@@ -95,9 +96,12 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Overview of your portfolio performance
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-muted-foreground">
+              Overview of your portfolio performance
+            </p>
+            <DbStatusBanner />
+          </div>
         </div>
 
         {/* Investor Filter */}
