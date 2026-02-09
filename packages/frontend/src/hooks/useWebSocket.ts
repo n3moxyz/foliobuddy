@@ -41,7 +41,7 @@ export function useWebSocket(): UseWebSocketReturn {
       // In development, connect to local backend
       // Use VITE_WS_BACKEND_URL env var for production backend, fallback to default Railway URL
       const RAILWAY_BACKEND = import.meta.env.VITE_WS_BACKEND_URL || 'https://old-backend.example.com';
-      const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : RAILWAY_BACKEND;
+      const apiBase = import.meta.env.DEV ? (import.meta.env.VITE_WS_BACKEND_URL || 'http://localhost:4001') : RAILWAY_BACKEND;
 
       setStatus('connecting');
 
