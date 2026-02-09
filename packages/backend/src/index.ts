@@ -174,8 +174,11 @@ async function startServer() {
       console.log('Note: Could not drop Position constraint (may already be gone):', error);
     }
 
-    // Start scheduled jobs
-    if (process.env.NODE_ENV !== 'test') {
+    // Start scheduled jobs only in production
+    // In dev, the production backend (Railway) handles price refresh, snapshots, and crons
+    // against the shared DB — running them locally would duplicate work and risk race conditions
+    const isProd = process.env.NODE_ENV === 'production';
+    if (isProd) {
       startPriceRefreshJob();
       startSnapshotJob();
 
@@ -184,6 +187,8 @@ async function startServer() {
       setTimeout(() => {
         createMissingSnapshots();
       }, 2000);
+    } else {
+      console.log('⏭️  Skipping schedulers in dev (prod handles crons)');
     }
   });
 }

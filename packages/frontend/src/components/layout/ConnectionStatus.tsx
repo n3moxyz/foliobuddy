@@ -23,8 +23,8 @@ const statusConfig = {
     pulseClass: '',
   },
   disconnected: {
-    label: 'Offline',
-    dotClass: 'bg-gray-400',
+    label: import.meta.env.DEV ? 'Dev Mode' : 'Offline',
+    dotClass: import.meta.env.DEV ? 'bg-blue-400' : 'bg-gray-400',
     pulseClass: '',
   },
 };
