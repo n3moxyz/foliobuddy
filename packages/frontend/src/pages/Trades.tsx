@@ -353,7 +353,9 @@ async function copyTradeToClipboard(trade: Trade): Promise<boolean> {
 const TRADE_COLUMNS: Record<string, ColumnConfig<Trade>> = {
   asset: { accessor: (t) => t.asset.symbol, type: 'string' },
   direction: { accessor: (t) => t.direction, type: 'string' },
+  entryPrice: { accessor: (t) => t.entryPrice, type: 'number' },
   entryDate: { accessor: (t) => t.entryDate, type: 'date' },
+  exitPrice: { accessor: (t) => t.exitPrice, type: 'number' },
   exitDate: { accessor: (t) => t.exitDate, type: 'date' },
   size: { accessor: (t) => t.positionSizeUsd, type: 'number' },
   pnl: { accessor: (t) => t.realizedPnL, type: 'number' },
@@ -402,14 +404,16 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
   return (
     <Card>
       <CardContent className="p-0">
-        <div className="rounded-md border">
-          <Table>
+        <div className="rounded-md border overflow-x-auto">
+          <Table className="text-sm">
             <TableHeader>
               <TableRow>
                 <SortableHeader label="Asset" sortKey="asset" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
-                <SortableHeader label="Direction" sortKey="direction" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
-                <TableHead>Entry</TableHead>
-                <TableHead>Exit</TableHead>
+                <SortableHeader label="Side" sortKey="direction" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
+                <SortableHeader label="Entry Date" sortKey="entryDate" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
+                <SortableHeader label="Exit Date" sortKey="exitDate" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
+                <SortableHeader label="Entry" sortKey="entryPrice" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
+                <SortableHeader label="Exit" sortKey="exitPrice" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
                 <SortableHeader label="Size" sortKey="size" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
                 <SortableHeader label="P&L" sortKey="pnl" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
                 <SortableHeader label="Status" sortKey="status" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
@@ -420,45 +424,37 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
             <TableBody>
               {sortedItems.map((trade) => (
                 <TableRow key={trade.id}>
-                  <TableCell className="font-medium">{trade.asset.symbol}</TableCell>
+                  <TableCell className="font-medium whitespace-nowrap">{trade.asset.symbol}</TableCell>
                   <TableCell>
-                    <span className={`flex items-center gap-1 ${trade.direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`flex items-center gap-1 whitespace-nowrap ${trade.direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}>
                       {trade.direction === 'LONG' ? (
-                        <TrendingUp className="h-4 w-4" />
+                        <TrendingUp className="h-3.5 w-3.5" />
                       ) : (
-                        <TrendingDown className="h-4 w-4" />
+                        <TrendingDown className="h-3.5 w-3.5" />
                       )}
                       {trade.direction}
                     </span>
                   </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-mono">{formatCurrency(trade.entryPrice, 'USD')}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(trade.entryDate)}
-                      </p>
-                    </div>
+                  <TableCell className="whitespace-nowrap">
+                    {formatDate(trade.entryDate)}
                   </TableCell>
-                  <TableCell>
-                    {trade.exitPrice ? (
-                      <div>
-                        <p className="font-mono">{formatCurrency(trade.exitPrice, 'USD')}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDate(trade.exitDate)}
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
+                  <TableCell className="whitespace-nowrap">
+                    {trade.exitDate ? formatDate(trade.exitDate) : <span className="text-muted-foreground">-</span>}
                   </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {formatCurrency(trade.positionSizeUsd, 'USD')}
+                  <TableCell className="text-right font-mono whitespace-nowrap">
+                    {formatCurrency(trade.entryPrice, 'USD')}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right font-mono whitespace-nowrap">
+                    {trade.exitPrice ? formatCurrency(trade.exitPrice, 'USD') : <span className="text-muted-foreground">-</span>}
+                  </TableCell>
+                  <TableCell className="text-right font-mono whitespace-nowrap">
+                    {formatCurrency(trade.positionSizeUsd, 'USD', 0)}
+                  </TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
                     {trade.realizedPnL !== null ? (
                       <div className={getPnLColorClass(trade.realizedPnL)}>
                         <p className="font-mono">
-                          {formatCurrency(trade.realizedPnL, 'USD')}
+                          {formatCurrency(trade.realizedPnL, 'USD', 0)}
                         </p>
                         <p className="text-xs">
                           {formatPercent(trade.realizedPnLPct)}
@@ -469,7 +465,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
                       trade.status === 'OPEN'
                         ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
                         : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
@@ -477,41 +473,41 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                       {trade.status}
                     </span>
                   </TableCell>
-                  <TableCell className="max-w-[150px] truncate">
+                  <TableCell className="max-w-[80px] truncate">
                     {trade.notes || '-'}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-0">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-7 w-7"
                         onClick={() => handleCopy(trade)}
                         title="Copy trade"
                       >
                         {copiedId === trade.id ? (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <Check className="h-3.5 w-3.5 text-green-500" />
                         ) : (
-                          <Copy className="h-4 w-4" />
+                          <Copy className="h-3.5 w-3.5" />
                         )}
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-7 w-7"
                         onClick={() => onEdit(trade)}
                         title="Edit trade"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
                         onClick={() => onDelete(trade)}
                         title="Delete trade"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </TableCell>
