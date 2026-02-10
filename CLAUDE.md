@@ -153,8 +153,6 @@ VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 - **Frontend**: Vercel (rewrites API calls to Railway)
 - **Database**: Self-hosted PostgreSQL on DigitalOcean via Coolify (203.0.113.10:5432)
 
-## Key Patterns
-
 ### Copy/Paste JSON Import Pattern
 All data tables (Portfolio, Trades, History) follow the same copy/import pattern:
 - **Copy individual**: Clipboard icon per row, copies single item as JSON
