@@ -1,0 +1,15 @@
+services:
+  local-db:
+    image: postgres:17-alpine
+    container_name: pa-local-db
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: pa_portfolio
+    volumes:
+      - pa-local-data:/var/lib/postgresql/data
+
+volumes:
+  pa-local-data:

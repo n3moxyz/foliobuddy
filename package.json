@@ -13,7 +13,10 @@
     "db:migrate": "npm run db:migrate --workspace=@pa-portfolio/backend",
     "db:seed": "npm run db:seed --workspace=@pa-portfolio/backend",
     "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,css}\"",
-    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,jsx,json,css}\""
+    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "db:local": "docker compose up -d",
+    "db:local:stop": "docker compose down",
+    "db:sync": "bash scripts/sync-db.sh"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
