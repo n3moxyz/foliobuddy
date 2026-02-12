@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
+import { Sentry } from '../lib/sentry.js';
 import { logger } from '../lib/logger.js';
 
 export class AppError extends Error {
@@ -59,6 +60,11 @@ export function errorHandler(
     return res.status(err.statusCode).json({
       error: err.message,
     });
+  }
+
+  // Capture unexpected errors in Sentry (skip expected 4xx errors)
+  if (!(err instanceof AppError && err.statusCode < 500)) {
+    Sentry.captureException(err);
   }
 
   // Unknown errors

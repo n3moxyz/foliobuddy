@@ -22,10 +22,15 @@ import { socketService } from './services/socketService.js';
 import { logger } from './lib/logger.js';
 import { MAX_PAYLOAD_SIZE, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS } from './lib/constants.js';
 
+import { initSentry } from './lib/sentry.js';
+
 // Load .env from packages/backend directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Initialize Sentry before Express so it can auto-instrument
+initSentry();
 
 const app = express();
 const server = createServer(app);

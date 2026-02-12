@@ -18,6 +18,7 @@
   "dependencies": {
     "@clerk/express": "^1.7.65",
     "@prisma/client": "^5.10.0",
+    "@sentry/node": "^10.38.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
