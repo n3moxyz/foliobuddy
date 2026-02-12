@@ -882,6 +882,20 @@ if (allowedOrigins.some(allowed => origin === allowed || allowed === '*'))
 
 **Key lesson:** Never use prefix matching for security boundaries. CORS origin validation must be exact. If you need wildcard subdomains, use explicit patterns like `*.myapp.com` with proper regex matching.
 
+### Lesson 17: Duplicate Section Headers from Nested Grouping
+
+**The bug:** Portfolio table showed "Crypto" and "Stables" headers twice — once from the parent page (`Portfolio.tsx` via `CollapsibleCard`) and again from `PositionTable` which also split by the same category.
+
+**The investigation:** `Portfolio.tsx` already filters positions into Crypto/Stables sections using `SECTION_CONFIG` and passes each group to `PositionTable`. When `PositionTable` was updated to also group by Crypto/Stables (with CEX/Onchain sub-groups inside), it created a duplicate hierarchy.
+
+**The fix:** Keep each component responsible for one level of grouping only:
+- `Portfolio.tsx` → groups by asset type (Crypto/Stables) with `CollapsibleCard`
+- `PositionTable` → groups by storage type (CEX/Onchain) as sub-sections
+
+Enhanced `CollapsibleCard` with `icon` and `accentColor` props so the parent page controls the visual differentiation.
+
+**Key lesson:** Before adding grouping logic to a child component, check what the parent is already doing. Component boundaries should align with grouping boundaries — one level of hierarchy per component.
+
 ### Lesson 16: Exposed Admin Endpoint
 
 **The bug (security):** The `/admin/drop-position-constraint` endpoint had no authentication, meaning anyone could execute database modifications.
@@ -1313,6 +1327,8 @@ Recently completed:
 - [x] Integration tests for route handlers (positions, trades, snapshots — 17 tests)
 - [x] Local Postgres via Docker with production data sync script
 - [x] CSV export buttons on Portfolio and Trades pages
+- [x] Responsive mobile design (iOS HIG-inspired) with column toggle, touch targets, overflow menus
+- [x] Colored accent section headers (Crypto=blue, Stables=green) with icons on CollapsibleCard
 
 ---
 
