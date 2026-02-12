@@ -139,7 +139,7 @@ export default function Trades() {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" aria-label="Export options">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -484,6 +484,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                         className="h-7 w-7"
                         onClick={() => handleCopy(trade)}
                         title="Copy trade"
+                        aria-label="Copy trade"
                       >
                         {copiedId === trade.id ? (
                           <Check className="h-3.5 w-3.5 text-green-500" />
@@ -497,6 +498,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                         className="h-7 w-7"
                         onClick={() => onEdit(trade)}
                         title="Edit trade"
+                        aria-label="Edit trade"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -506,6 +508,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                         className="h-7 w-7 text-destructive hover:text-destructive"
                         onClick={() => onDelete(trade)}
                         title="Delete trade"
+                        aria-label="Delete trade"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

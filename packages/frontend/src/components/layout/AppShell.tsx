@@ -100,6 +100,7 @@ export function AppShell({ children }: AppShellProps) {
           <button
             className="lg:hidden"
             onClick={() => setSidebarOpen(false)}
+            aria-label="Close navigation menu"
           >
             <X className="h-5 w-5" />
           </button>
@@ -153,6 +154,7 @@ export function AppShell({ children }: AppShellProps) {
           <button
             className="lg:hidden"
             onClick={() => setSidebarOpen(true)}
+            aria-label="Open navigation menu"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -175,6 +177,7 @@ export function AppShell({ children }: AppShellProps) {
             size="icon"
             onClick={cycleTheme}
             title={`Theme: ${theme}`}
+            aria-label={`Change theme (current: ${theme})`}
           >
             <ThemeIcon className="h-4 w-4" />
           </Button>
@@ -190,12 +193,13 @@ export function AppShell({ children }: AppShellProps) {
             size="icon"
             onClick={handleRefreshPrices}
             disabled={refreshing}
+            aria-label="Refresh prices"
           >
             <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
           </Button>
 
           {/* Export */}
-          <Button variant="ghost" size="icon" onClick={handleExport}>
+          <Button variant="ghost" size="icon" onClick={handleExport} aria-label="Export data">
             <Download className="h-4 w-4" />
           </Button>
 

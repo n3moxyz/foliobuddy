@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, CreatePositionData } from '@/lib/api';
+import { api, CreatePositionData, Position } from '@/lib/api';
 
 export function usePositions() {
   return useQuery({
@@ -82,7 +82,20 @@ export function useDeletePosition() {
 
   return useMutation({
     mutationFn: (id: string) => api.deletePosition(id),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['positions'] });
+      const previous = queryClient.getQueryData<Position[]>(['positions']);
+      queryClient.setQueryData<Position[]>(['positions'], (old) =>
+        old ? old.filter((p) => p.id !== id) : []
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['positions'], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['positions'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
     },

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, CreateManualSnapshotData, UpdateSnapshotData } from '@/lib/api';
+import { api, CreateManualSnapshotData, UpdateSnapshotData, Snapshot } from '@/lib/api';
 
 export function useSnapshots(params?: {
   type?: string;
@@ -11,6 +11,20 @@ export function useSnapshots(params?: {
   return useQuery({
     queryKey: ['snapshots', params],
     queryFn: () => api.getSnapshots(params),
+  });
+}
+
+export function useSnapshotsPaginated(params?: {
+  type?: string;
+  source?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}) {
+  return useQuery({
+    queryKey: ['snapshots', 'paginated', params],
+    queryFn: () => api.getSnapshotsPaginated(params),
   });
 }
 
@@ -44,7 +58,20 @@ export function useDeleteSnapshot() {
 
   return useMutation({
     mutationFn: (id: string) => api.deleteSnapshot(id),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['snapshots'] });
+      const previous = queryClient.getQueryData<Snapshot[]>(['snapshots']);
+      queryClient.setQueryData<Snapshot[]>(['snapshots'], (old) =>
+        old ? old.filter((s) => s.id !== id) : []
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['snapshots'], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['snapshots'] });
       queryClient.invalidateQueries({ queryKey: ['performance'] });
     },
