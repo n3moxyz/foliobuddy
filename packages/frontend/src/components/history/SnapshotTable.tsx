@@ -163,11 +163,11 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[5%]"></TableHead>
-                <TableHead className="w-[18%]">Date</TableHead>
-                <TableHead className="w-[18%] text-right">Value</TableHead>
-                <TableHead className="w-[15%]">Source</TableHead>
-                <TableHead className="w-[24%]">Notes</TableHead>
-                <TableHead className="w-[20%] text-center">Actions</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+                <TableHead className="hidden sm:table-cell">Source</TableHead>
+                <TableHead className="hidden md:table-cell">Notes</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -184,13 +184,13 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                       <div className="text-xs">(Live)</div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                       <Clock className="h-3 w-3 animate-pulse" />
                       PENDING
                     </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                     Snapshot at 9pm SGT
                   </TableCell>
                   <TableCell>
@@ -246,7 +246,7 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                           </TooltipProvider>
                         ) : displayValue(snapshot.totalValueUsd)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <span className={`flex items-center gap-1 text-xs ${
                           snapshot.source === 'AUTOMATIC'
                             ? 'text-blue-600 dark:text-blue-400'
@@ -260,7 +260,7 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                           {snapshot.source}
                         </span>
                       </TableCell>
-                      <TableCell className="max-w-[150px] truncate">
+                      <TableCell className="hidden md:table-cell max-w-[150px] truncate">
                         {snapshot.notes || '-'}
                       </TableCell>
                       <TableCell>
@@ -271,7 +271,7 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8"
+                                  className="h-8 w-8 touch-manipulation"
                                   onClick={() => handleCopySnapshot(snapshot)}
                                   aria-label="Copy snapshot"
                                 >
@@ -290,7 +290,7 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 touch-manipulation"
                             onClick={() => onEdit(snapshot)}
                             aria-label="Edit snapshot"
                           >

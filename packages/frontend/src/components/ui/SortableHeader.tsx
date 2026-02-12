@@ -1,5 +1,6 @@
 import { TableHead } from '@/components/ui/table';
 import { ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { SortDirection } from '@/hooks/useTableSort';
 
 interface SortableHeaderProps {
@@ -10,6 +11,7 @@ interface SortableHeaderProps {
   onSort: (key: string) => void;
   align?: 'left' | 'right';
   style?: React.CSSProperties;
+  className?: string;
 }
 
 export function SortableHeader({
@@ -20,6 +22,7 @@ export function SortableHeader({
   onSort,
   align = 'left',
   style,
+  className,
 }: SortableHeaderProps) {
   const isActive = activeSortKey === sortKey;
   const ariaSort = isActive
@@ -31,9 +34,11 @@ export function SortableHeader({
   return (
     <TableHead
       style={style}
-      className={`cursor-pointer select-none hover:text-foreground transition-colors ${
-        align === 'right' ? 'text-right' : ''
-      }`}
+      className={cn(
+        'cursor-pointer select-none hover:text-foreground transition-colors',
+        align === 'right' && 'text-right',
+        className
+      )}
       onClick={() => onSort(sortKey)}
       aria-sort={ariaSort}
     >

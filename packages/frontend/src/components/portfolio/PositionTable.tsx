@@ -20,7 +20,7 @@ import { formatCurrency, formatNumber, formatPercent, formatDateTime, getPnLColo
 import { useDeletePosition } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
 import { PositionRow } from './PositionRow';
-import { Copy, Check, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { Copy, Check, ChevronRight, Pencil, Trash2, Columns3, Columns2 } from 'lucide-react';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useTableSort } from '@/hooks/useTableSort';
@@ -95,6 +95,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
     return localStorage.getItem(SKIP_DELETE_CONFIRM_KEY) === 'true';
   });
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showAllColumns, setShowAllColumns] = useState(false);
   const deletePositionMutation = useDeletePosition();
 
   const handleCopy = async (position: Position, e: React.MouseEvent) => {
@@ -198,6 +199,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
         currency={currency}
         fxRate={fxRate}
         copiedId={copiedId}
+        showAllColumns={showAllColumns}
         onView={setViewPosition}
         onEdit={setEditPosition}
         onDelete={handleDeleteClick}
@@ -207,25 +209,49 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
   };
 
   // Render table header with sort controls
+  // When compact: hide secondary columns on mobile. When expanded: show all + scroll.
+  const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
+
   const renderTableHeader = (sortState: { sortKey: string | null; sortDirection: SortDirection; onSort: (key: string) => void }) => (
     <TableHeader>
       <TableRow>
         <SortableHeader label="Asset" sortKey="asset" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} style={{width: '9%'}} />
-        <TableHead style={{width: '12%'}} className="text-right">Quantity</TableHead>
-        <TableHead style={{width: '10%'}} className="text-right">Avg Cost</TableHead>
-        <SortableHeader label="Total Cost" sortKey="totalCost" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '12%'}} />
-        <TableHead style={{width: '10%'}} className="text-right">Price</TableHead>
+        <TableHead style={{width: '12%'}} className={`text-right ${HIDDEN_MOBILE}`}>Quantity</TableHead>
+        <TableHead style={{width: '10%'}} className={`text-right ${HIDDEN_MOBILE}`}>Avg Cost</TableHead>
+        <SortableHeader label="Total Cost" sortKey="totalCost" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '12%'}} className={HIDDEN_MOBILE} />
+        <TableHead style={{width: '10%'}} className={`text-right ${HIDDEN_MOBILE}`}>Price</TableHead>
         <SortableHeader label="Value" sortKey="value" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '12%'}} />
         <SortableHeader label="P&L" sortKey="pnl" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '11%'}} />
-        <SortableHeader label="Storage" sortKey="storage" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '9%'}} />
+        <SortableHeader label="Storage" sortKey="storage" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '9%'}} className={HIDDEN_MOBILE} />
         <TableHead style={{width: '15%'}} className="text-center">Actions</TableHead>
       </TableRow>
     </TableHeader>
   );
 
+  // Table class: compact on mobile = fixed layout. Expanded = auto layout with scroll.
+  const tableClass = showAllColumns
+    ? 'w-full min-w-[700px]'  // auto-sized columns, scrollable
+    : 'table-fixed w-full';    // fixed columns, fits viewport
+
   return (
     <>
       <div className="space-y-4">
+        {/* Mobile column toggle */}
+        <div className="flex justify-end md:hidden">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground touch-manipulation"
+            onClick={() => setShowAllColumns(!showAllColumns)}
+          >
+            {showAllColumns ? (
+              <><Columns2 className="h-3.5 w-3.5 mr-1" /> Compact</>
+            ) : (
+              <><Columns3 className="h-3.5 w-3.5 mr-1" /> All columns</>
+            )}
+          </Button>
+        </div>
+
         {/* CEX Section */}
         {cexPositions.length > 0 && (
           <Collapsible open={isExpanded(cexId)} onOpenChange={() => toggle(cexId)}>
@@ -250,8 +276,8 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-              <div className="rounded-md border overflow-hidden">
-                <Table className="table-fixed w-full">
+              <div className="rounded-md border overflow-x-auto">
+                <Table className={tableClass}>
                   {renderTableHeader(cexSort)}
                   <TableBody>
                     {cexPositions.map(renderPositionRow)}
@@ -286,8 +312,8 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-              <div className="rounded-md border overflow-hidden">
-                <Table className="table-fixed w-full">
+              <div className="rounded-md border overflow-x-auto">
+                <Table className={tableClass}>
                   {renderTableHeader(onchainSort)}
                   <TableBody>
                     {onchainPositions.map(renderPositionRow)}

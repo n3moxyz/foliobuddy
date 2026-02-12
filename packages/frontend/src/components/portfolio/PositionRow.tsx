@@ -16,6 +16,7 @@ interface PositionRowProps {
   currency: 'USD' | 'SGD';
   fxRate: number;
   copiedId: string | null;
+  showAllColumns?: boolean;
   onView: (position: Position) => void;
   onEdit: (position: Position) => void;
   onDelete: (position: Position) => void;
@@ -27,6 +28,7 @@ export function PositionRow({
   currency,
   fxRate,
   copiedId,
+  showAllColumns = false,
   onView,
   onEdit,
   onDelete,
@@ -48,6 +50,9 @@ export function PositionRow({
   const totalCost = position.quantity * position.avgCostUsd;
   const isStable = position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH';
 
+  // Match PositionTable: hidden on mobile unless toggle is on
+  const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
+
   return (
     <TableRow
       className="cursor-pointer hover:bg-muted/50"
@@ -61,16 +66,16 @@ export function PositionRow({
           </p>
         </div>
       </TableCell>
-      <TableCell className="text-right font-mono text-sm">
+      <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
       </TableCell>
-      <TableCell className="text-right font-mono text-sm">
+      <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         {formatCurrency(convert(position.avgCostUsd), currency, getSmartDecimals(convert(position.avgCostUsd)))}
       </TableCell>
-      <TableCell className="text-right font-mono text-sm">
+      <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         {formatCurrency(convert(totalCost), currency, 0)}
       </TableCell>
-      <TableCell className="text-right font-mono text-sm text-slate-500 dark:text-slate-400">
+      <TableCell className={`text-right font-mono text-sm text-slate-500 dark:text-slate-400 ${HIDDEN_MOBILE}`}>
         {formatCurrency(convert(position.asset.currentPriceUsd), currency, getSmartDecimals(convert(position.asset.currentPriceUsd)))}
       </TableCell>
       <TableCell className="text-right font-mono text-sm font-medium">
@@ -86,7 +91,7 @@ export function PositionRow({
           </p>
         </div>
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className={`text-right ${HIDDEN_MOBILE}`}>
         <div className="truncate">
           <p className="text-sm">
             {STORAGE_TYPE_LABELS[position.storageType] || position.storageType}
@@ -99,11 +104,11 @@ export function PositionRow({
         </div>
       </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-1">
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 touch-manipulation"
             onClick={(e) => onCopy(position, e)}
             title="Copy position"
             aria-label="Copy position"
@@ -117,7 +122,7 @@ export function PositionRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 touch-manipulation"
             onClick={() => onEdit(position)}
             aria-label="Edit position"
           >
@@ -126,7 +131,7 @@ export function PositionRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 touch-manipulation"
             onClick={() => onDelete(position)}
             aria-label="Delete position"
           >

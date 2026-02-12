@@ -16,7 +16,13 @@ import {
 } from '@/components/ui/dialog';
 import { SnapshotForm } from '@/components/history/SnapshotForm';
 import { SnapshotTable } from '@/components/history/SnapshotTable';
-import { Plus, Trash2, History as HistoryIcon, Copy, Check, Bot, Clock } from 'lucide-react';
+import { Plus, Trash2, History as HistoryIcon, Copy, Check, Bot, Clock, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Snapshot } from '@/lib/api';
 
 // Format snapshots for clipboard
@@ -93,10 +99,10 @@ export default function History() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Snapshot History</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold sm:text-3xl">Snapshot History</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
             View and manage portfolio snapshots
           </p>
         </div>
@@ -104,15 +110,14 @@ export default function History() {
           <Button
             variant="outline"
             size="sm"
+            className="hidden sm:inline-flex"
             onClick={async () => {
               if (allSnapshots && allSnapshots.length > 0) {
-                // Filter out "pending" snapshots (today's snapshots before 9pm SGT)
                 const completedSnapshots = allSnapshots.filter(s => {
                   const snapshotDate = new Date(s.timestamp);
                   const today = new Date();
                   const isSnapshotToday = snapshotDate.toDateString() === today.toDateString();
-                  const isBeforeSnapshotTime = today.getUTCHours() < 13; // Before 1pm UTC = 9pm SGT
-                  // Exclude today's snapshots if we're before snapshot time
+                  const isBeforeSnapshotTime = today.getUTCHours() < 13;
                   return !(isSnapshotToday && isBeforeSnapshotTime);
                 });
                 const success = await copySnapshotsToClipboard(completedSnapshots);
@@ -134,21 +139,59 @@ export default function History() {
           <Button
             variant="destructive"
             size="sm"
+            className="hidden sm:inline-flex"
             onClick={() => setShowDeleteAllConfirm(true)}
             disabled={!allSnapshots || allSnapshots.length === 0}
           >
             <Trash2 className="h-4 w-4 mr-1" />
             Delete All
           </Button>
-          <Button size="sm" onClick={() => setShowAddForm(true)}>
+          <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Add Snapshot
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="sm:hidden touch-manipulation" aria-label="More options">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={async () => {
+                  if (allSnapshots && allSnapshots.length > 0) {
+                    const completedSnapshots = allSnapshots.filter(s => {
+                      const snapshotDate = new Date(s.timestamp);
+                      const today = new Date();
+                      const isSnapshotToday = snapshotDate.toDateString() === today.toDateString();
+                      const isBeforeSnapshotTime = today.getUTCHours() < 13;
+                      return !(isSnapshotToday && isBeforeSnapshotTime);
+                    });
+                    await copySnapshotsToClipboard(completedSnapshots);
+                    setCopiedAll(true);
+                    setTimeout(() => setCopiedAll(false), 2000);
+                  }
+                }}
+                disabled={!allSnapshots || allSnapshots.length === 0}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy All
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => setShowDeleteAllConfirm(true)}
+                disabled={!allSnapshots || allSnapshots.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete All
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Snapshots</CardTitle>
@@ -200,7 +243,7 @@ export default function History() {
 
       {/* Add Snapshot Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Historical Snapshot</DialogTitle>
             <DialogDescription>
@@ -217,7 +260,7 @@ export default function History() {
 
       {/* Edit Snapshot Dialog */}
       <Dialog open={!!editingSnapshot} onOpenChange={(open) => !open && setEditingSnapshot(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Snapshot</DialogTitle>
             <DialogDescription>

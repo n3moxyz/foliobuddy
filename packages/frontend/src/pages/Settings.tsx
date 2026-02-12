@@ -77,8 +77,8 @@ export default function Settings() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold sm:text-3xl">Settings</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
           Configure your portfolio dashboard
         </p>
       </div>
@@ -92,7 +92,7 @@ export default function Settings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Default Currency</Label>
               <p className="text-sm text-muted-foreground">
@@ -100,7 +100,7 @@ export default function Settings() {
               </p>
             </div>
             <Select value={currency} onValueChange={(v) => setCurrency(v as 'USD' | 'SGD')}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-full sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -123,7 +123,7 @@ export default function Settings() {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Appearance</Label>
               <p className="text-sm text-muted-foreground">
@@ -131,7 +131,7 @@ export default function Settings() {
               </p>
             </div>
             <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-full sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -153,7 +153,7 @@ export default function Settings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Refresh Prices</Label>
               <p className="text-sm text-muted-foreground">
@@ -162,6 +162,7 @@ export default function Settings() {
             </div>
             <Button
               variant="outline"
+              className="self-start sm:self-auto touch-manipulation"
               onClick={handleRefreshPrices}
               disabled={refreshingPrices}
             >
@@ -172,7 +173,7 @@ export default function Settings() {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Refresh FX Rates</Label>
               <p className="text-sm text-muted-foreground">
@@ -181,6 +182,7 @@ export default function Settings() {
             </div>
             <Button
               variant="outline"
+              className="self-start sm:self-auto touch-manipulation"
               onClick={handleRefreshFx}
               disabled={refreshingFx}
             >
@@ -191,7 +193,7 @@ export default function Settings() {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Create Snapshot</Label>
               <p className="text-sm text-muted-foreground">
@@ -200,6 +202,7 @@ export default function Settings() {
             </div>
             <Button
               variant="outline"
+              className="self-start sm:self-auto touch-manipulation"
               onClick={handleCreateSnapshot}
               disabled={creatingSnapshot}
             >
@@ -219,14 +222,14 @@ export default function Settings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Full Portfolio Export</Label>
               <p className="text-sm text-muted-foreground">
                 Download all data as Excel file
               </p>
             </div>
-            <Button variant="outline" onClick={() => window.open(api.exportExcel(), '_blank')}>
+            <Button variant="outline" className="self-start sm:self-auto touch-manipulation" onClick={() => window.open(api.exportExcel(), '_blank')}>
               <Download className="h-4 w-4 mr-2" />
               Export Excel
             </Button>
@@ -234,14 +237,14 @@ export default function Settings() {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Positions CSV</Label>
               <p className="text-sm text-muted-foreground">
                 Download positions as CSV
               </p>
             </div>
-            <Button variant="outline" onClick={() => window.open(api.exportPositionsCsv(), '_blank')}>
+            <Button variant="outline" className="self-start sm:self-auto touch-manipulation" onClick={() => window.open(api.exportPositionsCsv(), '_blank')}>
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
@@ -249,14 +252,14 @@ export default function Settings() {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Trades CSV</Label>
               <p className="text-sm text-muted-foreground">
                 Download trade history as CSV
               </p>
             </div>
-            <Button variant="outline" onClick={() => window.open(api.exportTradesCsv(), '_blank')}>
+            <Button variant="outline" className="self-start sm:self-auto touch-manipulation" onClick={() => window.open(api.exportTradesCsv(), '_blank')}>
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>

@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { TradeForm } from '@/components/trades/TradeForm';
 import { TradeStatsCard } from '@/components/dashboard/TradeStatsCard';
-import { Plus, TrendingUp, TrendingDown, Download, Copy, Check, Trash2, MoreVertical, Pencil } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Download, Copy, Check, Trash2, MoreVertical, Pencil, Columns2, Columns3 } from 'lucide-react';
 import { api, Trade } from '@/lib/api';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
@@ -95,10 +95,10 @@ export default function Trades() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Trade Journal</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold sm:text-3xl">Trade Journal</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
             Track and analyze your trading performance
           </p>
         </div>
@@ -106,6 +106,7 @@ export default function Trades() {
           <Button
             variant="outline"
             size="sm"
+            className="hidden sm:inline-flex"
             onClick={async () => {
               if (trades && trades.length > 0) {
                 const success = await copyTradesToClipboard(trades);
@@ -127,23 +128,48 @@ export default function Trades() {
           <Button
             variant="destructive"
             size="sm"
+            className="hidden sm:inline-flex"
             onClick={() => setShowDeleteAllConfirm(true)}
             disabled={!trades || trades.length === 0}
           >
             <Trash2 className="h-4 w-4 mr-1" />
             Delete All
           </Button>
-          <Button size="sm" onClick={() => setShowAddForm(true)}>
+          <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Log Trade
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" aria-label="Export options">
+              <Button variant="outline" size="sm" aria-label="More options" className="touch-manipulation">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="sm:hidden"
+                onClick={async () => {
+                  if (trades && trades.length > 0) {
+                    const success = await copyTradesToClipboard(trades);
+                    if (success) {
+                      setCopiedAll(true);
+                      setTimeout(() => setCopiedAll(false), 2000);
+                    }
+                  }
+                }}
+                disabled={!trades || trades.length === 0}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy All
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="sm:hidden text-destructive"
+                onClick={() => setShowDeleteAllConfirm(true)}
+                disabled={!trades || trades.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete All
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.open(api.exportTradesCsv(), '_blank')}>
                 <Download className="h-4 w-4 mr-2" />
                 Export All Trades
@@ -204,7 +230,7 @@ export default function Trades() {
 
       {/* Add Trade Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Log New Trade</DialogTitle>
           </DialogHeader>
@@ -256,7 +282,7 @@ export default function Trades() {
 
       {/* Edit Trade Dialog */}
       <Dialog open={!!editingTrade} onOpenChange={(open) => !open && setEditingTrade(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Trade</DialogTitle>
           </DialogHeader>
@@ -371,7 +397,13 @@ interface TradeTableProps {
 
 function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showAllColumns, setShowAllColumns] = useState(false);
   const { sortedItems, sortKey, sortDirection, onSort } = useTableSort(trades, TRADE_COLUMNS);
+
+  // Dynamic column hiding: compact hides on mobile, expanded shows all
+  const HIDDEN_MD = showAllColumns ? '' : 'hidden md:table-cell';
+  const HIDDEN_SM = showAllColumns ? '' : 'hidden sm:table-cell';
+  const HIDDEN_LG = showAllColumns ? '' : 'hidden lg:table-cell';
 
   const handleCopy = async (trade: Trade) => {
     const success = await copyTradeToClipboard(trade);
@@ -401,23 +433,43 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
     );
   }
 
+  const tableClass = showAllColumns
+    ? 'text-sm w-full min-w-[800px]'
+    : 'text-sm';
+
   return (
-    <Card>
+    <>
+      {/* Mobile column toggle */}
+      <div className="flex justify-end md:hidden mb-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs text-muted-foreground touch-manipulation"
+          onClick={() => setShowAllColumns(!showAllColumns)}
+        >
+          {showAllColumns ? (
+            <><Columns2 className="h-3.5 w-3.5 mr-1" /> Compact</>
+          ) : (
+            <><Columns3 className="h-3.5 w-3.5 mr-1" /> All columns</>
+          )}
+        </Button>
+      </div>
+      <Card>
       <CardContent className="p-0">
         <div className="rounded-md border overflow-x-auto">
-          <Table className="text-sm">
+          <Table className={tableClass}>
             <TableHeader>
               <TableRow>
                 <SortableHeader label="Asset" sortKey="asset" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
                 <SortableHeader label="Side" sortKey="direction" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
-                <SortableHeader label="Entry Date" sortKey="entryDate" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
-                <SortableHeader label="Exit Date" sortKey="exitDate" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
-                <SortableHeader label="Entry" sortKey="entryPrice" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
-                <SortableHeader label="Exit" sortKey="exitPrice" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
-                <SortableHeader label="Size" sortKey="size" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
+                <SortableHeader label="Entry Date" sortKey="entryDate" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} className={HIDDEN_MD} />
+                <SortableHeader label="Exit Date" sortKey="exitDate" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} className={HIDDEN_MD} />
+                <SortableHeader label="Entry" sortKey="entryPrice" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" className={HIDDEN_MD} />
+                <SortableHeader label="Exit" sortKey="exitPrice" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" className={HIDDEN_MD} />
+                <SortableHeader label="Size" sortKey="size" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" className={HIDDEN_SM} />
                 <SortableHeader label="P&L" sortKey="pnl" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
                 <SortableHeader label="Status" sortKey="status" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
-                <TableHead>Notes</TableHead>
+                <TableHead className={HIDDEN_LG}>Notes</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -435,19 +487,19 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                       {trade.direction}
                     </span>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className={`${HIDDEN_MD} whitespace-nowrap`}>
                     {formatDate(trade.entryDate)}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className={`${HIDDEN_MD} whitespace-nowrap`}>
                     {trade.exitDate ? formatDate(trade.exitDate) : <span className="text-muted-foreground">-</span>}
                   </TableCell>
-                  <TableCell className="text-right font-mono whitespace-nowrap">
+                  <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
                     {formatCurrency(trade.entryPrice, 'USD')}
                   </TableCell>
-                  <TableCell className="text-right font-mono whitespace-nowrap">
+                  <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
                     {trade.exitPrice ? formatCurrency(trade.exitPrice, 'USD') : <span className="text-muted-foreground">-</span>}
                   </TableCell>
-                  <TableCell className="text-right font-mono whitespace-nowrap">
+                  <TableCell className={`${HIDDEN_SM} text-right font-mono whitespace-nowrap`}>
                     {formatCurrency(trade.positionSizeUsd, 'USD', 0)}
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
@@ -473,7 +525,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                       {trade.status}
                     </span>
                   </TableCell>
-                  <TableCell className="max-w-[80px] truncate">
+                  <TableCell className={`${HIDDEN_LG} max-w-[80px] truncate`}>
                     {trade.notes || '-'}
                   </TableCell>
                   <TableCell>
@@ -481,7 +533,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7"
+                        className="h-8 w-8 touch-manipulation"
                         onClick={() => handleCopy(trade)}
                         title="Copy trade"
                         aria-label="Copy trade"
@@ -495,7 +547,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7"
+                        className="h-8 w-8 touch-manipulation"
                         onClick={() => onEdit(trade)}
                         title="Edit trade"
                         aria-label="Edit trade"
@@ -505,7 +557,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        className="h-8 w-8 text-destructive hover:text-destructive touch-manipulation"
                         onClick={() => onDelete(trade)}
                         title="Delete trade"
                         aria-label="Delete trade"
@@ -521,5 +573,6 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 }

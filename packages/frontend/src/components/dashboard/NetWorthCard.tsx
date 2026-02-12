@@ -42,8 +42,8 @@ export function NetWorthCard({ summary, currency, stakeMultiplier = 1 }: NetWort
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-baseline gap-4">
-          <span className="text-4xl font-bold tracking-tight">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
+          <span className="text-3xl font-bold tracking-tight sm:text-4xl">
             {formatCurrency(value, currency, 0)}
           </span>
           <div className={`flex items-center gap-1 ${getPnLColorClass(summary.unrealizedPnL)}`}>

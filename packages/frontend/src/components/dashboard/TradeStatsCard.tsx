@@ -71,7 +71,7 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
         </div>
 
         {/* Averages */}
-        <div className="grid grid-cols-3 gap-4 text-sm border-t pt-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm border-t pt-4">
           <div>
             <p className="text-muted-foreground">Avg P&L</p>
             <p className={`font-medium ${getPnLColorClass(analytics.avgPnL)}`}>
