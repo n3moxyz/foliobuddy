@@ -1,0 +1,144 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import request from 'supertest';
+import { mockAsset, mockPosition } from '../helpers/fixtures.js';
+import { createTestApp } from '../helpers/createTestApp.js';
+
+// Mock Prisma
+const mockPrisma = {
+  asset: { findUnique: vi.fn(), findMany: vi.fn() },
+  position: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+  },
+};
+
+vi.mock('../../index.js', () => ({ prisma: mockPrisma }));
+vi.mock('../../lib/sentry.js', () => ({
+  Sentry: { captureException: vi.fn() },
+  initSentry: vi.fn(),
+}));
+vi.mock('../../lib/logger.js', () => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+vi.mock('@clerk/express', () => ({
+  clerkMiddleware: () => (_req: any, _res: any, next: any) => next(),
+  getAuth: () => ({ userId: 'test-clerk-id' }),
+  requireAuth: () => (_req: any, _res: any, next: any) => next(),
+}));
+vi.mock('../../middleware/auth.js', () => ({
+  ensureUser: (_req: any, _res: any, next: any) => next(),
+  clerkMiddleware: () => (_req: any, _res: any, next: any) => next(),
+  requireAuth: () => (_req: any, _res: any, next: any) => next(),
+}));
+vi.mock('../../services/portfolioService.js', () => ({
+  portfolioService: {
+    getSummary: vi.fn(),
+    getAllocationByCategory: vi.fn(),
+    getAllocationByStorage: vi.fn(),
+    getTopPerformers: vi.fn(),
+    getWorstPerformers: vi.fn(),
+  },
+}));
+
+// Import route after mocks are set up
+const { default: positionsRouter } = await import('../../routes/positions.js');
+const app = createTestApp(positionsRouter, '/api/positions');
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('POST /api/positions', () => {
+  it('creates a position with computed market value fields', async () => {
+    const asset = mockAsset({ currentPriceUsd: 60000 });
+    mockPrisma.asset.findUnique.mockResolvedValue(asset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    const created = mockPosition({
+      quantity: 2,
+      avgCostUsd: 40000,
+      marketValueUsd: 120000,
+      unrealizedPnL: 40000,
+      unrealizedPnLPct: 50,
+    });
+    mockPrisma.position.create.mockResolvedValue(created);
+
+    const res = await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'asset-1', quantity: 2, avgCostUsd: 40000 });
+
+    expect(res.status).toBe(201);
+    // Verify prisma.position.create was called with computed fields
+    const createCall = mockPrisma.position.create.mock.calls[0][0];
+    expect(createCall.data.marketValueUsd).toBe(120000); // 2 * 60000
+    expect(createCall.data.unrealizedPnL).toBe(40000); // 120000 - 80000
+    expect(createCall.data.unrealizedPnLPct).toBe(50); // (40000 / 80000) * 100
+  });
+
+  it('sets marketValueUsd to null when asset has no price', async () => {
+    const asset = mockAsset({ currentPriceUsd: null });
+    mockPrisma.asset.findUnique.mockResolvedValue(asset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.create.mockResolvedValue(mockPosition({ marketValueUsd: null }));
+
+    const res = await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'asset-1', quantity: 1, avgCostUsd: 100 });
+
+    expect(res.status).toBe(201);
+    const createCall = mockPrisma.position.create.mock.calls[0][0];
+    expect(createCall.data.marketValueUsd).toBeNull();
+    expect(createCall.data.unrealizedPnL).toBeNull();
+  });
+
+  it('returns 400 for missing assetId', async () => {
+    const res = await request(app)
+      .post('/api/positions')
+      .send({ quantity: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Validation error');
+  });
+
+  it('returns 404 when asset not found', async () => {
+    mockPrisma.asset.findUnique.mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'nonexistent', quantity: 1 });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Asset not found');
+  });
+});
+
+describe('GET /api/positions', () => {
+  it('returns positions array', async () => {
+    const positions = [mockPosition(), mockPosition({ id: 'position-2' })];
+    mockPrisma.position.findMany.mockResolvedValue(positions);
+
+    const res = await request(app).get('/api/positions');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+  });
+});
+
+describe('DELETE /api/positions/:id', () => {
+  it('returns 204 on success', async () => {
+    mockPrisma.position.delete.mockResolvedValue({});
+
+    const res = await request(app).delete('/api/positions/position-1');
+
+    expect(res.status).toBe(204);
+    expect(mockPrisma.position.delete).toHaveBeenCalledWith({
+      where: { id: 'position-1' },
+    });
+  });
+});
