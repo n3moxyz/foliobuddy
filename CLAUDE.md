@@ -42,10 +42,12 @@ Personal portfolio dashboard tracking positions and net worth across crypto, equ
 ## Key Files
 
 ### Backend
-- `src/index.ts` - Server entry point
+- `src/index.ts` - Server entry point (rate limiting, logger, FX job init)
 - `src/routes/` - API endpoints (positions, trades, investors, snapshots, etc.)
 - `src/services/` - Business logic (portfolioService, priceService, snapshotService)
 - `src/middleware/` - Auth and error handling
+- `src/lib/` - Shared utilities (constants, logger, pagination, tradePnL)
+- `src/__tests__/` - Unit tests (vitest)
 - `prisma/schema.prisma` - Database schema
 
 ### Frontend
@@ -87,10 +89,13 @@ cd packages/frontend && npm run dev
 ```bash
 # Root (monorepo)
 npm install              # Install all dependencies
+npm run format           # Format all files with Prettier
+npm run format:check     # Check formatting without writing
 
 # Backend (packages/backend/)
 npm run dev              # Start dev server (port 4001)
 npm run build            # Compile TypeScript
+npm test                 # Run unit tests (vitest)
 npx prisma migrate dev   # Run migrations
 npx prisma studio        # Database GUI
 
@@ -130,6 +135,21 @@ Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. 
 ### React Query + Zustand Split
 - React Query: Server state (positions, trades, snapshots)
 - Zustand: Client state (currency preference)
+
+### Structured Logging
+All backend code uses `logger` from `src/lib/logger.ts` instead of `console.log`. Respects `LOG_LEVEL` env var (debug/info/warn/error). No `console.log` in production code.
+
+### Rate Limiting
+Express-rate-limit applied globally to `/api` routes: 200 requests per 15 minutes. Constants in `src/lib/constants.ts`.
+
+### Pagination (Backend)
+Trades and snapshots routes support optional pagination via `?page=1&limit=50`. Backwards-compatible — returns full array when no `page` param. Uses `parsePagination()` and `paginatedResponse()` from `src/lib/pagination.ts`.
+
+### Lazy-Loaded Routes
+All pages except Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. Reduces initial bundle size.
+
+### Optimistic Deletes
+Delete mutations in `usePortfolio`, `useTrades`, `useSnapshots` use optimistic updates with rollback on error.
 
 ## Environment Variables
 
@@ -173,3 +193,5 @@ All data tables (Portfolio, Trades, History) follow the same copy/import pattern
 - Snapshots use unique constraint + check-before-create to prevent duplicates
 - Position P&L should display as percentage for clarity
 - Bulk import endpoints skip price fetching (`skipPriceFetch: true`) to avoid rate limiting - scheduler updates prices within 1 minute
+- Backend `LOG_LEVEL` env var controls logging verbosity (default: `info` in prod, `debug` in dev)
+- GitHub Actions CI runs type checking and format checking on push/PR

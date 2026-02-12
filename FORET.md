@@ -31,10 +31,16 @@ PA-portfolio-dash/
 ├── packages/
 │   ├── backend/    ← Express.js API server
 │   │   ├── src/
+│   │   │   ├── lib/        ← Shared utilities (logger, constants, pagination, tradePnL)
+│   │   │   ├── __tests__/  ← Unit tests (vitest)
+│   │   │   ├── routes/
+│   │   │   └── services/
 │   │   └── prisma/ ← Database schema & migrations
 │   └── frontend/   ← React + Vite SPA
 │       └── src/
-└── package.json    ← Root workspace configuration
+├── .github/workflows/ ← CI (type check + format check)
+├── .prettierrc        ← Code formatting config
+└── package.json       ← Root workspace configuration
 ```
 
 ### Why a Monorepo?
@@ -1060,7 +1066,7 @@ If I need to make breaking changes, I have no versioning strategy. Future me wil
 
 ### 3. Integration Tests
 
-Unit tests are good. But testing the full flow (create position → check snapshot → verify P&L) would catch more bugs.
+We now have unit tests for backend utilities (constants, logger, pagination, tradePnL — 50 tests). But testing the full flow (create position → check snapshot → verify P&L) would catch more bugs.
 
 ---
 
@@ -1282,6 +1288,11 @@ Features I want to add:
 - [ ] Mobile app (React Native, sharing the codebase)
 
 Recently completed:
+- [x] Major refactor: extract backend utilities (logger, constants, pagination, tradePnL) with unit tests
+- [x] Major refactor: split large frontend components into focused modules (9 new components)
+- [x] Add structured logging replacing all console.log, rate limiting, Prisma indexes
+- [x] Add optimistic deletes, pagination hooks, lazy-loaded routes
+- [x] Add Prettier + ESLint config, GitHub Actions CI
 - [x] Database migration from Railway Postgres to self-hosted Coolify/DigitalOcean
 - [x] Copy/paste for trades with bulk import API endpoint
 - [x] Edit/delete action buttons per trade row
