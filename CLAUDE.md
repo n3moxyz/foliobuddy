@@ -46,8 +46,10 @@ Personal portfolio dashboard tracking positions and net worth across crypto, equ
 - `src/routes/` - API endpoints (positions, trades, investors, snapshots, etc.)
 - `src/services/` - Business logic (portfolioService, priceService, snapshotService)
 - `src/middleware/` - Auth and error handling
-- `src/lib/` - Shared utilities (constants, logger, pagination, tradePnL)
-- `src/__tests__/` - Unit tests (vitest)
+- `src/lib/` - Shared utilities (constants, logger, pagination, tradePnL, sentry)
+- `src/__tests__/` - Unit + integration tests (vitest)
+- `src/__tests__/routes/` - Route integration tests (supertest + mocked Prisma)
+- `src/__tests__/helpers/` - Test utilities (createTestApp, fixtures)
 - `prisma/schema.prisma` - Database schema
 
 ### Frontend
@@ -165,6 +167,7 @@ PRODUCTION_DATABASE_URL=   # Production DB (used by npm run db:sync)
 PORT=4001                  # Backend port (DO NOT use 3001 — that's reserved for other projects)
 CLERK_SECRET_KEY=          # Clerk backend key
 ALLOWED_ORIGINS=http://localhost:4000
+SENTRY_DSN=                # Optional — error tracking (skipped if empty)
 ```
 
 ### Frontend (`.env`)
@@ -218,3 +221,6 @@ npm run dev            # Start dev servers
 - Bulk import endpoints skip price fetching (`skipPriceFetch: true`) to avoid rate limiting - scheduler updates prices within 1 minute
 - Backend `LOG_LEVEL` env var controls logging verbosity (default: `info` in prod, `debug` in dev)
 - GitHub Actions CI runs type checking and format checking on push/PR
+- Sentry backend captures only unexpected 500-level errors (Zod 400s and AppErrors < 500 are skipped)
+- `console.error` crashes when inspecting ZodError objects in Node — integration tests must mock the logger
+- vitest `exclude: ['dist/**']` prevents duplicate test runs after `npm run build`

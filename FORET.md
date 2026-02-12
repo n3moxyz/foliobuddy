@@ -32,7 +32,7 @@ PA-portfolio-dash/
 │   ├── backend/    ← Express.js API server
 │   │   ├── src/
 │   │   │   ├── lib/        ← Shared utilities (logger, constants, pagination, tradePnL)
-│   │   │   ├── __tests__/  ← Unit tests (vitest)
+│   │   │   ├── __tests__/  ← Unit + integration tests (vitest + supertest)
 │   │   │   ├── routes/
 │   │   │   └── services/
 │   │   └── prisma/ ← Database schema & migrations
@@ -1064,9 +1064,9 @@ I added shadcn/ui components as needed. Should have set up a complete design sys
 
 If I need to make breaking changes, I have no versioning strategy. Future me will regret this. Should be `/api/v1/positions`.
 
-### 3. Integration Tests
+### 3. ~~Integration Tests~~ (Done!)
 
-We now have unit tests for backend utilities (constants, logger, pagination, tradePnL — 50 tests). But testing the full flow (create position → check snapshot → verify P&L) would catch more bugs.
+We now have 68 backend tests: unit tests for utilities AND integration tests for route handlers (positions, trades, snapshots) using supertest with mocked Prisma. These verify computed fields, validation errors, ownership checks, and pagination. The remaining gap: end-to-end tests covering the full frontend→backend flow.
 
 ---
 
@@ -1111,11 +1111,19 @@ Shortcuts are disabled when typing in input fields via `enableOnFormTags: false`
 
 ### Error Tracking with Sentry
 
-Integrated Sentry for production error monitoring:
+Integrated Sentry for production error monitoring on both frontend and backend.
+
+**Frontend:**
 - Initializes only when `VITE_SENTRY_DSN` is set (silent skip in development)
 - Includes browser tracing and session replay integrations
 - Custom `ErrorFallback` component shows user-friendly error UI with error ID
 - Wrap the entire app in `Sentry.ErrorBoundary`
+
+**Backend:**
+- `initSentry()` called before Express initialization so Sentry can auto-instrument
+- `Sentry.captureException(err)` in errorHandler for unexpected 500-level errors only
+- Skips Zod validation errors (400) and AppErrors with status < 500
+- Gracefully skips when `SENTRY_DSN` env var is not set (safe for dev)
 
 ### CSV Export
 
@@ -1278,7 +1286,7 @@ const queryClient = new QueryClient({
 ## Pre-Launch Checklist
 
 Before making the app public:
-- [ ] **Set up Sentry error tracking** - Add `VITE_SENTRY_DSN` to Vercel env vars (code is already in place, just needs DSN)
+- [ ] **Add Sentry DSNs** - Add `SENTRY_DSN` to Railway (backend) and `VITE_SENTRY_DSN` to Vercel (frontend), then redeploy both
 
 ---
 
@@ -1301,7 +1309,9 @@ Recently completed:
 - [x] Real-time WebSocket updates with Socket.io
 - [x] Dark mode with system preference detection
 - [x] Keyboard shortcuts for power users
-- [x] Sentry error tracking for production monitoring
+- [x] Sentry error tracking for production monitoring (frontend + backend)
+- [x] Integration tests for route handlers (positions, trades, snapshots — 17 tests)
+- [x] Local Postgres via Docker with production data sync script
 - [x] CSV export buttons on Portfolio and Trades pages
 
 ---
