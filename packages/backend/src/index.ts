@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -16,8 +17,10 @@ import exportRouter from './routes/export.js';
 import healthRouter from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { clerkMiddleware, ensureUser } from './middleware/auth.js';
-import { startPriceRefreshJob, startSnapshotJob, createMissingSnapshots } from './services/scheduler.js';
+import { startPriceRefreshJob, startSnapshotJob, startFxRateJob, createMissingSnapshots } from './services/scheduler.js';
 import { socketService } from './services/socketService.js';
+import { logger } from './lib/logger.js';
+import { MAX_PAYLOAD_SIZE, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS } from './lib/constants.js';
 
 // Load .env from packages/backend directory
 const __filename = fileURLToPath(import.meta.url);
@@ -60,7 +63,7 @@ export const prisma = basePrisma.$extends({
         } catch (error) {
           if (attempt < MAX_RETRIES - 1 && isRetryable(error)) {
             const delay = BASE_DELAY * Math.pow(2, attempt); // 500, 1000, 2000
-            console.warn(
+            logger.warn(
               `[Prisma Retry] Attempt ${attempt + 1}/${MAX_RETRIES} failed (${(error as any)?.code || 'unknown'}), retrying in ${delay}ms...`
             );
             await new Promise(r => setTimeout(r, delay));
@@ -80,12 +83,12 @@ async function connectWithRetry(maxRetries = 5, delayMs = 5000): Promise<boolean
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await basePrisma.$connect();
-      console.log('✓ Database connected successfully');
+      logger.info('Database connected successfully');
       return true;
     } catch (error) {
-      console.log(`Database connection attempt ${attempt}/${maxRetries} failed:`, error instanceof Error ? error.message : error);
+      logger.warn(`Database connection attempt ${attempt}/${maxRetries} failed:`, error instanceof Error ? error.message : error);
       if (attempt < maxRetries) {
-        console.log(`Retrying in ${delayMs / 1000} seconds...`);
+        logger.info(`Retrying in ${delayMs / 1000} seconds...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
@@ -110,7 +113,17 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: MAX_PAYLOAD_SIZE }));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX_REQUESTS,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+});
+app.use('/api', limiter);
 
 // Clerk authentication middleware
 app.use(clerkMiddleware());
@@ -155,23 +168,23 @@ async function startServer() {
   // Connect to database with retry logic
   const connected = await connectWithRetry(10, 3000);
   if (!connected) {
-    console.error('❌ Failed to connect to database after multiple attempts. Exiting...');
+    logger.error('Failed to connect to database after multiple attempts. Exiting...');
     process.exit(1);
   }
 
   server.listen(port, async () => {
-    console.log(`🚀 Server running on http://localhost:${port}`);
-    console.log(`📊 API available at http://localhost:${port}/api`);
-    console.log(`🔌 WebSocket server ready`);
+    logger.info(`Server running on http://localhost:${port}`);
+    logger.info(`API available at http://localhost:${port}/api`);
+    logger.info('WebSocket server ready');
 
     // Drop the unique constraint on Position table to allow duplicate positions
     try {
       await prisma.$executeRawUnsafe(`
         ALTER TABLE "Position" DROP CONSTRAINT IF EXISTS "Position_userId_assetId_storageType_storageLocation_key"
       `);
-      console.log('✓ Position unique constraint dropped (if it existed)');
+      logger.info('Position unique constraint dropped (if it existed)');
     } catch (error) {
-      console.log('Note: Could not drop Position constraint (may already be gone):', error);
+      logger.warn('Could not drop Position constraint (may already be gone):', error);
     }
 
     // Start scheduled jobs only in production
@@ -181,6 +194,7 @@ async function startServer() {
     if (isProd) {
       startPriceRefreshJob();
       startSnapshotJob();
+      startFxRateJob();
 
       // Create missing snapshots on startup (catch-up for days server wasn't running)
       // Delay slightly to ensure database connection is ready
@@ -188,7 +202,7 @@ async function startServer() {
         createMissingSnapshots();
       }, 2000);
     } else {
-      console.log('⏭️  Skipping schedulers in dev (prod handles crons)');
+      logger.info('Skipping schedulers in dev (prod handles crons)');
     }
   });
 }

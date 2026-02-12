@@ -1,6 +1,7 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { verifyToken } from '@clerk/express';
+import { logger } from '../lib/logger.js';
 
 interface PriceUpdate {
   timestamp: string;
@@ -60,7 +61,7 @@ class SocketService {
         socket.data.userId = verified.sub;
         next();
       } catch (error) {
-        console.error('[WebSocket] Auth error:', error);
+        logger.error('[WebSocket] Auth error:', error);
         next(new Error('Authentication failed'));
       }
     });
@@ -68,17 +69,17 @@ class SocketService {
     // Handle connections
     this.io.on('connection', (socket: Socket) => {
       const userId = socket.data.userId;
-      console.log(`[WebSocket] Client connected: ${userId}`);
+      logger.info(`[WebSocket] Client connected: ${userId}`);
 
       // Join user-specific room
       socket.join(`user:${userId}`);
 
       socket.on('disconnect', () => {
-        console.log(`[WebSocket] Client disconnected: ${userId}`);
+        logger.info(`[WebSocket] Client disconnected: ${userId}`);
       });
     });
 
-    console.log('[WebSocket] Socket.io server initialized');
+    logger.info('[WebSocket] Socket.io server initialized');
   }
 
   /**
@@ -93,7 +94,7 @@ class SocketService {
     };
 
     this.io.emit('prices:updated', update);
-    console.log(`[WebSocket] Broadcast prices:updated to all clients`);
+    logger.info(`[WebSocket] Broadcast prices:updated to all clients`);
   }
 
   /**
@@ -108,7 +109,7 @@ class SocketService {
     };
 
     this.io.to(`user:${userId}`).emit('portfolio:updated', update);
-    console.log(`[WebSocket] Sent portfolio:updated to user ${userId}`);
+    logger.info(`[WebSocket] Sent portfolio:updated to user ${userId}`);
   }
 
   /**

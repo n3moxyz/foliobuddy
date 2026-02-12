@@ -1,6 +1,7 @@
 import { clerkMiddleware, getAuth, requireAuth } from '@clerk/express';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../index.js';
+import { logger } from '../lib/logger.js';
 
 // Extend Express Request to include auth
 declare global {
@@ -47,7 +48,7 @@ export async function ensureUser(req: Request, res: Response, next: NextFunction
     req.userId = auth.userId;
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    logger.error('Auth middleware error:', error);
     res.status(500).json({ error: 'Authentication error' });
   }
 }

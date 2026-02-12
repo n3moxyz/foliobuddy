@@ -39,6 +39,7 @@ router.get('/', async (req, res, next) => {
       orderBy: [
         { symbol: 'asc' },
       ],
+      take: 500,
     });
 
     res.json(assets);
