@@ -24,7 +24,7 @@ Personal portfolio dashboard tracking positions and net worth across crypto, equ
 ### Backend (`packages/backend/`)
 - **Runtime**: Node.js + TypeScript (ES2022 modules)
 - **Framework**: Express.js 4.18
-- **Database**: PostgreSQL (prod) / SQLite (dev)
+- **Database**: PostgreSQL (prod on DigitalOcean, local via Docker)
 - **ORM**: Prisma 5.10
 - **Auth**: Clerk
 - **Scheduling**: node-cron
@@ -92,6 +92,11 @@ npm install              # Install all dependencies
 npm run format           # Format all files with Prettier
 npm run format:check     # Check formatting without writing
 
+# Local Database
+npm run db:local         # Start local Postgres (Docker, port 5433)
+npm run db:local:stop    # Stop local Postgres
+npm run db:sync          # Pull production data → local DB
+
 # Backend (packages/backend/)
 npm run dev              # Start dev server (port 4001)
 npm run build            # Compile TypeScript
@@ -155,9 +160,10 @@ Delete mutations in `usePortfolio`, `useTrades`, `useSnapshots` use optimistic u
 
 ### Backend (`.env`)
 ```
-DATABASE_URL=           # PostgreSQL connection string (Coolify on DigitalOcean)
-PORT=4001               # Backend port (DO NOT use 3001 — that's reserved for other projects)
-CLERK_SECRET_KEY=       # Clerk backend key
+DATABASE_URL=              # Local: postgresql://dev:dev@localhost:5433/example_portfolio_db
+PRODUCTION_DATABASE_URL=   # Production DB (used by npm run db:sync)
+PORT=4001                  # Backend port (DO NOT use 3001 — that's reserved for other projects)
+CLERK_SECRET_KEY=          # Clerk backend key
 ALLOWED_ORIGINS=http://localhost:4000
 ```
 
@@ -186,6 +192,25 @@ All data tables (Portfolio, Trades, History) follow the same copy/import pattern
 <TradeForm trade={existingTrade} onSuccess={handleClose} />  // Edit mode
 <TradeForm onSuccess={handleClose} />                         // Create mode
 ```
+
+## Local Database Setup
+
+> **TODO (after device move):** Complete these steps, then remove this section marker.
+
+**Prerequisites:** Docker Desktop installed.
+
+**One-time setup:**
+1. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env` (get from Railway env vars or Coolify dashboard)
+2. Verify `DATABASE_URL` in `.env` points to `postgresql://dev:dev@localhost:5433/example_portfolio_db`
+
+**Daily workflow:**
+```bash
+npm run db:local       # Start local Postgres (port 5433)
+npm run db:sync        # Pull fresh production data → local
+npm run dev            # Start dev servers
+```
+
+**How it works:** Local backend connects to local Postgres (your sandbox). Production data is pulled on-demand via `db:sync`. Local changes do NOT affect production. Run `db:sync` anytime you want fresh data.
 
 ## Gotchas & Notes
 - Always define `onDelete: Cascade` in Prisma relations to avoid FK errors
