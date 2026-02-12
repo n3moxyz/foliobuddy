@@ -4,12 +4,15 @@
 #
 # Requires PRODUCTION_DATABASE_URL in packages/backend/.env
 # Local DB must be running (docker compose up -d)
+#
+# Uses `docker exec` so pg_dump/psql don't need to be installed locally.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="$ROOT_DIR/packages/backend/.env"
+CONTAINER_NAME="pa-local-db"
 
 # Read PRODUCTION_DATABASE_URL from .env
 if [ -f "$ENV_FILE" ]; then
@@ -24,16 +27,24 @@ if [ -z "$PROD_URL" ]; then
   exit 1
 fi
 
-LOCAL_URL="postgresql://dev:dev@localhost:5433/example_portfolio_db"
+# Verify container is running
+if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+  echo "Error: Container '${CONTAINER_NAME}' is not running."
+  echo "Start it with: npm run db:local"
+  exit 1
+fi
+
+# Inside the container, local DB is at localhost:5432 (not 5433)
+LOCAL_URL="postgresql://dev:dev@localhost:5432/example_portfolio_db"
 
 echo "Syncing production → local..."
 echo "  From: production (DigitalOcean/Coolify)"
-echo "  To:   local (localhost:5433)"
+echo "  To:   local (${CONTAINER_NAME})"
 echo ""
 
-# Dump production and restore to local in one pipeline
-pg_dump "$PROD_URL" --clean --if-exists --no-owner --no-privileges 2>/dev/null | \
-  psql "$LOCAL_URL" --quiet 2>/dev/null
+# Dump production and pipe into the container's psql
+docker exec -i "$CONTAINER_NAME" pg_dump "$PROD_URL" --clean --if-exists --no-owner --no-privileges 2>/dev/null | \
+  docker exec -i "$CONTAINER_NAME" psql "$LOCAL_URL" --quiet 2>/dev/null
 
 echo "Done! Local database is now a copy of production."
 echo "Local changes will NOT affect production."

@@ -195,8 +195,6 @@ All data tables (Portfolio, Trades, History) follow the same copy/import pattern
 
 ## Local Database Setup
 
-> **TODO (after device move):** Complete these steps, then remove this section marker.
-
 **Prerequisites:** Docker Desktop installed.
 
 **One-time setup:**
