@@ -1,0 +1,139 @@
+import { Button } from '@/components/ui/button';
+import { TableCell, TableRow } from '@/components/ui/table';
+import { formatCurrency, formatNumber, formatPercent, getPnLColorClass } from '@/lib/utils';
+import { Pencil, Trash2, Copy, Check } from 'lucide-react';
+import type { Position } from '@/lib/api';
+
+const STORAGE_TYPE_LABELS: Record<string, string> = {
+  WALLET: 'Onchain',
+  CEX: 'CEX',
+  DEFI: 'DeFi',
+  BANK: 'Bank',
+};
+
+interface PositionRowProps {
+  position: Position;
+  currency: 'USD' | 'SGD';
+  fxRate: number;
+  copiedId: string | null;
+  onView: (position: Position) => void;
+  onEdit: (position: Position) => void;
+  onDelete: (position: Position) => void;
+  onCopy: (position: Position, e: React.MouseEvent) => void;
+}
+
+export function PositionRow({
+  position,
+  currency,
+  fxRate,
+  copiedId,
+  onView,
+  onEdit,
+  onDelete,
+  onCopy,
+}: PositionRowProps) {
+  // Helper to convert USD values to selected currency
+  const convert = (usdValue: number | null | undefined) => {
+    if (usdValue === null || usdValue === undefined) return usdValue;
+    return currency === 'SGD' ? usdValue * fxRate : usdValue;
+  };
+
+  // Smart decimal formatting: 3 digits or less = 2dp, 4+ digits = 0dp
+  const getSmartDecimals = (value: number | null | undefined): number => {
+    if (value === null || value === undefined) return 2;
+    const absValue = Math.abs(value);
+    return absValue < 1000 ? 2 : 0;
+  };
+
+  const totalCost = position.quantity * position.avgCostUsd;
+  const isStable = position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH';
+
+  return (
+    <TableRow
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={() => onView(position)}
+    >
+      <TableCell>
+        <div className="truncate">
+          <p className="font-medium text-sm">{position.asset.symbol}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {position.asset.name}
+          </p>
+        </div>
+      </TableCell>
+      <TableCell className="text-right font-mono text-sm">
+        {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
+      </TableCell>
+      <TableCell className="text-right font-mono text-sm">
+        {formatCurrency(convert(position.avgCostUsd), currency, getSmartDecimals(convert(position.avgCostUsd)))}
+      </TableCell>
+      <TableCell className="text-right font-mono text-sm">
+        {formatCurrency(convert(totalCost), currency, 0)}
+      </TableCell>
+      <TableCell className="text-right font-mono text-sm text-slate-500 dark:text-slate-400">
+        {formatCurrency(convert(position.asset.currentPriceUsd), currency, getSmartDecimals(convert(position.asset.currentPriceUsd)))}
+      </TableCell>
+      <TableCell className="text-right font-mono text-sm font-medium">
+        {formatCurrency(convert(position.marketValueUsd), currency, 0)}
+      </TableCell>
+      <TableCell className="text-right">
+        <div className={getPnLColorClass(position.unrealizedPnL)}>
+          <p className="font-mono text-sm">
+            {formatCurrency(convert(position.unrealizedPnL), currency, 0)}
+          </p>
+          <p className="text-xs">
+            {formatPercent(position.unrealizedPnLPct)}
+          </p>
+        </div>
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="truncate">
+          <p className="text-sm">
+            {STORAGE_TYPE_LABELS[position.storageType] || position.storageType}
+          </p>
+          {position.storageLocation && (
+            <p className="text-xs text-muted-foreground italic truncate">
+              {position.storageLocation}
+            </p>
+          )}
+        </div>
+      </TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={(e) => onCopy(position, e)}
+            title="Copy position"
+            aria-label="Copy position"
+          >
+            {copiedId === position.id ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onEdit(position)}
+            aria-label="Edit position"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onDelete(position)}
+            aria-label="Delete position"
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}

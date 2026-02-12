@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -15,7 +14,9 @@ import { useCreatePosition, useUpdatePosition } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
 import type { Position, Asset, CoinSearchResult } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
-import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { AssetSearchDropdown } from './AssetSearchDropdown';
+import { PositionImportTab } from './PositionImportTab';
+import { ImportResults } from './ImportResults';
 
 interface PositionFormProps {
   position?: Position;
@@ -96,7 +97,6 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Validation state
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -114,11 +114,9 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   const [storageType, setStorageType] = useState(position?.storageType || 'CEX');
   const [storageLocation, setStorageLocation] = useState(() => {
     if (!position?.storageLocation) return '';
-    // Check if existing value matches predefined options
     const loc = position.storageLocation;
     const isCex = position.storageType === 'CEX';
     const options = isCex ? CEX_LOCATIONS : ONCHAIN_LOCATIONS;
-    // Check if location is in predefined list (excluding "Others")
     if (!options.slice(0, -1).includes(loc)) {
       return 'Others';
     }
@@ -126,7 +124,6 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   });
   const [customLocation, setCustomLocation] = useState(() => {
     if (!position?.storageLocation) return '';
-    // If existing value doesn't match predefined options, it's custom
     const loc = position.storageLocation;
     const isCex = position.storageType === 'CEX';
     const options = isCex ? CEX_LOCATIONS : ONCHAIN_LOCATIONS;
@@ -203,7 +200,6 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     setImporting(true);
 
     try {
-      // Use bulk import endpoint for faster processing
       const response = await api.bulkImportPositions(parsedPositions);
       setImportResults(response.results);
     } catch (e) {
@@ -223,9 +219,6 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     setParsedPositions(null);
     setImportResults(null);
   };
-
-  const successCount = importResults?.filter(r => r.success).length ?? 0;
-  const failCount = importResults?.filter(r => !r.success).length ?? 0;
 
   // Calculate the derived cost value based on input mode
   const calculatedAvgCost = useMemo(() => {
@@ -279,13 +272,12 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   }, [assets, category, searchQuery]);
 
   // Combine existing assets with search results (for crypto)
-  // Portfolio assets always show first, then CoinGecko results when searching
   const combinedResults = useMemo(() => {
     if (category !== 'crypto') return [];
 
     const results: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: CoinSearchResult }> = [];
 
-    // Add existing portfolio assets first (filtered by search query if any)
+    // Add existing portfolio assets first
     filteredAssets.forEach(asset => {
       results.push({ type: 'existing', asset });
     });
@@ -368,16 +360,6 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     }
   };
 
-  // Scroll highlighted item into view
-  useEffect(() => {
-    if (highlightedIndex >= 0 && dropdownRef.current) {
-      const items = dropdownRef.current.querySelectorAll('button');
-      if (items[highlightedIndex]) {
-        items[highlightedIndex].scrollIntoView({ block: 'nearest' });
-      }
-    }
-  }, [highlightedIndex]);
-
   // Track stablecoin selection separately for immediate UI feedback
   const [selectedStablecoinId, setSelectedStablecoinId] = useState<string>(
     position?.asset.coingeckoId || ''
@@ -385,7 +367,7 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
   // Handle selecting a stablecoin (for cash category)
   const handleSelectStablecoin = async (coinId: string) => {
-    setSelectedStablecoinId(coinId); // Immediate UI update
+    setSelectedStablecoinId(coinId);
     setError(null);
 
     const stablecoin = TOP_STABLECOINS.find(s => s.id === coinId);
@@ -500,53 +482,12 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
   // If showing import results, show the results UI
   if (mode === 'import' && importResults) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center py-4">
-          {failCount === 0 ? (
-            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
-          ) : (
-            <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
-          )}
-          <p className="font-medium">
-            {successCount} imported successfully
-            {failCount > 0 && `, ${failCount} failed`}
-          </p>
-        </div>
-
-        <div className="max-h-60 overflow-y-auto space-y-1">
-          {importResults.map((result, i) => (
-            <div
-              key={i}
-              className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
-                result.success ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'
-              }`}
-            >
-              {result.success ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-              )}
-              <span className="font-medium">{result.symbol}</span>
-              {result.error && (
-                <span className="text-red-600 dark:text-red-400 text-xs">
-                  {result.error}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-end">
-          <Button onClick={onSuccess}>Done</Button>
-        </div>
-      </div>
-    );
+    return <ImportResults results={importResults} onDone={onSuccess} />;
   }
 
   return (
     <div className="space-y-3">
-      {/* Mode Selection (Add New vs Import) - only show when not editing */}
+      {/* Mode Selection (Add New vs Import) */}
       {!isEditing && (
         <div className="flex border-b mb-2">
           <button
@@ -576,74 +517,20 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
       {/* Import Mode UI */}
       {mode === 'import' && !isEditing ? (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={handlePaste}>
-              <Upload className="h-4 w-4 mr-1" />
-              Paste from Clipboard
-            </Button>
-          </div>
-
-          <Textarea
-            placeholder='[{"asset": {"symbol": "BTC", ...}, "quantity": 1, ...}]'
-            value={jsonInput}
-            onChange={(e) => {
-              setJsonInput(e.target.value);
-              parseJson(e.target.value);
-            }}
-            rows={6}
-            className="font-mono text-xs"
-          />
-
-          {parseError && (
-            <div className="flex items-start gap-2 text-destructive text-sm">
-              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span>{parseError}</span>
-            </div>
-          )}
-
-          {parsedPositions && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">
-                Ready to import {parsedPositions.length} position{parsedPositions.length !== 1 ? 's' : ''}:
-              </p>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                {parsedPositions.map((pos, i) => (
-                  <div key={i} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
-                    <span className="font-medium">{pos.asset.symbol}</span>
-                    <span className="text-muted-foreground ml-2">
-                      {pos.quantity} @ ${pos.avgCostUsd.toLocaleString()}
-                    </span>
-                    {pos.storageLocation && (
-                      <span className="text-muted-foreground ml-2">
-                        ({pos.storageLocation})
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={handleImport}
-              disabled={!parsedPositions || importing}
-            >
-              {importing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  Importing...
-                </>
-              ) : (
-                <>Import {parsedPositions?.length ?? 0} Position{parsedPositions?.length !== 1 ? 's' : ''}</>
-              )}
-            </Button>
-          </div>
-        </div>
+        <PositionImportTab
+          jsonInput={jsonInput}
+          parseError={parseError}
+          parsedPositions={parsedPositions}
+          importing={importing}
+          onJsonChange={(value) => {
+            setJsonInput(value);
+            parseJson(value);
+          }}
+          onPaste={handlePaste}
+          onImport={handleImport}
+        />
       ) : (
-        /* Add New Mode - Original Form */
+        /* Add New Mode */
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* Category Selection */}
           {!isEditing && (
@@ -661,315 +548,232 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
             </div>
           )}
 
-      {/* Asset Selection - Different UI for Crypto vs Cash */}
-      {category === 'crypto' ? (
-        <div className="space-y-1">
-          <Label className="text-sm">Asset</Label>
-          {isEditing ? (
-            <Input
-              value={`${position.asset.symbol} - ${position.asset.name}`}
-              disabled
-              className="bg-muted"
-            />
+          {/* Asset Selection - Different UI for Crypto vs Cash */}
+          {category === 'crypto' ? (
+            <div className="space-y-1">
+              <Label className="text-sm">Asset</Label>
+              <AssetSearchDropdown
+                selectedAsset={selectedAsset}
+                searchQuery={searchQuery}
+                showDropdown={showDropdown}
+                highlightedIndex={highlightedIndex}
+                searchLoading={searchLoading}
+                combinedResults={combinedResults}
+                isEditing={isEditing}
+                positionAssetSymbol={position?.asset.symbol}
+                positionAssetName={position?.asset.name}
+                onSearchChange={(value) => {
+                  setSearchQuery(value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                onKeyDown={handleSearchKeyDown}
+                onSelectExistingAsset={handleSelectExistingAsset}
+                onSelectCoin={handleSelectCoin}
+                onClearSelection={() => {
+                  setAssetId('');
+                  setSelectedAsset(null);
+                }}
+                setHighlightedIndex={setHighlightedIndex}
+                setValidationError={setValidationError}
+              />
+            </div>
           ) : (
-            <div className="relative">
-              {selectedAsset ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={`${selectedAsset.symbol} - ${selectedAsset.name}`}
-                    disabled
-                    className="bg-muted flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setAssetId('');
-                      setSelectedAsset(null);
-                    }}
-                  >
-                    Change
-                  </Button>
-                </div>
+            /* Cash / Stablecoin Selection */
+            <div className="space-y-1">
+              <Label className="text-sm">Stablecoin</Label>
+              {isEditing ? (
+                <Input
+                  value={`${position.asset.symbol} - ${position.asset.name}`}
+                  disabled
+                  className="bg-muted"
+                />
               ) : (
-                <>
-                  <Input
-                    placeholder="Search for a coin..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setShowDropdown(true);
-                      setValidationError(null);
-                    }}
-                    onFocus={() => setShowDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                    onKeyDown={handleSearchKeyDown}
-                  />
-
-                  {showDropdown && (
-                    <div
-                      ref={dropdownRef}
-                      className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
-                    >
-                      {searchLoading && searchQuery.length >= 1 ? (
-                        <div className="p-3 text-sm text-muted-foreground">
-                          Searching...
-                        </div>
-                      ) : combinedResults.length > 0 ? (
-                        combinedResults.map((result, index) => (
-                          <button
-                            key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
-                            type="button"
-                            className={`w-full px-3 py-2 text-left flex items-center justify-between ${
-                              index === highlightedIndex
-                                ? 'bg-muted'
-                                : 'hover:bg-muted'
-                            }`}
-                            onClick={() => {
-                              if (result.type === 'existing') {
-                                handleSelectExistingAsset(result.asset!);
-                              } else {
-                                handleSelectCoin(result.coin!);
-                              }
-                            }}
-                            onMouseEnter={() => setHighlightedIndex(index)}
-                          >
-                            <span>
-                              <span className="font-medium">
-                                {result.type === 'existing'
-                                  ? result.asset!.symbol
-                                  : result.coin!.symbol.toUpperCase()}
-                              </span>
-                              <span className="text-muted-foreground ml-2">
-                                {result.type === 'existing'
-                                  ? result.asset!.name
-                                  : result.coin!.name}
-                              </span>
-                            </span>
-                            {result.type === 'search' && result.coin!.rank && (
-                              <span className="text-xs text-muted-foreground">
-                                #{result.coin!.rank}
-                              </span>
-                            )}
-                            {result.type === 'existing' && (
-                              <span className="text-xs text-green-600">
-                                In portfolio
-                              </span>
-                            )}
-                          </button>
-                        ))
-                      ) : searchQuery.length >= 1 ? (
-                        <div className="p-3 text-sm text-muted-foreground">
-                          No coins found
-                        </div>
-                      ) : (
-                        <div className="p-3 text-sm text-muted-foreground">
-                          Type to search coins...
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
+                <Select
+                  value={selectedStablecoinId}
+                  onValueChange={handleSelectStablecoin}
+                  disabled={createAssetFromCoinGecko.isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={createAssetFromCoinGecko.isPending ? "Loading..." : "Select a stablecoin"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TOP_STABLECOINS.map((coin) => (
+                      <SelectItem key={coin.id} value={coin.id}>
+                        {coin.symbol}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
           )}
-        </div>
-      ) : (
-        /* Cash / Stablecoin Selection */
-        <div className="space-y-1">
-          <Label className="text-sm">Stablecoin</Label>
-          {isEditing ? (
+
+          {/* Quantity / Amount */}
+          <div className="space-y-1">
+            <Label htmlFor="quantity" className="text-sm">
+              {category === 'crypto' ? 'Quantity' : 'Amount'}
+            </Label>
             <Input
-              value={`${position.asset.symbol} - ${position.asset.name}`}
-              disabled
-              className="bg-muted"
+              id="quantity"
+              type="number"
+              step="any"
+              value={quantity}
+              onChange={(e) => {
+                setQuantity(e.target.value);
+                setValidationError(null);
+              }}
+              placeholder="0.00"
+              required
             />
-          ) : (
-            <Select
-              value={selectedStablecoinId}
-              onValueChange={handleSelectStablecoin}
-              disabled={createAssetFromCoinGecko.isPending}
-            >
+          </div>
+
+          {/* Total Cost & Average Cost (Crypto only) */}
+          {category === 'crypto' && (
+            <div className="space-y-2">
+              {/* Toggle for cost input mode */}
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-muted-foreground">Enter:</span>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="costMode"
+                    checked={costInputMode === 'total'}
+                    onChange={() => setCostInputMode('total')}
+                    className="w-3.5 h-3.5 accent-primary"
+                  />
+                  <span className={costInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'}>
+                    Total Cost
+                  </span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="costMode"
+                    checked={costInputMode === 'avg'}
+                    onChange={() => setCostInputMode('avg')}
+                    className="w-3.5 h-3.5 accent-primary"
+                  />
+                  <span className={costInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'}>
+                    Avg Cost
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="totalCost" className="text-sm">Total Cost (USD)</Label>
+                  <Input
+                    id="totalCost"
+                    type="number"
+                    step="any"
+                    value={costInputMode === 'total' ? totalCost : calculatedTotalCost}
+                    onChange={(e) => setTotalCost(e.target.value)}
+                    placeholder="0.00"
+                    disabled={costInputMode !== 'total'}
+                    className={costInputMode !== 'total' ? 'bg-muted' : ''}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="avgCost" className="text-sm">Average Cost (USD)</Label>
+                  <Input
+                    id="avgCost"
+                    type="number"
+                    step="any"
+                    value={costInputMode === 'avg' ? avgCostInput : calculatedAvgCost}
+                    onChange={(e) => setAvgCostInput(e.target.value)}
+                    placeholder="0.00"
+                    disabled={costInputMode !== 'avg'}
+                    className={costInputMode !== 'avg' ? 'bg-muted' : ''}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Storage Type */}
+          <div className="space-y-1">
+            <Label className="text-sm">Storage Type</Label>
+            <Select value={storageType} onValueChange={(value) => setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK')}>
               <SelectTrigger>
-                <SelectValue placeholder={createAssetFromCoinGecko.isPending ? "Loading..." : "Select a stablecoin"} />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TOP_STABLECOINS.map((coin) => (
-                  <SelectItem key={coin.id} value={coin.id}>
-                    {coin.symbol}
+                {STORAGE_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Storage Location */}
+          <div className="space-y-1">
+            <Label className="text-sm">Storage Location (Optional)</Label>
+            <Select value={storageLocation} onValueChange={(v) => {
+              setStorageLocation(v);
+              if (v !== 'Others') {
+                setCustomLocation('');
+              }
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select location" />
+              </SelectTrigger>
+              <SelectContent>
+                {locationOptions.map((loc) => (
+                  <SelectItem key={loc} value={loc}>
+                    {loc}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Custom location input when "Others" is selected */}
+            {storageLocation === 'Others' && (
+              <Input
+                value={customLocation}
+                onChange={(e) => setCustomLocation(e.target.value)}
+                placeholder="Enter custom location..."
+                className="mt-2"
+              />
+            )}
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1">
+            <Label htmlFor="notes" className="text-sm">Notes (Optional)</Label>
+            <textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any notes..."
+              rows={2}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+            />
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+              {error}
+            </div>
           )}
-        </div>
-      )}
 
-      {/* Quantity / Amount */}
-      <div className="space-y-1">
-        <Label htmlFor="quantity" className="text-sm">
-          {category === 'crypto' ? 'Quantity' : 'Amount'}
-        </Label>
-        <Input
-          id="quantity"
-          type="number"
-          step="any"
-          value={quantity}
-          onChange={(e) => {
-            setQuantity(e.target.value);
-            setValidationError(null);
-          }}
-          placeholder="0.00"
-          required
-        />
-      </div>
-
-      {/* Total Cost & Average Cost (Crypto only) */}
-      {category === 'crypto' && (
-        <div className="space-y-2">
-          {/* Toggle for cost input mode */}
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-muted-foreground">Enter:</span>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="radio"
-                name="costMode"
-                checked={costInputMode === 'total'}
-                onChange={() => setCostInputMode('total')}
-                className="w-3.5 h-3.5 accent-primary"
-              />
-              <span className={costInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'}>
-                Total Cost
-              </span>
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="radio"
-                name="costMode"
-                checked={costInputMode === 'avg'}
-                onChange={() => setCostInputMode('avg')}
-                className="w-3.5 h-3.5 accent-primary"
-              />
-              <span className={costInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'}>
-                Avg Cost
-              </span>
-            </label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="totalCost" className="text-sm">Total Cost (USD)</Label>
-              <Input
-                id="totalCost"
-                type="number"
-                step="any"
-                value={costInputMode === 'total' ? totalCost : calculatedTotalCost}
-                onChange={(e) => setTotalCost(e.target.value)}
-                placeholder="0.00"
-                disabled={costInputMode !== 'total'}
-                className={costInputMode !== 'total' ? 'bg-muted' : ''}
-              />
+          {/* Validation Error Display */}
+          {validationError && (
+            <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
+              {validationError}
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="avgCost" className="text-sm">Average Cost (USD)</Label>
-              <Input
-                id="avgCost"
-                type="number"
-                step="any"
-                value={costInputMode === 'avg' ? avgCostInput : calculatedAvgCost}
-                onChange={(e) => setAvgCostInput(e.target.value)}
-                placeholder="0.00"
-                disabled={costInputMode !== 'avg'}
-                className={costInputMode !== 'avg' ? 'bg-muted' : ''}
-              />
+          )}
+
+          {/* Position Limit Info */}
+          {!isEditing && (
+            <div className="text-xs text-muted-foreground">
+              {category === 'crypto' ? cryptoCount : stablesCount} / {MAX_POSITIONS_PER_CATEGORY} {category === 'crypto' ? 'crypto' : 'stables'} positions
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Storage Type */}
-      <div className="space-y-1">
-        <Label className="text-sm">Storage Type</Label>
-        <Select value={storageType} onValueChange={(value) => setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK')}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STORAGE_TYPES.map((type) => (
-              <SelectItem key={type.value} value={type.value}>
-                {type.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Storage Location */}
-      <div className="space-y-1">
-        <Label className="text-sm">Storage Location (Optional)</Label>
-        <Select value={storageLocation} onValueChange={(v) => {
-          setStorageLocation(v);
-          if (v !== 'Others') {
-            setCustomLocation('');
-          }
-        }}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select location" />
-          </SelectTrigger>
-          <SelectContent>
-            {locationOptions.map((loc) => (
-              <SelectItem key={loc} value={loc}>
-                {loc}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Custom location input when "Others" is selected */}
-        {storageLocation === 'Others' && (
-          <Input
-            value={customLocation}
-            onChange={(e) => setCustomLocation(e.target.value)}
-            placeholder="Enter custom location..."
-            className="mt-2"
-          />
-        )}
-      </div>
-
-      {/* Notes */}
-      <div className="space-y-1">
-        <Label htmlFor="notes" className="text-sm">Notes (Optional)</Label>
-        <textarea
-          id="notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Add any notes..."
-          rows={2}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-        />
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-          {error}
-        </div>
-      )}
-
-      {/* Validation Error Display */}
-      {validationError && (
-        <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
-          {validationError}
-        </div>
-      )}
-
-      {/* Position Limit Info */}
-      {!isEditing && (
-        <div className="text-xs text-muted-foreground">
-          {category === 'crypto' ? cryptoCount : stablesCount} / {MAX_POSITIONS_PER_CATEGORY} {category === 'crypto' ? 'crypto' : 'stables'} positions
-        </div>
-      )}
+          )}
 
           {/* Submit */}
           <div className="flex justify-end gap-2 pt-2">
