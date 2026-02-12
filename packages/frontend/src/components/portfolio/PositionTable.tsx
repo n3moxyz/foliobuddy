@@ -122,7 +122,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
 
   const { isExpanded, toggle } = useCollapsibleState();
 
-  // Split positions into CEX and Onchain sections with default sort + subtotals
+  // Split positions into CEX and Onchain sub-groups
   const { defaultCex, defaultOnchain, cexTotal, onchainTotal } = useMemo(() => {
     const cex: Position[] = [];
     const onchain: Position[] = [];
@@ -154,18 +154,18 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
     };
   }, [positions]);
 
-  // Independent sort hooks for each section
+  // Independent sort hooks for each sub-group
   const cexSort = useTableSort(defaultCex, POSITION_COLUMNS);
   const onchainSort = useTableSort(defaultOnchain, POSITION_COLUMNS);
   const cexPositions = cexSort.sortedItems;
   const onchainPositions = onchainSort.sortedItems;
 
-  // Helper to convert for subsection headers
+  // Helper to convert for sub-group headers
   const convertSub = (usdValue: number) => {
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
   };
 
-  // Subsection IDs based on parent section
+  // Collapsible IDs
   const cexId = sectionPrefix ? `${sectionPrefix}-cex` : 'cex';
   const onchainId = sectionPrefix ? `${sectionPrefix}-onchain` : 'onchain';
 
@@ -252,7 +252,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
           </Button>
         </div>
 
-        {/* CEX Section */}
+        {/* CEX Sub-group */}
         {cexPositions.length > 0 && (
           <Collapsible open={isExpanded(cexId)} onOpenChange={() => toggle(cexId)}>
             <CollapsibleTrigger asChild>
@@ -269,7 +269,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
                   ({cexPositions.length})
                 </span>
                 {!isExpanded(cexId) && (
-                  <span className="text-xs text-muted-foreground ml-auto">
+                  <span className="text-xs font-mono text-muted-foreground ml-auto">
                     {formatCurrency(convertSub(cexTotal), currency, 0)}
                   </span>
                 )}
@@ -288,7 +288,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
           </Collapsible>
         )}
 
-        {/* Onchain Section */}
+        {/* Onchain Sub-group */}
         {onchainPositions.length > 0 && (
           <Collapsible open={isExpanded(onchainId)} onOpenChange={() => toggle(onchainId)}>
             <CollapsibleTrigger asChild>
@@ -305,7 +305,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
                   ({onchainPositions.length})
                 </span>
                 {!isExpanded(onchainId) && (
-                  <span className="text-xs text-muted-foreground ml-auto">
+                  <span className="text-xs font-mono text-muted-foreground ml-auto">
                     {formatCurrency(convertSub(onchainTotal), currency, 0)}
                   </span>
                 )}
@@ -325,7 +325,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
         )}
 
         {/* Empty state */}
-        {cexPositions.length === 0 && onchainPositions.length === 0 && (
+        {positions.length === 0 && (
           <div className="rounded-md border overflow-hidden">
             <Table className="table-fixed w-full">
               {renderTableHeader(cexSort)}
