@@ -11,9 +11,12 @@
     "dev:frontend": "npm run dev --workspace=@pa-portfolio/frontend",
     "build": "npm run build --workspaces",
     "db:migrate": "npm run db:migrate --workspace=@pa-portfolio/backend",
-    "db:seed": "npm run db:seed --workspace=@pa-portfolio/backend"
+    "db:seed": "npm run db:seed --workspace=@pa-portfolio/backend",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,jsx,json,css}\""
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "prettier": "^3.8.1"
   }
 }
