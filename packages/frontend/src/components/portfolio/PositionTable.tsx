@@ -19,7 +19,8 @@ import {
 import { formatCurrency, formatNumber, formatPercent, formatDateTime, getPnLColorClass } from '@/lib/utils';
 import { useDeletePosition } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
-import { Pencil, Trash2, Copy, Check, ChevronRight } from 'lucide-react';
+import { PositionRow } from './PositionRow';
+import { Copy, Check, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useTableSort } from '@/hooks/useTableSort';
@@ -190,93 +191,18 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
 
   // Render a position row
   const renderPositionRow = (position: Position) => {
-    const totalCost = position.quantity * position.avgCostUsd;
-    const isStable = position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH';
     return (
-      <TableRow
+      <PositionRow
         key={position.id}
-        className="cursor-pointer hover:bg-muted/50"
-        onClick={() => setViewPosition(position)}
-      >
-        <TableCell>
-          <div className="truncate">
-            <p className="font-medium text-sm">{position.asset.symbol}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {position.asset.name}
-            </p>
-          </div>
-        </TableCell>
-        <TableCell className="text-right font-mono text-sm">
-          {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
-        </TableCell>
-        <TableCell className="text-right font-mono text-sm">
-          {formatCurrency(convert(position.avgCostUsd), currency, getSmartDecimals(convert(position.avgCostUsd)))}
-        </TableCell>
-        <TableCell className="text-right font-mono text-sm">
-          {formatCurrency(convert(totalCost), currency, 0)}
-        </TableCell>
-        <TableCell className="text-right font-mono text-sm text-slate-500 dark:text-slate-400">
-          {formatCurrency(convert(position.asset.currentPriceUsd), currency, getSmartDecimals(convert(position.asset.currentPriceUsd)))}
-        </TableCell>
-        <TableCell className="text-right font-mono text-sm font-medium">
-          {formatCurrency(convert(position.marketValueUsd), currency, 0)}
-        </TableCell>
-        <TableCell className="text-right">
-          <div className={getPnLColorClass(position.unrealizedPnL)}>
-            <p className="font-mono text-sm">
-              {formatCurrency(convert(position.unrealizedPnL), currency, 0)}
-            </p>
-            <p className="text-xs">
-              {formatPercent(position.unrealizedPnLPct)}
-            </p>
-          </div>
-        </TableCell>
-        <TableCell className="text-right">
-          <div className="truncate">
-            <p className="text-sm">
-              {STORAGE_TYPE_LABELS[position.storageType] || position.storageType}
-            </p>
-            {position.storageLocation && (
-              <p className="text-xs text-muted-foreground italic truncate">
-                {position.storageLocation}
-              </p>
-            )}
-          </div>
-        </TableCell>
-        <TableCell onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={(e) => handleCopy(position, e)}
-              title="Copy position"
-            >
-              {copiedId === position.id ? (
-                <Check className="h-4 w-4 text-green-500" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setEditPosition(position)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handleDeleteClick(position)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
-        </TableCell>
-      </TableRow>
+        position={position}
+        currency={currency}
+        fxRate={fxRate}
+        copiedId={copiedId}
+        onView={setViewPosition}
+        onEdit={setEditPosition}
+        onDelete={handleDeleteClick}
+        onCopy={handleCopy}
+      />
     );
   };
 

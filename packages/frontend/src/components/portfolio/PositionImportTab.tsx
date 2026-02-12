@@ -1,0 +1,103 @@
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Upload, AlertCircle, Loader2 } from 'lucide-react';
+
+interface ImportedPosition {
+  asset: {
+    coingeckoId: string | null;
+    symbol: string;
+    name: string;
+    category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
+  };
+  quantity: number;
+  avgCostUsd: number;
+  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
+  storageLocation: string | null;
+  notes: string | null;
+}
+
+interface PositionImportTabProps {
+  jsonInput: string;
+  parseError: string | null;
+  parsedPositions: ImportedPosition[] | null;
+  importing: boolean;
+  onJsonChange: (value: string) => void;
+  onPaste: () => void;
+  onImport: () => void;
+}
+
+export function PositionImportTab({
+  jsonInput,
+  parseError,
+  parsedPositions,
+  importing,
+  onJsonChange,
+  onPaste,
+  onImport,
+}: PositionImportTabProps) {
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onPaste}>
+          <Upload className="h-4 w-4 mr-1" />
+          Paste from Clipboard
+        </Button>
+      </div>
+
+      <Textarea
+        placeholder='[{"asset": {"symbol": "BTC", ...}, "quantity": 1, ...}]'
+        value={jsonInput}
+        onChange={(e) => onJsonChange(e.target.value)}
+        rows={6}
+        className="font-mono text-xs"
+      />
+
+      {parseError && (
+        <div className="flex items-start gap-2 text-destructive text-sm">
+          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <span>{parseError}</span>
+        </div>
+      )}
+
+      {parsedPositions && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">
+            Ready to import {parsedPositions.length} position{parsedPositions.length !== 1 ? 's' : ''}:
+          </p>
+          <div className="max-h-40 overflow-y-auto space-y-1">
+            {parsedPositions.map((pos, i) => (
+              <div key={i} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
+                <span className="font-medium">{pos.asset.symbol}</span>
+                <span className="text-muted-foreground ml-2">
+                  {pos.quantity} @ ${pos.avgCostUsd.toLocaleString()}
+                </span>
+                {pos.storageLocation && (
+                  <span className="text-muted-foreground ml-2">
+                    ({pos.storageLocation})
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          onClick={onImport}
+          disabled={!parsedPositions || importing}
+        >
+          {importing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              Importing...
+            </>
+          ) : (
+            <>Import {parsedPositions?.length ?? 0} Position{parsedPositions?.length !== 1 ? 's' : ''}</>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
