@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Pencil, Download, Copy, Check, Trash2, MoreVertical, FileSpreadsheet } from 'lucide-react';
+import { Plus, Pencil, Download, Copy, Check, Trash2, MoreVertical, FileSpreadsheet, Coins, Banknote } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
@@ -26,6 +26,8 @@ interface SectionConfig {
   id: string;
   label: string;
   filter: (p: Position) => boolean;
+  icon: React.ReactNode;
+  accentColor: string;
 }
 
 // Section config — add new categories here
@@ -34,14 +36,18 @@ const SECTION_CONFIG: SectionConfig[] = [
     id: 'crypto',
     label: 'Crypto',
     filter: (p) => p.asset.category !== 'STABLECOIN' && p.asset.category !== 'CASH',
+    icon: <Coins className="h-4 w-4 text-blue-500" />,
+    accentColor: 'border-l-blue-500',
   },
   {
     id: 'stables',
     label: 'Stables',
     filter: (p) => p.asset.category === 'STABLECOIN' || p.asset.category === 'CASH',
+    icon: <Banknote className="h-4 w-4 text-green-500" />,
+    accentColor: 'border-l-green-500',
   },
   // Future: just add entries like:
-  // { id: 'equities', label: 'Equities', filter: (p) => p.asset.category === 'EQUITY' },
+  // { id: 'equities', label: 'Equities', filter: ..., icon: ..., accentColor: '...' },
 ];
 
 export default function Portfolio() {
@@ -286,6 +292,8 @@ export default function Portfolio() {
         <CollapsibleCard
           key={section.id}
           title={section.label}
+          icon={section.icon}
+          accentColor={section.accentColor}
           isExpanded={isExpanded(section.id)}
           onToggle={() => toggle(section.id)}
           headerRight={

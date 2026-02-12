@@ -9,6 +9,8 @@ interface CollapsibleCardProps {
   onToggle: () => void;
   headerRight?: ReactNode;
   headerExtra?: ReactNode;
+  icon?: ReactNode;
+  accentColor?: string;
   children: ReactNode;
 }
 
@@ -18,11 +20,13 @@ export function CollapsibleCard({
   onToggle,
   headerRight,
   headerExtra,
+  icon,
+  accentColor,
   children,
 }: CollapsibleCardProps) {
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
-      <Card>
+      <Card className={accentColor ? `border-l-2 ${accentColor}` : undefined}>
         <CollapsibleTrigger asChild>
           <CardHeader className="py-3 px-4 cursor-pointer hover:bg-muted/30 transition-colors select-none">
             <div className="flex items-center justify-between">
@@ -32,6 +36,7 @@ export function CollapsibleCard({
                     isExpanded ? 'rotate-90' : ''
                   }`}
                 />
+                {icon}
                 <CardTitle className="text-base">{title}</CardTitle>
               </div>
               <div className="flex items-center gap-3">
