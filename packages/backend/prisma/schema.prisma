@@ -104,6 +104,7 @@ model Trade {
   @@index([assetId])
   @@index([status])
   @@index([entryDate])
+  @@index([exitDate])
 }
 
 // Investor model - for tracking external investors/stakeholders
@@ -169,6 +170,7 @@ model Snapshot {
 
   @@index([userId, timestamp])
   @@index([snapshotType])
+  @@index([userId, snapshotType, timestamp])
 }
 
 // SnapshotPosition - captures position state at snapshot time

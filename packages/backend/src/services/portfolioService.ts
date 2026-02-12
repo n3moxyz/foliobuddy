@@ -1,4 +1,6 @@
 import { prisma } from '../index.js';
+import { logger } from '../lib/logger.js';
+import { USD_SGD_FALLBACK_RATE } from '../lib/constants.js';
 
 interface PortfolioSummary {
   totalValueUsd: number;
@@ -58,7 +60,7 @@ class PortfolioService {
       },
     });
 
-    const usdSgdRate = fxRate?.rate ?? 1.35; // Default rate if not found
+    const usdSgdRate = fxRate?.rate ?? USD_SGD_FALLBACK_RATE; // Default rate if not found
 
     // Calculate current total value
     let totalValueUsd = 0;
@@ -75,7 +77,7 @@ class PortfolioService {
       select: { id: true, timestamp: true, totalValueUsd: true },
     });
 
-    console.log('[YTD Debug] All snapshots for user:', allSnapshots.map(s => ({
+    logger.debug('[YTD Debug] All snapshots for user:', allSnapshots.map(s => ({
       timestamp: s.timestamp.toISOString(),
       value: s.totalValueUsd
     })));
@@ -83,7 +85,7 @@ class PortfolioService {
     // Find the earliest snapshot (should be the YTD start)
     const ytdSnapshot = allSnapshots.length > 0 ? allSnapshots[0] : null;
 
-    console.log('[YTD Debug] Using earliest snapshot:', ytdSnapshot ? {
+    logger.debug('[YTD Debug] Using earliest snapshot:', ytdSnapshot ? {
       timestamp: ytdSnapshot.timestamp.toISOString(),
       totalValueUsd: ytdSnapshot.totalValueUsd,
     } : 'NONE');
@@ -92,7 +94,7 @@ class PortfolioService {
     const totalCostBasis = ytdSnapshot?.totalValueUsd ?? totalValueUsd;
     const ytdStartDate = ytdSnapshot?.timestamp?.toISOString() ?? null;
 
-    console.log('[YTD Debug] Final totalCostBasis:', totalCostBasis);
+    logger.debug('[YTD Debug] Final totalCostBasis:', totalCostBasis);
 
     const unrealizedPnL = totalValueUsd - totalCostBasis;
     const unrealizedPnLPct = totalCostBasis > 0 ? (unrealizedPnL / totalCostBasis) * 100 : 0;

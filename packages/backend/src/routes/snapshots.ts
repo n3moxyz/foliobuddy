@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../index.js';
 import { snapshotService } from '../services/snapshotService.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { logger } from '../lib/logger.js';
+import { DEFAULT_SNAPSHOT_LIMIT } from '../lib/constants.js';
+import { parsePagination, paginatedResponse } from '../lib/pagination.js';
 
 const router = Router();
 
@@ -44,13 +47,27 @@ router.get('/', async (req, res, next) => {
       if (to) where.timestamp.lte = new Date(to as string);
     }
 
-    const snapshots = await prisma.snapshot.findMany({
-      where,
-      orderBy: { timestamp: 'desc' },
-      take: limit ? parseInt(limit as string) : 100,
-    });
+    const pagination = parsePagination(req);
 
-    res.json(snapshots);
+    if (pagination) {
+      const [snapshots, total] = await Promise.all([
+        prisma.snapshot.findMany({
+          where,
+          orderBy: { timestamp: 'desc' },
+          skip: pagination.skip,
+          take: pagination.limit,
+        }),
+        prisma.snapshot.count({ where }),
+      ]);
+      res.json(paginatedResponse(snapshots, total, pagination));
+    } else {
+      const snapshots = await prisma.snapshot.findMany({
+        where,
+        orderBy: { timestamp: 'desc' },
+        take: limit ? parseInt(limit as string) : DEFAULT_SNAPSHOT_LIMIT,
+      });
+      res.json(snapshots);
+    }
   } catch (error) {
     next(error);
   }
@@ -106,7 +123,7 @@ const bulkImportSchema = z.object({
 // POST /api/snapshots/bulk - Bulk import snapshots (must be before /:id routes)
 router.post('/bulk', async (req, res, next) => {
   try {
-    console.log('Bulk import request received:', JSON.stringify(req.body).substring(0, 200));
+    logger.info('Bulk import request received:', JSON.stringify(req.body).substring(0, 200));
     const userId = req.userId!;
     const { snapshots } = bulkImportSchema.parse(req.body);
 

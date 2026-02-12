@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { parsePagination, paginatedResponse } from '../lib/pagination.js';
+import { calculateTradePnL } from '../lib/tradePnL.js';
 
 const router = Router();
 
@@ -35,27 +37,6 @@ const closeTradeSchema = z.object({
   notes: z.string().optional(),
 });
 
-// Calculate trade P&L
-function calculateTradePnL(
-  direction: 'LONG' | 'SHORT',
-  entryPrice: number,
-  exitPrice: number,
-  quantity: number
-): { pnl: number; pnlPct: number } {
-  let pnl: number;
-
-  if (direction === 'LONG') {
-    pnl = (exitPrice - entryPrice) * quantity;
-  } else {
-    pnl = (entryPrice - exitPrice) * quantity;
-  }
-
-  const positionSize = entryPrice * quantity;
-  const pnlPct = positionSize > 0 ? (pnl / positionSize) * 100 : 0;
-
-  return { pnl, pnlPct };
-}
-
 // GET /api/trades - Get all trades
 router.get('/', async (req, res, next) => {
   try {
@@ -81,17 +62,32 @@ router.get('/', async (req, res, next) => {
       if (to) where.entryDate.lte = new Date(to as string);
     }
 
-    const trades = await prisma.trade.findMany({
-      where,
-      include: {
-        asset: true,
-      },
-      orderBy: {
-        entryDate: 'desc',
-      },
-    });
+    const pagination = parsePagination(req);
 
-    res.json(trades);
+    if (pagination) {
+      const [trades, total] = await Promise.all([
+        prisma.trade.findMany({
+          where,
+          include: { asset: true },
+          orderBy: { entryDate: 'desc' },
+          skip: pagination.skip,
+          take: pagination.limit,
+        }),
+        prisma.trade.count({ where }),
+      ]);
+      res.json(paginatedResponse(trades, total, pagination));
+    } else {
+      const trades = await prisma.trade.findMany({
+        where,
+        include: {
+          asset: true,
+        },
+        orderBy: {
+          entryDate: 'desc',
+        },
+      });
+      res.json(trades);
+    }
   } catch (error) {
     next(error);
   }

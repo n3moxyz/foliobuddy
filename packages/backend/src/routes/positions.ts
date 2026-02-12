@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { prisma } from '../index.js';
 import { portfolioService } from '../services/portfolioService.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { logger } from '../lib/logger.js';
+import { MAX_POSITIONS_PER_CATEGORY } from '../lib/constants.js';
 
 const router = Router();
 
@@ -32,6 +34,7 @@ router.get('/', async (req, res, next) => {
         { marketValueUsd: 'desc' },
         { createdAt: 'desc' },
       ],
+      take: 500,
     });
 
     res.json(positions);
@@ -114,7 +117,7 @@ const bulkImportSchema = z.object({
 // POST /api/positions/bulk - Bulk import positions (must be before /:id routes)
 router.post('/bulk', async (req, res, next) => {
   try {
-    console.log('Bulk position import request received:', JSON.stringify(req.body).substring(0, 200));
+    logger.info('Bulk position import request received:', JSON.stringify(req.body).substring(0, 200));
     const userId = req.userId!;
     const { positions } = bulkImportSchema.parse(req.body);
 
@@ -242,9 +245,9 @@ router.post('/', async (req, res, next) => {
       },
     });
 
-    if (categoryPositions.length >= 20) {
+    if (categoryPositions.length >= MAX_POSITIONS_PER_CATEGORY) {
       throw new AppError(
-        `Maximum 20 ${isStablecoin ? 'stables' : 'crypto'} positions allowed`,
+        `Maximum ${MAX_POSITIONS_PER_CATEGORY} ${isStablecoin ? 'stables' : 'crypto'} positions allowed`,
         400
       );
     }

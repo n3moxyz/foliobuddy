@@ -1,4 +1,5 @@
 import { prisma } from '../index.js';
+import { logger } from '../lib/logger.js';
 
 const COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
 const RATE_LIMIT_DELAY = 2100; // 2.1 seconds between calls (30 calls/min limit)
@@ -106,7 +107,7 @@ class PriceService {
           if (!response.ok) {
             if (response.status === 429) {
               // Rate limited - wait and retry
-              console.warn('Rate limited by CoinGecko, waiting...');
+              logger.warn('Rate limited by CoinGecko, waiting...');
               await this.sleep(60000); // Wait 1 minute
               return executeRequest();
             }
@@ -226,7 +227,7 @@ class PriceService {
         }
       }
     } catch (error) {
-      console.error('Error fetching prices:', error);
+      logger.error('Error fetching prices:', error);
     }
 
     return prices;
@@ -292,12 +293,12 @@ class PriceService {
     const url = `${COINGECKO_BASE_URL}/coins/list`;
 
     try {
-      console.log('[CoinGecko] Fetching full coin list...');
+      logger.info('[CoinGecko] Fetching full coin list...');
       const response = await fetch(url, { headers: this.getHeaders() });
 
       if (!response.ok) {
         if (response.status === 429) {
-          console.warn('Coin list rate limited by CoinGecko');
+          logger.warn('Coin list rate limited by CoinGecko');
           return this.coinList; // Return stale cache if available
         }
         throw new Error(`CoinGecko API error: ${response.status}`);
@@ -306,10 +307,10 @@ class PriceService {
       const data: CoinListItem[] = await response.json();
       this.coinList = data;
       this.coinListLastFetch = now;
-      console.log(`[CoinGecko] Cached ${data.length} coins`);
+      logger.info(`[CoinGecko] Cached ${data.length} coins`);
       return data;
     } catch (error) {
-      console.error('Error fetching coin list:', error);
+      logger.error('Error fetching coin list:', error);
       return this.coinList; // Return stale cache if available
     }
   }
@@ -371,7 +372,7 @@ class PriceService {
 
       return null;
     } catch (error) {
-      console.error('Error fetching exchange rates:', error);
+      logger.error('Error fetching exchange rates:', error);
       return null;
     }
   }
@@ -427,7 +428,7 @@ class PriceService {
 
           updated++;
         } catch (error) {
-          console.error(`Error updating price for ${asset.coingeckoId}:`, error);
+          logger.error(`Error updating price for ${asset.coingeckoId}:`, error);
           errors++;
         }
       } else {
@@ -506,7 +507,7 @@ class PriceService {
 
       return data;
     } catch (error) {
-      console.error(`Error fetching historical prices for ${coingeckoId}:`, error);
+      logger.error(`Error fetching historical prices for ${coingeckoId}:`, error);
       // Return cached data even if stale, better than nothing
       if (cached) {
         return cached.data;

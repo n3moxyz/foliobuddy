@@ -1,6 +1,8 @@
 import { prisma } from '../index.js';
 import { portfolioService } from './portfolioService.js';
 import { priceService } from './priceService.js';
+import { logger } from '../lib/logger.js';
+import { USD_SGD_FALLBACK_RATE } from '../lib/constants.js';
 
 interface PerformanceMetrics {
   dailyReturn: number | null;
@@ -25,7 +27,7 @@ class SnapshotService {
 
     // Get FX rate
     const fxRates = await priceService.getExchangeRates();
-    const usdSgdRate = fxRates?.usdSgd ?? 1.35;
+    const usdSgdRate = fxRates?.usdSgd ?? USD_SGD_FALLBACK_RATE;
 
     // Get BTC and ETH prices for benchmark comparison
     const btcPrice = await priceService.getPrice('bitcoin');
