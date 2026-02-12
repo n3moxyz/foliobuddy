@@ -202,6 +202,7 @@ export default function Investors() {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => setEditInvestor(investor)}
+                            aria-label="Edit investor"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -210,6 +211,7 @@ export default function Investors() {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => setDeleteInvestor(investor)}
+                            aria-label="Delete investor"
                           >
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>

@@ -98,6 +98,17 @@ export const api = {
     const query = searchParams.toString();
     return request<Trade[]>(`/trades${query ? `?${query}` : ''}`);
   },
+  getTradesPaginated: (params?: { status?: string; assetId?: string; from?: string; to?: string; page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.assetId) searchParams.set('assetId', params.assetId);
+    if (params?.from) searchParams.set('from', params.from);
+    if (params?.to) searchParams.set('to', params.to);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    const query = searchParams.toString();
+    return request<PaginatedResponse<Trade>>(`/trades${query ? `?${query}` : ''}`);
+  },
   getTradeAnalytics: (params?: { from?: string; to?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.from) searchParams.set('from', params.from);
@@ -158,6 +169,17 @@ export const api = {
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     const query = searchParams.toString();
     return request<Snapshot[]>(`/snapshots${query ? `?${query}` : ''}`);
+  },
+  getSnapshotsPaginated: (params?: { type?: string; source?: string; from?: string; to?: string; page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.type) searchParams.set('type', params.type);
+    if (params?.source) searchParams.set('source', params.source);
+    if (params?.from) searchParams.set('from', params.from);
+    if (params?.to) searchParams.set('to', params.to);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    const query = searchParams.toString();
+    return request<PaginatedResponse<Snapshot>>(`/snapshots${query ? `?${query}` : ''}`);
   },
   getPerformanceHistory: (params?: { days?: number; from?: string; to?: string }) => {
     const searchParams = new URLSearchParams();
@@ -227,6 +249,18 @@ export const api = {
 };
 
 // Types
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationMeta;
+}
+
 export interface DbHealth {
   status: 'ok' | 'error';
   latency_ms: number;

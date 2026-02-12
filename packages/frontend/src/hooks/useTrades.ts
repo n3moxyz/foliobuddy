@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, CreateTradeData } from '@/lib/api';
+import { api, CreateTradeData, Trade } from '@/lib/api';
 
 export function useTrades(params?: {
   status?: string;
@@ -10,6 +10,20 @@ export function useTrades(params?: {
   return useQuery({
     queryKey: ['trades', params],
     queryFn: () => api.getTrades(params),
+  });
+}
+
+export function useTradesPaginated(params?: {
+  status?: string;
+  assetId?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}) {
+  return useQuery({
+    queryKey: ['trades', 'paginated', params],
+    queryFn: () => api.getTradesPaginated(params),
   });
 }
 
@@ -75,7 +89,20 @@ export function useDeleteTrade() {
 
   return useMutation({
     mutationFn: (id: string) => api.deleteTrade(id),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['trades'] });
+      const previous = queryClient.getQueryData<Trade[]>(['trades']);
+      queryClient.setQueryData<Trade[]>(['trades'], (old) =>
+        old ? old.filter((t) => t.id !== id) : []
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['trades'], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
     },
   });

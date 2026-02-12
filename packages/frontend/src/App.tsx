@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import {
   SignedIn,
@@ -11,11 +11,13 @@ import { useThemeEffect } from './hooks/useThemeEffect';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
 import Dashboard from './pages/Dashboard';
-import Portfolio from './pages/Portfolio';
-import Trades from './pages/Trades';
-import History from './pages/History';
-import Investors from './pages/Investors';
-import Settings from './pages/Settings';
+
+// Lazy-loaded pages — reduces initial bundle size
+const Portfolio = lazy(() => import('./pages/Portfolio'));
+const Trades = lazy(() => import('./pages/Trades'));
+const History = lazy(() => import('./pages/History'));
+const Investors = lazy(() => import('./pages/Investors'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 // Component to set up auth and render children
 function AuthenticatedApp() {
@@ -30,14 +32,16 @@ function AuthenticatedApp() {
   return (
     <>
       <AppShell>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/trades" element={<Trades />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/investors" element={<Investors />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
+        <Suspense fallback={<div className="flex items-center justify-center h-64 text-muted-foreground">Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/trades" element={<Trades />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/investors" element={<Investors />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </Suspense>
       </AppShell>
       <ShortcutsHelpModal
         open={showShortcutsHelp}
