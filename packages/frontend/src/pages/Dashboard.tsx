@@ -93,11 +93,11 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Dashboard</h1>
           <div className="flex items-center gap-2">
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground sm:text-base">
               Overview of your portfolio performance
             </p>
             <DbStatusBanner />
@@ -163,7 +163,7 @@ export default function Dashboard() {
       {summary && <NetWorthCard summary={summary} currency={currency} stakeMultiplier={stakeMultiplier} />}
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>YTD Start</CardDescription>
@@ -215,7 +215,7 @@ export default function Dashboard() {
       )}
 
       {/* Performers */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {topPerformers && (
           <PerformersCard
             title="Top Performers"

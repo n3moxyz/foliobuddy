@@ -118,7 +118,7 @@ export default function Portfolio() {
   return (
     <div className="space-y-3">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Portfolio</h1>
           <p className="text-sm text-muted-foreground">
@@ -126,9 +126,11 @@ export default function Portfolio() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Secondary actions hidden on mobile, in dropdown */}
           <Button
             variant="outline"
             size="sm"
+            className="hidden sm:inline-flex"
             onClick={async () => {
               if (positions && positions.length > 0) {
                 const success = await copyPositionsToClipboard(positions);
@@ -150,23 +152,49 @@ export default function Portfolio() {
           <Button
             variant="destructive"
             size="sm"
+            className="hidden sm:inline-flex"
             onClick={() => setShowDeleteAllConfirm(true)}
             disabled={!positions || positions.length === 0}
           >
             <Trash2 className="h-4 w-4 mr-1" />
             Delete All
           </Button>
-          <Button size="sm" onClick={() => setShowAddForm(true)}>
+          <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Add Position
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="touch-manipulation">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* Mobile-only actions */}
+              <DropdownMenuItem
+                className="sm:hidden"
+                onClick={async () => {
+                  if (positions && positions.length > 0) {
+                    const success = await copyPositionsToClipboard(positions);
+                    if (success) {
+                      setCopiedAll(true);
+                      setTimeout(() => setCopiedAll(false), 2000);
+                    }
+                  }
+                }}
+                disabled={!positions || positions.length === 0}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy All
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="sm:hidden text-destructive"
+                onClick={() => setShowDeleteAllConfirm(true)}
+                disabled={!positions || positions.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete All
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.open(api.exportPositionsCsv(), '_blank')}>
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -182,7 +210,7 @@ export default function Portfolio() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid gap-2 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
           <Card className="py-2">
             <CardHeader className="py-2 px-4">
               <p className="text-xs text-muted-foreground">Total Value</p>

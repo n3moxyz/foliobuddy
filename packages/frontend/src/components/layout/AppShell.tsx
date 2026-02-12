@@ -14,11 +14,19 @@ import {
   Moon,
   Monitor,
   History,
+  MoreVertical,
 } from 'lucide-react';
 import { UserButton } from '@clerk/clerk-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { api } from '@/lib/api';
@@ -115,7 +123,7 @@ export function AppShell({ children }: AppShellProps) {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  'flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                  'flex items-center justify-between px-3 py-3 rounded-md text-sm font-medium transition-colors touch-manipulation',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -150,9 +158,9 @@ export function AppShell({ children }: AppShellProps) {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur px-4 lg:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur px-3 sm:h-16 sm:gap-4 sm:px-4 lg:px-6">
           <button
-            className="lg:hidden"
+            className="lg:hidden p-2 -ml-2 touch-manipulation"
             onClick={() => setSidebarOpen(true)}
             aria-label="Open navigation menu"
           >
@@ -166,7 +174,7 @@ export function AppShell({ children }: AppShellProps) {
             variant="outline"
             size="sm"
             onClick={toggleCurrency}
-            className="font-mono"
+            className="font-mono h-9 min-w-[3rem] touch-manipulation"
           >
             {currency}
           </Button>
@@ -178,30 +186,56 @@ export function AppShell({ children }: AppShellProps) {
             onClick={cycleTheme}
             title={`Theme: ${theme}`}
             aria-label={`Change theme (current: ${theme})`}
+            className="h-9 w-9 touch-manipulation"
           >
             <ThemeIcon className="h-4 w-4" />
           </Button>
 
-          {/* Connection status */}
-          <ConnectionStatus status={wsStatus} lastUpdate={lastUpdate} />
+          {/* Connection status - hidden on mobile */}
+          <div className="hidden sm:flex">
+            <ConnectionStatus status={wsStatus} lastUpdate={lastUpdate} />
+          </div>
 
-          <Separator orientation="vertical" className="h-6" />
+          {/* Desktop: show individual buttons */}
+          <Separator orientation="vertical" className="h-6 hidden sm:block" />
 
-          {/* Refresh prices */}
           <Button
             variant="ghost"
             size="icon"
             onClick={handleRefreshPrices}
             disabled={refreshing}
             aria-label="Refresh prices"
+            className="hidden sm:inline-flex h-9 w-9"
           >
             <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
           </Button>
 
-          {/* Export */}
-          <Button variant="ghost" size="icon" onClick={handleExport} aria-label="Export data">
+          <Button variant="ghost" size="icon" onClick={handleExport} aria-label="Export data" className="hidden sm:inline-flex h-9 w-9">
             <Download className="h-4 w-4" />
           </Button>
+
+          {/* Mobile: overflow menu for secondary actions */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="sm:hidden h-9 w-9 touch-manipulation" aria-label="More actions">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleRefreshPrices} disabled={refreshing}>
+                <RefreshCw className={cn('h-4 w-4 mr-2', refreshing && 'animate-spin')} />
+                {refreshing ? 'Refreshing...' : 'Refresh Prices'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Data
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1.5">
+                <ConnectionStatus status={wsStatus} lastUpdate={lastUpdate} />
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Separator orientation="vertical" className="h-6" />
 

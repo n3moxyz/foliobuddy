@@ -84,21 +84,21 @@ export default function Investors() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Investors</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold sm:text-3xl">Investors</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
             Manage investor stakes and track their returns
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)}>
+        <Button className="touch-manipulation self-start sm:self-auto" onClick={() => setShowAddForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Investor
         </Button>
       </div>
 
       {/* Summary */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Investors</CardDescription>
@@ -146,14 +146,14 @@ export default function Investors() {
               <div className="animate-pulse text-muted-foreground">Loading investors...</div>
             </div>
           ) : investors && investors.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead className="text-right">Stake %</TableHead>
-                    <TableHead className="text-right">Capital (1 Jan)</TableHead>
-                    <TableHead className="text-right">Current Value</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right">Capital (1 Jan)</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right">Current Value</TableHead>
                     <TableHead className="text-right">YTD Return</TableHead>
                     <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
@@ -175,10 +175,10 @@ export default function Investors() {
                       <TableCell className="text-right font-mono">
                         {formatStakePercentage(investor.stakePercentage)}%
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="hidden sm:table-cell text-right font-mono">
                         {investor.capitalAtYearStart ? formatCurrency(investor.capitalAtYearStart, 'USD', 0) : '-'}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="hidden sm:table-cell text-right font-mono">
                         {formatCurrency(investor.currentValue, 'USD', 0)}
                       </TableCell>
                       <TableCell className="text-right">
