@@ -1,6 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrency, formatNumber, formatDate, getPnLColorClass } from '@/lib/utils';
 import type { TradeAnalytics } from '@/lib/api';
+
+function MetricLabel({ label, tip }: { label: string; tip: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide cursor-help border-b border-dotted border-muted-foreground/40 w-fit">
+          {label}
+        </p>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-56 text-xs leading-relaxed">
+        {tip}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 interface TradeStatsCardProps {
   analytics: TradeAnalytics;
@@ -46,6 +62,7 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
   const lossBarPct = (analytics.avgLoss / maxAvg) * 100;
 
   return (
+    <TooltipProvider delayDuration={200}>
     <Card>
       <CardHeader className="pb-4">
         <CardTitle>Trade Statistics</CardTitle>
@@ -56,7 +73,7 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {/* Total P&L */}
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total P&L</p>
+            <MetricLabel label="Total P&L" tip="Sum of all realized profits and losses" />
             <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(analytics.totalPnL)}`}>
               {formatCurrency(convert(analytics.totalPnL), currency)}
             </p>
@@ -64,7 +81,10 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
 
           {/* Expectancy */}
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Per Trade Avg</p>
+            <MetricLabel
+              label="Per Trade Avg"
+              tip={<>(win rate &times; avg win) &minus; (loss rate &times; avg loss)</>}
+            />
             <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(expectancy)}`}>
               {formatCurrency(convert(expectancy), currency)}
             </p>
@@ -73,7 +93,10 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
 
           {/* Profit Factor */}
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Profit Factor</p>
+            <MetricLabel
+              label="Profit Factor"
+              tip={<>total gains &divide; total losses<br />Above 1.0 = profitable system</>}
+            />
             <p className="text-xl font-bold tabular-nums">
               {analytics.profitFactor === Infinity ? '∞' : formatNumber(analytics.profitFactor)}
             </p>
@@ -82,7 +105,10 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
 
           {/* R:R */}
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Risk : Reward</p>
+            <MetricLabel
+              label="Risk : Reward"
+              tip={<>avg win &divide; avg loss<br />Higher = winners are bigger than losers</>}
+            />
             <p className="text-xl font-bold tabular-nums">
               1 : {riskReward === Infinity ? '∞' : formatNumber(riskReward)}
             </p>
@@ -93,7 +119,10 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
         {/* Row 2: Win Rate Visual */}
         <div className="border-t pt-4 space-y-2">
           <div className="flex items-baseline justify-between">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Win Rate</p>
+            <MetricLabel
+              label="Win Rate"
+              tip={<>winning trades &divide; total trades</>}
+            />
             <p className="text-sm font-semibold tabular-nums">
               {formatNumber(analytics.winRate)}%
               <span className="text-xs text-muted-foreground font-normal ml-1.5">
@@ -119,7 +148,10 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
 
         {/* Row 3: Avg Win vs Avg Loss bars */}
         <div className="border-t pt-4 space-y-3">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Avg Win vs Avg Loss</p>
+          <MetricLabel
+            label="Avg Win vs Avg Loss"
+            tip="Average profit on winning trades vs average loss on losing trades"
+          />
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground w-10 shrink-0">Win</span>
@@ -207,5 +239,6 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
         )}
       </CardContent>
     </Card>
+    </TooltipProvider>
   );
 }
