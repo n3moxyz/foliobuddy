@@ -202,7 +202,7 @@ router.get('/:id', async (req, res, next) => {
       },
     });
 
-    if (!snapshot) {
+    if (!snapshot || snapshot.userId !== req.userId) {
       throw new AppError('Snapshot not found', 404);
     }
 
@@ -222,7 +222,7 @@ router.get('/:id/positions', async (req, res, next) => {
       },
     });
 
-    if (!snapshot) {
+    if (!snapshot || snapshot.userId !== req.userId) {
       throw new AppError('Snapshot not found', 404);
     }
 
