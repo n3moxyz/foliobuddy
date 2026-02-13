@@ -228,7 +228,7 @@ router.get('/:id', async (req, res, next) => {
       },
     });
 
-    if (!trade) {
+    if (!trade || trade.userId !== req.userId) {
       throw new AppError('Trade not found', 404);
     }
 

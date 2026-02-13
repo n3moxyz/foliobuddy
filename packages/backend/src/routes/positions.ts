@@ -208,7 +208,7 @@ router.get('/:id', async (req, res, next) => {
       },
     });
 
-    if (!position) {
+    if (!position || position.userId !== req.userId) {
       throw new AppError('Position not found', 404);
     }
 

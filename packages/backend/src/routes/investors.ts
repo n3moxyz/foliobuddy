@@ -67,7 +67,7 @@ router.get('/:id', async (req, res, next) => {
       },
     });
 
-    if (!investor) {
+    if (!investor || investor.userId !== req.userId) {
       throw new AppError('Investor not found', 404);
     }
 
@@ -97,7 +97,7 @@ router.get('/:id/report', async (req, res, next) => {
       where: { id: req.params.id },
     });
 
-    if (!investor) {
+    if (!investor || investor.userId !== req.userId) {
       throw new AppError('Investor not found', 404);
     }
 
