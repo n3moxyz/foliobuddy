@@ -35,16 +35,18 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
   const [entryPrice, setEntryPrice] = useState(trade?.entryPrice?.toString() || '');
   const [exitPrice, setExitPrice] = useState(trade?.exitPrice?.toString() || '');
   const [quantity, setQuantity] = useState(trade?.quantity?.toString() || '');
-  const [entryDate, setEntryDate] = useState(
-    trade?.entryDate
-      ? new Date(trade.entryDate).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0]
-  );
-  const [exitDate, setExitDate] = useState(
-    trade?.exitDate
-      ? new Date(trade.exitDate).toISOString().split('T')[0]
-      : ''
-  );
+  const [entryDate, setEntryDate] = useState(() => {
+    if (trade?.entryDate) return new Date(trade.entryDate).toISOString().split('T')[0];
+    // Default to 5 days ago (most trades are logged after closing)
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+    return fiveDaysAgo.toISOString().split('T')[0];
+  });
+  const [exitDate, setExitDate] = useState(() => {
+    if (trade?.exitDate) return new Date(trade.exitDate).toISOString().split('T')[0];
+    // Default to today (logging closed trades)
+    return new Date().toISOString().split('T')[0];
+  });
   const [notes, setNotes] = useState(trade?.notes || '');
 
   // Hooks
