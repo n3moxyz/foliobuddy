@@ -428,6 +428,20 @@ Profit factor = total gains / total losses
 - 1.5-2.0 = solid
 - 2.0+ = excellent
 
+**Derived Metrics (Client-Side)**
+
+The backend provides raw analytics (win rate, avg win/loss, profit factor). The frontend derives additional insights without needing backend changes:
+
+- **Expectancy** = (win rate × avg win) − (loss rate × avg loss). This is the expected profit per trade — the single most important number for knowing if your system works.
+- **Risk:Reward Ratio** = avg win ÷ avg loss. Shows if your winners are bigger than your losers. A 1:2 ratio means avg win is 2x avg loss.
+- **Best & Worst Trade** — already computed by the backend but now displayed in the stats card with asset name, date, and P&L percentage.
+
+**Visual Design Choices:**
+- Win rate uses a green/red proportional bar (not just a number)
+- Avg Win vs Avg Loss shown as comparison bars for instant visual imbalance detection
+- Metric labels have dotted underlines and show formula/definition tooltips on hover
+- Contextual ratings on Profit Factor and R:R ("Excellent", "Strong", "Marginal")
+
 ---
 
 ## The Investor System: Tracking External Capital
@@ -1329,6 +1343,10 @@ Recently completed:
 - [x] CSV export buttons on Portfolio and Trades pages
 - [x] Responsive mobile design (iOS HIG-inspired) with column toggle, touch targets, overflow menus
 - [x] Colored accent section headers (Crypto=blue, Stables=green) with icons on CollapsibleCard
+- [x] Trade stats card redesign: expectancy, R:R ratio, visual win rate bar, avg win/loss comparison, best/worst trades
+- [x] Hover tooltips with formula definitions on trade stat metrics
+- [x] Trade form defaults: entry date = 5 days ago, exit date = today (optimized for logging closed trades)
+- [x] Frontend-only dev mode: point VITE_API_URL at prod Railway backend (localhost:4000 in ALLOWED_ORIGINS)
 
 ---
 

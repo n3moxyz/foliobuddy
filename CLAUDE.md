@@ -165,6 +165,9 @@ All pages follow iOS HIG-inspired responsive patterns:
 - **Responsive headers**: Page headers stack vertically on mobile (`flex-col gap-3 sm:flex-row`). Secondary actions move to `DropdownMenu` overflow menus.
 - **Dialog safety**: Dialogs use `w-[calc(100%-2rem)]` for viewport margins and `max-h-[85vh] overflow-y-auto` for scroll.
 
+### Trade Statistics Card
+`TradeStatsCard` displays analytics with derived metrics (expectancy, risk:reward ratio) calculated client-side from backend data. Metric labels use `MetricLabel` component with shadcn `Tooltip` for hover definitions — formulas use `×`, `÷`, `−` symbols where math is clearer than words. Trade form defaults entry date to 5 days ago and exit date to today (optimized for logging closed trades).
+
 ### Portfolio Section Headers
 Positions are grouped two-level: **Crypto/Stables** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, green for Stables).
 
@@ -182,10 +185,17 @@ SENTRY_DSN=                # Optional — error tracking (skipped if empty)
 
 ### Frontend (`.env`)
 ```
-VITE_API_URL=http://localhost:4001/api    # Backend API URL
+VITE_API_URL=http://localhost:4001/api    # Backend API URL (or prod URL for frontend-only dev)
 VITE_WS_BACKEND_URL=http://localhost:4001 # WebSocket URL
 VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 ```
+
+### Frontend-Only Development (No Docker)
+For testing frontend changes without running Docker or the local backend, point `VITE_API_URL` at the production Railway backend:
+```
+VITE_API_URL=https://old-backend.example.com/api
+```
+`http://localhost:4000` is already in Railway's `ALLOWED_ORIGINS`, so CORS works. Remember to switch back to `http://localhost:4001/api` when doing backend work.
 
 ## Deployment
 - **Backend**: Railway (Express.js API server)
