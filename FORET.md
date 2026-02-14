@@ -1314,7 +1314,7 @@ const queryClient = new QueryClient({
 ## Pre-Launch Checklist
 
 Before making the app public:
-- [ ] **Add Sentry DSNs** - Add `SENTRY_DSN` to Railway (backend) and `VITE_SENTRY_DSN` to Vercel (frontend), then redeploy both
+- [x] **Add Sentry DSNs** - Added `SENTRY_DSN` to Railway (backend) and `VITE_SENTRY_DSN` to Vercel (frontend), both redeployed
 
 ---
 
