@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { usePortfolioSummary, usePositions, useTopPerformers, useWorstPerformers, useInvestors } from '@/hooks/usePortfolio';
+import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatCurrency, formatPercent, getPnLColorClass, formatDateTime } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +25,7 @@ export default function Dashboard() {
   const { currency } = useCurrencyStore();
   const { data: summary, isLoading: summaryLoading } = usePortfolioSummary();
   const { data: positions, isLoading: positionsLoading } = usePositions();
+  const { data: tradeAnalytics } = useTradeAnalytics();
   const { data: topPerformers } = useTopPerformers(5);
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: investors } = useInvestors();
@@ -163,9 +166,9 @@ export default function Dashboard() {
       {summary && <NetWorthCard summary={summary} currency={currency} stakeMultiplier={stakeMultiplier} />}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        <Card>
-          <CardHeader className="pb-2">
+      <div className="grid grid-cols-4 gap-2 sm:gap-4">
+        <Card className="py-3">
+          <CardHeader className="py-0">
             <CardDescription>YTD Start</CardDescription>
             <CardTitle className="text-2xl">
               {formatCurrency(convert(summary?.totalCostBasis), currency, 0)}
@@ -173,26 +176,35 @@ export default function Dashboard() {
           </CardHeader>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="py-3">
+          <CardHeader className="py-0">
             <CardDescription>YTD P&L</CardDescription>
             <CardTitle className={`text-2xl ${getPnLColorClass(summary?.unrealizedPnL)}`}>
               {formatCurrency(convert(summary?.unrealizedPnL), currency, 0)}
+              <span className={`text-sm font-normal ml-1.5 ${getPnLColorClass(summary?.unrealizedPnLPct)}`}>
+                {formatPercent(summary?.unrealizedPnLPct)}
+              </span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className={`text-sm ${getPnLColorClass(summary?.unrealizedPnLPct)}`}>
-              {formatPercent(summary?.unrealizedPnLPct)}
-            </p>
-          </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Positions</CardDescription>
-            <CardTitle className="text-2xl">{summary?.positionCount ?? 0}</CardTitle>
-          </CardHeader>
-        </Card>
+        <Link to="/portfolio" className="block">
+          <Card className="py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardHeader className="py-0">
+              <CardDescription>Live Positions</CardDescription>
+              <CardTitle className="text-2xl">{summary?.positionCount ?? 0}</CardTitle>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link to="/trades" className="block">
+          <Card className="py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardHeader className="py-0">
+              <CardDescription>Closed Trades</CardDescription>
+              <CardTitle className="text-2xl">{tradeAnalytics?.totalTrades ?? 0}</CardTitle>
+            </CardHeader>
+          </Card>
+        </Link>
       </div>
 
       {/* Portfolio Value Chart */}

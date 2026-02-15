@@ -5,6 +5,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  ReferenceLine,
   ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,7 +81,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
   const [period, setPeriod] = useState<TimePeriod>('1M');
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
-  const { data: performanceData, isLoading } = usePerformanceHistory(dateRange);
+  const { data: performanceData, isLoading, isFetching } = usePerformanceHistory(dateRange);
 
   // Calculate the date range span in days
   const dataSpanDays = useMemo(() => {
@@ -187,7 +188,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <CardTitle>Portfolio Value</CardTitle>
+            <CardTitle>Portfolio $ Value</CardTitle>
             {valueChange && (
               <div className={`text-sm ${valueChange.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 <span className="font-medium">
@@ -234,8 +235,14 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
             </div>
           </div>
         ) : (
+          <div className="relative">
+            {isFetching && (
+              <div className="absolute top-2 right-2 z-10 text-xs text-muted-foreground animate-pulse">
+                Loading...
+              </div>
+            )}
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 5, right: 55, left: 20, bottom: 5 }}>
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 12 }}
@@ -275,16 +282,31 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
                   );
                 }}
               />
+              {chartData.length > 0 && (
+                <ReferenceLine y={chartData[0].value} stroke="currentColor" strokeOpacity={0.15} strokeDasharray="4 4" />
+              )}
               <Line
                 type="monotone"
                 dataKey="value"
                 stroke="hsl(var(--primary))"
                 strokeWidth={2}
-                dot={false}
+                dot={(props: Record<string, unknown>) => {
+                  const { cx, cy, index } = props as { cx: number; cy: number; index: number };
+                  if (index !== chartData.length - 1) return <g key={`dot-${index}`} />;
+                  return (
+                    <g key={`dot-${index}`}>
+                      <circle cx={cx} cy={cy} r={3} fill="hsl(var(--primary))" />
+                      <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill="currentColor" opacity={0.7}>
+                        {formatCurrency(chartData[index].value, currency, true)}
+                      </text>
+                    </g>
+                  );
+                }}
                 activeDot={{ r: 4, strokeWidth: 0 }}
               />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark';
 
 interface ThemeState {
   theme: Theme;
@@ -11,11 +11,7 @@ interface ThemeState {
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
-  const isDark =
-    theme === 'dark' ||
-    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-  if (isDark) {
+  if (theme === 'dark') {
     root.classList.add('dark');
   } else {
     root.classList.remove('dark');
@@ -25,15 +21,13 @@ function applyTheme(theme: Theme) {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      theme: 'system',
+      theme: 'dark',
       setTheme: (theme) => {
         set({ theme });
         applyTheme(theme);
       },
       cycleTheme: () => {
-        const current = get().theme;
-        const next: Theme =
-          current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light';
+        const next: Theme = get().theme === 'light' ? 'dark' : 'light';
         set({ theme: next });
         applyTheme(next);
       },
