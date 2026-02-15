@@ -1348,6 +1348,8 @@ Recently completed:
 - [x] Responsive mobile design (iOS HIG-inspired) with column toggle, touch targets, overflow menus
 - [x] Colored accent section headers (Crypto=blue, Stables=green) with icons on CollapsibleCard
 - [x] Trade stats card redesign: expectancy, R:R ratio, visual win rate bar, avg win/loss comparison, best/worst trades
+- [x] P&L by Ticker card: aggregated per-ticker stats (trades, win rate, total P&L) with click-to-filter, collapsible
+- [x] Trade Analytics + P&L by Ticker cards collapsible by default (using CollapsibleCard)
 - [x] Hover tooltips with formula definitions on trade stat metrics
 - [x] Trade form defaults: entry date = 5 days ago, exit date = today (optimized for logging closed trades)
 - [x] Frontend-only dev mode: point VITE_API_URL at prod Railway backend (localhost:4000 in ALLOWED_ORIGINS)
