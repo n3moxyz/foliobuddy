@@ -291,7 +291,7 @@ export default function Portfolio() {
       {!positionsLoading && sections.map(section => (
         <CollapsibleCard
           key={section.id}
-          title={section.label}
+          title={`${section.label} (${section.positions.length})`}
           icon={section.icon}
           accentColor={section.accentColor}
           isExpanded={isExpanded(section.id)}
