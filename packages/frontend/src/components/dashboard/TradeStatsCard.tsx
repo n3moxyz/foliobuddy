@@ -2,6 +2,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrency, formatNumber, formatDate, getPnLColorClass } from '@/lib/utils';
 import type { TradeAnalytics } from '@/lib/api';
+import { useTradeStatsStore, type SegmentId } from '@/stores/tradeStatsStore';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 
 function MetricLabel({ label, tip }: { label: string; tip: React.ReactNode }) {
   return (
@@ -31,7 +50,247 @@ function ratingLabel(value: number, thresholds: [number, string][]): { text: str
   return { text: thresholds[thresholds.length - 1][1], color: 'text-loss' };
 }
 
+// --- Sortable segment wrapper ---
+
+function SortableSegment({ id, isFirst, children }: { id: string; isFirst: boolean; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.8 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={`${!isFirst ? 'border-t pt-4' : ''} ${isDragging ? 'bg-muted/30 rounded-md' : ''}`}>
+      <div className="flex items-start gap-1">
+        <button
+          type="button"
+          className="mt-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0 touch-manipulation"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Segment render functions ---
+
+function MetricsSegment({ analytics, convert, currency, expectancy, pfRating, riskReward, rrRating }: {
+  analytics: TradeAnalytics;
+  convert: (v: number | null | undefined) => number | null | undefined;
+  currency: 'USD' | 'SGD';
+  expectancy: number;
+  pfRating: { text: string; color: string };
+  riskReward: number;
+  rrRating: { text: string; color: string };
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div>
+        <MetricLabel label="Total P&L" tip="Sum of all realized profits and losses" />
+        <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(analytics.totalPnL)}`}>
+          {formatCurrency(convert(analytics.totalPnL), currency)}
+        </p>
+      </div>
+      <div>
+        <MetricLabel
+          label="Per Trade Avg"
+          tip={<>(win rate &times; avg win) &minus; (loss rate &times; avg loss)</>}
+        />
+        <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(expectancy)}`}>
+          {formatCurrency(convert(expectancy), currency)}
+        </p>
+        <p className="text-[10px] text-muted-foreground">expected per trade</p>
+      </div>
+      <div>
+        <MetricLabel
+          label="Profit Factor"
+          tip={<>total gains &divide; total losses<br />Above 1.0 = profitable system</>}
+        />
+        <p className="text-xl font-bold tabular-nums">
+          {analytics.profitFactor === Infinity ? '∞' : formatNumber(analytics.profitFactor)}
+        </p>
+        <p className={`text-[10px] ${pfRating.color}`}>{pfRating.text}</p>
+      </div>
+      <div>
+        <MetricLabel
+          label="Risk : Reward"
+          tip={<>avg win &divide; avg loss<br />Higher = winners are bigger than losers</>}
+        />
+        <p className="text-xl font-bold tabular-nums">
+          1 : {riskReward === Infinity ? '∞' : formatNumber(riskReward)}
+        </p>
+        <p className={`text-[10px] ${rrRating.color}`}>{rrRating.text}</p>
+      </div>
+    </div>
+  );
+}
+
+function WinRateSegment({ analytics }: { analytics: TradeAnalytics }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between">
+        <MetricLabel
+          label="Win Rate"
+          tip={<>winning trades &divide; total trades</>}
+        />
+        <p className="text-xl font-bold tabular-nums">
+          {formatNumber(analytics.winRate)}%
+        </p>
+      </div>
+      <div className="flex h-2.5 rounded-full overflow-hidden bg-muted">
+        {analytics.totalTrades > 0 && (
+          <>
+            <div
+              className="bg-profit transition-all"
+              style={{ width: `${analytics.winRate}%` }}
+            />
+            <div
+              className="bg-loss transition-all"
+              style={{ width: `${100 - analytics.winRate}%` }}
+            />
+          </>
+        )}
+      </div>
+      <div className="flex items-center justify-between text-xs tabular-nums">
+        <span className="text-profit font-medium">{analytics.winningTrades} wins</span>
+        <span className="text-muted-foreground font-medium">TOTAL: {analytics.totalTrades} trades</span>
+        <span className="text-loss font-medium">{analytics.losingTrades} losses</span>
+      </div>
+    </div>
+  );
+}
+
+function AvgWinLossSegment({ analytics, convert, currency }: {
+  analytics: TradeAnalytics;
+  convert: (v: number | null | undefined) => number | null | undefined;
+  currency: 'USD' | 'SGD';
+}) {
+  const maxAvg = Math.max(analytics.avgWin, analytics.avgLoss, 1);
+  const winBarPct = (analytics.avgWin / maxAvg) * 100;
+  const lossBarPct = (analytics.avgLoss / maxAvg) * 100;
+
+  return (
+    <div className="space-y-3">
+      <MetricLabel
+        label="Avg Win vs Avg Loss"
+        tip="Average profit on winning trades vs average loss on losing trades"
+      />
+      <div className="space-y-2">
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground w-10 shrink-0">Win</span>
+          <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
+            <div className="h-full bg-profit/70 rounded" style={{ width: `${winBarPct}%` }} />
+          </div>
+          <span className="text-xs font-medium tabular-nums text-profit w-20 text-right">
+            {formatCurrency(convert(analytics.avgWin), currency)}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground w-10 shrink-0">Loss</span>
+          <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
+            <div className="h-full bg-loss/70 rounded" style={{ width: `${lossBarPct}%` }} />
+          </div>
+          <span className="text-xs font-medium tabular-nums text-loss w-20 text-right">
+            -{formatCurrency(convert(analytics.avgLoss), currency)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ByDirectionSegment({ analytics, convert, currency }: {
+  analytics: TradeAnalytics;
+  convert: (v: number | null | undefined) => number | null | undefined;
+  currency: 'USD' | 'SGD';
+}) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">By Direction</p>
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="space-y-1 rounded-md bg-muted/50 p-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-green-600 font-medium">LONG</span>
+            <span className="text-xs text-muted-foreground">({analytics.breakdown.long.count})</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Win rate: {formatNumber(analytics.breakdown.long.winRate)}%
+          </p>
+          <p className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.long.pnl)}`}>
+            {formatCurrency(convert(analytics.breakdown.long.pnl), currency)}
+          </p>
+        </div>
+        <div className="space-y-1 rounded-md bg-muted/50 p-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-red-600 font-medium">SHORT</span>
+            <span className="text-xs text-muted-foreground">({analytics.breakdown.short.count})</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Win rate: {formatNumber(analytics.breakdown.short.winRate)}%
+          </p>
+          <p className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.short.pnl)}`}>
+            {formatCurrency(convert(analytics.breakdown.short.pnl), currency)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotableTradesSegment({ analytics, convert, currency }: {
+  analytics: TradeAnalytics;
+  convert: (v: number | null | undefined) => number | null | undefined;
+  currency: 'USD' | 'SGD';
+}) {
+  if (!analytics.bestTrade && !analytics.worstTrade) return null;
+
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Notable Trades</p>
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        {analytics.bestTrade && (
+          <div className="space-y-0.5">
+            <p className="text-xs text-muted-foreground">Best</p>
+            <p className="font-medium text-profit tabular-nums">
+              {formatCurrency(convert(analytics.bestTrade.pnl), currency)}
+              <span className="text-xs ml-1">({analytics.bestTrade.pnlPct >= 0 ? '+' : ''}{formatNumber(analytics.bestTrade.pnlPct)}%)</span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {analytics.bestTrade.asset} · {formatDate(analytics.bestTrade.date)}
+            </p>
+          </div>
+        )}
+        {analytics.worstTrade && (
+          <div className="space-y-0.5">
+            <p className="text-xs text-muted-foreground">Worst</p>
+            <p className="font-medium text-loss tabular-nums">
+              {formatCurrency(convert(analytics.worstTrade.pnl), currency)}
+              <span className="text-xs ml-1">({analytics.worstTrade.pnlPct >= 0 ? '+' : ''}{formatNumber(analytics.worstTrade.pnlPct)}%)</span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {analytics.worstTrade.asset} · {formatDate(analytics.worstTrade.date)}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Main component ---
+
 export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: TradeStatsCardProps) {
+  const { segmentOrder, setOrder } = useTradeStatsStore();
+
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
@@ -56,10 +315,40 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
     ? { text: 'No losses', color: 'text-profit' }
     : ratingLabel(riskReward, [[3, 'Excellent'], [2, 'Good'], [1, 'Below 1:1'], [0, 'Poor']]);
 
-  // Avg win/loss bar proportions
-  const maxAvg = Math.max(analytics.avgWin, analytics.avgLoss, 1);
-  const winBarPct = (analytics.avgWin / maxAvg) * 100;
-  const lossBarPct = (analytics.avgLoss / maxAvg) * 100;
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = segmentOrder.indexOf(active.id as SegmentId);
+      const newIndex = segmentOrder.indexOf(over.id as SegmentId);
+      setOrder(arrayMove(segmentOrder, oldIndex, newIndex));
+    }
+  }
+
+  // Filter out notableTrades if no data
+  const hasNotableTrades = !!(analytics.bestTrade || analytics.worstTrade);
+  const visibleOrder = segmentOrder.filter(
+    id => id !== 'notableTrades' || hasNotableTrades
+  );
+
+  function renderSegment(id: SegmentId) {
+    switch (id) {
+      case 'metrics':
+        return <MetricsSegment analytics={analytics} convert={convert} currency={currency} expectancy={expectancy} pfRating={pfRating} riskReward={riskReward} rrRating={rrRating} />;
+      case 'winRate':
+        return <WinRateSegment analytics={analytics} />;
+      case 'avgWinLoss':
+        return <AvgWinLossSegment analytics={analytics} convert={convert} currency={currency} />;
+      case 'byDirection':
+        return <ByDirectionSegment analytics={analytics} convert={convert} currency={currency} />;
+      case 'notableTrades':
+        return <NotableTradesSegment analytics={analytics} convert={convert} currency={currency} />;
+    }
+  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -68,175 +357,15 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
         <CardTitle>Trade Statistics</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-
-        {/* Row 1: Key Numbers */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {/* Total P&L */}
-          <div>
-            <MetricLabel label="Total P&L" tip="Sum of all realized profits and losses" />
-            <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(analytics.totalPnL)}`}>
-              {formatCurrency(convert(analytics.totalPnL), currency)}
-            </p>
-          </div>
-
-          {/* Expectancy */}
-          <div>
-            <MetricLabel
-              label="Per Trade Avg"
-              tip={<>(win rate &times; avg win) &minus; (loss rate &times; avg loss)</>}
-            />
-            <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(expectancy)}`}>
-              {formatCurrency(convert(expectancy), currency)}
-            </p>
-            <p className="text-[10px] text-muted-foreground">expected per trade</p>
-          </div>
-
-          {/* Profit Factor */}
-          <div>
-            <MetricLabel
-              label="Profit Factor"
-              tip={<>total gains &divide; total losses<br />Above 1.0 = profitable system</>}
-            />
-            <p className="text-xl font-bold tabular-nums">
-              {analytics.profitFactor === Infinity ? '∞' : formatNumber(analytics.profitFactor)}
-            </p>
-            <p className={`text-[10px] ${pfRating.color}`}>{pfRating.text}</p>
-          </div>
-
-          {/* R:R */}
-          <div>
-            <MetricLabel
-              label="Risk : Reward"
-              tip={<>avg win &divide; avg loss<br />Higher = winners are bigger than losers</>}
-            />
-            <p className="text-xl font-bold tabular-nums">
-              1 : {riskReward === Infinity ? '∞' : formatNumber(riskReward)}
-            </p>
-            <p className={`text-[10px] ${rrRating.color}`}>{rrRating.text}</p>
-          </div>
-        </div>
-
-        {/* Row 2: Win Rate Visual */}
-        <div className="border-t pt-4 space-y-2">
-          <div className="flex items-baseline justify-between">
-            <MetricLabel
-              label="Win Rate"
-              tip={<>winning trades &divide; total trades</>}
-            />
-            <p className="text-sm font-semibold tabular-nums">
-              {formatNumber(analytics.winRate)}%
-              <span className="text-xs text-muted-foreground font-normal ml-1.5">
-                {analytics.winningTrades}W – {analytics.losingTrades}L ({analytics.totalTrades} total)
-              </span>
-            </p>
-          </div>
-          <div className="flex h-2.5 rounded-full overflow-hidden bg-muted">
-            {analytics.totalTrades > 0 && (
-              <>
-                <div
-                  className="bg-profit transition-all"
-                  style={{ width: `${analytics.winRate}%` }}
-                />
-                <div
-                  className="bg-loss transition-all"
-                  style={{ width: `${100 - analytics.winRate}%` }}
-                />
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Row 3: Avg Win vs Avg Loss bars */}
-        <div className="border-t pt-4 space-y-3">
-          <MetricLabel
-            label="Avg Win vs Avg Loss"
-            tip="Average profit on winning trades vs average loss on losing trades"
-          />
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground w-10 shrink-0">Win</span>
-              <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
-                <div className="h-full bg-profit/70 rounded" style={{ width: `${winBarPct}%` }} />
-              </div>
-              <span className="text-xs font-medium tabular-nums text-profit w-20 text-right">
-                {formatCurrency(convert(analytics.avgWin), currency)}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground w-10 shrink-0">Loss</span>
-              <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
-                <div className="h-full bg-loss/70 rounded" style={{ width: `${lossBarPct}%` }} />
-              </div>
-              <span className="text-xs font-medium tabular-nums text-loss w-20 text-right">
-                -{formatCurrency(convert(analytics.avgLoss), currency)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 4: Long vs Short */}
-        <div className="border-t pt-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">By Direction</p>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="space-y-1 rounded-md bg-muted/50 p-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-green-600 font-medium">LONG</span>
-                <span className="text-xs text-muted-foreground">({analytics.breakdown.long.count})</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Win rate: {formatNumber(analytics.breakdown.long.winRate)}%
-              </p>
-              <p className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.long.pnl)}`}>
-                {formatCurrency(convert(analytics.breakdown.long.pnl), currency)}
-              </p>
-            </div>
-            <div className="space-y-1 rounded-md bg-muted/50 p-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-red-600 font-medium">SHORT</span>
-                <span className="text-xs text-muted-foreground">({analytics.breakdown.short.count})</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Win rate: {formatNumber(analytics.breakdown.short.winRate)}%
-              </p>
-              <p className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.short.pnl)}`}>
-                {formatCurrency(convert(analytics.breakdown.short.pnl), currency)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 5: Best & Worst */}
-        {(analytics.bestTrade || analytics.worstTrade) && (
-          <div className="border-t pt-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Notable Trades</p>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              {analytics.bestTrade && (
-                <div className="space-y-0.5">
-                  <p className="text-xs text-muted-foreground">Best</p>
-                  <p className="font-medium text-profit tabular-nums">
-                    {formatCurrency(convert(analytics.bestTrade.pnl), currency)}
-                    <span className="text-xs ml-1">({analytics.bestTrade.pnlPct >= 0 ? '+' : ''}{formatNumber(analytics.bestTrade.pnlPct)}%)</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {analytics.bestTrade.asset} · {formatDate(analytics.bestTrade.date)}
-                  </p>
-                </div>
-              )}
-              {analytics.worstTrade && (
-                <div className="space-y-0.5">
-                  <p className="text-xs text-muted-foreground">Worst</p>
-                  <p className="font-medium text-loss tabular-nums">
-                    {formatCurrency(convert(analytics.worstTrade.pnl), currency)}
-                    <span className="text-xs ml-1">({analytics.worstTrade.pnlPct >= 0 ? '+' : ''}{formatNumber(analytics.worstTrade.pnlPct)}%)</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {analytics.worstTrade.asset} · {formatDate(analytics.worstTrade.date)}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={visibleOrder} strategy={verticalListSortingStrategy}>
+            {visibleOrder.map((id, index) => (
+              <SortableSegment key={id} id={id} isFirst={index === 0}>
+                {renderSegment(id)}
+              </SortableSegment>
+            ))}
+          </SortableContext>
+        </DndContext>
       </CardContent>
     </Card>
     </TooltipProvider>
