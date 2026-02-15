@@ -9,7 +9,7 @@ interface AllocationChartProps {
   isLoading?: boolean;
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ['#BE185D', '#1D4ED8', '#059669', '#A21CAF', '#0891B2', '#854D0E'];
 
 const CATEGORY_LABELS: Record<string, string> = {
   LIQUID_CRYPTO: 'Crypto',

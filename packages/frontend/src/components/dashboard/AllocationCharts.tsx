@@ -9,10 +9,11 @@ interface AllocationChartsProps {
   isLoading?: boolean;
 }
 
-// Color palettes for each chart
-const ASSET_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
-const STORAGE_COLORS = ['#3b82f6', '#10b981', '#8b5cf6'];
-const STABLES_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+// Color palettes — maximally distinct hues per chart,
+// avoiding benchmark line colors (orange #F7931A, blue-purple #627EEA, teal #14B8A6, red #EF4444, purple #8B5CF6, amber #F59E0B)
+const ASSET_COLORS = ['#BE185D', '#1D4ED8', '#059669', '#A21CAF', '#0891B2', '#854D0E', '#475569', '#B91C1C', '#4F46E5', '#65A30D'];
+const STORAGE_COLORS = ['#16A34A', '#0284C7', '#64748B'];
+const STABLES_COLORS = ['#0369A1', '#16A34A', '#BE185D', '#854D0E', '#64748B'];
 
 interface ChartData {
   name: string;
