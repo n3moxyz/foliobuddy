@@ -525,11 +525,10 @@ export const useCurrencyStore = create(
 export const useThemeStore = create(
   persist(
     (set, get) => ({
-      theme: 'system',  // 'light' | 'dark' | 'system'
+      theme: 'dark',  // 'light' | 'dark'
       setTheme: (theme) => set({ theme }),
       cycleTheme: () => {
-        const current = get().theme;
-        const next = current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light';
+        const next = get().theme === 'light' ? 'dark' : 'light';
         set({ theme: next });
       }
     }),
@@ -910,6 +909,22 @@ Enhanced `CollapsibleCard` with `icon` and `accentColor` props so the parent pag
 
 **Key lesson:** Before adding grouping logic to a child component, check what the parent is already doing. Component boundaries should align with grouping boundaries — one level of hierarchy per component.
 
+### Lesson 18: Benchmark Chart Lines Disappearing on Time Period Change
+
+**The bug:** BTC/ETH benchmark lines on the "Portfolio % vs Benchmarks" chart would disappear when switching between time periods (e.g., 1M → 1Y).
+
+**The investigation:** CoinGecko returns historical price data starting from a different date than the portfolio snapshots. The `mergeAdditionalBenchmark` function normalized benchmark prices using the first CoinGecko price (`benchmarkData.data[0].price`) as the baseline. But this price was from before the portfolio data started, so the normalized percentage was offset from the portfolio's 0% starting point — pushing the benchmark line outside the visible Y-axis range.
+
+Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGecko switches from hourly to daily granularity at 90+ days, causing gaps.
+
+**The fix:**
+1. Normalize benchmark prices from the price **at the first portfolio timestamp**, not the first CoinGecko price
+2. Use binary search (`findClosestPrice`) instead of O(n*m) brute force
+3. Dynamic threshold (3x average data spacing, minimum 48 hours) instead of hardcoded 24 hours
+4. Added `connectNulls` to Recharts `Line` components to draw through undefined gaps
+
+**Key lesson:** When merging two time series with different start dates and granularities, always normalize relative to their common starting point. And use adaptive thresholds — hardcoded time windows break when data granularity changes.
+
 ### Lesson 16: Exposed Admin Endpoint
 
 **The bug (security):** The `/admin/drop-position-constraint` endpoint had no authentication, meaning anyone could execute database modifications.
@@ -1102,24 +1117,13 @@ We now have 68 backend tests: unit tests for utilities AND integration tests for
 
 ### Dark Mode
 
-Implemented using Zustand with a theme store that supports three modes: `light`, `dark`, and `system` (follows OS preference).
+Implemented using Zustand with a simple light/dark toggle (no "system" option — keeps it simple).
 
 **Key implementation details:**
 - Theme is applied by adding/removing the `dark` class on `document.documentElement`
 - A script in `index.html` runs before React loads to prevent flash of wrong theme
-- `useThemeEffect` hook listens for system preference changes via `matchMedia`
 - Theme persists to localStorage via Zustand's `persist` middleware
-
-```typescript
-// Flash prevention script in index.html
-(function() {
-  var stored = localStorage.getItem('theme-storage');
-  var theme = stored ? JSON.parse(stored).state.theme : 'system';
-  var isDark = theme === 'dark' ||
-    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  if (isDark) document.documentElement.classList.add('dark');
-})();
-```
+- Default is `dark`
 
 ### Keyboard Shortcuts
 
@@ -1132,7 +1136,7 @@ Using `react-hotkeys-hook` for global keyboard shortcuts:
 | `T` | Navigate to Trades |
 | `I` | Navigate to Investors |
 | `S` | Navigate to Settings |
-| `/` | Cycle theme (light → dark → system) |
+| `/` | Toggle theme (light ↔ dark) |
 | `Cmd/Ctrl + K` | Show shortcuts help modal |
 
 Shortcuts are disabled when typing in input fields via `enableOnFormTags: false`.
@@ -1347,6 +1351,13 @@ Recently completed:
 - [x] Hover tooltips with formula definitions on trade stat metrics
 - [x] Trade form defaults: entry date = 5 days ago, exit date = today (optimized for logging closed trades)
 - [x] Frontend-only dev mode: point VITE_API_URL at prod Railway backend (localhost:4000 in ALLOWED_ORIGINS)
+- [x] Benchmark chart fix: BTC/ETH lines now normalize from portfolio start date, with binary search and dynamic thresholds
+- [x] Chart UI polish: 0% reference line on benchmark chart, starting value reference on portfolio chart, end-of-line value labels
+- [x] Chart loading indicators: centered "Loading..." overlay when switching time periods (uses `isFetching` for refetch detection)
+- [x] Dashboard stat cards: "Live Positions" + "Closed Trades" as clickable links, compact 4-column layout, inline YTD %
+- [x] Simplified theme toggle: removed "system" option, light/dark only
+- [x] Configurable rate limiting: `RATE_LIMIT_MAX` env var (10000 for dev, 200 default for prod)
+- [x] Pie chart color diversity: maximally distinct hues per chart slice, avoiding benchmark line colors
 
 ---
 
