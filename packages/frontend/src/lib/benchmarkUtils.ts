@@ -54,8 +54,46 @@ export function normalizePerformanceHistory(
 }
 
 /**
+ * Binary search for the closest timestamp in sorted data.
+ * Returns the price and time difference of the closest match.
+ */
+function findClosestPrice(
+  sortedData: Array<{ timestamp: number; price: number }>,
+  targetTime: number
+): { price: number; diff: number } | undefined {
+  if (sortedData.length === 0) return undefined;
+
+  let lo = 0;
+  let hi = sortedData.length - 1;
+
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (sortedData[mid].timestamp < targetTime) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+
+  // Compare lo and lo-1 to find the actual closest
+  let bestIdx = lo;
+  if (lo > 0) {
+    const diffLo = Math.abs(sortedData[lo].timestamp - targetTime);
+    const diffPrev = Math.abs(sortedData[lo - 1].timestamp - targetTime);
+    if (diffPrev < diffLo) bestIdx = lo - 1;
+  }
+
+  return {
+    price: sortedData[bestIdx].price,
+    diff: Math.abs(sortedData[bestIdx].timestamp - targetTime),
+  };
+}
+
+/**
  * Merge additional benchmark data into the normalized data
- * Aligns timestamps to the nearest portfolio snapshot
+ * Aligns timestamps to the nearest portfolio snapshot using binary search.
+ * Normalizes from the benchmark price at the FIRST portfolio timestamp
+ * so both lines start near 0% from the same reference point.
  */
 export function mergeAdditionalBenchmark(
   normalizedData: NormalizedDataPoint[],
@@ -66,35 +104,28 @@ export function mergeAdditionalBenchmark(
     return normalizedData;
   }
 
-  // Get first price for normalization
-  const firstPrice = benchmarkData.data[0].price;
-  if (firstPrice === 0) return normalizedData;
+  // Sort by timestamp for binary search
+  const sortedData = benchmarkData.data.slice().sort((a, b) => a.timestamp - b.timestamp);
 
-  // Create a map of benchmark prices by timestamp
-  const priceMap = new Map<number, number>();
-  benchmarkData.data.forEach(point => {
-    priceMap.set(point.timestamp, point.price);
-  });
+  // Use the benchmark price closest to the FIRST portfolio timestamp as baseline.
+  // This ensures both portfolio and benchmark start near 0% at the same point.
+  const firstPortfolioTime = normalizedData[0].date.getTime();
+  const baselineResult = findClosestPrice(sortedData, firstPortfolioTime);
+  if (!baselineResult || baselineResult.price === 0) return normalizedData;
+  const firstPrice = baselineResult.price;
 
-  // Find the benchmark price closest to each portfolio timestamp
+  // Dynamic threshold: 3x the average data spacing, minimum 48 hours
+  const avgSpacing = sortedData.length > 1
+    ? (sortedData[sortedData.length - 1].timestamp - sortedData[0].timestamp) / (sortedData.length - 1)
+    : 24 * 60 * 60 * 1000;
+  const threshold = Math.max(avgSpacing * 3, 48 * 60 * 60 * 1000);
+
   return normalizedData.map(point => {
     const targetTime = point.date.getTime();
+    const result = findClosestPrice(sortedData, targetTime);
 
-    // Find closest benchmark price
-    let closestPrice: number | undefined;
-    let minDiff = Infinity;
-
-    for (const [ts, price] of priceMap.entries()) {
-      const diff = Math.abs(ts - targetTime);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestPrice = price;
-      }
-    }
-
-    // Only include if we found a price within 24 hours
-    const percentChange = closestPrice !== undefined && minDiff < 24 * 60 * 60 * 1000
-      ? ((closestPrice - firstPrice) / firstPrice) * 100
+    const percentChange = result && result.diff < threshold
+      ? ((result.price - firstPrice) / firstPrice) * 100
       : undefined;
 
     return {

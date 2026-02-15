@@ -5,6 +5,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  ReferenceLine,
   ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -114,13 +115,14 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const days = useMemo(() => getDaysFromPeriod(period), [period]);
 
-  const { data: performanceData, isLoading } = usePerformanceHistory(dateRange);
+  const { data: performanceData, isLoading, isFetching: perfFetching } = usePerformanceHistory(dateRange);
 
   // Fetch BTC/ETH historical data from CoinGecko API (more reliable than snapshot data)
   const btcEnabled = benchmarks.find(b => b.id === 'btc')?.enabled ?? false;
   const ethEnabled = benchmarks.find(b => b.id === 'eth')?.enabled ?? false;
-  const { data: btcData } = useBenchmarkHistory('bitcoin', days, btcEnabled);
-  const { data: ethData } = useBenchmarkHistory('ethereum', days, ethEnabled);
+  const { data: btcData, isFetching: btcFetching } = useBenchmarkHistory('bitcoin', days, btcEnabled);
+  const { data: ethData, isFetching: ethFetching } = useBenchmarkHistory('ethereum', days, ethEnabled);
+  const isBenchmarkFetching = perfFetching || (btcEnabled && btcFetching) || (ethEnabled && ethFetching);
 
   // Fetch additional benchmark data using useQueries (safe for dynamic arrays)
   const additionalQueries = useQueries({
@@ -238,7 +240,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
     <Card className="col-span-2">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle>Performance vs Benchmarks</CardTitle>
+          <CardTitle>Portfolio % vs Benchmarks</CardTitle>
 
           {/* Time Period Selector */}
           <div className="flex rounded-md border">
@@ -392,8 +394,14 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
             </div>
           </div>
         ) : (
+          <div className="relative">
+            {isBenchmarkFetching && (
+              <div className="absolute top-2 right-2 z-10 text-xs text-muted-foreground animate-pulse">
+                Loading...
+              </div>
+            )}
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 5, right: 55, left: 20, bottom: 5 }}>
               <XAxis
                 dataKey="displayDate"
                 tick={{ fontSize: 12 }}
@@ -439,13 +447,26 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   );
                 }}
               />
+              <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.15} strokeDasharray="4 4" />
               {/* Portfolio line */}
               <Line
                 type="monotone"
                 dataKey="portfolio"
                 stroke="hsl(var(--primary))"
                 strokeWidth={2}
-                dot={false}
+                dot={(props: Record<string, unknown>) => {
+                  const { cx, cy, index, value } = props as { cx: number; cy: number; index: number; value: number | undefined };
+                  if (index !== chartData.length - 1 || value == null) return <g key={`p-${index}`} />;
+                  return (
+                    <g key={`p-${index}`}>
+                      <circle cx={cx} cy={cy} r={3} fill="hsl(var(--primary))" />
+                      <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill="currentColor" opacity={0.7}>
+                        {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
+                      </text>
+                    </g>
+                  );
+                }}
+                connectNulls
                 activeDot={{ r: 4, strokeWidth: 0 }}
               />
               {/* BTC line */}
@@ -455,7 +476,19 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   dataKey="btc"
                   stroke="#F7931A"
                   strokeWidth={2}
-                  dot={false}
+                  dot={(props: Record<string, unknown>) => {
+                    const { cx, cy, index, value } = props as { cx: number; cy: number; index: number; value: number | undefined };
+                    if (index !== chartData.length - 1 || value == null) return <g key={`btc-${index}`} />;
+                    return (
+                      <g key={`btc-${index}`}>
+                        <circle cx={cx} cy={cy} r={3} fill="#F7931A" />
+                        <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill="#F7931A">
+                          {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
+                        </text>
+                      </g>
+                    );
+                  }}
+                  connectNulls
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
               )}
@@ -466,7 +499,19 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   dataKey="eth"
                   stroke="#627EEA"
                   strokeWidth={2}
-                  dot={false}
+                  dot={(props: Record<string, unknown>) => {
+                    const { cx, cy, index, value } = props as { cx: number; cy: number; index: number; value: number | undefined };
+                    if (index !== chartData.length - 1 || value == null) return <g key={`eth-${index}`} />;
+                    return (
+                      <g key={`eth-${index}`}>
+                        <circle cx={cx} cy={cy} r={3} fill="#627EEA" />
+                        <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill="#627EEA">
+                          {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
+                        </text>
+                      </g>
+                    );
+                  }}
+                  connectNulls
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
               )}
@@ -480,12 +525,25 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                     dataKey={benchmark.id}
                     stroke={benchmark.color}
                     strokeWidth={2}
-                    dot={false}
+                    dot={(props: Record<string, unknown>) => {
+                      const { cx, cy, index, value } = props as { cx: number; cy: number; index: number; value: number | undefined };
+                      if (index !== chartData.length - 1 || value == null) return <g key={`${benchmark.id}-${index}`} />;
+                      return (
+                        <g key={`${benchmark.id}-${index}`}>
+                          <circle cx={cx} cy={cy} r={3} fill={benchmark.color} />
+                          <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill={benchmark.color}>
+                            {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
+                          </text>
+                        </g>
+                      );
+                    }}
+                    connectNulls
                     activeDot={{ r: 4, strokeWidth: 0 }}
                   />
                 ))}
             </LineChart>
           </ResponsiveContainer>
+          </div>
         )}
       </CardContent>
     </Card>

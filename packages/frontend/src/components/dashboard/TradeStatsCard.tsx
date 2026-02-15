@@ -126,7 +126,7 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
             <p className="text-sm font-semibold tabular-nums">
               {formatNumber(analytics.winRate)}%
               <span className="text-xs text-muted-foreground font-normal ml-1.5">
-                {analytics.winningTrades}W – {analytics.losingTrades}L
+                {analytics.winningTrades}W – {analytics.losingTrades}L ({analytics.totalTrades} total)
               </span>
             </p>
           </div>

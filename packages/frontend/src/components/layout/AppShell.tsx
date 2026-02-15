@@ -12,7 +12,6 @@ import {
   Download,
   Sun,
   Moon,
-  Monitor,
   History,
   MoreVertical,
 } from 'lucide-react';
@@ -50,7 +49,6 @@ const navigation = [
 const themeIcons: Record<Theme, typeof Sun> = {
   light: Sun,
   dark: Moon,
-  system: Monitor,
 };
 
 export function AppShell({ children }: AppShellProps) {
