@@ -3,6 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Force dev deps to install even if NODE_ENV=production is set by CI
+ENV NODE_ENV=development
+
 # Copy package files and install all deps (including devDependencies for build)
 COPY package*.json ./
 COPY prisma ./prisma/
@@ -20,6 +23,8 @@ RUN npm run build
 FROM node:20-alpine
 
 WORKDIR /app
+
+ENV NODE_ENV=production
 
 # Copy package files and install production deps only
 COPY package*.json ./
