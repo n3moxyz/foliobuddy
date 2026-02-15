@@ -30,8 +30,13 @@ function MetricLabel({ label, tip }: { label: string; tip: React.ReactNode }) {
           {label}
         </p>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-56 text-xs leading-relaxed">
-        {tip}
+      <TooltipContent side="top" className="max-w-64 p-0 overflow-hidden">
+        <div className="border-b border-border/50 bg-muted/50 px-3 py-1.5">
+          <p className="text-xs font-semibold tracking-wide">{label}</p>
+        </div>
+        <div className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          {tip}
+        </div>
       </TooltipContent>
     </Tooltip>
   );
@@ -41,6 +46,7 @@ interface TradeStatsCardProps {
   analytics: TradeAnalytics;
   currency?: 'USD' | 'SGD';
   fxRate?: number;
+  onTradeClick?: (tradeId: string) => void;
 }
 
 function ratingLabel(value: number, thresholds: [number, string][]): { text: string; color: string } {
@@ -246,41 +252,40 @@ function ByDirectionSegment({ analytics, convert, currency }: {
   );
 }
 
-function NotableTradesSegment({ analytics, convert, currency }: {
+function NotableTradesSegment({ analytics, convert, currency, onTradeClick }: {
   analytics: TradeAnalytics;
   convert: (v: number | null | undefined) => number | null | undefined;
   currency: 'USD' | 'SGD';
+  onTradeClick?: (tradeId: string) => void;
 }) {
   if (!analytics.bestTrade && !analytics.worstTrade) return null;
+
+  const tradeItem = (trade: NonNullable<TradeAnalytics['bestTrade']>, type: 'best' | 'worst') => {
+    const colorClass = type === 'best' ? 'text-profit' : 'text-loss';
+    return (
+      <button
+        type="button"
+        className="space-y-0.5 text-left rounded-md p-2 -m-2 transition-colors hover:bg-muted/50 cursor-pointer w-full"
+        onClick={() => onTradeClick?.(trade.id)}
+      >
+        <p className="text-xs text-muted-foreground">{type === 'best' ? 'Best' : 'Worst'}</p>
+        <p className={`font-medium ${colorClass} tabular-nums`}>
+          {formatCurrency(convert(trade.pnl), currency)}
+          <span className="text-xs ml-1">({trade.pnlPct >= 0 ? '+' : ''}{formatNumber(trade.pnlPct)}%)</span>
+        </p>
+        <p className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2">
+          {trade.asset} · {formatDate(trade.date)}
+        </p>
+      </button>
+    );
+  };
 
   return (
     <div>
       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Notable Trades</p>
       <div className="grid grid-cols-2 gap-4 text-sm">
-        {analytics.bestTrade && (
-          <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">Best</p>
-            <p className="font-medium text-profit tabular-nums">
-              {formatCurrency(convert(analytics.bestTrade.pnl), currency)}
-              <span className="text-xs ml-1">({analytics.bestTrade.pnlPct >= 0 ? '+' : ''}{formatNumber(analytics.bestTrade.pnlPct)}%)</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {analytics.bestTrade.asset} · {formatDate(analytics.bestTrade.date)}
-            </p>
-          </div>
-        )}
-        {analytics.worstTrade && (
-          <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">Worst</p>
-            <p className="font-medium text-loss tabular-nums">
-              {formatCurrency(convert(analytics.worstTrade.pnl), currency)}
-              <span className="text-xs ml-1">({analytics.worstTrade.pnlPct >= 0 ? '+' : ''}{formatNumber(analytics.worstTrade.pnlPct)}%)</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {analytics.worstTrade.asset} · {formatDate(analytics.worstTrade.date)}
-            </p>
-          </div>
-        )}
+        {analytics.bestTrade && tradeItem(analytics.bestTrade, 'best')}
+        {analytics.worstTrade && tradeItem(analytics.worstTrade, 'worst')}
       </div>
     </div>
   );
@@ -288,7 +293,7 @@ function NotableTradesSegment({ analytics, convert, currency }: {
 
 // --- Main component ---
 
-export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: TradeStatsCardProps) {
+export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1, onTradeClick }: TradeStatsCardProps) {
   const { segmentOrder, setOrder } = useTradeStatsStore();
 
   const convert = (usdValue: number | null | undefined) => {
@@ -346,7 +351,7 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1 }: Trad
       case 'byDirection':
         return <ByDirectionSegment analytics={analytics} convert={convert} currency={currency} />;
       case 'notableTrades':
-        return <NotableTradesSegment analytics={analytics} convert={convert} currency={currency} />;
+        return <NotableTradesSegment analytics={analytics} convert={convert} currency={currency} onTradeClick={onTradeClick} />;
     }
   }
 

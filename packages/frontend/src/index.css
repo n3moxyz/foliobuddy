@@ -92,3 +92,13 @@
 .bg-loss {
   @apply bg-red-100 dark:bg-red-900/30;
 }
+
+/* Highlight flash for scrolling to a specific row */
+@keyframes highlight-flash {
+  0%, 100% { background-color: transparent; }
+  20%, 60% { background-color: hsl(var(--accent)); }
+}
+
+.animate-highlight-flash {
+  animation: highlight-flash 2s ease-in-out;
+}

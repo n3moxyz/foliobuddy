@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTrades, useTradeAnalytics, useDeleteAllTrades, useDeleteTrade } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
@@ -74,6 +74,13 @@ export default function Trades() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [deletingTrade, setDeletingTrade] = useState<Trade | null>(null);
+  const [highlightTradeId, setHighlightTradeId] = useState<string | null>(null);
+
+  const handleNotableTradeClick = useCallback((tradeId: string) => {
+    // Switch to "all" tab so the trade is visible, then highlight it
+    setFilter('all');
+    setHighlightTradeId(tradeId);
+  }, []);
 
   const { currency } = useCurrencyStore();
   const { data: summary } = usePortfolioSummary();
@@ -189,11 +196,11 @@ export default function Trades() {
 
       {/* Trade Statistics */}
       {analytics && (
-        <TradeStatsCard analytics={analytics} currency={currency} fxRate={fxRate} />
+        <TradeStatsCard analytics={analytics} currency={currency} fxRate={fxRate} onTradeClick={handleNotableTradeClick} />
       )}
 
       {/* Trade Tables */}
-      <Tabs defaultValue="all" onValueChange={(v) => setFilter(v as any)}>
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
         <TabsList>
           <TabsTrigger value="all">All Trades ({trades?.length || 0})</TabsTrigger>
           <TabsTrigger value="OPEN">Open ({openTrades.length})</TabsTrigger>
@@ -206,6 +213,8 @@ export default function Trades() {
             isLoading={isLoading}
             onEdit={setEditingTrade}
             onDelete={setDeletingTrade}
+            highlightTradeId={highlightTradeId}
+            onHighlightComplete={() => setHighlightTradeId(null)}
           />
         </TabsContent>
 
@@ -215,6 +224,8 @@ export default function Trades() {
             isLoading={isLoading}
             onEdit={setEditingTrade}
             onDelete={setDeletingTrade}
+            highlightTradeId={highlightTradeId}
+            onHighlightComplete={() => setHighlightTradeId(null)}
           />
         </TabsContent>
 
@@ -224,6 +235,8 @@ export default function Trades() {
             isLoading={isLoading}
             onEdit={setEditingTrade}
             onDelete={setDeletingTrade}
+            highlightTradeId={highlightTradeId}
+            onHighlightComplete={() => setHighlightTradeId(null)}
           />
         </TabsContent>
       </Tabs>
@@ -393,12 +406,38 @@ interface TradeTableProps {
   isLoading: boolean;
   onEdit: (trade: Trade) => void;
   onDelete: (trade: Trade) => void;
+  highlightTradeId?: string | null;
+  onHighlightComplete?: () => void;
 }
 
-function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
+function TradeTable({ trades, isLoading, onEdit, onDelete, highlightTradeId, onHighlightComplete }: TradeTableProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const highlightRef = useRef<HTMLTableRowElement>(null);
   const { sortedItems, sortKey, sortDirection, onSort } = useTableSort(trades, TRADE_COLUMNS);
+
+  // Scroll to and flash-highlight the target trade row
+  useEffect(() => {
+    if (!highlightTradeId) return;
+    // Check if this table contains the trade
+    const hasTrade = trades.some(t => t.id === highlightTradeId);
+    if (!hasTrade) return;
+
+    setFlashId(highlightTradeId);
+
+    // Wait a tick for DOM to render, then scroll
+    requestAnimationFrame(() => {
+      highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Clear flash after animation
+    const timer = setTimeout(() => {
+      setFlashId(null);
+      onHighlightComplete?.();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [highlightTradeId, trades, onHighlightComplete]);
 
   // Dynamic column hiding: compact hides on mobile, expanded shows all
   const HIDDEN_MD = showAllColumns ? '' : 'hidden md:table-cell';
@@ -475,7 +514,11 @@ function TradeTable({ trades, isLoading, onEdit, onDelete }: TradeTableProps) {
             </TableHeader>
             <TableBody>
               {sortedItems.map((trade) => (
-                <TableRow key={trade.id}>
+                <TableRow
+                  key={trade.id}
+                  ref={trade.id === flashId ? highlightRef : undefined}
+                  className={trade.id === flashId ? 'animate-highlight-flash' : ''}
+                >
                   <TableCell className="font-medium whitespace-nowrap">{trade.asset.symbol}</TableCell>
                   <TableCell>
                     <span className={`flex items-center gap-1 whitespace-nowrap ${trade.direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}>
