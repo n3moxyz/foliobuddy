@@ -8,7 +8,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://old-backend.example.com/api/:path*"
+      "destination": "http://foliobuddy-backend.example.com/api/:path*"
     },
     {
       "source": "/((?!api/).*)",

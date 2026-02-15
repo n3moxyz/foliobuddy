@@ -3,8 +3,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://old-backend.example.com/api/:path*" },
-    { "source": "/socket.io/:path*", "destination": "https://old-backend.example.com/socket.io/:path*" },
+    { "source": "/api/:path*", "destination": "http://foliobuddy-backend.example.com/api/:path*" },
+    { "source": "/socket.io/:path*", "destination": "http://foliobuddy-backend.example.com/socket.io/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
