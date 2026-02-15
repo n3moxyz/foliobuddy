@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/dialog';
 import { TradeForm } from '@/components/trades/TradeForm';
 import { TradeStatsCard } from '@/components/dashboard/TradeStatsCard';
-import { Plus, TrendingUp, TrendingDown, Download, Copy, Check, Trash2, MoreVertical, Pencil, Columns2, Columns3 } from 'lucide-react';
+import { TickerPnLCard } from '@/components/trades/TickerPnLCard';
+import { Plus, TrendingUp, TrendingDown, Download, Copy, Check, Trash2, MoreVertical, Pencil, Columns2, Columns3, X } from 'lucide-react';
 import { api, Trade } from '@/lib/api';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
@@ -75,11 +76,19 @@ export default function Trades() {
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [deletingTrade, setDeletingTrade] = useState<Trade | null>(null);
   const [highlightTradeId, setHighlightTradeId] = useState<string | null>(null);
+  const [tickerFilter, setTickerFilter] = useState<string | null>(null);
+  const [statsExpanded, setStatsExpanded] = useState(false);
+  const [tickerPnlExpanded, setTickerPnlExpanded] = useState(false);
 
   const handleNotableTradeClick = useCallback((tradeId: string) => {
     // Switch to "all" tab so the trade is visible, then highlight it
     setFilter('all');
+    setTickerFilter(null);
     setHighlightTradeId(tradeId);
+  }, []);
+
+  const handleTickerClick = useCallback((symbol: string) => {
+    setTickerFilter((prev) => (prev === symbol ? null : symbol));
   }, []);
 
   const { currency } = useCurrencyStore();
@@ -96,8 +105,11 @@ export default function Trades() {
     ? summary.totalValueSgd / summary.totalValueUsd
     : 1.35;
 
-  const openTrades = trades?.filter((t) => t.status === 'OPEN') || [];
-  const closedTrades = trades?.filter((t) => t.status === 'CLOSED') || [];
+  const filteredTrades = tickerFilter
+    ? trades?.filter((t) => t.asset.symbol === tickerFilter) || []
+    : trades || [];
+  const openTrades = filteredTrades.filter((t) => t.status === 'OPEN');
+  const closedTrades = filteredTrades.filter((t) => t.status === 'CLOSED');
 
   return (
     <div className="space-y-6">
@@ -196,20 +208,43 @@ export default function Trades() {
 
       {/* Trade Statistics */}
       {analytics && (
-        <TradeStatsCard analytics={analytics} currency={currency} fxRate={fxRate} onTradeClick={handleNotableTradeClick} />
+        <TradeStatsCard analytics={analytics} currency={currency} fxRate={fxRate} onTradeClick={handleNotableTradeClick} isExpanded={statsExpanded} onToggle={() => setStatsExpanded(!statsExpanded)} />
+      )}
+
+      {/* P&L by Ticker */}
+      {trades && trades.length > 0 && (
+        <TickerPnLCard
+          trades={trades}
+          currency={currency}
+          fxRate={fxRate}
+          onTickerClick={handleTickerClick}
+          isExpanded={tickerPnlExpanded}
+          onToggle={() => setTickerPnlExpanded(!tickerPnlExpanded)}
+        />
       )}
 
       {/* Trade Tables */}
       <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
-        <TabsList>
-          <TabsTrigger value="all">All Trades ({trades?.length || 0})</TabsTrigger>
-          <TabsTrigger value="OPEN">Open ({openTrades.length})</TabsTrigger>
-          <TabsTrigger value="CLOSED">Closed ({closedTrades.length})</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center gap-2 flex-wrap">
+          <TabsList>
+            <TabsTrigger value="all">All Trades ({filteredTrades.length})</TabsTrigger>
+            <TabsTrigger value="OPEN">Open ({openTrades.length})</TabsTrigger>
+            <TabsTrigger value="CLOSED">Closed ({closedTrades.length})</TabsTrigger>
+          </TabsList>
+          {tickerFilter && (
+            <button
+              onClick={() => setTickerFilter(null)}
+              className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
+            >
+              {tickerFilter}
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
 
         <TabsContent value="all" className="mt-4">
           <TradeTable
-            trades={trades || []}
+            trades={filteredTrades}
             isLoading={isLoading}
             onEdit={setEditingTrade}
             onDelete={setDeletingTrade}

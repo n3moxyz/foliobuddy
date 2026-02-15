@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrency, formatNumber, formatDate, getPnLColorClass } from '@/lib/utils';
 import type { TradeAnalytics } from '@/lib/api';
@@ -47,6 +47,8 @@ interface TradeStatsCardProps {
   currency?: 'USD' | 'SGD';
   fxRate?: number;
   onTradeClick?: (tradeId: string) => void;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 function ratingLabel(value: number, thresholds: [number, string][]): { text: string; color: string } {
@@ -293,7 +295,7 @@ function NotableTradesSegment({ analytics, convert, currency, onTradeClick }: {
 
 // --- Main component ---
 
-export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1, onTradeClick }: TradeStatsCardProps) {
+export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1, onTradeClick, isExpanded = true, onToggle }: TradeStatsCardProps) {
   const { segmentOrder, setOrder } = useTradeStatsStore();
 
   const convert = (usdValue: number | null | undefined) => {
@@ -357,11 +359,8 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1, onTrad
 
   return (
     <TooltipProvider delayDuration={200}>
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle>Trade Statistics</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
+    <CollapsibleCard title="Trade Analytics" isExpanded={isExpanded} onToggle={onToggle ?? (() => {})}>
+      <div className="space-y-5">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={visibleOrder} strategy={verticalListSortingStrategy}>
             {visibleOrder.map((id, index) => (
@@ -371,8 +370,8 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1, onTrad
             ))}
           </SortableContext>
         </DndContext>
-      </CardContent>
-    </Card>
+      </div>
+    </CollapsibleCard>
     </TooltipProvider>
   );
 }
