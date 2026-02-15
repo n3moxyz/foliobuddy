@@ -237,8 +237,8 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
         ) : (
           <div className="relative">
             {isFetching && (
-              <div className="absolute top-2 right-2 z-10 text-xs text-muted-foreground animate-pulse">
-                Loading...
+              <div className="absolute inset-0 z-10 flex items-center justify-center">
+                <span className="text-sm text-muted-foreground animate-pulse">Loading...</span>
               </div>
             )}
           <ResponsiveContainer width="100%" height={300}>
