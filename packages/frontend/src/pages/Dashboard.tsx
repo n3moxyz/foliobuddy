@@ -4,7 +4,7 @@ import { usePortfolioSummary, usePositions, useTopPerformers, useWorstPerformers
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatCurrency, formatPercent, getPnLColorClass, formatDateTime } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
