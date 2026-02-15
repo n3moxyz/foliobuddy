@@ -147,7 +147,7 @@ Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. 
 All backend code uses `logger` from `src/lib/logger.ts` instead of `console.log`. Respects `LOG_LEVEL` env var (debug/info/warn/error). No `console.log` in production code.
 
 ### Rate Limiting
-Express-rate-limit applied globally to `/api` routes: 200 requests per 15 minutes. Constants in `src/lib/constants.ts`.
+Express-rate-limit applied globally to `/api` routes. Default: 200 requests per 15 minutes. Override with `RATE_LIMIT_MAX` env var (local dev uses 10000). Constants in `src/lib/constants.ts`.
 
 ### Pagination (Backend)
 Trades and snapshots routes support optional pagination via `?page=1&limit=50`. Backwards-compatible — returns full array when no `page` param. Uses `parsePagination()` and `paginatedResponse()` from `src/lib/pagination.ts`.
@@ -171,6 +171,14 @@ All pages follow iOS HIG-inspired responsive patterns:
 ### Portfolio Section Headers
 Positions are grouped two-level: **Crypto/Stables** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, green for Stables).
 
+### Dashboard Charts
+- **Portfolio $ Value**: Line chart with time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
+- **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
+- **Allocation pie charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with maximally distinct hues per slice. Colors avoid benchmark line colors. Clickable legends to hide/show slices.
+
+### Dashboard Stat Cards
+4-column compact grid: Net Worth, YTD P&L (with inline percentage), Live Positions (links to /portfolio), Closed Trades (links to /trades).
+
 ## Environment Variables
 
 ### Backend (`.env`)
@@ -180,6 +188,7 @@ PRODUCTION_DATABASE_URL=   # Production DB (used by npm run db:sync)
 PORT=4001                  # Backend port (DO NOT use 3001 — that's reserved for other projects)
 CLERK_SECRET_KEY=          # Clerk backend key
 ALLOWED_ORIGINS=http://localhost:4000
+RATE_LIMIT_MAX=10000       # Local dev override (production defaults to 200)
 SENTRY_DSN=                # Optional — error tracking (skipped if empty)
 ```
 
