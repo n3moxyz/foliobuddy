@@ -3,8 +3,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://empowering-curiosity-production-9eff.up.railway.app/api/:path*" },
-    { "source": "/socket.io/:path*", "destination": "https://empowering-curiosity-production-9eff.up.railway.app/socket.io/:path*" },
+    { "source": "/api/:path*", "destination": "http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io/api/:path*" },
+    { "source": "/socket.io/:path*", "destination": "http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io/socket.io/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
