@@ -46,6 +46,7 @@ export function formatPositionsForClipboard(positions: Position | Position[]) {
     storageType: p.storageType,
     storageLocation: p.storageLocation,
     notes: p.notes,
+    ...(p.custodyOf ? { custodyOf: p.custodyOf } : {}),
   }));
 
   return JSON.stringify(formatted, null, 2);

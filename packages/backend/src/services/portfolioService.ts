@@ -44,7 +44,7 @@ class PortfolioService {
    */
   async getSummary(userId: string): Promise<PortfolioSummary> {
     const positions = await prisma.position.findMany({
-      where: { userId },
+      where: { userId, custodyOf: null },
       include: {
         asset: true,
       },
@@ -116,7 +116,7 @@ class PortfolioService {
    */
   async getAllocationByCategory(userId: string): Promise<AllocationByCategory[]> {
     const positions = await prisma.position.findMany({
-      where: { userId },
+      where: { userId, custodyOf: null },
       include: {
         asset: true,
       },
@@ -156,7 +156,7 @@ class PortfolioService {
    */
   async getAllocationByStorage(userId: string): Promise<AllocationByStorage[]> {
     const positions = await prisma.position.findMany({
-      where: { userId },
+      where: { userId, custodyOf: null },
       include: {
         asset: true,
       },
@@ -206,6 +206,7 @@ class PortfolioService {
     const positions = await prisma.position.findMany({
       where: {
         userId,
+        custodyOf: null,
         unrealizedPnL: { gt: 0 },
       },
       include: {
@@ -234,6 +235,7 @@ class PortfolioService {
     const positions = await prisma.position.findMany({
       where: {
         userId,
+        custodyOf: null,
         unrealizedPnL: { lt: 0 },
       },
       include: {

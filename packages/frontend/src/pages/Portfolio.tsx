@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Pencil, Download, Copy, Check, Trash2, MoreVertical, FileSpreadsheet, Coins, Banknote } from 'lucide-react';
+import { Plus, Pencil, Download, Copy, Check, Trash2, MoreVertical, FileSpreadsheet, Coins, Banknote, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
@@ -104,11 +104,19 @@ export default function Portfolio() {
 
   const { isExpanded, toggle } = useCollapsibleState();
 
-  // Build sections dynamically from config
+  // Split positions: owned (custodyOf is null) vs custody (custodyOf is set)
+  const { ownedPositions, custodyPositions } = useMemo(() => {
+    if (!positions) return { ownedPositions: [] as Position[], custodyPositions: [] as Position[] };
+    return {
+      ownedPositions: positions.filter(p => !p.custodyOf),
+      custodyPositions: positions.filter(p => !!p.custodyOf),
+    };
+  }, [positions]);
+
+  // Build sections dynamically from config (owned positions only)
   const sections = useMemo(() => {
-    if (!positions) return [];
     return SECTION_CONFIG.map(config => {
-      const filtered = positions.filter(config.filter);
+      const filtered = ownedPositions.filter(config.filter);
       return {
         ...config,
         positions: filtered,
@@ -116,7 +124,18 @@ export default function Portfolio() {
         pnl: filtered.reduce((s, p) => s + (p.unrealizedPnL || 0), 0),
       };
     }).filter(s => s.positions.length > 0);
-  }, [positions]);
+  }, [ownedPositions]);
+
+  // Custody section totals
+  const custodyTotal = useMemo(() => {
+    return custodyPositions.reduce((s, p) => s + (p.marketValueUsd || 0), 0);
+  }, [custodyPositions]);
+
+  // Unique custody names from existing positions (for dropdown)
+  const existingCustodyNames = useMemo(() => {
+    const names = new Set(custodyPositions.map(p => p.custodyOf).filter(Boolean) as string[]);
+    return Array.from(names).sort();
+  }, [custodyPositions]);
 
   // Derived total for exposure calc in summary cards
   const cryptoTotal = sections.find(s => s.id === 'crypto')?.total ?? 0;
@@ -348,6 +367,36 @@ export default function Portfolio() {
         </CollapsibleCard>
       ))}
 
+      {/* Custody: Held for Others */}
+      {!positionsLoading && custodyPositions.length > 0 && (
+        <CollapsibleCard
+          title={`Held for Others (${custodyPositions.length})`}
+          icon={<Users className="h-4 w-4 text-purple-500" />}
+          accentColor="border-l-purple-500"
+          isExpanded={isExpanded('custody')}
+          onToggle={() => toggle('custody')}
+          headerRight={
+            <div className="flex items-center gap-3">
+              {!isExpanded('custody') && (
+                <span className="text-xs text-muted-foreground">
+                  {custodyPositions.length} position{custodyPositions.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              <span className="text-sm font-semibold text-muted-foreground">
+                {formatCurrency(convertValue(custodyTotal), currency, 0)}
+              </span>
+            </div>
+          }
+        >
+          <PositionTable
+            positions={custodyPositions}
+            currency={currency}
+            fxRate={fxRate}
+            sectionPrefix="custody"
+          />
+        </CollapsibleCard>
+      )}
+
       {/* Add Position Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
@@ -358,6 +407,7 @@ export default function Portfolio() {
             onSuccess={() => setShowAddForm(false)}
             cryptoCount={sections.find(s => s.id === 'crypto')?.positions.length ?? 0}
             stablesCount={sections.find(s => s.id === 'stables')?.positions.length ?? 0}
+            existingCustodyNames={existingCustodyNames}
           />
         </DialogContent>
       </Dialog>
