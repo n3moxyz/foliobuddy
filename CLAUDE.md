@@ -172,7 +172,23 @@ All pages follow iOS HIG-inspired responsive patterns:
 `TickerPnLCard` (`components/trades/TickerPnLCard.tsx`) shows aggregated P&L per ticker — one row per asset with columns: Ticker, Trades, Win Rate, Total P&L. Only includes closed trades (those with `realizedPnL`). Default sort: P&L descending. Uses `CollapsibleCard` — collapsed by default. Clicking a ticker row filters the main trade table below; a filter chip appears next to the tabs to clear the filter.
 
 ### Portfolio Section Headers
-Positions are grouped two-level: **Crypto/Stables** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, green for Stables).
+Positions are grouped two-level: **Crypto/Stables** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, green for Stables, purple for Custody).
+
+### Custody Positions ("Held for Others")
+Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `custodyOf String?` field on the Position model — `null` = owned by user, non-null = custody.
+
+**Backend behavior:**
+- `portfolioService` filters `custodyOf: null` on all queries (summary, allocation, performers) — custody positions excluded from net worth, P&L, and exposure
+- `snapshotService` excludes custody positions from snapshots
+- `positions.ts` routes accept `custodyOf` in create/update/bulk Zod schemas, converting empty strings to null
+
+**Frontend behavior:**
+- `Portfolio.tsx` splits positions into `ownedPositions` (sections) and `custodyPositions` (separate purple "Held for Others" `CollapsibleCard`, collapsed by default)
+- Custody section reuses `PositionTable` for identical columns/sorting as Crypto and Stables
+- `PositionForm.tsx` has a custody checkbox above the mode tabs (applies to both Add and Import). When checked, shows a `<Select>` dropdown with existing names + "Add new person" option
+- Custody names persisted to `localStorage` (`pa-portfolio-custody-names`) and merged with names from existing positions
+- `PositionImportTab.tsx` shows a purple banner when importing as custody; all imported positions get `custodyOf` stamped
+- `PositionTable.tsx` includes `custodyOf` in clipboard JSON format when set
 
 ### Dashboard Charts
 - **Portfolio $ Value**: Line chart with time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
