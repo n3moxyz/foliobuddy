@@ -36,9 +36,9 @@ class SnapshotService {
     // Calculate performance metrics
     const metrics = await this.calculatePerformanceMetrics(userId, summary.totalValueUsd);
 
-    // Get all positions for the snapshot
+    // Get all owned positions for the snapshot (exclude custody positions)
     const positions = await prisma.position.findMany({
-      where: { userId },
+      where: { userId, custodyOf: null },
       include: { asset: true },
     });
 

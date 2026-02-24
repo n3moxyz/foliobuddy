@@ -16,6 +16,7 @@ const createPositionSchema = z.object({
   storageType: z.enum(['WALLET', 'CEX', 'DEFI', 'BANK']).default('WALLET'),
   storageLocation: z.string().optional(),
   notes: z.string().optional(),
+  custodyOf: z.string().optional(),
 });
 
 const updatePositionSchema = createPositionSchema.partial();
@@ -108,6 +109,7 @@ const bulkImportPositionSchema = z.object({
   storageType: z.enum(['WALLET', 'CEX', 'DEFI', 'BANK']).default('CEX'),
   storageLocation: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  custodyOf: z.string().nullable().optional(),
 });
 
 const bulkImportSchema = z.object({
@@ -175,6 +177,7 @@ router.post('/bulk', async (req, res, next) => {
             storageType: pos.storageType,
             storageLocation: pos.storageLocation?.trim() || null,
             notes: pos.notes || null,
+            custodyOf: pos.custodyOf?.trim() || null,
             marketValueUsd,
             unrealizedPnL,
             unrealizedPnLPct,
@@ -265,6 +268,9 @@ router.post('/', async (req, res, next) => {
     // Convert empty string to null for storageLocation
     const storageLocation = data.storageLocation?.trim() || null;
 
+    // Convert empty string to null for custodyOf
+    const custodyOf = data.custodyOf?.trim() || null;
+
     const position = await prisma.position.create({
       data: {
         userId: req.userId!,
@@ -274,6 +280,7 @@ router.post('/', async (req, res, next) => {
         storageType: data.storageType,
         storageLocation,
         notes: data.notes,
+        custodyOf,
         marketValueUsd,
         unrealizedPnL,
         unrealizedPnLPct,
@@ -316,11 +323,14 @@ router.put('/:id', async (req, res, next) => {
       ? (unrealizedPnL / costBasis) * 100
       : null;
 
-    // Convert empty string to null for storageLocation
+    // Convert empty string to null for storageLocation and custodyOf
     const updateData = {
       ...data,
       storageLocation: data.storageLocation !== undefined
         ? (data.storageLocation?.trim() || null)
+        : undefined,
+      custodyOf: data.custodyOf !== undefined
+        ? (data.custodyOf?.trim() || null)
         : undefined,
     };
 

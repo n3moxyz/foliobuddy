@@ -286,6 +286,7 @@ export interface Position {
   storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
   storageLocation: string | null;
   notes: string | null;
+  custodyOf: string | null;
   marketValueUsd: number | null;
   unrealizedPnL: number | null;
   unrealizedPnLPct: number | null;
@@ -489,6 +490,7 @@ export interface CreatePositionData {
   storageType?: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
   storageLocation?: string;
   notes?: string;
+  custodyOf?: string;
 }
 
 export interface CreateAssetData {
@@ -548,6 +550,7 @@ export interface BulkImportPosition {
   storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
   storageLocation: string | null;
   notes: string | null;
+  custodyOf?: string | null;
 }
 
 export interface BulkImportResult {

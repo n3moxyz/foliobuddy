@@ -18,11 +18,33 @@ import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
 import { ImportResults } from './ImportResults';
 
+const CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
+
+function getCustodyNames(): string[] {
+  try {
+    const stored = localStorage.getItem(CUSTODY_NAMES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustodyName(name: string) {
+  const names = getCustodyNames();
+  if (!names.includes(name)) {
+    names.push(name);
+    names.sort();
+    localStorage.setItem(CUSTODY_NAMES_KEY, JSON.stringify(names));
+  }
+}
+
 interface PositionFormProps {
   position?: Position;
   onSuccess: () => void;
   cryptoCount?: number;
   stablesCount?: number;
+  /** Existing custody names derived from positions */
+  existingCustodyNames?: string[];
 }
 
 type CategoryType = 'crypto' | 'cash';
@@ -68,7 +90,7 @@ const TOP_STABLECOINS = [
 
 const MAX_POSITIONS_PER_CATEGORY = 20;
 
-export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCount = 0 }: PositionFormProps) {
+export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCount = 0, existingCustodyNames = [] }: PositionFormProps) {
   // Form mode state (add new or import)
   const [mode, setMode] = useState<FormMode>('add');
   const queryClient = useQueryClient();
@@ -132,6 +154,17 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     }
     return '';
   });
+  const [isCustody, setIsCustody] = useState(!!position?.custodyOf);
+  const [custodyOf, setCustodyOf] = useState(position?.custodyOf || '');
+  const [addingNewName, setAddingNewName] = useState(false);
+  const [newNameInput, setNewNameInput] = useState('');
+
+  // Merge stored names + names from existing positions into a deduplicated sorted list
+  const custodyNameOptions = useMemo(() => {
+    const stored = getCustodyNames();
+    const all = new Set([...stored, ...existingCustodyNames]);
+    return Array.from(all).sort();
+  }, [existingCustodyNames]);
   const [notes, setNotes] = useState(position?.notes || '');
 
   // Hooks
@@ -199,8 +232,13 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
     setImporting(true);
 
+    // Stamp custodyOf on all positions if custody checkbox is checked
+    const positionsToImport = isCustody
+      ? parsedPositions.map(p => ({ ...p, custodyOf: custodyOf.trim() || 'Someone' }))
+      : parsedPositions;
+
     try {
-      const response = await api.bulkImportPositions(parsedPositions);
+      const response = await api.bulkImportPositions(positionsToImport);
       setImportResults(response.results);
     } catch (e) {
       setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
@@ -465,6 +503,7 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
       storageType: storageType as 'WALLET' | 'CEX' | 'DEFI' | 'BANK',
       storageLocation: finalStorageLocation || undefined,
       notes: notes.trim() || undefined,
+      custodyOf: isCustody ? (custodyOf.trim() || 'Someone') : undefined,
     };
 
     try {
@@ -473,6 +512,7 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
       } else {
         await createPosition.mutateAsync(data);
       }
+      handleCustodySave();
       onSuccess();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save position';
@@ -485,8 +525,160 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     return <ImportResults results={importResults} onDone={onSuccess} />;
   }
 
+  // Save custody name on successful submit
+  const handleCustodySave = () => {
+    if (isCustody && custodyOf.trim()) {
+      saveCustodyName(custodyOf.trim());
+    }
+  };
+
+  const handleAddNewName = () => {
+    const name = newNameInput.trim();
+    if (name) {
+      saveCustodyName(name);
+      setCustodyOf(name);
+      setNewNameInput('');
+      setAddingNewName(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
+      {/* Custody checkbox — applies to both Add and Import */}
+      {!isEditing && (
+        <div className="flex items-start gap-3 rounded-md border p-3 bg-muted/30">
+          <input
+            type="checkbox"
+            id="isCustody"
+            checked={isCustody}
+            onChange={(e) => {
+              setIsCustody(e.target.checked);
+              if (!e.target.checked) {
+                setCustodyOf('');
+                setAddingNewName(false);
+              }
+            }}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-purple-600"
+          />
+          <div className="flex-1 space-y-2">
+            <label htmlFor="isCustody" className="text-sm font-medium cursor-pointer leading-tight">
+              Custody — held for someone else
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Won't count toward your net worth, P&L, or exposure
+            </p>
+            {isCustody && !addingNewName && (
+              <Select
+                value={custodyOf}
+                onValueChange={(v) => {
+                  if (v === '__new__') {
+                    setAddingNewName(true);
+                    setNewNameInput('');
+                  } else {
+                    setCustodyOf(v);
+                  }
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Who is this for?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {custodyNameOptions.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__new__">+ Add new person</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+            {isCustody && addingNewName && (
+              <div className="flex gap-2 mt-1">
+                <Input
+                  value={newNameInput}
+                  onChange={(e) => setNewNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); handleAddNewName(); }
+                    if (e.key === 'Escape') { setAddingNewName(false); }
+                  }}
+                  placeholder="Enter name..."
+                  autoFocus
+                />
+                <Button type="button" size="sm" onClick={handleAddNewName} disabled={!newNameInput.trim()}>
+                  Add
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Custody checkbox for edit mode */}
+      {isEditing && (
+        <div className="flex items-start gap-3 rounded-md border p-3 bg-muted/30">
+          <input
+            type="checkbox"
+            id="isCustodyEdit"
+            checked={isCustody}
+            onChange={(e) => {
+              setIsCustody(e.target.checked);
+              if (!e.target.checked) {
+                setCustodyOf('');
+                setAddingNewName(false);
+              }
+            }}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-purple-600"
+          />
+          <div className="flex-1 space-y-2">
+            <label htmlFor="isCustodyEdit" className="text-sm font-medium cursor-pointer leading-tight">
+              Custody — held for someone else
+            </label>
+            {isCustody && !addingNewName && (
+              <Select
+                value={custodyOf}
+                onValueChange={(v) => {
+                  if (v === '__new__') {
+                    setAddingNewName(true);
+                    setNewNameInput('');
+                  } else {
+                    setCustodyOf(v);
+                  }
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Who is this for?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {custodyNameOptions.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__new__">+ Add new person</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+            {isCustody && addingNewName && (
+              <div className="flex gap-2 mt-1">
+                <Input
+                  value={newNameInput}
+                  onChange={(e) => setNewNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); handleAddNewName(); }
+                    if (e.key === 'Escape') { setAddingNewName(false); }
+                  }}
+                  placeholder="Enter name..."
+                  autoFocus
+                />
+                <Button type="button" size="sm" onClick={handleAddNewName} disabled={!newNameInput.trim()}>
+                  Add
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Mode Selection (Add New vs Import) */}
       {!isEditing && (
         <div className="flex border-b mb-2">
@@ -522,12 +714,17 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
           parseError={parseError}
           parsedPositions={parsedPositions}
           importing={importing}
+          isCustody={isCustody}
+          custodyOf={custodyOf}
           onJsonChange={(value) => {
             setJsonInput(value);
             parseJson(value);
           }}
           onPaste={handlePaste}
-          onImport={handleImport}
+          onImport={() => {
+            handleCustodySave();
+            handleImport();
+          }}
         />
       ) : (
         /* Add New Mode */

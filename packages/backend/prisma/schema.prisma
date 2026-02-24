@@ -64,6 +64,7 @@ model Position {
   storageType      String   @default("WALLET")
   storageLocation  String?
   notes            String?
+  custodyOf        String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -74,6 +75,7 @@ model Position {
 
   @@index([userId])
   @@index([assetId])
+  @@index([custodyOf])
 }
 
 // Trade model - represents a single trade

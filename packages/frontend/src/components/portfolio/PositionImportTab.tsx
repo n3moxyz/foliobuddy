@@ -21,6 +21,8 @@ interface PositionImportTabProps {
   parseError: string | null;
   parsedPositions: ImportedPosition[] | null;
   importing: boolean;
+  isCustody?: boolean;
+  custodyOf?: string;
   onJsonChange: (value: string) => void;
   onPaste: () => void;
   onImport: () => void;
@@ -31,6 +33,8 @@ export function PositionImportTab({
   parseError,
   parsedPositions,
   importing,
+  isCustody,
+  custodyOf,
   onJsonChange,
   onPaste,
   onImport,
@@ -56,6 +60,12 @@ export function PositionImportTab({
         <div className="flex items-start gap-2 text-destructive text-sm">
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <span>{parseError}</span>
+        </div>
+      )}
+
+      {isCustody && (
+        <div className="text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30 px-3 py-2 rounded-md">
+          Importing as custody for <span className="font-medium">{custodyOf || 'Someone'}</span>
         </div>
       )}
 
