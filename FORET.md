@@ -935,6 +935,16 @@ Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGec
 
 **Key lesson:** Development debugging tools must be removed or secured before production. If you need admin endpoints, protect them with authentication AND authorization (not just "is logged in" but "is admin").
 
+### Lesson 19: Frontend .env Silently Hitting Production Backend
+
+**The bug:** New `custodyOf` field was being sent in API requests but positions appeared without custody tracking — they showed up in the normal Crypto section instead of the separate custody section.
+
+**The investigation:** The backend migration added the `custodyOf` column to the local database. But the frontend's `.env` had `VITE_API_URL` pointing at the **production** Railway backend (for "frontend-only dev" convenience). Production didn't have the migration yet, so Prisma silently ignored the unknown field — positions were created without `custodyOf`.
+
+**The fix:** Changed `VITE_API_URL` back to `http://localhost:4001/api` and restarted Vite. Positions immediately started saving `custodyOf` correctly.
+
+**Key lesson:** When developing features that require database schema changes, always verify your frontend is actually hitting the local backend (which has the migration), not production. The "frontend-only dev" mode (pointing at prod) is great for UI work but will silently swallow new fields that don't exist in the production schema yet.
+
 ---
 
 ## Best Practices That Paid Off
@@ -1184,9 +1194,11 @@ Need to transfer data between accounts or back up your records? The copy/paste s
   "avgCostUsd": 88888,
   "storageType": "CEX",
   "storageLocation": "Binance",
-  "notes": "Spot"
+  "notes": "Spot",
+  "custodyOf": "Mum"
 }]
 ```
+> `custodyOf` is optional — only included for positions held on behalf of others. Omit it (or set to null) for your own positions.
 
 **Trade format (JSON):**
 ```json
@@ -1360,6 +1372,7 @@ Recently completed:
 - [x] Simplified theme toggle: removed "system" option, light/dark only
 - [x] Configurable rate limiting: `RATE_LIMIT_MAX` env var (10000 for dev, 200 default for prod)
 - [x] Pie chart color diversity: maximally distinct hues per chart slice, avoiding benchmark line colors
+- [x] Custody positions: "Held for Others" section — track crypto held for other people, excluded from net worth/P&L/snapshots, checkbox+dropdown UX with localStorage name persistence
 
 ---
 
