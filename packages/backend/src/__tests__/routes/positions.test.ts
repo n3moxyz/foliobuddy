@@ -130,6 +130,99 @@ describe('GET /api/positions', () => {
   });
 });
 
+describe('POST /api/positions (custody)', () => {
+  it('passes custodyOf through to prisma create', async () => {
+    const asset = mockAsset({ currentPriceUsd: 60000 });
+    mockPrisma.asset.findUnique.mockResolvedValue(asset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.create.mockResolvedValue(mockPosition({ custodyOf: 'Mum' }));
+
+    const res = await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'asset-1', quantity: 1, avgCostUsd: 50000, custodyOf: 'Mum' });
+
+    expect(res.status).toBe(201);
+    const createCall = mockPrisma.position.create.mock.calls[0][0];
+    expect(createCall.data.custodyOf).toBe('Mum');
+  });
+
+  it('converts empty custodyOf string to null', async () => {
+    const asset = mockAsset({ currentPriceUsd: 60000 });
+    mockPrisma.asset.findUnique.mockResolvedValue(asset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.create.mockResolvedValue(mockPosition({ custodyOf: null }));
+
+    const res = await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'asset-1', quantity: 1, avgCostUsd: 50000, custodyOf: '' });
+
+    expect(res.status).toBe(201);
+    const createCall = mockPrisma.position.create.mock.calls[0][0];
+    expect(createCall.data.custodyOf).toBeNull();
+  });
+
+  it('accepts null custodyOf value', async () => {
+    const asset = mockAsset({ currentPriceUsd: 60000 });
+    mockPrisma.asset.findUnique.mockResolvedValue(asset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.create.mockResolvedValue(mockPosition({ custodyOf: null }));
+
+    const res = await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'asset-1', quantity: 1, avgCostUsd: 50000, custodyOf: null });
+
+    expect(res.status).toBe(201);
+    const createCall = mockPrisma.position.create.mock.calls[0][0];
+    expect(createCall.data.custodyOf).toBeNull();
+  });
+
+  it('filters custodyOf: null in category limit query', async () => {
+    const asset = mockAsset({ currentPriceUsd: 60000 });
+    mockPrisma.asset.findUnique.mockResolvedValue(asset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.create.mockResolvedValue(mockPosition());
+
+    await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'asset-1', quantity: 1, avgCostUsd: 50000 });
+
+    // Verify findMany was called with custodyOf: null filter
+    const findManyCall = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(findManyCall.where.custodyOf).toBeNull();
+  });
+
+  it('rejects when category is full (20 owned positions)', async () => {
+    const asset = mockAsset({ currentPriceUsd: 60000 });
+    mockPrisma.asset.findUnique.mockResolvedValue(asset);
+    const fullCategory = Array.from({ length: 20 }, (_, i) =>
+      mockPosition({ id: `pos-${i}` })
+    );
+    mockPrisma.position.findMany.mockResolvedValue(fullCategory);
+
+    const res = await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'asset-1', quantity: 1, avgCostUsd: 50000 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Maximum');
+  });
+
+  it('trims whitespace from custodyOf', async () => {
+    const asset = mockAsset({ currentPriceUsd: 60000 });
+    mockPrisma.asset.findUnique.mockResolvedValue(asset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.create.mockResolvedValue(mockPosition({ custodyOf: 'Mum' }));
+
+    const res = await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'asset-1', quantity: 1, avgCostUsd: 50000, custodyOf: '  Mum  ' });
+
+    expect(res.status).toBe(201);
+    const createCall = mockPrisma.position.create.mock.calls[0][0];
+    expect(createCall.data.custodyOf).toBe('Mum');
+  });
+});
+
 describe('DELETE /api/positions/:id', () => {
   it('returns 204 on success', async () => {
     mockPrisma.position.delete.mockResolvedValue({});
