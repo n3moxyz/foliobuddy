@@ -966,6 +966,17 @@ Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGec
 - **Keep deployment docs accurate.** When you switch hosting providers, update FORET.md immediately. Stale docs waste hours.
 - **DigitalOcean cloud firewall is separate from ufw.** Both must allow a port for external access. Use `doctl compute firewall add-rules` for the cloud firewall.
 
+### Lesson 21: Duplicated UI Blocks Hide Bugs and Drift
+
+**The problem:** The custody checkbox UI in `PositionForm.tsx` was copy-pasted for create mode and edit mode (~80 lines each). They differed only in `id` attribute and a description paragraph. Any future change would need to be applied in two places — a classic maintenance trap.
+
+**The fix:** Extracted a `CustodyCheckbox` component with a `showDescription` prop. Both modes now use the same component. During the extraction, we also found:
+1. **Memo staleness** — `custodyNameOptions` read from localStorage inside `useMemo` but only depended on `existingCustodyNames` from props. A freshly saved name wouldn't appear in the dropdown until React Query refetched positions. Fixed with a `custodyNamesVersion` state counter.
+2. **Edit-mode custody clearing bug** — unchecking custody in edit mode sent `custodyOf: undefined`, which Prisma silently skipped (leaving custody intact). Fixed by sending `''` (empty string) which the backend converts to `null`.
+3. **Schema inconsistency** — `createPositionSchema` used `z.string().optional()` while `bulkImportPositionSchema` used `z.string().nullable().optional()`. Aligned to nullable for both.
+
+**Key lesson:** When you find duplicated UI, extract it immediately. The extraction process itself often reveals subtle bugs hiding in the copy-paste divergence.
+
 ---
 
 ## Best Practices That Paid Off
@@ -1344,7 +1355,7 @@ const queryClient = new QueryClient({
 Before making the app public:
 - [x] **Add Sentry DSNs** - Added `SENTRY_DSN` to Coolify (backend) and `VITE_SENTRY_DSN` to Vercel (frontend), both redeployed
 - [x] **Migrate off Railway** - Backend now runs on Coolify/DigitalOcean (Railway trial expired)
-- [ ] **Set up auto-deploy** - Add `COOLIFY_API_TOKEN` GitHub secret to enable `deploy-backend.yml` workflow
+- [ ] **Set up auto-deploy** - Add `COOLIFY_API_TOKEN`, `COOLIFY_URL`, and `COOLIFY_APP_UUID` GitHub secrets to enable `deploy-backend.yml` workflow (IP/UUID moved to secrets to avoid leaking API token over plaintext HTTP)
 
 ---
 
@@ -1369,7 +1380,7 @@ Recently completed:
 - [x] Dark mode with system preference detection
 - [x] Keyboard shortcuts for power users
 - [x] Sentry error tracking for production monitoring (frontend + backend)
-- [x] Integration tests for route handlers (positions, trades, snapshots — 17 tests)
+- [x] Integration tests for route handlers (positions, trades, snapshots — 23 tests incl. 6 custody-specific)
 - [x] Local Postgres via Docker with production data sync script
 - [x] CSV export buttons on Portfolio and Trades pages
 - [x] Responsive mobile design (iOS HIG-inspired) with column toggle, touch targets, overflow menus
