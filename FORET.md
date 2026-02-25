@@ -1355,7 +1355,7 @@ const queryClient = new QueryClient({
 Before making the app public:
 - [x] **Add Sentry DSNs** - Added `SENTRY_DSN` to Coolify (backend) and `VITE_SENTRY_DSN` to Vercel (frontend), both redeployed
 - [x] **Migrate off Railway** - Backend now runs on Coolify/DigitalOcean (Railway trial expired)
-- [ ] **Set up auto-deploy** - Add `COOLIFY_API_TOKEN`, `COOLIFY_URL`, and `COOLIFY_APP_UUID` GitHub secrets to enable `deploy-backend.yml` workflow (IP/UUID moved to secrets to avoid leaking API token over plaintext HTTP)
+- [x] **Set up auto-deploy** - Added `COOLIFY_API_TOKEN`, `COOLIFY_URL`, and `COOLIFY_APP_UUID` GitHub secrets; `deploy-backend.yml` triggers on push to `packages/backend/**`
 
 ---
 
