@@ -240,6 +240,7 @@ router.post('/', async (req, res, next) => {
     const categoryPositions = await prisma.position.findMany({
       where: {
         userId: req.userId!,
+        custodyOf: null,
         asset: {
           category: isStablecoin
             ? { in: ['STABLECOIN', 'CASH'] }

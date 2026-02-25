@@ -1,0 +1,23 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/backend/**'
+      - 'prisma/**'
+
+jobs:
+  deploy:
+    name: Deploy to Coolify
+    runs-on: ubuntu-latest
+    needs: []
+
+    steps:
+      - name: Trigger Coolify Deploy
+        run: |
+          curl -s -X POST \
+            "http://178.128.88.81:8000/api/v1/applications/sg0cow84o4go0kck0gggowwg/deploy" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"force": true}'
