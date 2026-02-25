@@ -945,6 +945,27 @@ Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGec
 
 **Key lesson:** When developing features that require database schema changes, always verify your frontend is actually hitting the local backend (which has the migration), not production. The "frontend-only dev" mode (pointing at prod) is great for UI work but will silently swallow new fields that don't exist in the production schema yet.
 
+### Lesson 20: Coolify Deploy ≠ Restart, and Never Manually ALTER Before Migrate
+
+**The bug:** After migrating from Railway to Coolify, new backend features weren't appearing on the live site. The `custodyOf` field was sent by the frontend but the backend ignored it — positions always landed in the normal Crypto/Stables sections.
+
+**The investigation (multi-layered):**
+1. **Railway was dead** — the free trial had expired, returning 502. But the backend was alive on Coolify via sslip.io. FORET.md still said Railway.
+2. **The container was 9 days old** — built from commit `1393d3c`, before the custody feature existed. Coolify "Redeploy" was doing a **restart** (same old image), not a **deploy** (rebuild from source).
+3. **Manual ALTER TABLE backfired** — to speed things up, we ran `ALTER TABLE "Position" ADD COLUMN "custodyOf" TEXT` directly on the database. The column was added, but when Coolify finally did a real deploy, `prisma migrate deploy` found the column already existed and marked the migration as **failed**. This blocked the container from starting entirely (P3009 error).
+4. **The container crash loop** — every restart attempt ran `prisma migrate deploy`, hit the failed migration, and exited. The site showed "Bad Gateway".
+
+**The fix:**
+1. Marked the failed migration as applied: `UPDATE _prisma_migrations SET finished_at = now(), logs = NULL WHERE migration_name = '...' AND finished_at IS NULL`
+2. Triggered a fresh deploy in Coolify (not restart)
+3. Container started cleanly, Prisma client included `custodyOf`, feature worked
+
+**Key lessons:**
+- **Coolify Restart ≠ Deploy.** Restart reuses the old Docker image. Deploy rebuilds from source. Always use Deploy for code changes.
+- **Never manually ALTER a column that has a pending Prisma migration.** If you must, also mark the migration as applied in `_prisma_migrations`, or use `IF NOT EXISTS` in the migration SQL.
+- **Keep deployment docs accurate.** When you switch hosting providers, update FORET.md immediately. Stale docs waste hours.
+- **DigitalOcean cloud firewall is separate from ufw.** Both must allow a port for external access. Use `doctl compute firewall add-rules` for the cloud firewall.
+
 ---
 
 ## Best Practices That Paid Off
@@ -1039,68 +1060,59 @@ throw new AppError(
 
 ---
 
-## Deployment: Railway + Vercel
+## Deployment: Coolify + Vercel
 
-### Backend → Railway
+### Backend → Coolify (DigitalOcean)
 
-```json
-// railway.json
-{
-  "build": { "builder": "NIXPACKS" },
-  "deploy": {
-    "startCommand": "npx prisma db push && npm run start",
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
-  }
-}
-```
+The backend runs as a Docker container on the same DigitalOcean droplet as the database, managed by Coolify:
 
-**Why `prisma db push` instead of `prisma migrate deploy`?**
-We use `db push` because it syncs the schema directly without requiring migration files. This is simpler for a personal project where we're the only developer. The tradeoff: no migration history, but also no migration conflicts.
+- **Droplet:** 178.128.88.81 (Ubuntu 24.04)
+- **Coolify dashboard:** `http://178.128.88.81:8000`
+- **App UUID:** `sg0cow84o4go0kck0gggowwg`
+- **Backend URL:** `http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io` (via Traefik)
+- **Port:** 3001 internal
+- **Dockerfile:** `packages/backend/Dockerfile` (multi-stage build, node:20-alpine)
+- **Startup command:** `npx prisma migrate deploy && node dist/index.js`
 
-Railway provides:
-- Manual deploy via `railway up --service empowering-curiosity`
-- Environment variables management
-- Health checks and restart policies
+**Why Coolify instead of Railway?** Railway free trial expired. Coolify runs on the same $6/month DO droplet as the database — both backend and DB on one server.
+
+**Deploying backend changes:** Currently manual — log into Coolify dashboard and click Deploy. A GitHub Actions workflow (`deploy-backend.yml`) is set up but needs a `COOLIFY_API_TOKEN` secret to work (TODO).
+
+**Important:** Coolify "Restart" ≠ "Deploy". Restart reuses the old image. Deploy rebuilds from source (pulls latest code, runs Dockerfile, applies migrations).
 
 ### Database → DigitalOcean/Coolify (Self-Hosted Postgres)
 
-The database runs as a Docker container on a DigitalOcean droplet managed by Coolify:
-- **Droplet:** 178.128.88.81 (Ubuntu 24.04)
-- **Coolify:** One-click Postgres 17 deployment with persistent volume
+The database runs as a Docker container on the same droplet:
 - **Container:** `ykgckwckk8gc8kowwkgg4cc0` (postgres:17-alpine)
+- **Credentials:** user `pa_user`, database `pa_portfolio`
 - **Port:** 5432 exposed externally, secured by DO firewall
-- **Firewall:** `pa-portfolio` — allows SSH (22), HTTP (80), HTTPS (443), Postgres (5432)
+- **Firewall:** `pa-portfolio` — allows SSH (22), HTTP (80), HTTPS (443), Postgres (5432), Coolify dashboard (8000)
 
 **Why self-hosted instead of managed Postgres?**
-We originally used Railway's built-in Postgres, but wanted more control and cost savings. Coolify makes self-hosting almost as easy as managed—it handles Docker, persistent volumes, and can host multiple databases on one $6/month droplet. Future projects (like poker-coach) can add their own Postgres service on the same droplet.
+We originally used Railway's built-in Postgres, but wanted more control and cost savings. Coolify makes self-hosting almost as easy as managed—it handles Docker, persistent volumes, and can host multiple databases on one $6/month droplet.
 
 **Current production URLs:**
-- Backend: `https://empowering-curiosity-production-9eff.up.railway.app`
-- Health check: `/api/health` returns `{"status":"ok"}`
+- Backend: `http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io`
+- Health check: `/health` returns `{"status":"ok"}`
 
 ### Frontend → Vercel
 
 ```json
-// vercel.json
+// vercel.json (root)
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://empowering-curiosity-production-9eff.up.railway.app/api/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/:path*", "destination": "http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io/api/:path*" }
   ]
 }
 ```
 
-**The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Railway backend. This avoids CORS issues and keeps the backend URL hidden from the client.
+**The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Coolify backend via sslip.io. This avoids CORS issues and keeps the backend URL hidden from the client.
 
 **Current production URL:**
 - Frontend: `https://pa-port.vercel.app`
 
 Vercel provides:
-- Edge deployment
+- Auto-deploy on push to main (frontend only)
 - Preview deployments for PRs
 - Automatic HTTPS
 - SPA routing (all paths → index.html)
@@ -1330,7 +1342,9 @@ const queryClient = new QueryClient({
 ## Pre-Launch Checklist
 
 Before making the app public:
-- [x] **Add Sentry DSNs** - Added `SENTRY_DSN` to Railway (backend) and `VITE_SENTRY_DSN` to Vercel (frontend), both redeployed
+- [x] **Add Sentry DSNs** - Added `SENTRY_DSN` to Coolify (backend) and `VITE_SENTRY_DSN` to Vercel (frontend), both redeployed
+- [x] **Migrate off Railway** - Backend now runs on Coolify/DigitalOcean (Railway trial expired)
+- [ ] **Set up auto-deploy** - Add `COOLIFY_API_TOKEN` GitHub secret to enable `deploy-backend.yml` workflow
 
 ---
 
@@ -1346,6 +1360,7 @@ Recently completed:
 - [x] Add optimistic deletes, pagination hooks, lazy-loaded routes
 - [x] Add Prettier + ESLint config, GitHub Actions CI
 - [x] Database migration from Railway Postgres to self-hosted Coolify/DigitalOcean
+- [x] Backend migration from Railway to Coolify (Docker container on same DO droplet)
 - [x] Copy/paste for trades with bulk import API endpoint
 - [x] Edit/delete action buttons per trade row
 - [x] Unified copy format across Portfolio, Trades, and History tabs
