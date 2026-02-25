@@ -180,13 +180,14 @@ Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `cus
 **Backend behavior:**
 - `portfolioService` filters `custodyOf: null` on all queries (summary, allocation, performers) — custody positions excluded from net worth, P&L, and exposure
 - `snapshotService` excludes custody positions from snapshots
-- `positions.ts` routes accept `custodyOf` in create/update/bulk Zod schemas, converting empty strings to null
+- `positions.ts` routes accept `custodyOf` in create/update/bulk Zod schemas (`z.string().nullable().optional()`), converting empty strings to null
 
 **Frontend behavior:**
 - `Portfolio.tsx` splits positions into `ownedPositions` (sections) and `custodyPositions` (separate purple "Held for Others" `CollapsibleCard`, collapsed by default)
 - Custody section reuses `PositionTable` for identical columns/sorting as Crypto and Stables
-- `PositionForm.tsx` has a custody checkbox above the mode tabs (applies to both Add and Import). When checked, shows a `<Select>` dropdown with existing names + "Add new person" option
-- Custody names persisted to `localStorage` (`pa-portfolio-custody-names`) and merged with names from existing positions
+- `PositionForm.tsx` uses `CustodyCheckbox` component above the mode tabs (applies to Add, Import, and Edit). When checked, shows a `<Select>` dropdown with existing names + "Add new person" option. Edit mode sends empty string (not undefined) when unchecking custody to properly clear the field
+- `CustodyCheckbox.tsx` — extracted shared UI component for custody toggle with name selection, used by both create and edit modes. Takes `showDescription` prop (true for create, false for edit)
+- Custody names persisted to `localStorage` (`pa-portfolio-custody-names`) and merged with names from existing positions. Memo recomputes via version counter after saving new names
 - `PositionImportTab.tsx` shows a purple banner when importing as custody; all imported positions get `custodyOf` stamped
 - `PositionTable.tsx` includes `custodyOf` in clipboard JSON format when set
 
