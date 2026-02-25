@@ -27,6 +27,7 @@ export function mockPosition(overrides: Record<string, unknown> = {}) {
     storageType: 'CEX',
     storageLocation: 'Binance',
     notes: null,
+    custodyOf: null,
     marketValueUsd: 75000,
     unrealizedPnL: 30000,
     unrealizedPnLPct: 66.67,

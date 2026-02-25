@@ -15,10 +15,10 @@ jobs:
       - name: Trigger Coolify Deploy
         run: |
           response=$(curl -s -w "\n%{http_code}" -X POST \
-            "http://178.128.88.81:8000/api/v1/deploy" \
+            "${{ secrets.COOLIFY_URL }}/api/v1/deploy" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"uuid":"sg0cow84o4go0kck0gggowwg","force":false}')
+            -d '{"uuid":"${{ secrets.COOLIFY_APP_UUID }}","force":false}')
           http_code=$(echo "$response" | tail -1)
           body=$(echo "$response" | head -n -1)
           echo "$body"

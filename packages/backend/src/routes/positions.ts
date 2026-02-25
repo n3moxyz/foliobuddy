@@ -16,7 +16,7 @@ const createPositionSchema = z.object({
   storageType: z.enum(['WALLET', 'CEX', 'DEFI', 'BANK']).default('WALLET'),
   storageLocation: z.string().optional(),
   notes: z.string().optional(),
-  custodyOf: z.string().optional(),
+  custodyOf: z.string().nullable().optional(),
 });
 
 const updatePositionSchema = createPositionSchema.partial();
