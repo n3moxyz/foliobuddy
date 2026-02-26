@@ -182,8 +182,8 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex items-center gap-2">
-            {/* Donut Chart */}
-            <div className="w-[140px] h-[140px] flex-shrink-0">
+            {/* Donut Chart with Center Label */}
+            <div className="w-[140px] h-[140px] flex-shrink-0 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -208,6 +208,16 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
+              {/* Center label — top visible item */}
+              {visibleData.length > 0 && (() => {
+                const top = visibleData.reduce((a, b) => a.value > b.value ? a : b);
+                return (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-lg font-bold leading-tight">{Math.round(top.displayPercentage)}%</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">{top.name}</span>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Side Legend */}
