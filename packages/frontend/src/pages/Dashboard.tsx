@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { usePortfolioSummary, usePositions, useTopPerformers, useWorstPerformers, useInvestors } from '@/hooks/usePortfolio';
+import { usePortfolioSummary, usePositions, useTopPerformers, useWorstPerformers, useInvestors, usePerformanceHistory } from '@/hooks/usePortfolio';
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatCurrency, formatPercent, getPnLColorClass, formatDateTime } from '@/lib/utils';
@@ -29,6 +29,13 @@ export default function Dashboard() {
   const { data: topPerformers } = useTopPerformers(5);
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: investors } = useInvestors();
+  const { data: perfHistory30d } = usePerformanceHistory({ days: 30 });
+
+  // Value from 30 days ago for period comparison
+  const valueUsd30dAgo = useMemo(() => {
+    if (!perfHistory30d || perfHistory30d.length === 0) return undefined;
+    return perfHistory30d[0].totalValueUsd;
+  }, [perfHistory30d]);
 
   // Investor filter state - lifted to Dashboard level
   const [selectedInvestors, setSelectedInvestors] = useState<string[]>([]);
@@ -163,7 +170,7 @@ export default function Dashboard() {
       </div>
 
       {/* Net Worth Card */}
-      {summary && <NetWorthCard summary={summary} currency={currency} stakeMultiplier={stakeMultiplier} />}
+      {summary && <NetWorthCard summary={summary} currency={currency} stakeMultiplier={stakeMultiplier} valueUsd30dAgo={valueUsd30dAgo} />}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-4 gap-2 sm:gap-4">
