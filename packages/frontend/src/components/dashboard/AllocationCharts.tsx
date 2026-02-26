@@ -153,7 +153,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
             {formatCurrency(data.value, 'USD', 0)}
           </p>
           <p className="text-sm text-muted-foreground">
-            {formatNumber(data.percentage, 1)}%
+            {formatNumber(data.displayPercentage ?? data.percentage, 1)}%
           </p>
         </div>
       );
@@ -168,7 +168,12 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     setHidden: React.Dispatch<React.SetStateAction<Set<string>>>,
     title: string
   ) => {
-    const visibleData = data.filter(d => !hidden.has(d.name));
+    const filteredData = data.filter(d => !hidden.has(d.name));
+    const visibleTotal = filteredData.reduce((sum, d) => sum + d.value, 0);
+    const visibleData = filteredData.map(d => ({
+      ...d,
+      displayPercentage: visibleTotal > 0 ? (d.value / visibleTotal) * 100 : 0,
+    }));
 
     return (
       <Card className="flex-1">
@@ -176,56 +181,64 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
           <CardTitle className="text-base">{title}</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie
-                data={visibleData}
-                cx="50%"
-                cy="50%"
-                innerRadius={40}
-                outerRadius={70}
-                paddingAngle={2}
-                dataKey="value"
-              >
-                {visibleData.map((entry) => {
-                  const originalIndex = data.findIndex(d => d.name === entry.name);
-                  return (
-                    <Cell
-                      key={`cell-${entry.name}`}
-                      fill={colors[originalIndex % colors.length]}
-                    />
-                  );
-                })}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="flex items-center gap-2">
+            {/* Donut Chart */}
+            <div className="w-[140px] h-[140px] flex-shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={visibleData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={35}
+                    outerRadius={60}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {visibleData.map((entry) => {
+                      const originalIndex = data.findIndex(d => d.name === entry.name);
+                      return (
+                        <Cell
+                          key={`cell-${entry.name}`}
+                          fill={colors[originalIndex % colors.length]}
+                        />
+                      );
+                    })}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
 
-          {/* Clickable Legend */}
-          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
-            {data.map((item, index) => {
-              const isHidden = hidden.has(item.name);
-              return (
-                <button
-                  key={item.name}
-                  className={`flex items-center gap-1.5 text-xs transition-all hover:opacity-80 ${
-                    isHidden ? 'opacity-40 line-through text-muted-foreground' : ''
-                  }`}
-                  onClick={() => toggleLegendItem(item.name, hidden, setHidden)}
-                >
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ${
-                      isHidden ? 'opacity-40' : ''
+            {/* Side Legend */}
+            <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+              {data.map((item, index) => {
+                const isHidden = hidden.has(item.name);
+                const displayPct = isHidden
+                  ? item.percentage
+                  : visibleTotal > 0 ? (item.value / visibleTotal) * 100 : 0;
+                return (
+                  <button
+                    key={item.name}
+                    className={`flex items-center gap-2 text-xs transition-all hover:opacity-80 ${
+                      isHidden ? 'opacity-40 line-through text-muted-foreground' : ''
                     }`}
-                    style={{ backgroundColor: colors[index % colors.length] }}
-                  />
-                  <span className="truncate max-w-[60px]">{item.name}</span>
-                  <span className={isHidden ? '' : 'text-muted-foreground'}>
-                    {formatNumber(item.percentage, 0)}%
-                  </span>
-                </button>
-              );
-            })}
+                    onClick={() => toggleLegendItem(item.name, hidden, setHidden)}
+                  >
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ${
+                        isHidden ? 'opacity-40' : ''
+                      }`}
+                      style={{ backgroundColor: colors[index % colors.length] }}
+                    />
+                    <span className="truncate">{item.name}</span>
+                    <span className={`ml-auto font-medium tabular-nums ${isHidden ? '' : 'text-muted-foreground'}`}>
+                      {formatNumber(displayPct, 0)}%
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </CardContent>
       </Card>
