@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -242,7 +242,13 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
               </div>
             )}
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData} margin={{ top: 5, right: 55, left: 20, bottom: 5 }}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 55, left: 20, bottom: 5 }}>
+              <defs>
+                <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 12 }}
@@ -285,11 +291,12 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
               {chartData.length > 0 && (
                 <ReferenceLine y={chartData[0].value} stroke="currentColor" strokeOpacity={0.15} strokeDasharray="4 4" />
               )}
-              <Line
+              <Area
                 type="monotone"
                 dataKey="value"
                 stroke="hsl(var(--primary))"
                 strokeWidth={2}
+                fill="url(#portfolioGradient)"
                 dot={(props: Record<string, unknown>) => {
                   const { cx, cy, index } = props as { cx: number; cy: number; index: number };
                   if (index !== chartData.length - 1) return <g key={`dot-${index}`} />;
@@ -304,7 +311,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
                 }}
                 activeDot={{ r: 4, strokeWidth: 0 }}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
           </div>
         )}

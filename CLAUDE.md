@@ -116,7 +116,7 @@ npm run build            # Production build
 ```
 Vercel (Frontend: React + Vite)
     ↓ HTTP + Clerk JWT
-Railway (Backend: Express.js)
+Coolify/DigitalOcean (Backend: Express.js)
     ↓ Prisma ORM
 DigitalOcean/Coolify (Database: PostgreSQL 17)
 
@@ -220,15 +220,15 @@ VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 ```
 
 ### Frontend-Only Development (No Docker)
-For testing frontend changes without running Docker or the local backend, point `VITE_API_URL` at the production Railway backend:
+For testing frontend changes without running Docker or the local backend, point `VITE_API_URL` at the production Coolify backend:
 ```
-VITE_API_URL=https://empowering-curiosity-production-9eff.up.railway.app/api
+VITE_API_URL=http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io/api
 ```
-`http://localhost:4000` is already in Railway's `ALLOWED_ORIGINS`, so CORS works. Remember to switch back to `http://localhost:4001/api` when doing backend work.
+`http://localhost:4000` is already in Coolify's `ALLOWED_ORIGINS`, so CORS works. Remember to switch back to `http://localhost:4001/api` when doing backend work.
 
 ## Deployment
-- **Backend**: Railway (Express.js API server)
-- **Frontend**: Vercel (rewrites API calls to Railway)
+- **Backend**: Coolify on DigitalOcean (Express.js API server)
+- **Frontend**: Vercel (rewrites API calls to Coolify backend)
 - **Database**: Self-hosted PostgreSQL on DigitalOcean via Coolify (178.128.88.81:5432)
 
 ### Copy/Paste JSON Import Pattern
@@ -250,7 +250,7 @@ All data tables (Portfolio, Trades, History) follow the same copy/import pattern
 **Prerequisites:** Docker Desktop installed.
 
 **One-time setup:**
-1. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env` (get from Railway env vars or Coolify dashboard)
+1. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env` (get from Coolify dashboard)
 2. Verify `DATABASE_URL` in `.env` points to `postgresql://dev:dev@localhost:5433/pa_portfolio`
 
 **Daily workflow:**
