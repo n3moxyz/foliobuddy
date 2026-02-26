@@ -193,7 +193,7 @@ async function startServer() {
     }
 
     // Start scheduled jobs only in production
-    // In dev, the production backend (Railway) handles price refresh, snapshots, and crons
+    // In dev, the production backend (Coolify) handles price refresh, snapshots, and crons
     // against the shared DB — running them locally would duplicate work and risk race conditions
     const isProd = process.env.NODE_ENV === 'production';
     if (isProd) {

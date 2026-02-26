@@ -37,11 +37,10 @@ export function useWebSocket(): UseWebSocketReturn {
         return;
       }
 
-      // In production, connect directly to Railway backend (Vercel doesn't proxy WebSockets)
+      // In production, connect directly to Coolify backend (Vercel doesn't proxy WebSockets)
       // In development, connect to local backend
-      // Use VITE_WS_BACKEND_URL env var for production backend, fallback to default Railway URL
-      const RAILWAY_BACKEND = import.meta.env.VITE_WS_BACKEND_URL || 'https://empowering-curiosity-production-9eff.up.railway.app';
-      const apiBase = import.meta.env.DEV ? (import.meta.env.VITE_WS_BACKEND_URL || 'http://localhost:4001') : RAILWAY_BACKEND;
+      const prodBackend = import.meta.env.VITE_WS_BACKEND_URL || 'http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io';
+      const apiBase = import.meta.env.DEV ? (import.meta.env.VITE_WS_BACKEND_URL || 'http://localhost:4001') : prodBackend;
 
       setStatus('connecting');
 
