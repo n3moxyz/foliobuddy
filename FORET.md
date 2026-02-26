@@ -1390,7 +1390,7 @@ Recently completed:
 - [x] Trade Analytics + P&L by Ticker cards collapsible by default (using CollapsibleCard)
 - [x] Hover tooltips with formula definitions on trade stat metrics
 - [x] Trade form defaults: entry date = 5 days ago, exit date = today (optimized for logging closed trades)
-- [x] Frontend-only dev mode: point VITE_API_URL at prod Railway backend (localhost:4000 in ALLOWED_ORIGINS)
+- [x] Frontend-only dev mode: point VITE_API_URL at prod Coolify backend (localhost:4000 in ALLOWED_ORIGINS)
 - [x] Benchmark chart fix: BTC/ETH lines now normalize from portfolio start date, with binary search and dynamic thresholds
 - [x] Chart UI polish: 0% reference line on benchmark chart, starting value reference on portfolio chart, end-of-line value labels
 - [x] Chart loading indicators: centered "Loading..." overlay when switching time periods (uses `isFetching` for refetch detection)

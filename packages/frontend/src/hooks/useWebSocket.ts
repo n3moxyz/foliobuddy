@@ -37,11 +37,10 @@ export function useWebSocket(): UseWebSocketReturn {
         return;
       }
 
-      // In production, connect directly to Railway backend (Vercel doesn't proxy WebSockets)
+      // In production, connect directly to Coolify backend (Vercel doesn't proxy WebSockets)
       // In development, connect to local backend
-      // Use VITE_WS_BACKEND_URL env var for production backend, fallback to default Railway URL
-      const RAILWAY_BACKEND = import.meta.env.VITE_WS_BACKEND_URL || 'https://old-backend.example.com';
-      const apiBase = import.meta.env.DEV ? (import.meta.env.VITE_WS_BACKEND_URL || 'http://localhost:4001') : RAILWAY_BACKEND;
+      const prodBackend = import.meta.env.VITE_WS_BACKEND_URL || 'http://foliobuddy-backend.example.com';
+      const apiBase = import.meta.env.DEV ? (import.meta.env.VITE_WS_BACKEND_URL || 'http://localhost:4001') : prodBackend;
 
       setStatus('connecting');
 
