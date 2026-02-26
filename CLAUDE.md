@@ -192,12 +192,15 @@ Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `cus
 - `PositionTable.tsx` includes `custodyOf` in clipboard JSON format when set
 
 ### Dashboard Charts
-- **Portfolio $ Value**: Line chart with time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
+- **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
 - **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
-- **Allocation pie charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with maximally distinct hues per slice. Colors avoid benchmark line colors. Clickable legends to hide/show slices.
+- **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Center label shows top item's % and name. Clickable legends toggle slices — percentages recalculate for visible items (both legend and tooltip). Maximally distinct hues per slice, avoiding benchmark line colors.
 
 ### Dashboard Stat Cards
-4-column compact grid: Net Worth, YTD P&L (with inline percentage), Live Positions (links to /portfolio), Closed Trades (links to /trades).
+4-column compact grid: YTD Start, YTD P&L (with inline percentage), Live Positions (links to /portfolio), Closed Trades (links to /trades).
+
+### Net Worth Card
+Hero card with gradient background (`from-primary/15 via-primary/8 to-background`). Shows net worth, YTD trend arrow, 3-column grid: YTD P&L, YTD Start, vs 30D ago (period-over-period comparison from `usePerformanceHistory`). Alternate currency value at bottom.
 
 ## Environment Variables
 

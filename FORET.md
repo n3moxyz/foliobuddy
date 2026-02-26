@@ -1399,6 +1399,7 @@ Recently completed:
 - [x] Configurable rate limiting: `RATE_LIMIT_MAX` env var (10000 for dev, 200 default for prod)
 - [x] Pie chart color diversity: maximally distinct hues per chart slice, avoiding benchmark line colors
 - [x] Custody positions: "Held for Others" section — track crypto held for other people, excluded from net worth/P&L/snapshots, checkbox+dropdown UX with localStorage name persistence
+- [x] Dashboard UI refresh (inspired by Variant community references): gradient fill on portfolio value chart (LineChart → AreaChart), allocation charts reworked to donut + side legend layout with center labels, clickable legend percentages recalculate for visible items, Net Worth card gradient upgrade, "vs 30D ago" period comparison on Net Worth card
 
 ---
 
