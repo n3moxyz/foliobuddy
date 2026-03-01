@@ -17,7 +17,7 @@
 > Keep the engaging, conversational tone. Use analogies where helpful. This is a learning document, not dry documentation.
 
 ## Project Overview
-Personal portfolio dashboard tracking positions and net worth across crypto, equities, NFTs, and alternative investments. Multi-user support with investor stake tracking.
+**FolioBuddy** — personal portfolio dashboard tracking positions and net worth across crypto, equities, NFTs, and alternative investments. Multi-user support with investor stake tracking.
 
 ## Tech Stack
 
@@ -271,6 +271,12 @@ npm run dev            # Start dev servers
 ```
 
 **How it works:** Local backend connects to local Postgres (your sandbox). Production data is pulled on-demand via `db:sync`. Local changes do NOT affect production. Run `db:sync` anytime you want fresh data.
+
+### Branding
+- **App name**: FolioBuddy (formerly "PA Portfolio")
+- **Logo**: Growth-chart SVG icon (trending line with arrow). Favicon at `public/logo.svg` (indigo→purple gradient). Sidebar icon uses inline SVG with `bg-primary`/`text-primary-foreground` for theme adaptivity.
+- **Package scope**: `@foliobuddy/*` (root: `foliobuddy`)
+- **Infrastructure names unchanged**: database `pa_portfolio`, DO Spaces bucket `pa-portfolio-backups`, repo name `PA-portfolio-dash` — renaming these would require migration
 
 ## Gotchas & Notes
 - Always define `onDelete: Cascade` in Prisma relations to avoid FK errors

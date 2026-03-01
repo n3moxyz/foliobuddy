@@ -1,4 +1,4 @@
-# FOR[ET].md - PA Portfolio Dashboard
+# FOR[ET].md - FolioBuddy
 
 *Building a personal finance command center from scratch*
 
@@ -1420,6 +1420,7 @@ Recently completed:
 - [x] Pie chart color diversity: maximally distinct hues per chart slice, avoiding benchmark line colors
 - [x] Custody positions: "Held for Others" section — track crypto held for other people, excluded from net worth/P&L/snapshots, checkbox+dropdown UX with localStorage name persistence
 - [x] Dashboard UI refresh (inspired by Variant community references): gradient fill on portfolio value chart (LineChart → AreaChart), allocation charts reworked to donut + side legend layout with center labels, clickable legend percentages recalculate for visible items, Net Worth card gradient upgrade, "vs 30D ago" period comparison on Net Worth card
+- [x] Rebrand from "PA Portfolio" to "FolioBuddy": new growth-chart SVG logo (favicon + sidebar icon), updated all user-facing text, package scope → `@foliobuddy/*`. Infrastructure names (DB, bucket, repo) unchanged.
 
 ---
 
@@ -1435,4 +1436,4 @@ Your portfolio dashboard doesn't need to be perfect. It needs to be *yours*.
 
 ---
 
-*Built with TypeScript, Tailwind, and too much coffee.*
+*Built with TypeScript, Tailwind, and too much coffee. Now called FolioBuddy.*
