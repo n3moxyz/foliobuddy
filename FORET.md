@@ -725,7 +725,7 @@ In production, `VITE_API_URL` was undefined (intentionally, per Lesson 7), so it
 const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
 ```
 
-In production, this connects to `https://pa-port.vercel.app`, and Vercel's rewrites route `/socket.io/*` to the Railway backend.
+In production, this connects to `https://foliobuddy.xyz`, and Vercel's rewrites route `/socket.io/*` to the Coolify backend.
 
 ### Lesson 9: Infinite Spinner on Import Errors
 
@@ -1080,14 +1080,14 @@ The backend runs as a Docker container on the same DigitalOcean droplet as the d
 - **Droplet:** 203.0.113.10 (Ubuntu 24.04)
 - **Coolify dashboard:** `http://private-admin-host:8000`
 - **App UUID:** `app-placeholder`
-- **Backend URL:** `http://foliobuddy-backend.example.com` (via Traefik)
+- **Backend URL:** `https://api.foliobuddy.xyz` (via Traefik)
 - **Port:** 3001 internal
 - **Dockerfile:** `packages/backend/Dockerfile` (multi-stage build, node:20-alpine)
 - **Startup command:** `npx prisma migrate deploy && node dist/index.js`
 
 **Why Coolify instead of Railway?** Railway free trial expired. Coolify runs on the same $6/month DO droplet as the database — both backend and DB on one server.
 
-**Deploying backend changes:** Currently manual — log into Coolify dashboard and click Deploy. A GitHub Actions workflow (`deploy-backend.yml`) is set up but needs a `COOLIFY_API_TOKEN` secret to work (TODO).
+**Deploying backend changes:** GitHub Actions workflow (`deploy-backend.yml`) auto-deploys on push to main when backend files change. Triggers Coolify API to rebuild and deploy, then runs a health check to verify the new version is live.
 
 **Important:** Coolify "Restart" ≠ "Deploy". Restart reuses the old image. Deploy rebuilds from source (pulls latest code, runs Dockerfile, applies migrations).
 
@@ -1103,7 +1103,7 @@ The database runs as a Docker container on the same droplet:
 We originally used Railway's built-in Postgres, but wanted more control and cost savings. Coolify makes self-hosting almost as easy as managed—it handles Docker, persistent volumes, and can host multiple databases on one $6/month droplet.
 
 **Current production URLs:**
-- Backend: `http://foliobuddy-backend.example.com`
+- Backend: `https://api.foliobuddy.xyz`
 - Health check: `/health` returns `{"status":"ok"}`
 
 ### Frontend → Vercel
@@ -1112,15 +1112,15 @@ We originally used Railway's built-in Postgres, but wanted more control and cost
 // vercel.json (root)
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "http://foliobuddy-backend.example.com/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://api.foliobuddy.xyz/api/:path*" }
   ]
 }
 ```
 
-**The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Coolify backend via sslip.io. This avoids CORS issues and keeps the backend URL hidden from the client.
+**The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Coolify backend at `api.foliobuddy.xyz`. This avoids CORS issues and keeps the backend URL hidden from the client.
 
 **Current production URL:**
-- Frontend: `https://pa-port.vercel.app`
+- Frontend: `https://foliobuddy.xyz` (also accessible via `https://pa-port.vercel.app`)
 
 Vercel provides:
 - Auto-deploy on push to main (frontend only)

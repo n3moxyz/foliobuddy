@@ -26,3 +26,23 @@ jobs:
             echo "Deploy failed with status $http_code"
             exit 1
           fi
+
+      - name: Wait for Coolify rebuild
+        run: sleep 120
+
+      - name: Health check
+        run: |
+          BACKEND_URL="https://api.foliobuddy.xyz"
+          for i in 1 2 3 4 5; do
+            response=$(curl -s -w "\n%{http_code}" "${BACKEND_URL}/health")
+            http_code=$(echo "$response" | tail -1)
+            body=$(echo "$response" | head -n -1)
+            echo "Attempt $i: HTTP $http_code - $body"
+            if [ "$http_code" -eq 200 ]; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
