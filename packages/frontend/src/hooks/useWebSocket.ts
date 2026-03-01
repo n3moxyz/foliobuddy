@@ -39,7 +39,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
       // In production, connect directly to Coolify backend (Vercel doesn't proxy WebSockets)
       // In development, connect to local backend
-      const prodBackend = import.meta.env.VITE_WS_BACKEND_URL || 'http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io';
+      const prodBackend = import.meta.env.VITE_WS_BACKEND_URL || 'https://api.foliobuddy.xyz';
       const apiBase = import.meta.env.DEV ? (import.meta.env.VITE_WS_BACKEND_URL || 'http://localhost:4001') : prodBackend;
 
       setStatus('connecting');

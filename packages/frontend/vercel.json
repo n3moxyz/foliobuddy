@@ -3,8 +3,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io/api/:path*" },
-    { "source": "/socket.io/:path*", "destination": "http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io/socket.io/:path*" },
+    { "source": "/api/:path*", "destination": "https://api.foliobuddy.xyz/api/:path*" },
+    { "source": "/socket.io/:path*", "destination": "https://api.foliobuddy.xyz/socket.io/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

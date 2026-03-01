@@ -99,6 +99,11 @@ npm run db:local         # Start local Postgres (Docker, port 5433)
 npm run db:local:stop    # Stop local Postgres
 npm run db:sync          # Pull production data → local DB
 
+# Database Backups (run on DO droplet, not locally)
+# ./scripts/backup-db.sh daily|weekly|monthly  — dump, compress, upload to DO Spaces
+# ./scripts/restore-db.sh                      — list available backups
+# ./scripts/restore-db.sh <path>               — restore a specific backup
+
 # Backend (packages/backend/)
 npm run dev              # Start dev server (port 4001)
 npm run build            # Compile TypeScript
@@ -225,14 +230,16 @@ VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 ### Frontend-Only Development (No Docker)
 For testing frontend changes without running Docker or the local backend, point `VITE_API_URL` at the production Coolify backend:
 ```
-VITE_API_URL=http://sg0cow84o4go0kck0gggowwg.178.128.88.81.sslip.io/api
+VITE_API_URL=https://api.foliobuddy.xyz/api
 ```
 `http://localhost:4000` is already in Coolify's `ALLOWED_ORIGINS`, so CORS works. Remember to switch back to `http://localhost:4001/api` when doing backend work.
 
 ## Deployment
-- **Backend**: Coolify on DigitalOcean (Express.js API server)
-- **Frontend**: Vercel (rewrites API calls to Coolify backend)
+- **Backend**: Coolify on DigitalOcean — `https://api.foliobuddy.xyz` (HTTPS via Let's Encrypt/Traefik)
+- **Frontend**: Vercel — `https://foliobuddy.xyz` (rewrites API calls to backend)
 - **Database**: Self-hosted PostgreSQL on DigitalOcean via Coolify (178.128.88.81:5432)
+- **Auto-deploy**: Backend deploys via GitHub Actions on push to main (backend files). Frontend auto-deploys via Vercel.
+- **DB Backups**: Automated daily/weekly/monthly to DigitalOcean Spaces (`pa-portfolio-backups`). Retention: 7 daily, 4 weekly, 12 monthly.
 
 ### Copy/Paste JSON Import Pattern
 All data tables (Portfolio, Trades, History) follow the same copy/import pattern:
