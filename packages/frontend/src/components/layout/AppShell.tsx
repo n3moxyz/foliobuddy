@@ -99,9 +99,12 @@ export function AppShell({ children }: AppShellProps) {
         <div className="flex h-16 items-center justify-between px-6 border-b">
           <Link to="/" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">P</span>
+              <svg className="h-5 w-5 text-primary-foreground" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 15l4-5 3.5 2.5L17 5"/>
+                <path d="M13 5h4v4"/>
+              </svg>
             </div>
-            <span className="font-semibold text-lg">PA Portfolio</span>
+            <span className="font-semibold text-lg">FolioBuddy</span>
           </Link>
           <button
             className="lg:hidden"
@@ -148,7 +151,7 @@ export function AppShell({ children }: AppShellProps) {
         {/* Footer */}
         <div className="p-4 border-t">
           <p className="text-xs text-muted-foreground text-center">
-            PA Portfolio Dashboard v1.0
+            FolioBuddy v1.0
           </p>
         </div>
       </aside>

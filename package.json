@@ -1,5 +1,5 @@
 {
-  "name": "pa-portfolio-dash",
+  "name": "foliobuddy",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -7,11 +7,11 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "npm run dev --workspace=@pa-portfolio/backend",
-    "dev:frontend": "npm run dev --workspace=@pa-portfolio/frontend",
+    "dev:backend": "npm run dev --workspace=@foliobuddy/backend",
+    "dev:frontend": "npm run dev --workspace=@foliobuddy/frontend",
     "build": "npm run build --workspaces",
-    "db:migrate": "npm run db:migrate --workspace=@pa-portfolio/backend",
-    "db:seed": "npm run db:seed --workspace=@pa-portfolio/backend",
+    "db:migrate": "npm run db:migrate --workspace=@foliobuddy/backend",
+    "db:seed": "npm run db:seed --workspace=@foliobuddy/backend",
     "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,css}\"",
     "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,jsx,json,css}\"",
     "db:local": "docker compose up -d",

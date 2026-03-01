@@ -59,7 +59,7 @@ function App() {
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center space-y-6">
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold">PA Portfolio Dashboard</h1>
+              <h1 className="text-3xl font-bold">FolioBuddy</h1>
               <p className="text-muted-foreground">
                 Sign in to track your portfolio
               </p>
