@@ -1106,6 +1106,26 @@ We originally used Railway's built-in Postgres, but wanted more control and cost
 - Backend: `https://api.foliobuddy.xyz`
 - Health check: `/health` returns `{"status":"ok"}`
 
+### Database Backups → DigitalOcean Spaces
+
+Automated backups via `scripts/backup-db.sh` running as cron jobs on the droplet. Dumps are `pg_dump | gzip` piped through Docker, uploaded to DO Spaces.
+
+- **Bucket:** `pa-portfolio-backups` (SGP1, private)
+- **Scripts on server:** `/root/backup-db.sh`, `/root/restore-db.sh`
+- **Backup size:** ~4.5MB compressed
+- **Retention:** 7 daily, 4 weekly, 12 monthly (auto-pruned)
+
+**Cron schedule (UTC):**
+| Schedule | Type | Time |
+|----------|------|------|
+| Daily | `backup-db.sh daily` | 2:00 AM |
+| Weekly | `backup-db.sh weekly` | 3:00 AM Sundays |
+| Monthly | `backup-db.sh monthly` | 4:00 AM 1st of month |
+
+**Restoring:** Run `/root/restore-db.sh` on the server — with no args it lists available backups, with a path it downloads and restores (with confirmation prompt).
+
+**Monitoring:** Check `/var/log/db-backup.log` on the droplet for backup history and errors.
+
 ### Frontend → Vercel
 
 ```json
@@ -1120,7 +1140,7 @@ We originally used Railway's built-in Postgres, but wanted more control and cost
 **The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Coolify backend at `api.foliobuddy.xyz`. This avoids CORS issues and keeps the backend URL hidden from the client.
 
 **Current production URL:**
-- Frontend: `https://foliobuddy.xyz` (also accessible via `https://pa-port.vercel.app`)
+- Frontend: `https://foliobuddy.xyz`
 
 Vercel provides:
 - Auto-deploy on push to main (frontend only)
