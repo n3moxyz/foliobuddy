@@ -27,7 +27,7 @@ So I built it.
 This project uses a **monorepo** structure—two separate apps (frontend + backend) living in one repository. Think of it like a duplex: two independent living spaces sharing one lot.
 
 ```
-PA-portfolio-dash/
+foliobuddy/
 ├── packages/
 │   ├── backend/    ← Express.js API server
 │   │   ├── src/
