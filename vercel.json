@@ -8,13 +8,13 @@
   "redirects": [
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "pa-port.vercel.app" }],
+      "has": [{ "type": "host", "value": "foliobuddy.vercel.app" }],
       "destination": "https://foliobuddy.xyz/:path*",
       "permanent": true
     },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "pa-port-n3mos-projects.vercel.app" }],
+      "has": [{ "type": "host", "value": "foliobuddy-n3mos-projects.vercel.app" }],
       "destination": "https://foliobuddy.xyz/:path*",
       "permanent": true
     }
