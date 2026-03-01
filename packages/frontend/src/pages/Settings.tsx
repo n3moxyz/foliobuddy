@@ -274,7 +274,7 @@ export default function Settings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
-            <p><strong>PA Portfolio Dashboard</strong> v1.0.0</p>
+            <p><strong>FolioBuddy</strong> v1.0.0</p>
             <p className="text-muted-foreground">
               A portfolio tracking application for managing crypto investments,
               trade journaling, and multi-investor support.
