@@ -9,15 +9,21 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
-import { api, Snapshot, SnapshotPosition } from '@/lib/api';
-import { Bot, Clock, AlertTriangle, ChevronDown, ChevronRight, Copy, Check, Pencil, Trash2 } from 'lucide-react';
+import { api } from '@/lib/api';
+import type { Snapshot, SnapshotPosition } from '@/lib/types';
+import {
+  Bot,
+  Clock,
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Check,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 
 interface SnapshotTableProps {
   snapshots: Snapshot[];
@@ -65,7 +71,14 @@ function isBeforeSnapshotTime(): boolean {
   return utcHour < 13; // Before 1pm UTC = Before 9pm SGT
 }
 
-export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd, onEdit, onDelete }: SnapshotTableProps) {
+export function SnapshotTable({
+  snapshots,
+  isLoading,
+  displayValue,
+  liveValueUsd,
+  onEdit,
+  onDelete,
+}: SnapshotTableProps) {
   const [expandedSnapshots, setExpandedSnapshots] = useState<Set<string>>(new Set());
   const [loadingPositions, setLoadingPositions] = useState<Set<string>>(new Set());
   const [positionsCache, setPositionsCache] = useState<Record<string, SnapshotPosition[]>>({});
@@ -73,7 +86,7 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
   const [copiedPositionsId, setCopiedPositionsId] = useState<string | null>(null);
 
   // Check if there's already a snapshot for today
-  const hasTodaySnapshot = snapshots.some(s => isToday(s.timestamp));
+  const hasTodaySnapshot = snapshots.some((s) => isToday(s.timestamp));
   // Show live row if: before snapshot time, no today snapshot, and we have live value
   const showLiveRow = isBeforeSnapshotTime() && !hasTodaySnapshot && liveValueUsd !== undefined;
 
@@ -85,14 +98,14 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
       newExpanded.add(snapshotId);
       // Load positions if not cached
       if (!positionsCache[snapshotId]) {
-        setLoadingPositions(prev => new Set(prev).add(snapshotId));
+        setLoadingPositions((prev) => new Set(prev).add(snapshotId));
         try {
           const positions = await api.getSnapshotPositions(snapshotId);
-          setPositionsCache(prev => ({ ...prev, [snapshotId]: positions }));
+          setPositionsCache((prev) => ({ ...prev, [snapshotId]: positions }));
         } catch (error) {
           console.error('Failed to load positions:', error);
         } finally {
-          setLoadingPositions(prev => {
+          setLoadingPositions((prev) => {
             const next = new Set(prev);
             next.delete(snapshotId);
             return next;
@@ -114,7 +127,7 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
   const handleCopyPositions = async (snapshotId: string) => {
     try {
       const positions = await api.getSnapshotPositions(snapshotId);
-      const formatted = positions.map(pos => ({
+      const formatted = positions.map((pos) => ({
         asset: {
           coingeckoId: pos.asset.coingeckoId,
           symbol: pos.asset.symbol,
@@ -179,7 +192,10 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                     {formatDate(new Date().toISOString())}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    <div className="text-green-600 dark:text-green-400" title="Live portfolio value (snapshot at 9pm SGT)">
+                    <div
+                      className="text-green-600 dark:text-green-400"
+                      title="Live portfolio value (snapshot at 9pm SGT)"
+                    >
                       <div>{displayValue(liveValueUsd!)}</div>
                       <div className="text-xs">(Live)</div>
                     </div>
@@ -216,7 +232,7 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                             size="icon"
                             className="h-6 w-6"
                             onClick={() => toggleExpand(snapshot.id)}
-                            aria-label={isExpanded ? "Collapse positions" : "Expand positions"}
+                            aria-label={isExpanded ? 'Collapse positions' : 'Expand positions'}
                           >
                             {isExpanded ? (
                               <ChevronDown className="h-4 w-4" />
@@ -240,18 +256,24 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p className="text-xs">Snapshot captured $0 - positions may have been empty</p>
+                                <p className="text-xs">
+                                  Snapshot captured $0 - positions may have been empty
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                        ) : displayValue(snapshot.totalValueUsd)}
+                        ) : (
+                          displayValue(snapshot.totalValueUsd)
+                        )}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <span className={`flex items-center gap-1 text-xs ${
-                          snapshot.source === 'AUTOMATIC'
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-orange-600 dark:text-orange-400'
-                        }`}>
+                        <span
+                          className={`flex items-center gap-1 text-xs ${
+                            snapshot.source === 'AUTOMATIC'
+                              ? 'text-blue-600 dark:text-blue-400'
+                              : 'text-orange-600 dark:text-orange-400'
+                          }`}
+                        >
                           {snapshot.source === 'AUTOMATIC' ? (
                             <Bot className="h-3 w-3" />
                           ) : (
@@ -283,7 +305,9 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p className="text-xs">{isCopied ? 'Copied!' : 'Copy for import'}</p>
+                                <p className="text-xs">
+                                  {isCopied ? 'Copied!' : 'Copy for import'}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -333,7 +357,9 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                                     ) : (
                                       <Copy className="h-3 w-3 mr-1" />
                                     )}
-                                    {copiedPositionsId === snapshot.id ? 'Copied!' : 'Copy Positions'}
+                                    {copiedPositionsId === snapshot.id
+                                      ? 'Copied!'
+                                      : 'Copy Positions'}
                                   </Button>
                                 </div>
                                 <div className="rounded border bg-background">
@@ -354,13 +380,23 @@ export function SnapshotTable({ snapshots, isLoading, displayValue, liveValueUsd
                                             {pos.assetSymbol}
                                           </TableCell>
                                           <TableCell className="text-right font-mono">
-                                            {pos.quantity.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                                            {pos.quantity.toLocaleString(undefined, {
+                                              maximumFractionDigits: 6,
+                                            })}
                                           </TableCell>
                                           <TableCell className="text-right font-mono">
-                                            ${pos.priceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            $
+                                            {pos.priceUsd.toLocaleString(undefined, {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 2,
+                                            })}
                                           </TableCell>
                                           <TableCell className="text-right font-mono">
-                                            ${pos.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                            $
+                                            {pos.valueUsd.toLocaleString(undefined, {
+                                              minimumFractionDigits: 0,
+                                              maximumFractionDigits: 0,
+                                            })}
                                           </TableCell>
                                           <TableCell className="text-right font-mono">
                                             {pos.allocation.toFixed(2)}%

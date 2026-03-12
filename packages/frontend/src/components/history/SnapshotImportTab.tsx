@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { api, BulkImportSnapshot } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { BulkImportSnapshot } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
@@ -86,14 +87,15 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
     return (
       <div className="space-y-4">
         <div className="text-center py-4">
-          {importResults.every(r => r.success) ? (
+          {importResults.every((r) => r.success) ? (
             <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
           ) : (
             <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
           )}
           <p className="font-medium">
-            {importResults.filter(r => r.success).length} imported successfully
-            {importResults.some(r => !r.success) && `, ${importResults.filter(r => !r.success).length} failed`}
+            {importResults.filter((r) => r.success).length} imported successfully
+            {importResults.some((r) => !r.success) &&
+              `, ${importResults.filter((r) => !r.success).length} failed`}
           </p>
         </div>
 
@@ -111,11 +113,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
                 <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
               )}
               <span className="font-medium">{r.timestamp}</span>
-              {r.error && (
-                <span className="text-red-600 dark:text-red-400 text-xs">
-                  {r.error}
-                </span>
-              )}
+              {r.error && <span className="text-red-600 dark:text-red-400 text-xs">{r.error}</span>}
             </div>
           ))}
         </div>
@@ -154,7 +152,8 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
       {parsedSnapshots && (
         <div className="space-y-2">
           <p className="text-sm font-medium">
-            Ready to import {parsedSnapshots.length} snapshot{parsedSnapshots.length !== 1 ? 's' : ''}:
+            Ready to import {parsedSnapshots.length} snapshot
+            {parsedSnapshots.length !== 1 ? 's' : ''}:
           </p>
           <div className="max-h-40 overflow-y-auto space-y-1">
             {parsedSnapshots.map((snap, i) => (
@@ -163,11 +162,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
                 <span className="text-muted-foreground ml-2">
                   ${snap.totalValueUsd.toLocaleString()}
                 </span>
-                {snap.notes && (
-                  <span className="text-muted-foreground ml-2">
-                    ({snap.notes})
-                  </span>
-                )}
+                {snap.notes && <span className="text-muted-foreground ml-2">({snap.notes})</span>}
               </div>
             ))}
           </div>
@@ -175,18 +170,17 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
       )}
 
       <div className="flex justify-end">
-        <Button
-          type="button"
-          onClick={handleImport}
-          disabled={!parsedSnapshots || importing}
-        >
+        <Button type="button" onClick={handleImport} disabled={!parsedSnapshots || importing}>
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
               Importing...
             </>
           ) : (
-            <>Import {parsedSnapshots?.length ?? 0} Snapshot{parsedSnapshots?.length !== 1 ? 's' : ''}</>
+            <>
+              Import {parsedSnapshots?.length ?? 0} Snapshot
+              {parsedSnapshots?.length !== 1 ? 's' : ''}
+            </>
           )}
         </Button>
       </div>
