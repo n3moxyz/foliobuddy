@@ -114,6 +114,9 @@ npx prisma studio        # Database GUI
 # Frontend (packages/frontend/)
 npm run dev              # Start Vite dev server (port 4000)
 npm run build            # Production build
+
+# Frontend demo route (dev-only, uses mocked API responses)
+# Visit http://localhost:4000/dev/demo while Vite dev server is running
 ```
 
 ## Architecture
@@ -159,6 +162,18 @@ Trades and snapshots routes support optional pagination via `?page=1&limit=50`. 
 
 ### Lazy-Loaded Routes
 All pages except Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. Reduces initial bundle size.
+
+### Dev Demo Route
+`src/dev/demoMode.tsx` provides a local-only `/dev/demo` route for UI testing without Clerk sign-in or backend access. Important constraints:
+- It must stay **dev-only**. `App.tsx` lazy-loads it only when `import.meta.env.DEV` is true so the mock payload does not ship in production bundles.
+- It mocks `/api/*` in the browser and restores the original `fetch` + token getter on unmount. Do not leave global network monkey-patches installed after navigating away.
+- Use it for responsive/UI checks only. It is not a persistence path and must never point at production write APIs.
+
+### Ownership Checks on Mutations
+For protected backend resources, update/delete routes must filter by both `id` and `req.userId!`, not just `id`. Reads already did this in many places; writes now need to follow the same rule consistently to prevent cross-user mutation if an ID is guessed.
+
+### WebSocket CORS
+Socket.io origin validation should use exact origin matching (`origin === allowed`) just like the Express CORS middleware. Never use prefix matching for trusted origins.
 
 ### Optimistic Deletes
 Delete mutations in `usePortfolio`, `useTrades`, `useSnapshots` use optimistic updates with rollback on error.
@@ -234,6 +249,12 @@ VITE_API_URL=https://api.foliobuddy.xyz/api
 ```
 `http://localhost:4000` is already in Coolify's `ALLOWED_ORIGINS`, so CORS works. Remember to switch back to `http://localhost:4001/api` when doing backend work.
 
+### Local Authenticated UI Testing
+For frontend-only layout verification without real auth, use the dev demo route instead of pointing the app at production with a bypass:
+- Run `npm run dev --workspace=@foliobuddy/frontend`
+- Open `http://localhost:4000/dev/demo`
+- This route is available only in Vite dev mode and uses mocked `/api` responses
+
 ## Deployment
 - **Backend**: Coolify on DigitalOcean — `https://api.foliobuddy.xyz` (HTTPS via Let's Encrypt/Traefik)
 - **Frontend**: Vercel — `https://foliobuddy.xyz` (rewrites API calls to backend)
@@ -289,3 +310,5 @@ npm run dev            # Start dev servers
 - Sentry backend captures only unexpected 500-level errors (Zod 400s and AppErrors < 500 are skipped)
 - `console.error` crashes when inspecting ZodError objects in Node — integration tests must mock the logger
 - vitest `exclude: ['dist/**']` prevents duplicate test runs after `npm run build`
+- If a protected route mutates by `id` only, treat it as a security bug. All writes for positions/trades/investors should be ownership-scoped.
+- Do not gate the dev demo route with extra env flags unless the frontend actually reads them at build time. `import.meta.env.DEV` is the safe default because it cannot be enabled in production accidentally.

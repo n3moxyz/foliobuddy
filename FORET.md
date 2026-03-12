@@ -759,6 +759,52 @@ const handleImport = async () => {
 
 **Key lesson:** Any async function that sets loading state MUST have that state reset in a `finally` block that wraps ALL the async code, not just some of it.
 
+### Lesson 10: A Demo Route Can Secretly Leak Into Production
+
+**The bug:** I added a handy `/dev/demo` route so I could inspect the authenticated UI without signing in. It worked locally, but there was a subtle trap: the demo module was imported normally from `App.tsx`, so Vite still bundled all the fake positions, trades, and snapshots into the production JavaScript.
+
+**Why that matters:** The fake data wasn't writing into the real database, but it *was* polluting the production bundle. That's the frontend equivalent of keeping a movie set behind a real storefront wall. Customers can't walk onto the set, but you're still paying to ship the props.
+
+**The fix:** Make the route truly dev-only:
+- Lazy-load the demo module only when `import.meta.env.DEV` is true
+- Keep the mocked API responses inside that module
+- Install the `fetch` mock only while the demo route is mounted, then restore the original `fetch` on cleanup
+
+**Key lesson:** "Dev-only behavior" is not a comment, it's a bundling decision. If you `import` a file in the normal app entry, assume production may ship it.
+
+### Lesson 11: Record IDs Are Not Authorization
+
+**The bug:** Some write routes checked ownership on reads but trusted raw `id` on update/delete. That means if a logged-in user ever got hold of another record's ID, the mutation path could target the wrong person's data.
+
+**The fix:** Scope every protected mutation by both `id` and `userId`. For example:
+
+```typescript
+await prisma.position.deleteMany({
+  where: {
+    id: req.params.id,
+    userId: req.userId!,
+  },
+});
+```
+
+It feels slightly more verbose, but it's the right kind of boring.
+
+**Key lesson:** An ID tells you *what* row to touch. It does not tell you *who is allowed* to touch it.
+
+### Lesson 12: WebSocket CORS Should Be as Strict as REST CORS
+
+**The bug:** The WebSocket server used `origin.startsWith(allowedOrigin)`. That sounds innocent until you remember that `https://goodsite.com.evil.com` also starts with `https://goodsite.com`.
+
+**The fix:** Exact origin matching, same as the Express CORS middleware.
+
+```typescript
+if (allowedOrigins.some(allowed => origin === allowed || allowed === '*')) {
+  return callback(null, true);
+}
+```
+
+**Key lesson:** Real-time code is still network perimeter code. Treat it with the same suspicion as your REST API.
+
 ### Lesson 10: CoinGecko Rate Limiting During Bulk Import
 
 **The bug:** Importing multiple positions was extremely slow (2+ seconds per position), making bulk imports take minutes.
@@ -1385,6 +1431,9 @@ Features I want to add:
 - [ ] Mobile app (React Native, sharing the codebase)
 
 Recently completed:
+- [x] Local-only `/dev/demo` route for authenticated UI testing with mocked API responses; lazy-loaded in dev so mock data does not ship to production bundles
+- [x] Security hardening: protected position/trade/investor mutations now enforce ownership on update/delete paths
+- [x] WebSocket CORS hardening: exact origin matching instead of prefix matching
 - [x] Major refactor: extract backend utilities (logger, constants, pagination, tradePnL) with unit tests
 - [x] Major refactor: split large frontend components into focused modules (9 new components)
 - [x] Add structured logging replacing all console.log, rate limiting, Prisma indexes
