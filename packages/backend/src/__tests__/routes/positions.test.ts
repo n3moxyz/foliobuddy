@@ -9,8 +9,9 @@ const mockPrisma = {
   position: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     create: vi.fn(),
-    delete: vi.fn(),
+    deleteMany: vi.fn(),
   },
 };
 
@@ -225,13 +226,13 @@ describe('POST /api/positions (custody)', () => {
 
 describe('DELETE /api/positions/:id', () => {
   it('returns 204 on success', async () => {
-    mockPrisma.position.delete.mockResolvedValue({});
+    mockPrisma.position.deleteMany.mockResolvedValue({ count: 1 });
 
     const res = await request(app).delete('/api/positions/position-1');
 
     expect(res.status).toBe(204);
-    expect(mockPrisma.position.delete).toHaveBeenCalledWith({
-      where: { id: 'position-1' },
+    expect(mockPrisma.position.deleteMany).toHaveBeenCalledWith({
+      where: { id: 'position-1', userId: 'test-user-id' },
     });
   });
 });

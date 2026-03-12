@@ -24,7 +24,7 @@ class SocketService {
       cors: {
         origin: (origin, callback) => {
           if (!origin) return callback(null, true);
-          if (allowedOrigins.some(allowed => origin.startsWith(allowed) || allowed === '*')) {
+          if (allowedOrigins.some(allowed => origin === allowed || allowed === '*')) {
             return callback(null, true);
           }
           callback(new Error('Not allowed by CORS'));

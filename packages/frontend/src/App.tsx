@@ -18,6 +18,9 @@ const Trades = lazy(() => import('./pages/Trades'));
 const History = lazy(() => import('./pages/History'));
 const Investors = lazy(() => import('./pages/Investors'));
 const Settings = lazy(() => import('./pages/Settings'));
+const DemoModeApp = import.meta.env.DEV
+  ? lazy(() => import('./dev/demoMode').then((module) => ({ default: module.DemoModeApp })))
+  : null;
 
 // Component to set up auth and render children
 function AuthenticatedApp() {
@@ -53,34 +56,51 @@ function AuthenticatedApp() {
 
 function App() {
   return (
-    <>
-      {/* Show sign-in when not authenticated */}
-      <SignedOut>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center space-y-6">
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold">FolioBuddy</h1>
-              <p className="text-muted-foreground">
-                Sign in to track your portfolio
-              </p>
-            </div>
-            <SignIn
-              appearance={{
-                elements: {
-                  rootBox: 'mx-auto',
-                  card: 'shadow-lg',
-                },
-              }}
-            />
-          </div>
-        </div>
-      </SignedOut>
+    <Routes>
+      {DemoModeApp && (
+        <Route
+          path="/dev/demo/*"
+          element={
+            <Suspense fallback={<div className="flex items-center justify-center h-64 text-muted-foreground">Loading...</div>}>
+              <DemoModeApp />
+            </Suspense>
+          }
+        />
+      )}
+      <Route
+        path="/*"
+        element={
+          <>
+            {/* Show sign-in when not authenticated */}
+            <SignedOut>
+              <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="text-center space-y-6">
+                  <div className="space-y-2">
+                    <h1 className="text-3xl font-bold">FolioBuddy</h1>
+                    <p className="text-muted-foreground">
+                      Sign in to track your portfolio
+                    </p>
+                  </div>
+                  <SignIn
+                    appearance={{
+                      elements: {
+                        rootBox: 'mx-auto',
+                        card: 'shadow-lg',
+                      },
+                    }}
+                  />
+                </div>
+              </div>
+            </SignedOut>
 
-      {/* Show app when authenticated */}
-      <SignedIn>
-        <AuthenticatedApp />
-      </SignedIn>
-    </>
+            {/* Show app when authenticated */}
+            <SignedIn>
+              <AuthenticatedApp />
+            </SignedIn>
+          </>
+        }
+      />
+    </Routes>
   );
 }
 

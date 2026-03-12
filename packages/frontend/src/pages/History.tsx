@@ -106,7 +106,7 @@ export default function History() {
             View and manage portfolio snapshots
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -191,7 +191,7 @@ export default function History() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Snapshots</CardTitle>
@@ -223,7 +223,7 @@ export default function History() {
 
       {/* Snapshot Table with Tabs */}
       <Tabs defaultValue="all" onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
-        <TabsList>
+        <TabsList className="sm:w-auto">
           <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
           <TabsTrigger value="AUTOMATIC">Automatic ({automaticCount})</TabsTrigger>
           <TabsTrigger value="MANUAL">Manual ({manualCount})</TabsTrigger>
@@ -305,7 +305,7 @@ export default function History() {
 
       {/* Delete All Confirmation Dialog */}
       <Dialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Snapshots</DialogTitle>
             <DialogDescription>

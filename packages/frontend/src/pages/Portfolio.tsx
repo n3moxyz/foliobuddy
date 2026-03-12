@@ -150,7 +150,7 @@ export default function Portfolio() {
             Manage your positions and holdings
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Secondary actions hidden on mobile, in dropdown */}
           <Button
             variant="outline"
@@ -235,7 +235,7 @@ export default function Portfolio() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
           <Card className="py-2">
             <CardHeader className="py-2 px-4">
               <p className="text-xs text-muted-foreground">Total Value</p>
@@ -399,7 +399,7 @@ export default function Portfolio() {
 
       {/* Add Position Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Position</DialogTitle>
           </DialogHeader>
@@ -414,7 +414,7 @@ export default function Portfolio() {
 
       {/* Perp Exposure Dialog */}
       <Dialog open={editingPerp} onOpenChange={setEditingPerp}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Perp Exposure</DialogTitle>
           </DialogHeader>
@@ -447,7 +447,7 @@ export default function Portfolio() {
 
       {/* Delete All Confirmation Dialog */}
       <Dialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Positions</DialogTitle>
             <DialogDescription>

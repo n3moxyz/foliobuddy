@@ -121,7 +121,7 @@ export default function Trades() {
             Track and analyze your trading performance
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -226,7 +226,7 @@ export default function Trades() {
       {/* Trade Tables */}
       <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
         <div className="flex items-center gap-2 flex-wrap">
-          <TabsList>
+          <TabsList className="sm:w-auto">
             <TabsTrigger value="all">All Trades ({filteredTrades.length})</TabsTrigger>
             <TabsTrigger value="OPEN">Open ({openTrades.length})</TabsTrigger>
             <TabsTrigger value="CLOSED">Closed ({closedTrades.length})</TabsTrigger>
@@ -288,7 +288,7 @@ export default function Trades() {
 
       {/* Delete All Confirmation Dialog */}
       <Dialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Trades</DialogTitle>
             <DialogDescription>
@@ -345,7 +345,7 @@ export default function Trades() {
 
       {/* Delete Trade Confirmation Dialog */}
       <Dialog open={!!deletingTrade} onOpenChange={(open) => !open && setDeletingTrade(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Trade</DialogTitle>
             <DialogDescription>

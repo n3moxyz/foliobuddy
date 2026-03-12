@@ -239,29 +239,31 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
   return (
     <Card className="col-span-2">
       <CardHeader className="pb-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <CardTitle>Portfolio % vs Benchmarks</CardTitle>
 
           {/* Time Period Selector */}
-          <div className="flex rounded-md border">
-            {periods.map((p) => (
-              <Button
-                key={p}
-                variant={period === p ? 'secondary' : 'ghost'}
-                size="sm"
-                className={`h-8 px-3 rounded-none first:rounded-l-md last:rounded-r-md ${
-                  period === p ? '' : 'hover:bg-muted'
-                }`}
-                onClick={() => setPeriod(p)}
-              >
-                {p}
-              </Button>
-            ))}
+          <div className="-mx-1 overflow-x-auto pb-1">
+            <div className="flex w-max rounded-md border">
+              {periods.map((p) => (
+                <Button
+                  key={p}
+                  variant={period === p ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className={`h-8 px-3 rounded-none first:rounded-l-md last:rounded-r-md ${
+                    period === p ? '' : 'hover:bg-muted'
+                  }`}
+                  onClick={() => setPeriod(p)}
+                >
+                  {p}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Benchmark Toggles */}
-        <div className="flex flex-wrap items-center gap-2 mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {benchmarks.map((benchmark) => (
             <Button
               key={benchmark.id}
@@ -332,7 +334,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   Add
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-2">
+              <PopoverContent className="w-[calc(100vw-2rem)] max-w-64 p-2">
                 <Input
                   placeholder="Search coins..."
                   value={searchQuery}
@@ -364,7 +366,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
           )}
 
           {/* Portfolio Legend Item */}
-          <div className="ml-auto text-sm">
+          <div className="w-full text-sm sm:ml-auto sm:w-auto">
             <span className="text-primary font-medium">Portfolio</span>
             {chartData.length > 0 && (
               <span className={`ml-1 ${(getCurrentChange(chartData, 'portfolio') ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -401,7 +403,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
               </div>
             )}
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData} margin={{ top: 5, right: 55, left: 20, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <XAxis
                 dataKey="displayDate"
                 tick={{ fontSize: 12 }}
@@ -416,7 +418,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                 tickLine={false}
                 axisLine={false}
                 className="text-muted-foreground"
-                width={50}
+                width={42}
               />
               <Tooltip
                 content={({ active, payload }) => {
