@@ -1,6 +1,6 @@
 # FOR[ET].md - FolioBuddy
 
-*Building a personal finance command center from scratch*
+_Building a personal finance command center from scratch_
 
 ---
 
@@ -55,26 +55,28 @@ foliobuddy/
 ## The Tech Stack: Choosing Our Tools
 
 ### Backend
-| Tool | Why This One? |
-|------|---------------|
-| **Express.js** | Simple, battle-tested, zero magic. When something breaks, I know exactly where to look. |
-| **Prisma** | Type-safe database access. Auto-generated TypeScript types from the schema. Migrations are painless. |
-| **PostgreSQL** | Production-ready relational database. Self-hosted on DigitalOcean via Coolify. |
-| **Clerk** | Authentication without rolling my own JWT system. Secure by default. |
-| **node-cron** | Background jobs for automated snapshots and price updates. |
-| **Socket.io** | Real-time WebSocket updates with auto-reconnection and polling fallback. |
-| **Zod** | Runtime validation that matches TypeScript types. Trust no input. |
+
+| Tool           | Why This One?                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| **Express.js** | Simple, battle-tested, zero magic. When something breaks, I know exactly where to look.              |
+| **Prisma**     | Type-safe database access. Auto-generated TypeScript types from the schema. Migrations are painless. |
+| **PostgreSQL** | Production-ready relational database. Self-hosted on DigitalOcean via Coolify.                       |
+| **Clerk**      | Authentication without rolling my own JWT system. Secure by default.                                 |
+| **node-cron**  | Background jobs for automated snapshots and price updates.                                           |
+| **Socket.io**  | Real-time WebSocket updates with auto-reconnection and polling fallback.                             |
+| **Zod**        | Runtime validation that matches TypeScript types. Trust no input.                                    |
 
 ### Frontend
-| Tool | Why This One? |
-|------|---------------|
-| **React 18** | The ecosystem, the community, the muscle memory. |
-| **Vite** | Blazing fast HMR. Create React App is dead; Vite is the successor. |
-| **React Query** | Automatic caching, background refetching, loading/error states. Server state, handled. |
-| **Zustand** | State management that doesn't require a PhD. Three lines to create a store. |
-| **shadcn/ui** | Beautiful components I can actually customize (they're copied into my codebase, not npm-imported). |
-| **Recharts** | Charting that works with React's mental model. |
-| **Tailwind CSS** | Utility-first CSS. Never context-switch to a stylesheet again. |
+
+| Tool             | Why This One?                                                                                      |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| **React 18**     | The ecosystem, the community, the muscle memory.                                                   |
+| **Vite**         | Blazing fast HMR. Create React App is dead; Vite is the successor.                                 |
+| **React Query**  | Automatic caching, background refetching, loading/error states. Server state, handled.             |
+| **Zustand**      | State management that doesn't require a PhD. Three lines to create a store.                        |
+| **shadcn/ui**    | Beautiful components I can actually customize (they're copied into my codebase, not npm-imported). |
+| **Recharts**     | Charting that works with React's mental model.                                                     |
+| **Tailwind CSS** | Utility-first CSS. Never context-switch to a stylesheet again.                                     |
 
 ---
 
@@ -213,10 +215,10 @@ const api = {
     const token = await clerk.session.getToken();
     return fetch('/api/positions', {
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
-  }
+  },
 };
 ```
 
@@ -243,17 +245,17 @@ export const ensureUser = async (req, res, next) => {
   const clerkId = req.auth.userId;
 
   let user = await prisma.user.findUnique({
-    where: { clerkId }
+    where: { clerkId },
   });
 
   if (!user) {
     // First time? Create the user record
     user = await prisma.user.create({
-      data: { clerkId }
+      data: { clerkId },
     });
   }
 
-  req.userId = user.id;  // Attach for route handlers
+  req.userId = user.id; // Attach for route handlers
   next();
 };
 ```
@@ -266,12 +268,13 @@ export function usePositions() {
   return useQuery({
     queryKey: ['positions'],
     queryFn: api.getPositions,
-    staleTime: 30 * 1000,  // Fresh for 30 seconds
+    staleTime: 30 * 1000, // Fresh for 30 seconds
   });
 }
 ```
 
 React Query handles:
+
 - Loading states (`isLoading`)
 - Error handling (`error`)
 - Automatic refetching when tab becomes visible
@@ -314,25 +317,24 @@ class PriceService {
 Instead of 50 requests for 50 coins, we make 1 request for 50 coins:
 
 ```typescript
-const ids = coins.map(c => c.coingeckoId).join(',');
+const ids = coins.map((c) => c.coingeckoId).join(',');
 const response = await fetch(
   `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`
 );
 ```
 
-### In-Memory Price Cache
+### In-Memory Price Cache (TTLCache)
+
+The ad-hoc `Map` cache was replaced with a generic `TTLCache` utility supporting configurable TTL and LRU eviction:
 
 ```typescript
-const priceCache = new Map<string, { price: number; timestamp: number }>();
-
-function getCachedPrice(id: string) {
-  const cached = priceCache.get(id);
-  if (cached && Date.now() - cached.timestamp < 30000) {
-    return cached.price;  // Use cache if < 30 seconds old
-  }
-  return null;
-}
+// lib/TTLCache.ts — reusable across services
+const cache = new TTLCache<string, number>({ ttlMs: 30_000, maxEntries: 500 });
+cache.set('bitcoin', 95000);
+const price = cache.get('bitcoin'); // null if expired
 ```
+
+This reduced `priceService.ts` from 528 to 355 lines. The `updatePositionValues` method now filters by changed asset IDs, avoiding unnecessary DB writes for positions whose prices didn't change.
 
 ---
 
@@ -437,6 +439,7 @@ The backend provides raw analytics (win rate, avg win/loss, profit factor). The 
 - **Best & Worst Trade** — already computed by the backend but now displayed in the stats card with asset name, date, and P&L percentage.
 
 **Visual Design Choices:**
+
 - Win rate uses a green/red proportional bar (not just a number)
 - Avg Win vs Avg Loss shown as comparison bars for instant visual imbalance detection
 - Metric labels have dotted underlines and show formula/definition tooltips on hover
@@ -473,9 +476,7 @@ Users can filter the dashboard by investor. When you select "Mom's stake (25%)",
 
 ```typescript
 // Dashboard.tsx
-const stakeMultiplier = selectedInvestor
-  ? selectedInvestor.stakePct / 100
-  : 1;
+const stakeMultiplier = selectedInvestor ? selectedInvestor.stakePct / 100 : 1;
 
 const displayedNetWorth = totalNetWorth * stakeMultiplier;
 ```
@@ -513,11 +514,12 @@ export const useCurrencyStore = create(
   persist(
     (set) => ({
       currency: 'USD',
-      toggleCurrency: () => set((state) => ({
-        currency: state.currency === 'USD' ? 'SGD' : 'USD'
-      }))
+      toggleCurrency: () =>
+        set((state) => ({
+          currency: state.currency === 'USD' ? 'SGD' : 'USD',
+        })),
     }),
-    { name: 'currency-preference' }  // Persists to localStorage
+    { name: 'currency-preference' } // Persists to localStorage
   )
 );
 
@@ -525,24 +527,25 @@ export const useCurrencyStore = create(
 export const useThemeStore = create(
   persist(
     (set, get) => ({
-      theme: 'dark',  // 'light' | 'dark'
+      theme: 'dark', // 'light' | 'dark'
       setTheme: (theme) => set({ theme }),
       cycleTheme: () => {
         const next = get().theme === 'light' ? 'dark' : 'light';
         set({ theme: next });
-      }
+      },
     }),
     {
       name: 'theme-storage',
       onRehydrateStorage: () => (state) => {
-        if (state) applyTheme(state.theme);  // Apply theme on load
-      }
+        if (state) applyTheme(state.theme); // Apply theme on load
+      },
     }
   )
 );
 ```
 
 **Why not just use one?** Because they solve different problems:
+
 - Server state needs syncing, caching, revalidation
 - Client state needs persistence, instant updates, no network
 
@@ -563,6 +566,7 @@ components/ui/
 ```
 
 **Why this approach?**
+
 1. No npm version conflicts
 2. Full control over styling
 3. Only include components you use
@@ -641,9 +645,9 @@ const existing = await prisma.snapshot.findFirst({
     type: 'DAILY',
     timestamp: {
       gte: startOfDay(date),
-      lt: endOfDay(date)
-    }
-  }
+      lt: endOfDay(date),
+    },
+  },
 });
 
 if (existing) {
@@ -671,11 +675,13 @@ const unrealizedPnLPct = ((marketValue - costBasis) / costBasis) * 100;
 **The bug:** Backend returning 502 errors after deployment.
 
 **The investigation:** Multiple issues compounded:
+
 1. `prisma migrate deploy` failed because no migration files existed (we used `db push` locally)
 2. Missing environment variables (CLERK keys, ALLOWED_ORIGINS)
 3. Port mismatch—server defaulted to 8080, but Railway networking expected 3001
 
 **The fix:**
+
 - Use `prisma db push` in start command (syncs schema without migrations)
 - Add ALL required env vars via Railway dashboard
 - Explicitly set `PORT=3001` to match Railway's networking config
@@ -712,6 +718,7 @@ This enforces at the database level that you can't have two BTC positions on Bin
 **The bug:** WebSocket connection status showed "Offline" on production even though the backend was running with Socket.io.
 
 **The investigation:** The `useWebSocket.ts` hook had a fallback URL that always defaulted to `'http://localhost:3001'`:
+
 ```typescript
 // Before (broken)
 const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -720,6 +727,7 @@ const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 In production, `VITE_API_URL` was undefined (intentionally, per Lesson 7), so it connected to localhost, which doesn't exist in the browser.
 
 **The fix:** Use `window.location.origin` in production:
+
 ```typescript
 // After (works)
 const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
@@ -732,6 +740,7 @@ In production, this connects to `https://foliobuddy.xyz`, and Vercel's rewrites 
 **The bug:** When importing positions on production, if an error occurred during the fetch of existing assets, the import button would spin forever.
 
 **The investigation:** The `handleImport` function set `setImporting(true)` but the `setImporting(false)` was only in a finally block INSIDE the try-catch for individual positions—not wrapping the outer `api.getAssets()` call:
+
 ```typescript
 // Before (broken)
 const handleImport = async () => {
@@ -742,6 +751,7 @@ const handleImport = async () => {
 ```
 
 **The fix:** Wrap the entire import logic in try-catch-finally:
+
 ```typescript
 // After (works)
 const handleImport = async () => {
@@ -752,7 +762,7 @@ const handleImport = async () => {
   } catch (e) {
     setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
   } finally {
-    setImporting(false);  // Always resets spinner
+    setImporting(false); // Always resets spinner
   }
 };
 ```
@@ -763,9 +773,10 @@ const handleImport = async () => {
 
 **The bug:** I added a handy `/dev/demo` route so I could inspect the authenticated UI without signing in. It worked locally, but there was a subtle trap: the demo module was imported normally from `App.tsx`, so Vite still bundled all the fake positions, trades, and snapshots into the production JavaScript.
 
-**Why that matters:** The fake data wasn't writing into the real database, but it *was* polluting the production bundle. That's the frontend equivalent of keeping a movie set behind a real storefront wall. Customers can't walk onto the set, but you're still paying to ship the props.
+**Why that matters:** The fake data wasn't writing into the real database, but it _was_ polluting the production bundle. That's the frontend equivalent of keeping a movie set behind a real storefront wall. Customers can't walk onto the set, but you're still paying to ship the props.
 
 **The fix:** Make the route truly dev-only:
+
 - Lazy-load the demo module only when `import.meta.env.DEV` is true
 - Keep the mocked API responses inside that module
 - Install the `fetch` mock only while the demo route is mounted, then restore the original `fetch` on cleanup
@@ -789,7 +800,7 @@ await prisma.position.deleteMany({
 
 It feels slightly more verbose, but it's the right kind of boring.
 
-**Key lesson:** An ID tells you *what* row to touch. It does not tell you *who is allowed* to touch it.
+**Key lesson:** An ID tells you _what_ row to touch. It does not tell you _who is allowed_ to touch it.
 
 ### Lesson 12: WebSocket CORS Should Be as Strict as REST CORS
 
@@ -798,7 +809,7 @@ It feels slightly more verbose, but it's the right kind of boring.
 **The fix:** Exact origin matching, same as the Express CORS middleware.
 
 ```typescript
-if (allowedOrigins.some(allowed => origin === allowed || allowed === '*')) {
+if (allowedOrigins.some((allowed) => origin === allowed || allowed === '*')) {
   return callback(null, true);
 }
 ```
@@ -812,6 +823,7 @@ if (allowedOrigins.some(allowed => origin === allowed || allowed === '*')) {
 **The investigation:** When creating assets from CoinGecko search results, the `createAssetFromCoinGecko` endpoint fetched the current price from the CoinGecko API. With 2.1-second rate limiting per request, importing 10 positions took 20+ seconds.
 
 **The fix:** Added `skipPriceFetch` option to the endpoint:
+
 ```typescript
 // Backend: routes/assets.ts
 const { coingeckoId, symbol, name, category, skipPriceFetch } = req.body;
@@ -828,7 +840,7 @@ asset = await api.createAssetFromCoinGecko({
   symbol: pos.asset.symbol,
   name: pos.asset.name,
   category: pos.asset.category,
-  skipPriceFetch: true,  // Skip price fetch - scheduler updates prices within 1 minute
+  skipPriceFetch: true, // Skip price fetch - scheduler updates prices within 1 minute
 });
 ```
 
@@ -839,6 +851,7 @@ asset = await api.createAssetFromCoinGecko({
 **The bug:** WebSocket showed "Offline" on production even though the backend was running with Socket.io.
 
 **The investigation:** We had configured Vercel rewrites to proxy `/socket.io/*` to Railway:
+
 ```json
 { "source": "/socket.io/:path*", "destination": "https://railway-backend.app/socket.io/:path*" }
 ```
@@ -846,6 +859,7 @@ asset = await api.createAssetFromCoinGecko({
 But when testing, the rewrite returned `index.html` instead of proxying. Vercel rewrites work for HTTP requests, but **WebSocket protocol upgrades to external destinations are not supported**.
 
 **The fix:** Connect directly to the Railway backend for WebSocket connections:
+
 ```typescript
 // useWebSocket.ts
 const RAILWAY_BACKEND = 'https://empowering-curiosity-production-9eff.up.railway.app';
@@ -861,6 +875,7 @@ Also had to ensure `ALLOWED_ORIGINS` on Railway included the Vercel frontend URL
 **The bug:** Import feature failed with "A record with this value already exists" even after removing the `@@unique` constraint from schema.prisma.
 
 **The context:** The Position model originally had a unique constraint to prevent duplicate positions:
+
 ```prisma
 @@unique([userId, assetId, storageType, storageLocation])
 ```
@@ -868,6 +883,7 @@ Also had to ensure `ALLOWED_ORIGINS` on Railway included the Vercel frontend URL
 When the user wanted to track multiple positions of the same asset (e.g., two BTC purchases at different prices), we removed this constraint. But deployments kept failing.
 
 **The investigation:**
+
 1. Removed `@@unique` from schema.prisma ✓
 2. Ran `prisma db push --accept-data-loss` ✓
 3. Import still failed with unique constraint error ✗
@@ -875,6 +891,7 @@ When the user wanted to track multiple positions of the same asset (e.g., two BT
 Turns out, `prisma db push` only **adds** constraints and **modifies** columns—it doesn't **drop** existing database constraints. The constraint was still in PostgreSQL even though it was gone from the schema.
 
 **The fix:** Drop the constraint explicitly using raw SQL on server startup:
+
 ```typescript
 // index.ts - server startup
 await prisma.$executeRawUnsafe(`
@@ -895,6 +912,7 @@ Also added a diagnostic endpoint `/admin/drop-position-constraint` for debugging
 **The context:** This is a monorepo with `packages/frontend` and `packages/backend`. Vercel was configured to build the frontend, but the Root Directory setting was empty (pointing to the repository root).
 
 **The investigation:**
+
 1. Build logs showed `vite build` completed successfully: `✓ built in 7.20s`
 2. Build logs showed dist files created: `dist/index.html`, `dist/assets/index-*.js`
 3. But Vercel reported: "No Output Directory named 'dist' found"
@@ -902,6 +920,7 @@ Also added a diagnostic endpoint `/admin/drop-position-constraint` for debugging
 The issue: When Root Directory is empty, Vercel runs commands at the repo root. The monorepo's `npm run build` triggers the workspace build, which creates `packages/frontend/dist`. But Vercel was looking for `dist` at the repo root—not inside the frontend package.
 
 **The fix:** Set the Root Directory to `packages/frontend` in Vercel's Build and Deployment settings:
+
 - Go to Project Settings → Build and Deployment
 - Set Root Directory to `packages/frontend`
 - Redeploy
@@ -931,6 +950,7 @@ Now Vercel runs `npm run build` from inside `packages/frontend`, the dist folder
 **The risk:** An attacker could create `evil-myapp.vercel.app` which would match `myapp.vercel.app` because of the prefix check. This would allow cross-origin requests from malicious domains.
 
 **The fix:** Use exact string matching:
+
 ```typescript
 // Before (vulnerable)
 if (allowedOrigins.some(allowed => origin.startsWith(allowed) || allowed === '*'))
@@ -948,6 +968,7 @@ if (allowedOrigins.some(allowed => origin === allowed || allowed === '*'))
 **The investigation:** `Portfolio.tsx` already filters positions into Crypto/Stables sections using `SECTION_CONFIG` and passes each group to `PositionTable`. When `PositionTable` was updated to also group by Crypto/Stables (with CEX/Onchain sub-groups inside), it created a duplicate hierarchy.
 
 **The fix:** Keep each component responsible for one level of grouping only:
+
 - `Portfolio.tsx` → groups by asset type (Crypto/Stables) with `CollapsibleCard`
 - `PositionTable` → groups by storage type (CEX/Onchain) as sub-sections
 
@@ -964,8 +985,9 @@ Enhanced `CollapsibleCard` with `icon` and `accentColor` props so the parent pag
 Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGecko switches from hourly to daily granularity at 90+ days, causing gaps.
 
 **The fix:**
+
 1. Normalize benchmark prices from the price **at the first portfolio timestamp**, not the first CoinGecko price
-2. Use binary search (`findClosestPrice`) instead of O(n*m) brute force
+2. Use binary search (`findClosestPrice`) instead of O(n\*m) brute force
 3. Dynamic threshold (3x average data spacing, minimum 48 hours) instead of hardcoded 24 hours
 4. Added `connectNulls` to Recharts `Line` components to draw through undefined gaps
 
@@ -996,17 +1018,20 @@ Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGec
 **The bug:** After migrating from Railway to Coolify, new backend features weren't appearing on the live site. The `custodyOf` field was sent by the frontend but the backend ignored it — positions always landed in the normal Crypto/Stables sections.
 
 **The investigation (multi-layered):**
+
 1. **Railway was dead** — the free trial had expired, returning 502. But the backend was alive on Coolify via sslip.io. FORET.md still said Railway.
 2. **The container was 9 days old** — built from commit `1393d3c`, before the custody feature existed. Coolify "Redeploy" was doing a **restart** (same old image), not a **deploy** (rebuild from source).
 3. **Manual ALTER TABLE backfired** — to speed things up, we ran `ALTER TABLE "Position" ADD COLUMN "custodyOf" TEXT` directly on the database. The column was added, but when Coolify finally did a real deploy, `prisma migrate deploy` found the column already existed and marked the migration as **failed**. This blocked the container from starting entirely (P3009 error).
 4. **The container crash loop** — every restart attempt ran `prisma migrate deploy`, hit the failed migration, and exited. The site showed "Bad Gateway".
 
 **The fix:**
+
 1. Marked the failed migration as applied: `UPDATE _prisma_migrations SET finished_at = now(), logs = NULL WHERE migration_name = '...' AND finished_at IS NULL`
 2. Triggered a fresh deploy in Coolify (not restart)
 3. Container started cleanly, Prisma client included `custodyOf`, feature worked
 
 **Key lessons:**
+
 - **Coolify Restart ≠ Deploy.** Restart reuses the old Docker image. Deploy rebuilds from source. Always use Deploy for code changes.
 - **Never manually ALTER a column that has a pending Prisma migration.** If you must, also mark the migration as applied in `_prisma_migrations`, or use `IF NOT EXISTS` in the migration SQL.
 - **Keep deployment docs accurate.** When you switch hosting providers, update FORET.md immediately. Stale docs waste hours.
@@ -1017,11 +1042,24 @@ Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGec
 **The problem:** The custody checkbox UI in `PositionForm.tsx` was copy-pasted for create mode and edit mode (~80 lines each). They differed only in `id` attribute and a description paragraph. Any future change would need to be applied in two places — a classic maintenance trap.
 
 **The fix:** Extracted a `CustodyCheckbox` component with a `showDescription` prop. Both modes now use the same component. During the extraction, we also found:
+
 1. **Memo staleness** — `custodyNameOptions` read from localStorage inside `useMemo` but only depended on `existingCustodyNames` from props. A freshly saved name wouldn't appear in the dropdown until React Query refetched positions. Fixed with a `custodyNamesVersion` state counter.
 2. **Edit-mode custody clearing bug** — unchecking custody in edit mode sent `custodyOf: undefined`, which Prisma silently skipped (leaving custody intact). Fixed by sending `''` (empty string) which the backend converts to `null`.
 3. **Schema inconsistency** — `createPositionSchema` used `z.string().optional()` while `bulkImportPositionSchema` used `z.string().nullable().optional()`. Aligned to nullable for both.
 
 **Key lesson:** When you find duplicated UI, extract it immediately. The extraction process itself often reveals subtle bugs hiding in the copy-paste divergence.
+
+### Lesson 22: .env.local Silently Overrides .env in Vite
+
+**The bug:** Frontend showed "DB Down" banner even though the backend was running fine on port 4001.
+
+**The investigation:** Backend health check at `http://localhost:4001/health` returned OK. But the browser console showed requests going to `http://localhost:3001/api` — a port that nothing was listening on. The `.env` file had the correct `VITE_API_URL=http://localhost:4001/api`, so where was 3001 coming from?
+
+**The root cause:** `.env.local` existed with `VITE_API_URL=http://localhost:3001/api` from a previous setup. Vite loads `.env.local` with higher priority than `.env`, silently overriding the value.
+
+**The fix:** Updated `.env.local` to use port 4001. Restarted the Vite dev server (env changes require restart).
+
+**Key lesson:** When debugging "wrong URL" or "DB Down" errors in Vite, always check `.env.local` first — it overrides `.env` with no warning. The priority order is: `.env.local` > `.env.[mode]` > `.env`.
 
 ---
 
@@ -1034,7 +1072,7 @@ Full TypeScript from database to UI. Prisma generates types from the schema. API
 ```typescript
 // One source of truth for Position
 type Position = Prisma.PositionGetPayload<{
-  include: { asset: true }
+  include: { asset: true };
 }>;
 ```
 
@@ -1047,7 +1085,7 @@ const createPositionSchema = z.object({
   assetId: z.string().uuid(),
   quantity: z.number().positive(),
   averageCost: z.number().nonnegative(),
-  storage: z.enum(['WALLET', 'CEX', 'DEFI', 'BANK'])
+  storage: z.enum(['WALLET', 'CEX', 'DEFI', 'BANK']),
 });
 
 router.post('/', async (req, res) => {
@@ -1074,10 +1112,7 @@ const createPosition = useMutation({
     const previous = queryClient.getQueryData(['positions']);
 
     // Optimistically update
-    queryClient.setQueryData(['positions'], (old) => [
-      ...old,
-      { ...newPosition, id: 'temp-id' }
-    ]);
+    queryClient.setQueryData(['positions'], (old) => [...old, { ...newPosition, id: 'temp-id' }]);
 
     return { previous };
   },
@@ -1088,7 +1123,7 @@ const createPosition = useMutation({
   onSettled: () => {
     // Refetch to ensure consistency
     queryClient.invalidateQueries(['positions']);
-  }
+  },
 });
 ```
 
@@ -1108,11 +1143,11 @@ class AppError extends Error {
 }
 
 // Usage
-throw new AppError(
-  'Position not found',
-  404,
-  { positionId, userId, suggestion: 'Check the position ID is correct' }
-);
+throw new AppError('Position not found', 404, {
+  positionId,
+  userId,
+  suggestion: 'Check the position ID is correct',
+});
 ```
 
 ---
@@ -1140,6 +1175,7 @@ The backend runs as a Docker container on the same DigitalOcean droplet as the d
 ### Database → DigitalOcean/Coolify (Self-Hosted Postgres)
 
 The database runs as a Docker container on the same droplet:
+
 - **Container:** `ykgckwckk8gc8kowwkgg4cc0` (postgres:17-alpine)
 - **Credentials:** user `pa_user`, database `pa_portfolio`
 - **Port:** 5432 exposed externally, secured by DO firewall
@@ -1149,6 +1185,7 @@ The database runs as a Docker container on the same droplet:
 We originally used Railway's built-in Postgres, but wanted more control and cost savings. Coolify makes self-hosting almost as easy as managed—it handles Docker, persistent volumes, and can host multiple databases on one $6/month droplet.
 
 **Current production URLs:**
+
 - Backend: `https://api.foliobuddy.xyz`
 - Health check: `/health` returns `{"status":"ok"}`
 
@@ -1177,18 +1214,18 @@ Automated backups via `scripts/backup-db.sh` running as cron jobs on the droplet
 ```json
 // vercel.json (root)
 {
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "https://api.foliobuddy.xyz/api/:path*" }
-  ]
+  "rewrites": [{ "source": "/api/:path*", "destination": "https://api.foliobuddy.xyz/api/:path*" }]
 }
 ```
 
 **The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Coolify backend at `api.foliobuddy.xyz`. This avoids CORS issues and keeps the backend URL hidden from the client.
 
 **Current production URL:**
+
 - Frontend: `https://foliobuddy.xyz`
 
 Vercel provides:
+
 - Auto-deploy on push to main (frontend only)
 - Preview deployments for PRs
 - Automatic HTTPS
@@ -1202,9 +1239,9 @@ Vercel provides:
 
 I added shadcn/ui components as needed. Should have set up a complete design system from day one—typography, spacing, color tokens.
 
-### 2. API Versioning
+### 2. ~~API Versioning~~ (Done!)
 
-If I need to make breaking changes, I have no versioning strategy. Future me will regret this. Should be `/api/v1/positions`.
+Added `/api/v1` prefix with backward-compatible legacy routes at `/api`. Frontend now uses `/api/v1` paths. Backend must deploy before frontend when versioning paths change.
 
 ### 3. ~~Integration Tests~~ (Done!)
 
@@ -1219,6 +1256,7 @@ We now have 68 backend tests: unit tests for utilities AND integration tests for
 Implemented using Zustand with a simple light/dark toggle (no "system" option — keeps it simple).
 
 **Key implementation details:**
+
 - Theme is applied by adding/removing the `dark` class on `document.documentElement`
 - A script in `index.html` runs before React loads to prevent flash of wrong theme
 - Theme persists to localStorage via Zustand's `persist` middleware
@@ -1228,15 +1266,15 @@ Implemented using Zustand with a simple light/dark toggle (no "system" option �
 
 Using `react-hotkeys-hook` for global keyboard shortcuts:
 
-| Key | Action |
-|-----|--------|
-| `D` | Navigate to Dashboard |
-| `P` | Navigate to Portfolio |
-| `T` | Navigate to Trades |
-| `I` | Navigate to Investors |
-| `S` | Navigate to Settings |
-| `/` | Toggle theme (light ↔ dark) |
-| `Cmd/Ctrl + K` | Show shortcuts help modal |
+| Key            | Action                      |
+| -------------- | --------------------------- |
+| `D`            | Navigate to Dashboard       |
+| `P`            | Navigate to Portfolio       |
+| `T`            | Navigate to Trades          |
+| `I`            | Navigate to Investors       |
+| `S`            | Navigate to Settings        |
+| `/`            | Toggle theme (light ↔ dark) |
+| `Cmd/Ctrl + K` | Show shortcuts help modal   |
 
 Shortcuts are disabled when typing in input fields via `enableOnFormTags: false`.
 
@@ -1245,12 +1283,14 @@ Shortcuts are disabled when typing in input fields via `enableOnFormTags: false`
 Integrated Sentry for production error monitoring on both frontend and backend.
 
 **Frontend:**
+
 - Initializes only when `VITE_SENTRY_DSN` is set (silent skip in development)
 - Includes browser tracing and session replay integrations
 - Custom `ErrorFallback` component shows user-friendly error UI with error ID
 - Wrap the entire app in `Sentry.ErrorBoundary`
 
 **Backend:**
+
 - `initSentry()` called before Express initialization so Sentry can auto-instrument
 - `Sentry.captureException(err)` in errorHandler for unexpected 500-level errors only
 - Skips Zod validation errors (400) and AppErrors with status < 500
@@ -1259,6 +1299,7 @@ Integrated Sentry for production error monitoring on both frontend and backend.
 ### CSV Export
 
 Added convenient export buttons on Portfolio and Trades pages:
+
 - **Portfolio page:** "Export CSV" button downloads all positions
 - **Trades page:** Dropdown menu with options for "All Trades", "Open Trades", "Closed Trades"
 
@@ -1276,50 +1317,71 @@ Need to transfer data between accounts or back up your records? The copy/paste s
 | History | Clipboard icon per row | "Copy All" button | Add Snapshot → Import tab |
 
 **Position format (JSON):**
+
 ```json
-[{
-  "asset": { "coingeckoId": "bitcoin", "symbol": "BTC", "name": "Bitcoin", "category": "LIQUID_CRYPTO" },
-  "quantity": 6.2315,
-  "avgCostUsd": 88888,
-  "storageType": "CEX",
-  "storageLocation": "Binance",
-  "notes": "Spot",
-  "custodyOf": "Mum"
-}]
+[
+  {
+    "asset": {
+      "coingeckoId": "bitcoin",
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "category": "LIQUID_CRYPTO"
+    },
+    "quantity": 6.2315,
+    "avgCostUsd": 88888,
+    "storageType": "CEX",
+    "storageLocation": "Binance",
+    "notes": "Spot",
+    "custodyOf": "Mum"
+  }
+]
 ```
+
 > `custodyOf` is optional — only included for positions held on behalf of others. Omit it (or set to null) for your own positions.
 
 **Trade format (JSON):**
+
 ```json
-[{
-  "asset": { "coingeckoId": "bitcoin", "symbol": "BTC", "name": "Bitcoin", "category": "LIQUID_CRYPTO" },
-  "direction": "LONG",
-  "entryPrice": 50000,
-  "exitPrice": 55000,
-  "quantity": 0.1,
-  "entryDate": "2024-01-15T10:00:00.000Z",
-  "exitDate": "2024-01-20T10:00:00.000Z",
-  "status": "CLOSED",
-  "notes": "Test trade",
-  "tags": ["swing"]
-}]
+[
+  {
+    "asset": {
+      "coingeckoId": "bitcoin",
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "category": "LIQUID_CRYPTO"
+    },
+    "direction": "LONG",
+    "entryPrice": 50000,
+    "exitPrice": 55000,
+    "quantity": 0.1,
+    "entryDate": "2024-01-15T10:00:00.000Z",
+    "exitDate": "2024-01-20T10:00:00.000Z",
+    "status": "CLOSED",
+    "notes": "Test trade",
+    "tags": ["swing"]
+  }
+]
 ```
 
 **Snapshot format (JSON):**
+
 ```json
-[{
-  "timestamp": "2024-01-15T00:00:00.000Z",
-  "snapshotType": "MANUAL",
-  "source": "MANUAL",
-  "totalValueUsd": 50000,
-  "totalCostBasis": 40000,
-  "notes": "Monthly checkpoint"
-}]
+[
+  {
+    "timestamp": "2024-01-15T00:00:00.000Z",
+    "snapshotType": "MANUAL",
+    "source": "MANUAL",
+    "totalValueUsd": 50000,
+    "totalCostBasis": 40000,
+    "notes": "Monthly checkpoint"
+  }
+]
 ```
 
 **Why one format?** We originally had two formats (simplified for import, full for backup). But maintaining two formats was confusing—users copied in one format and couldn't paste it back. Now there's one unified format per entity type: what you copy is exactly what you can import.
 
 **Import features:**
+
 - **Paste from Clipboard** - One-click paste button
 - **Manual input** - Paste or type JSON in textarea
 - **Validation** - Checks JSON format, required fields, data types
@@ -1328,6 +1390,7 @@ Need to transfer data between accounts or back up your records? The copy/paste s
 - **Bulk import API** - Backend endpoint handles arrays efficiently
 
 **Visual feedback:**
+
 - Copy buttons show a green checkmark for 2 seconds after successful copy
 - Button text changes to "Copied!" temporarily
 - Import dialog shows count of items ready to import
@@ -1336,13 +1399,14 @@ Need to transfer data between accounts or back up your records? The copy/paste s
 
 Every data table has consistent action buttons per row:
 
-| Icon | Action | Confirmation |
-|------|--------|--------------|
-| 📋 Copy | Copies item to clipboard | Green checkmark feedback |
-| ✏️ Edit | Opens edit dialog with form pre-filled | None (dialog has Cancel) |
-| 🗑️ Delete | Opens confirmation dialog | "Are you sure?" with Cancel/Delete |
+| Icon      | Action                                 | Confirmation                       |
+| --------- | -------------------------------------- | ---------------------------------- |
+| 📋 Copy   | Copies item to clipboard               | Green checkmark feedback           |
+| ✏️ Edit   | Opens edit dialog with form pre-filled | None (dialog has Cancel)           |
+| 🗑️ Delete | Opens confirmation dialog              | "Are you sure?" with Cancel/Delete |
 
 **The edit pattern:**
+
 ```typescript
 // Same form component handles both create and edit
 <TradeForm trade={existingTrade} onSuccess={handleClose} />  // Edit mode
@@ -1360,6 +1424,7 @@ This pattern keeps forms DRY—one component, two modes.
 No more waiting 60 seconds for price updates. The dashboard now receives instant updates via WebSocket when prices refresh.
 
 **Architecture:**
+
 ```
 Frontend (React)
     ↕ Socket.io (WebSocket/polling fallback)
@@ -1394,12 +1459,13 @@ All connected clients
    - Tooltip shows last update time
 
 **The fallback pattern:**
+
 ```typescript
 // React Query config in main.tsx
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchInterval: 60000,  // Still polls every 60s as fallback
+      refetchInterval: 60000, // Still polls every 60s as fallback
     },
   },
 });
@@ -1409,6 +1475,7 @@ const queryClient = new QueryClient({
 ```
 
 **Why Socket.io instead of native WebSockets?**
+
 - Auto-reconnection with exponential backoff
 - Fallback to HTTP long-polling if WebSockets blocked
 - Room system for user-specific messages
@@ -1419,6 +1486,7 @@ const queryClient = new QueryClient({
 ## Pre-Launch Checklist
 
 Before making the app public:
+
 - [x] **Add Sentry DSNs** - Added `SENTRY_DSN` to Coolify (backend) and `VITE_SENTRY_DSN` to Vercel (frontend), both redeployed
 - [x] **Migrate off Railway** - Backend now runs on Coolify/DigitalOcean (Railway trial expired)
 - [x] **Set up auto-deploy** - Added `COOLIFY_API_TOKEN`, `COOLIFY_URL`, and `COOLIFY_APP_UUID` GitHub secrets; `deploy-backend.yml` triggers on push to `packages/backend/**`
@@ -1428,9 +1496,11 @@ Before making the app public:
 ## The Road Ahead
 
 Features I want to add:
+
 - [ ] Mobile app (React Native, sharing the codebase)
 
 Recently completed:
+
 - [x] Local-only `/dev/demo` route for authenticated UI testing with mocked API responses; lazy-loaded in dev so mock data does not ship to production bundles
 - [x] Security hardening: protected position/trade/investor mutations now enforce ownership on update/delete paths
 - [x] WebSocket CORS hardening: exact origin matching instead of prefix matching
@@ -1469,7 +1539,23 @@ Recently completed:
 - [x] Pie chart color diversity: maximally distinct hues per chart slice, avoiding benchmark line colors
 - [x] Custody positions: "Held for Others" section — track crypto held for other people, excluded from net worth/P&L/snapshots, checkbox+dropdown UX with localStorage name persistence
 - [x] Dashboard UI refresh (inspired by Variant community references): gradient fill on portfolio value chart (LineChart → AreaChart), allocation charts reworked to donut + side legend layout with center labels, clickable legend percentages recalculate for visible items, Net Worth card gradient upgrade, "vs 30D ago" period comparison on Net Worth card
-- [x] Rebrand from "PA Portfolio" to "FolioBuddy": new growth-chart SVG logo (favicon + sidebar icon), updated all user-facing text, package scope → `@foliobuddy/*`. Infrastructure names (DB, bucket, repo) unchanged.
+- [x] Rebrand from "PA Portfolio" to "FolioBuddy": new growth-chart SVG logo (favicon + sidebar icon), updated all user-facing text, package scope → `@foliobuddy/*`. GitHub repo renamed to `foliobuddy`.
+- [x] **14-item architecture improvement sweep:**
+  - Domain constants (AssetCategory, StorageType, TradeDirection, etc.) replacing magic strings
+  - Generic TTLCache utility with LRU eviction (priceService 528→355 lines)
+  - Consolidated portfolioService with single `getOwnedPositions()` + `Promise.all`
+  - PriceHistory cleanup cron (90-day retention, daily 2am UTC)
+  - Optimized `updatePositionValues` — filters by changed asset IDs only
+  - Removed startup ALTER TABLE hack
+  - Cleaned up YTD debug logging
+  - API versioning (`/api/v1` with backward-compat legacy routes)
+  - Frontend type extraction (`api.ts` split into `api.ts` + `types.ts`)
+  - Shared types package (`@pa-portfolio/shared`)
+  - WebSocket URL fix (removed hardcoded Railway fallback, env-var based)
+  - Frontend unit tests (24 tests for hooks + key components)
+  - Playwright E2E smoke tests (health, app load, auth redirect)
+  - Deploy workflow health check with timeout
+- [x] Clickable snapshot rows: entire AUTOMATIC row toggles expand/collapse, not just chevron
 
 ---
 
@@ -1481,8 +1567,8 @@ This project started as "I want to see my net worth." It became a full portfolio
 
 The most important lesson? **Ship early, iterate often.** Version 1 was ugly and barely functional. But it worked. Each version got better because I was using it daily and feeling the pain points.
 
-Your portfolio dashboard doesn't need to be perfect. It needs to be *yours*.
+Your portfolio dashboard doesn't need to be perfect. It needs to be _yours_.
 
 ---
 
-*Built with TypeScript, Tailwind, and too much coffee. Now called FolioBuddy.*
+_Built with TypeScript, Tailwind, and too much coffee. [FolioBuddy](https://github.com/n3moxyz/foliobuddy)._
