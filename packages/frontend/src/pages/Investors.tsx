@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, Investor, CreateInvestorData } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { CreateInvestorData, Investor } from '@/lib/types';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -91,7 +92,10 @@ export default function Investors() {
             Manage investor stakes and track their returns
           </p>
         </div>
-        <Button className="touch-manipulation self-start sm:self-auto" onClick={() => setShowAddForm(true)}>
+        <Button
+          className="touch-manipulation self-start sm:self-auto"
+          onClick={() => setShowAddForm(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Investor
         </Button>
@@ -136,9 +140,7 @@ export default function Investors() {
       <Card>
         <CardHeader>
           <CardTitle>Investor List</CardTitle>
-          <CardDescription>
-            All investors and their current values
-          </CardDescription>
+          <CardDescription>All investors and their current values</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -152,7 +154,9 @@ export default function Investors() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead className="text-right">Stake %</TableHead>
-                    <TableHead className="hidden sm:table-cell text-right">Capital (1 Jan)</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right">
+                      Capital (1 Jan)
+                    </TableHead>
                     <TableHead className="hidden sm:table-cell text-right">Current Value</TableHead>
                     <TableHead className="text-right">YTD Return</TableHead>
                     <TableHead className="w-[80px]">Actions</TableHead>
@@ -176,7 +180,9 @@ export default function Investors() {
                         {formatStakePercentage(investor.stakePercentage)}%
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-right font-mono">
-                        {investor.capitalAtYearStart ? formatCurrency(investor.capitalAtYearStart, 'USD', 0) : '-'}
+                        {investor.capitalAtYearStart
+                          ? formatCurrency(investor.capitalAtYearStart, 'USD', 0)
+                          : '-'}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-right font-mono">
                         {formatCurrency(investor.currentValue, 'USD', 0)}
@@ -187,9 +193,7 @@ export default function Investors() {
                             <p className="font-mono">
                               {formatCurrency(investor.ytdReturn, 'USD', 0)}
                             </p>
-                            <p className="text-xs">
-                              {formatPercent(investor.ytdReturnPct)}
-                            </p>
+                            <p className="text-xs">{formatPercent(investor.ytdReturnPct)}</p>
                           </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
@@ -241,7 +245,8 @@ export default function Investors() {
             <DialogTitle>Add New Investor</DialogTitle>
             {totalStake >= 100 && (
               <DialogDescription>
-                Total stake is currently {formatStakePercentage(totalStake)}%. You may need to rebalance existing investors after adding.
+                Total stake is currently {formatStakePercentage(totalStake)}%. You may need to
+                rebalance existing investors after adding.
               </DialogDescription>
             )}
           </DialogHeader>
@@ -273,31 +278,36 @@ export default function Investors() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteInvestor} onOpenChange={(open) => {
-        if (!open) {
-          setDeleteInvestor(null);
-          setReassignToId('');
-        }
-      }}>
+      <Dialog
+        open={!!deleteInvestor}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteInvestor(null);
+            setReassignToId('');
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Investor</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove {deleteInvestor?.name} from the investor list?
-              This will not affect historical data.
+              Are you sure you want to remove {deleteInvestor?.name} from the investor list? This
+              will not affect historical data.
             </DialogDescription>
           </DialogHeader>
 
           {/* Stake reassignment - only show if there are other investors */}
           {deleteInvestor && investors && investors.length > 1 && (
             <div className="space-y-2 py-4">
-              <Label>Reassign {formatStakePercentage(deleteInvestor.stakePercentage)}% stake to:</Label>
+              <Label>
+                Reassign {formatStakePercentage(deleteInvestor.stakePercentage)}% stake to:
+              </Label>
               {investors.length === 2 ? (
                 // Only one other investor - auto-select and show info
                 <p className="text-sm text-muted-foreground">
                   Stake will be reassigned to{' '}
                   <span className="font-medium">
-                    {investors.find(inv => inv.id !== deleteInvestor.id)?.name}
+                    {investors.find((inv) => inv.id !== deleteInvestor.id)?.name}
                   </span>
                 </p>
               ) : (
@@ -308,8 +318,8 @@ export default function Investors() {
                   </SelectTrigger>
                   <SelectContent>
                     {investors
-                      .filter(inv => inv.id !== deleteInvestor.id)
-                      .map(inv => (
+                      .filter((inv) => inv.id !== deleteInvestor.id)
+                      .map((inv) => (
                         <SelectItem key={inv.id} value={inv.id}>
                           {inv.name} ({formatStakePercentage(inv.stakePercentage)}%)
                         </SelectItem>
@@ -321,10 +331,13 @@ export default function Investors() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setDeleteInvestor(null);
-              setReassignToId('');
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteInvestor(null);
+                setReassignToId('');
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -336,14 +349,16 @@ export default function Investors() {
                 if (investors && investors.length > 1) {
                   if (investors.length === 2) {
                     // Auto-select the only other investor
-                    reassignTo = investors.find(inv => inv.id !== deleteInvestor.id)?.id;
+                    reassignTo = investors.find((inv) => inv.id !== deleteInvestor.id)?.id;
                   } else {
                     reassignTo = reassignToId || undefined;
                   }
                 }
                 deleteMutation.mutate({ id: deleteInvestor.id, reassignTo });
               }}
-              disabled={deleteMutation.isPending || (investors && investors.length > 2 && !reassignToId)}
+              disabled={
+                deleteMutation.isPending || (investors && investors.length > 2 && !reassignToId)
+              }
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </Button>
@@ -379,13 +394,13 @@ function InvestorForm({
   const isEditing = !!initialData;
   const stakeValue = parseFloat(stakePercentage) || 0;
   const projectedTotal = isEditing
-    ? (currentTotalStake - (initialData?.stakePercentage || 0) + stakeValue)
-    : (currentTotalStake + stakeValue);
+    ? currentTotalStake - (initialData?.stakePercentage || 0) + stakeValue
+    : currentTotalStake + stakeValue;
   const exceedsTotal = projectedTotal > 100;
 
   // Calculate suggested stake for owner (100% - sum of other investors)
   const otherInvestorsStake = allInvestors
-    .filter(inv => inv.id !== initialData?.id)
+    .filter((inv) => inv.id !== initialData?.id)
     .reduce((sum, inv) => sum + inv.stakePercentage, 0);
   const suggestedStake = Math.max(0, 100 - otherInvestorsStake);
 
@@ -466,9 +481,7 @@ function InvestorForm({
             <div className="flex items-center h-10 px-3 rounded-md border bg-muted font-mono">
               {formatStakePercentage(suggestedStake)}%
             </div>
-            <p className="text-xs text-muted-foreground">
-              Automatically assigned remaining stake
-            </p>
+            <p className="text-xs text-muted-foreground">Automatically assigned remaining stake</p>
           </>
         )}
       </div>
@@ -484,9 +497,7 @@ function InvestorForm({
           onChange={(e) => setInitialCapital(e.target.value)}
           placeholder="Optional"
         />
-        <p className="text-xs text-muted-foreground">
-          Used to calculate YTD returns
-        </p>
+        <p className="text-xs text-muted-foreground">Used to calculate YTD returns</p>
       </div>
 
       <div className="flex items-center space-x-2">
@@ -502,7 +513,13 @@ function InvestorForm({
 
       <div className="flex justify-end gap-2 pt-4">
         <Button type="submit" disabled={isLoading || !name || (isEditing && !stakePercentage)}>
-          {isLoading ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Investor')}
+          {isLoading
+            ? isEditing
+              ? 'Saving...'
+              : 'Adding...'
+            : isEditing
+              ? 'Save Changes'
+              : 'Add Investor'}
         </Button>
       </div>
     </form>

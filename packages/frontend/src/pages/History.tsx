@@ -16,18 +16,27 @@ import {
 } from '@/components/ui/dialog';
 import { SnapshotForm } from '@/components/history/SnapshotForm';
 import { SnapshotTable } from '@/components/history/SnapshotTable';
-import { Plus, Trash2, History as HistoryIcon, Copy, Check, Bot, Clock, MoreVertical } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  History as HistoryIcon,
+  Copy,
+  Check,
+  Bot,
+  Clock,
+  MoreVertical,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Snapshot } from '@/lib/api';
+import type { Snapshot } from '@/lib/types';
 
 // Format snapshots for clipboard
 function formatSnapshotsForClipboard(snapshots: Snapshot[]) {
-  const formatted = snapshots.map(s => ({
+  const formatted = snapshots.map((s) => ({
     timestamp: s.timestamp,
     snapshotType: s.snapshotType,
     source: s.source,
@@ -66,9 +75,10 @@ export default function History() {
   const deleteAllMutation = useDeleteAllSnapshots();
 
   // Calculate FX rate from summary
-  const fxRate = summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
-    ? summary.totalValueSgd / summary.totalValueUsd
-    : 1.35;
+  const fxRate =
+    summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
+      ? summary.totalValueSgd / summary.totalValueUsd
+      : 1.35;
 
   // Calculate counts from full data
   const automaticSnapshots = allSnapshots?.filter((s) => s.source === 'AUTOMATIC') || [];
@@ -78,11 +88,12 @@ export default function History() {
   const manualCount = manualSnapshots.length;
 
   // Get filtered snapshots based on current tab
-  const filteredSnapshots = sourceFilter === 'all'
-    ? allSnapshots || []
-    : sourceFilter === 'AUTOMATIC'
-      ? automaticSnapshots
-      : manualSnapshots;
+  const filteredSnapshots =
+    sourceFilter === 'all'
+      ? allSnapshots || []
+      : sourceFilter === 'AUTOMATIC'
+        ? automaticSnapshots
+        : manualSnapshots;
 
   const handleDelete = async () => {
     if (!deletingSnapshot) return;
@@ -113,7 +124,7 @@ export default function History() {
             className="hidden sm:inline-flex"
             onClick={async () => {
               if (allSnapshots && allSnapshots.length > 0) {
-                const completedSnapshots = allSnapshots.filter(s => {
+                const completedSnapshots = allSnapshots.filter((s) => {
                   const snapshotDate = new Date(s.timestamp);
                   const today = new Date();
                   const isSnapshotToday = snapshotDate.toDateString() === today.toDateString();
@@ -152,7 +163,12 @@ export default function History() {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="sm:hidden touch-manipulation" aria-label="More options">
+              <Button
+                variant="outline"
+                size="sm"
+                className="sm:hidden touch-manipulation"
+                aria-label="More options"
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -160,7 +176,7 @@ export default function History() {
               <DropdownMenuItem
                 onClick={async () => {
                   if (allSnapshots && allSnapshots.length > 0) {
-                    const completedSnapshots = allSnapshots.filter(s => {
+                    const completedSnapshots = allSnapshots.filter((s) => {
                       const snapshotDate = new Date(s.timestamp);
                       const today = new Date();
                       const isSnapshotToday = snapshotDate.toDateString() === today.toDateString();
@@ -263,9 +279,7 @@ export default function History() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Snapshot</DialogTitle>
-            <DialogDescription>
-              Update the snapshot details.
-            </DialogDescription>
+            <DialogDescription>Update the snapshot details.</DialogDescription>
           </DialogHeader>
           {editingSnapshot && (
             <SnapshotForm
@@ -284,8 +298,9 @@ export default function History() {
           <DialogHeader>
             <DialogTitle>Delete Snapshot</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this snapshot from {deletingSnapshot && formatDate(deletingSnapshot.timestamp)}?
-              This action cannot be undone.
+              Are you sure you want to delete this snapshot from{' '}
+              {deletingSnapshot && formatDate(deletingSnapshot.timestamp)}? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -308,14 +323,13 @@ export default function History() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Snapshots</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone.
-            </DialogDescription>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete all <span className="font-semibold text-foreground">{allSnapshots?.length || 0}</span> snapshots?
-              This will permanently remove all your snapshot history.
+              Are you sure you want to delete all{' '}
+              <span className="font-semibold text-foreground">{allSnapshots?.length || 0}</span>{' '}
+              snapshots? This will permanently remove all your snapshot history.
             </p>
             <div className="flex justify-end gap-2">
               <Button

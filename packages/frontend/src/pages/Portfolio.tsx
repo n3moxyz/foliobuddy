@@ -7,18 +7,36 @@ import { Button } from '@/components/ui/button';
 import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { PositionForm } from '@/components/portfolio/PositionForm';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Pencil, Download, Copy, Check, Trash2, MoreVertical, FileSpreadsheet, Coins, Banknote, Users } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Download,
+  Copy,
+  Check,
+  Trash2,
+  MoreVertical,
+  FileSpreadsheet,
+  Coins,
+  Banknote,
+  Users,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
-import type { Position } from '@/lib/api';
+import type { Position } from '@/lib/types';
 
 const PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
 
@@ -108,14 +126,14 @@ export default function Portfolio() {
   const { ownedPositions, custodyPositions } = useMemo(() => {
     if (!positions) return { ownedPositions: [] as Position[], custodyPositions: [] as Position[] };
     return {
-      ownedPositions: positions.filter(p => !p.custodyOf),
-      custodyPositions: positions.filter(p => !!p.custodyOf),
+      ownedPositions: positions.filter((p) => !p.custodyOf),
+      custodyPositions: positions.filter((p) => !!p.custodyOf),
     };
   }, [positions]);
 
   // Build sections dynamically from config (owned positions only)
   const sections = useMemo(() => {
-    return SECTION_CONFIG.map(config => {
+    return SECTION_CONFIG.map((config) => {
       const filtered = ownedPositions.filter(config.filter);
       return {
         ...config,
@@ -123,7 +141,7 @@ export default function Portfolio() {
         total: filtered.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
         pnl: filtered.reduce((s, p) => s + (p.unrealizedPnL || 0), 0),
       };
-    }).filter(s => s.positions.length > 0);
+    }).filter((s) => s.positions.length > 0);
   }, [ownedPositions]);
 
   // Custody section totals
@@ -133,12 +151,12 @@ export default function Portfolio() {
 
   // Unique custody names from existing positions (for dropdown)
   const existingCustodyNames = useMemo(() => {
-    const names = new Set(custodyPositions.map(p => p.custodyOf).filter(Boolean) as string[]);
+    const names = new Set(custodyPositions.map((p) => p.custodyOf).filter(Boolean) as string[]);
     return Array.from(names).sort();
   }, [custodyPositions]);
 
   // Derived total for exposure calc in summary cards
-  const cryptoTotal = sections.find(s => s.id === 'crypto')?.total ?? 0;
+  const cryptoTotal = sections.find((s) => s.id === 'crypto')?.total ?? 0;
 
   return (
     <div className="space-y-3">
@@ -146,9 +164,7 @@ export default function Portfolio() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Portfolio</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your positions and holdings
-          </p>
+          <p className="text-sm text-muted-foreground">Manage your positions and holdings</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Secondary actions hidden on mobile, in dropdown */}
@@ -307,65 +323,70 @@ export default function Portfolio() {
       )}
 
       {/* Position Sections */}
-      {!positionsLoading && sections.map(section => (
-        <CollapsibleCard
-          key={section.id}
-          title={`${section.label} (${section.positions.length})`}
-          icon={section.icon}
-          accentColor={section.accentColor}
-          isExpanded={isExpanded(section.id)}
-          onToggle={() => toggle(section.id)}
-          headerRight={
-            <div className="flex items-center gap-3">
-              {!isExpanded(section.id) && (
-                <>
-                  <span className="text-xs text-muted-foreground">
-                    {section.positions.length} position{section.positions.length !== 1 ? 's' : ''}
-                  </span>
-                  {section.pnl !== 0 && (
-                    <span className={`text-xs font-medium ${getPnLColorClass(section.pnl)}`}>
-                      {formatCurrency(convertValue(section.pnl), currency, 0)}
-                    </span>
-                  )}
-                </>
-              )}
-              <span className="text-sm font-semibold text-muted-foreground">
-                {formatCurrency(convertValue(section.total), currency, 0)}
-              </span>
-            </div>
-          }
-          headerExtra={
-            section.id === 'stables' ? (
-              <div className="flex items-center justify-end gap-2 mt-1">
-                {perpExposure > 0 && (
+      {!positionsLoading &&
+        sections.map((section) => (
+          <CollapsibleCard
+            key={section.id}
+            title={`${section.label} (${section.positions.length})`}
+            icon={section.icon}
+            accentColor={section.accentColor}
+            isExpanded={isExpanded(section.id)}
+            onToggle={() => toggle(section.id)}
+            headerRight={
+              <div className="flex items-center gap-3">
+                {!isExpanded(section.id) && (
                   <>
                     <span className="text-xs text-muted-foreground">
-                      Available: {formatCurrency(convertValue(section.total - perpExposure), currency, 0)}
+                      {section.positions.length} position{section.positions.length !== 1 ? 's' : ''}
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                      Perp: {formatCurrency(convertValue(perpExposure), currency, 0)}
-                    </span>
+                    {section.pnl !== 0 && (
+                      <span className={`text-xs font-medium ${getPnLColorClass(section.pnl)}`}>
+                        {formatCurrency(convertValue(section.pnl), currency, 0)}
+                      </span>
+                    )}
                   </>
                 )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); handlePerpEdit(); }}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                >
-                  <Pencil className="h-3 w-3" />
-                  {perpExposure > 0 ? 'Edit' : 'Add Perp'}
-                </button>
+                <span className="text-sm font-semibold text-muted-foreground">
+                  {formatCurrency(convertValue(section.total), currency, 0)}
+                </span>
               </div>
-            ) : undefined
-          }
-        >
-          <PositionTable
-            positions={section.positions}
-            currency={currency}
-            fxRate={fxRate}
-            sectionPrefix={section.id}
-          />
-        </CollapsibleCard>
-      ))}
+            }
+            headerExtra={
+              section.id === 'stables' ? (
+                <div className="flex items-center justify-end gap-2 mt-1">
+                  {perpExposure > 0 && (
+                    <>
+                      <span className="text-xs text-muted-foreground">
+                        Available:{' '}
+                        {formatCurrency(convertValue(section.total - perpExposure), currency, 0)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Perp: {formatCurrency(convertValue(perpExposure), currency, 0)}
+                      </span>
+                    </>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePerpEdit();
+                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    {perpExposure > 0 ? 'Edit' : 'Add Perp'}
+                  </button>
+                </div>
+              ) : undefined
+            }
+          >
+            <PositionTable
+              positions={section.positions}
+              currency={currency}
+              fxRate={fxRate}
+              sectionPrefix={section.id}
+            />
+          </CollapsibleCard>
+        ))}
 
       {/* Custody: Held for Others */}
       {!positionsLoading && custodyPositions.length > 0 && (
@@ -405,8 +426,8 @@ export default function Portfolio() {
           </DialogHeader>
           <PositionForm
             onSuccess={() => setShowAddForm(false)}
-            cryptoCount={sections.find(s => s.id === 'crypto')?.positions.length ?? 0}
-            stablesCount={sections.find(s => s.id === 'stables')?.positions.length ?? 0}
+            cryptoCount={sections.find((s) => s.id === 'crypto')?.positions.length ?? 0}
+            stablesCount={sections.find((s) => s.id === 'stables')?.positions.length ?? 0}
             existingCustodyNames={existingCustodyNames}
           />
         </DialogContent>
@@ -420,7 +441,8 @@ export default function Portfolio() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Enter your total open perp position size in USD. This will be added to your crypto exposure.
+              Enter your total open perp position size in USD. This will be added to your crypto
+              exposure.
             </p>
             <div className="space-y-1">
               <label className="text-sm">Position Size (USD)</label>
@@ -450,14 +472,13 @@ export default function Portfolio() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Positions</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone.
-            </DialogDescription>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete all <span className="font-semibold text-foreground">{positions?.length || 0}</span> positions?
-              This will permanently remove all your portfolio data.
+              Are you sure you want to delete all{' '}
+              <span className="font-semibold text-foreground">{positions?.length || 0}</span>{' '}
+              positions? This will permanently remove all your portfolio data.
             </p>
             <div className="flex justify-end gap-2">
               <Button
