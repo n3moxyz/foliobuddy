@@ -54,7 +54,9 @@ export async function createMissingSnapshots(): Promise<void> {
 
         if (!existingSnapshot) {
           const snapshotId = await snapshotService.createSnapshot(user.id, 'DAILY');
-          logger.info(`[Snapshot] Created catch-up daily snapshot ${snapshotId} for user ${user.id}`);
+          logger.info(
+            `[Snapshot] Created catch-up daily snapshot ${snapshotId} for user ${user.id}`
+          );
         } else {
           logger.info(`[Snapshot] Daily snapshot already exists for user ${user.id}`);
         }
@@ -86,7 +88,7 @@ export function startPriceRefreshJob(): void {
       socketService.broadcastPriceUpdate(result.updated);
 
       // Update position market values
-      await priceService.updatePositionValues();
+      await priceService.updatePositionValues(result.changedAssetIds);
       logger.info('[Price Refresh] Position values updated');
 
       // Get all users with positions and send portfolio updates
@@ -208,6 +210,35 @@ export function startFxRateJob(): void {
       }
     } catch (error) {
       logger.error('[FX Rates] Error:', error);
+    }
+  });
+}
+
+/**
+ * Start the price history cleanup job (daily at 2am UTC)
+ * Deletes PriceHistory entries older than 90 days
+ */
+export function startPriceHistoryCleanupJob(): void {
+  logger.info('🧹 Starting price history cleanup scheduler');
+
+  cron.schedule('0 2 * * *', async () => {
+    try {
+      logger.info('[Price History Cleanup] Starting...');
+
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+      const result = await prisma.priceHistory.deleteMany({
+        where: {
+          timestamp: {
+            lt: ninetyDaysAgo,
+          },
+        },
+      });
+
+      logger.info(`[Price History Cleanup] Deleted ${result.count} entries older than 90 days`);
+    } catch (error) {
+      logger.error('[Price History Cleanup] Error:', error);
     }
   });
 }
