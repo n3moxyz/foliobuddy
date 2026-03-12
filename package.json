@@ -9,6 +9,7 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm run dev --workspace=@foliobuddy/backend",
     "dev:frontend": "npm run dev --workspace=@foliobuddy/frontend",
+    "test:e2e": "playwright test",
     "build": "npm run build --workspaces",
     "db:migrate": "npm run db:migrate --workspace=@foliobuddy/backend",
     "db:seed": "npm run db:seed --workspace=@foliobuddy/backend",
@@ -19,6 +20,7 @@
     "db:sync": "bash scripts/sync-db.sh"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "concurrently": "^8.2.2",
     "prettier": "^3.8.1"
   }
