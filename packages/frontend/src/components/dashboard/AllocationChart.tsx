@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import type { CategoryAllocation } from '@/lib/api';
+import type { CategoryAllocation } from '@/lib/types';
 
 interface AllocationChartProps {
   data: CategoryAllocation[];
@@ -45,12 +45,8 @@ export function AllocationChart({ data, title, isLoading }: AllocationChartProps
       return (
         <div className="bg-background border rounded-lg shadow-lg p-3">
           <p className="font-medium">{data.name}</p>
-          <p className="text-sm text-muted-foreground">
-            {formatCurrency(data.value, 'USD')}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {formatNumber(data.percentage)}%
-          </p>
+          <p className="text-sm text-muted-foreground">{formatCurrency(data.value, 'USD')}</p>
+          <p className="text-sm text-muted-foreground">{formatNumber(data.percentage)}%</p>
         </div>
       );
     }

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import type { PortfolioSummary } from '@/lib/api';
+import type { PortfolioSummary } from '@/lib/types';
 
 interface NetWorthCardProps {
   summary: PortfolioSummary;
@@ -41,16 +41,15 @@ export function NetWorthCard({ summary, currency, stakeMultiplier = 1, valueUsd3
   }, [summary.totalValueUsd, valueUsd30dAgo, stakeMultiplier]);
 
   // Alternate currency value with stake multiplier
-  const altValue = currency === 'USD'
-    ? summary.totalValueSgd * stakeMultiplier
-    : summary.totalValueUsd * stakeMultiplier;
+  const altValue =
+    currency === 'USD'
+      ? summary.totalValueSgd * stakeMultiplier
+      : summary.totalValueUsd * stakeMultiplier;
 
   return (
     <Card className="bg-gradient-to-br from-primary/15 via-primary/8 to-background border-primary/20">
       <CardHeader>
-        <CardTitle className="text-lg font-medium text-muted-foreground">
-          Net Worth
-        </CardTitle>
+        <CardTitle className="text-lg font-medium text-muted-foreground">Net Worth</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
@@ -58,14 +57,8 @@ export function NetWorthCard({ summary, currency, stakeMultiplier = 1, valueUsd3
             {formatCurrency(value, currency, 0)}
           </span>
           <div className={`flex items-center gap-1 ${getPnLColorClass(summary.unrealizedPnL)}`}>
-            {isPositive ? (
-              <TrendingUp className="h-5 w-5" />
-            ) : (
-              <TrendingDown className="h-5 w-5" />
-            )}
-            <span className="font-semibold">
-              {formatPercent(summary.unrealizedPnLPct)}
-            </span>
+            {isPositive ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+            <span className="font-semibold">{formatPercent(summary.unrealizedPnLPct)}</span>
           </div>
         </div>
 
@@ -100,11 +93,7 @@ export function NetWorthCard({ summary, currency, stakeMultiplier = 1, valueUsd3
         <div className="mt-4 pt-4 border-t">
           <p className="text-sm text-muted-foreground">
             {currency === 'USD' ? 'SGD' : 'USD'} Value:{' '}
-            {formatCurrency(
-              altValue,
-              currency === 'USD' ? 'SGD' : 'USD',
-              0
-            )}
+            {formatCurrency(altValue, currency === 'USD' ? 'SGD' : 'USD', 0)}
           </p>
         </div>
       </CardContent>

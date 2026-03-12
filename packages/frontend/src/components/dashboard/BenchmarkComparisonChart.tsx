@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useQueries } from '@tanstack/react-query';
 import { usePerformanceHistory, useBenchmarkHistory } from '@/hooks/usePortfolio';
-import { api, type CoinSearchResult } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { CoinSearchResult } from '@/lib/types';
 import { useSearchCoins } from '@/hooks/useAssets';
 import {
   normalizePerformanceHistory,
@@ -24,11 +25,7 @@ import {
   type NormalizedDataPoint,
 } from '@/lib/benchmarkUtils';
 import { Plus, X } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 
 type TimePeriod = '7D' | '1M' | '3M' | '1Y' | 'YTD' | 'Max';
@@ -64,17 +61,23 @@ function getDateRange(period: TimePeriod): { from?: string; to?: string; days?: 
 
 function getDaysFromPeriod(period: TimePeriod): number {
   switch (period) {
-    case '7D': return 7;
-    case '1M': return 30;
-    case '3M': return 90;
-    case '1Y': return 365;
+    case '7D':
+      return 7;
+    case '1M':
+      return 30;
+    case '3M':
+      return 90;
+    case '1Y':
+      return 365;
     case 'YTD': {
       const now = new Date();
       const startOfYear = new Date(now.getFullYear(), 0, 1);
       return Math.ceil((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
     }
-    case 'Max': return 365;
-    default: return 30;
+    case 'Max':
+      return 365;
+    default:
+      return 30;
   }
 }
 
@@ -115,18 +118,31 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const days = useMemo(() => getDaysFromPeriod(period), [period]);
 
-  const { data: performanceData, isLoading, isFetching: perfFetching } = usePerformanceHistory(dateRange);
+  const {
+    data: performanceData,
+    isLoading,
+    isFetching: perfFetching,
+  } = usePerformanceHistory(dateRange);
 
   // Fetch BTC/ETH historical data from CoinGecko API (more reliable than snapshot data)
-  const btcEnabled = benchmarks.find(b => b.id === 'btc')?.enabled ?? false;
-  const ethEnabled = benchmarks.find(b => b.id === 'eth')?.enabled ?? false;
-  const { data: btcData, isFetching: btcFetching } = useBenchmarkHistory('bitcoin', days, btcEnabled);
-  const { data: ethData, isFetching: ethFetching } = useBenchmarkHistory('ethereum', days, ethEnabled);
-  const isBenchmarkFetching = perfFetching || (btcEnabled && btcFetching) || (ethEnabled && ethFetching);
+  const btcEnabled = benchmarks.find((b) => b.id === 'btc')?.enabled ?? false;
+  const ethEnabled = benchmarks.find((b) => b.id === 'eth')?.enabled ?? false;
+  const { data: btcData, isFetching: btcFetching } = useBenchmarkHistory(
+    'bitcoin',
+    days,
+    btcEnabled
+  );
+  const { data: ethData, isFetching: ethFetching } = useBenchmarkHistory(
+    'ethereum',
+    days,
+    ethEnabled
+  );
+  const isBenchmarkFetching =
+    perfFetching || (btcEnabled && btcFetching) || (ethEnabled && ethFetching);
 
   // Fetch additional benchmark data using useQueries (safe for dynamic arrays)
   const additionalQueries = useQueries({
-    queries: additionalBenchmarks.map(b => ({
+    queries: additionalBenchmarks.map((b) => ({
       queryKey: ['benchmark', 'history', b.coingeckoId, days],
       queryFn: () => api.getBenchmarkHistory(b.coingeckoId, days),
       enabled: b.enabled,
@@ -168,12 +184,21 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
     });
 
     // Add formatted dates for display
-    return normalized.map(point => ({
+    return normalized.map((point) => ({
       ...point,
       displayDate: formatXAxisDate(point.timestamp, dataSpanDays),
       tooltipDate: formatTooltipDate(point.timestamp),
     }));
-  }, [performanceData, btcData, ethData, btcEnabled, ethEnabled, additionalBenchmarks, additionalQueries, dataSpanDays]);
+  }, [
+    performanceData,
+    btcData,
+    ethData,
+    btcEnabled,
+    ethEnabled,
+    additionalBenchmarks,
+    additionalQueries,
+    dataSpanDays,
+  ]);
 
   // Calculate tick interval
   const tickInterval = useMemo(() => {
@@ -184,36 +209,34 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
   }, [chartData.length]);
 
   const toggleBenchmark = (id: string) => {
-    setBenchmarks(prev =>
-      prev.map(b => b.id === id ? { ...b, enabled: !b.enabled } : b)
-    );
+    setBenchmarks((prev) => prev.map((b) => (b.id === id ? { ...b, enabled: !b.enabled } : b)));
   };
 
   const toggleAdditionalBenchmark = (id: string) => {
-    setAdditionalBenchmarks(prev =>
-      prev.map(b => b.id === id ? { ...b, enabled: !b.enabled } : b)
+    setAdditionalBenchmarks((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, enabled: !b.enabled } : b))
     );
   };
 
   const removeAdditionalBenchmark = (id: string) => {
-    setAdditionalBenchmarks(prev => prev.filter(b => b.id !== id));
+    setAdditionalBenchmarks((prev) => prev.filter((b) => b.id !== id));
   };
 
   // Filter out already added benchmarks from search results
   const searchResults = useMemo(() => {
     if (!rawSearchResults) return [];
     const existingIds = new Set([
-      ...benchmarks.map(b => b.coingeckoId),
-      ...additionalBenchmarks.map(b => b.coingeckoId),
+      ...benchmarks.map((b) => b.coingeckoId),
+      ...additionalBenchmarks.map((b) => b.coingeckoId),
     ]);
-    return rawSearchResults.filter(r => !existingIds.has(r.id)).slice(0, 5);
+    return rawSearchResults.filter((r) => !existingIds.has(r.id)).slice(0, 5);
   }, [rawSearchResults, benchmarks, additionalBenchmarks]);
 
   const addBenchmark = (coin: CoinSearchResult) => {
     if (additionalBenchmarks.length >= 3) return;
 
     const colorIndex = additionalBenchmarks.length % ADDITIONAL_COLORS.length;
-    setAdditionalBenchmarks(prev => [
+    setAdditionalBenchmarks((prev) => [
       ...prev,
       {
         id: coin.id,
@@ -369,7 +392,9 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
           <div className="w-full text-sm sm:ml-auto sm:w-auto">
             <span className="text-primary font-medium">Portfolio</span>
             {chartData.length > 0 && (
-              <span className={`ml-1 ${(getCurrentChange(chartData, 'portfolio') ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <span
+                className={`ml-1 ${(getCurrentChange(chartData, 'portfolio') ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
                 {(() => {
                   const change = getCurrentChange(chartData, 'portfolio');
                   if (change === undefined) return '';
@@ -390,9 +415,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
           <div className="h-[300px] flex items-center justify-center">
             <div className="text-center text-muted-foreground">
               <p>No data for {period} period</p>
-              <p className="text-xs mt-1">
-                Create snapshots to track performance vs benchmarks
-              </p>
+              <p className="text-xs mt-1">Create snapshots to track performance vs benchmarks</p>
             </div>
           </div>
         ) : (
@@ -402,89 +425,89 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                 <span className="text-sm text-muted-foreground animate-pulse">Loading...</span>
               </div>
             )}
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <XAxis
-                dataKey="displayDate"
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="text-muted-foreground"
-                interval={tickInterval}
-              />
-              <YAxis
-                tickFormatter={(value) => `${value >= 0 ? '+' : ''}${value.toFixed(0)}%`}
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="text-muted-foreground"
-                width={42}
-              />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const data = payload[0].payload as NormalizedDataPoint & { tooltipDate: string };
-                  return (
-                    <div className="rounded-lg border bg-background p-3 shadow-md">
-                      <p className="text-xs text-muted-foreground mb-2">{data.tooltipDate}</p>
-                      {allBenchmarks
-                        .filter(b => b.enabled)
-                        .map(benchmark => {
-                          const value = data[benchmark.id];
-                          if (typeof value !== 'number') return null;
-                          return (
-                            <div key={benchmark.id} className="flex items-center gap-2 text-sm">
-                              <div
-                                className="w-2 h-2 rounded-full"
-                                style={{ backgroundColor: benchmark.color }}
-                              />
-                              <span>{benchmark.symbol}:</span>
-                              <span className={value >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                {value >= 0 ? '+' : ''}{value.toFixed(2)}%
-                              </span>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  );
-                }}
-              />
-              <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.15} strokeDasharray="4 4" />
-              {/* Portfolio line */}
-              <Line
-                type="monotone"
-                dataKey="portfolio"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                dot={(props: Record<string, unknown>) => {
-                  const { cx, cy, index, value } = props as { cx: number; cy: number; index: number; value: number | undefined };
-                  if (index !== chartData.length - 1 || value == null) return <g key={`p-${index}`} />;
-                  return (
-                    <g key={`p-${index}`}>
-                      <circle cx={cx} cy={cy} r={3} fill="hsl(var(--primary))" />
-                      <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill="currentColor" opacity={0.7}>
-                        {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
-                      </text>
-                    </g>
-                  );
-                }}
-                connectNulls
-                activeDot={{ r: 4, strokeWidth: 0 }}
-              />
-              {/* BTC line */}
-              {benchmarks.find(b => b.id === 'btc')?.enabled && (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <XAxis
+                  dataKey="displayDate"
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                  interval={tickInterval}
+                />
+                <YAxis
+                  tickFormatter={(value) => `${value >= 0 ? '+' : ''}${value.toFixed(0)}%`}
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                  width={42}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const data = payload[0].payload as NormalizedDataPoint & {
+                      tooltipDate: string;
+                    };
+                    return (
+                      <div className="rounded-lg border bg-background p-3 shadow-md">
+                        <p className="text-xs text-muted-foreground mb-2">{data.tooltipDate}</p>
+                        {allBenchmarks
+                          .filter((b) => b.enabled)
+                          .map((benchmark) => {
+                            const value = data[benchmark.id];
+                            if (typeof value !== 'number') return null;
+                            return (
+                              <div key={benchmark.id} className="flex items-center gap-2 text-sm">
+                                <div
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: benchmark.color }}
+                                />
+                                <span>{benchmark.symbol}:</span>
+                                <span className={value >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                  {value >= 0 ? '+' : ''}
+                                  {value.toFixed(2)}%
+                                </span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    );
+                  }}
+                />
+                <ReferenceLine
+                  y={0}
+                  stroke="currentColor"
+                  strokeOpacity={0.15}
+                  strokeDasharray="4 4"
+                />
+                {/* Portfolio line */}
                 <Line
                   type="monotone"
-                  dataKey="btc"
-                  stroke="#F7931A"
+                  dataKey="portfolio"
+                  stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   dot={(props: Record<string, unknown>) => {
-                    const { cx, cy, index, value } = props as { cx: number; cy: number; index: number; value: number | undefined };
-                    if (index !== chartData.length - 1 || value == null) return <g key={`btc-${index}`} />;
+                    const { cx, cy, index, value } = props as {
+                      cx: number;
+                      cy: number;
+                      index: number;
+                      value: number | undefined;
+                    };
+                    if (index !== chartData.length - 1 || value == null)
+                      return <g key={`p-${index}`} />;
                     return (
-                      <g key={`btc-${index}`}>
-                        <circle cx={cx} cy={cy} r={3} fill="#F7931A" />
-                        <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill="#F7931A">
+                      <g key={`p-${index}`}>
+                        <circle cx={cx} cy={cy} r={3} fill="hsl(var(--primary))" />
+                        <text
+                          x={cx + 8}
+                          y={cy}
+                          fontSize={11}
+                          dominantBaseline="middle"
+                          fontWeight={500}
+                          fill="currentColor"
+                          opacity={0.7}
+                        >
                           {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
                         </text>
                       </g>
@@ -493,47 +516,33 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   connectNulls
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
-              )}
-              {/* ETH line */}
-              {benchmarks.find(b => b.id === 'eth')?.enabled && (
-                <Line
-                  type="monotone"
-                  dataKey="eth"
-                  stroke="#627EEA"
-                  strokeWidth={2}
-                  dot={(props: Record<string, unknown>) => {
-                    const { cx, cy, index, value } = props as { cx: number; cy: number; index: number; value: number | undefined };
-                    if (index !== chartData.length - 1 || value == null) return <g key={`eth-${index}`} />;
-                    return (
-                      <g key={`eth-${index}`}>
-                        <circle cx={cx} cy={cy} r={3} fill="#627EEA" />
-                        <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill="#627EEA">
-                          {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
-                        </text>
-                      </g>
-                    );
-                  }}
-                  connectNulls
-                  activeDot={{ r: 4, strokeWidth: 0 }}
-                />
-              )}
-              {/* Additional benchmark lines */}
-              {additionalBenchmarks
-                .filter(b => b.enabled)
-                .map(benchmark => (
+                {/* BTC line */}
+                {benchmarks.find((b) => b.id === 'btc')?.enabled && (
                   <Line
-                    key={benchmark.id}
                     type="monotone"
-                    dataKey={benchmark.id}
-                    stroke={benchmark.color}
+                    dataKey="btc"
+                    stroke="#F7931A"
                     strokeWidth={2}
                     dot={(props: Record<string, unknown>) => {
-                      const { cx, cy, index, value } = props as { cx: number; cy: number; index: number; value: number | undefined };
-                      if (index !== chartData.length - 1 || value == null) return <g key={`${benchmark.id}-${index}`} />;
+                      const { cx, cy, index, value } = props as {
+                        cx: number;
+                        cy: number;
+                        index: number;
+                        value: number | undefined;
+                      };
+                      if (index !== chartData.length - 1 || value == null)
+                        return <g key={`btc-${index}`} />;
                       return (
-                        <g key={`${benchmark.id}-${index}`}>
-                          <circle cx={cx} cy={cy} r={3} fill={benchmark.color} />
-                          <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill={benchmark.color}>
+                        <g key={`btc-${index}`}>
+                          <circle cx={cx} cy={cy} r={3} fill="#F7931A" />
+                          <text
+                            x={cx + 8}
+                            y={cy}
+                            fontSize={11}
+                            dominantBaseline="middle"
+                            fontWeight={500}
+                            fill="#F7931A"
+                          >
                             {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
                           </text>
                         </g>
@@ -542,9 +551,84 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                     connectNulls
                     activeDot={{ r: 4, strokeWidth: 0 }}
                   />
-                ))}
-            </LineChart>
-          </ResponsiveContainer>
+                )}
+                {/* ETH line */}
+                {benchmarks.find((b) => b.id === 'eth')?.enabled && (
+                  <Line
+                    type="monotone"
+                    dataKey="eth"
+                    stroke="#627EEA"
+                    strokeWidth={2}
+                    dot={(props: Record<string, unknown>) => {
+                      const { cx, cy, index, value } = props as {
+                        cx: number;
+                        cy: number;
+                        index: number;
+                        value: number | undefined;
+                      };
+                      if (index !== chartData.length - 1 || value == null)
+                        return <g key={`eth-${index}`} />;
+                      return (
+                        <g key={`eth-${index}`}>
+                          <circle cx={cx} cy={cy} r={3} fill="#627EEA" />
+                          <text
+                            x={cx + 8}
+                            y={cy}
+                            fontSize={11}
+                            dominantBaseline="middle"
+                            fontWeight={500}
+                            fill="#627EEA"
+                          >
+                            {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
+                          </text>
+                        </g>
+                      );
+                    }}
+                    connectNulls
+                    activeDot={{ r: 4, strokeWidth: 0 }}
+                  />
+                )}
+                {/* Additional benchmark lines */}
+                {additionalBenchmarks
+                  .filter((b) => b.enabled)
+                  .map((benchmark) => (
+                    <Line
+                      key={benchmark.id}
+                      type="monotone"
+                      dataKey={benchmark.id}
+                      stroke={benchmark.color}
+                      strokeWidth={2}
+                      dot={(props: Record<string, unknown>) => {
+                        const { cx, cy, index, value } = props as {
+                          cx: number;
+                          cy: number;
+                          index: number;
+                          value: number | undefined;
+                        };
+                        if (index !== chartData.length - 1 || value == null)
+                          return <g key={`${benchmark.id}-${index}`} />;
+                        return (
+                          <g key={`${benchmark.id}-${index}`}>
+                            <circle cx={cx} cy={cy} r={3} fill={benchmark.color} />
+                            <text
+                              x={cx + 8}
+                              y={cy}
+                              fontSize={11}
+                              dominantBaseline="middle"
+                              fontWeight={500}
+                              fill={benchmark.color}
+                            >
+                              {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
+                            </text>
+                          </g>
+                        );
+                      }}
+                      connectNulls
+                      activeDot={{ r: 4, strokeWidth: 0 }}
+                    />
+                  ))}
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         )}
       </CardContent>
