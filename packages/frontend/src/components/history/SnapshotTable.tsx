@@ -224,22 +224,24 @@ export function SnapshotTable({
 
                 return (
                   <>
-                    <TableRow key={snapshot.id}>
+                    <TableRow
+                      key={snapshot.id}
+                      className={snapshot.source === 'AUTOMATIC' ? 'cursor-pointer' : ''}
+                      onClick={
+                        snapshot.source === 'AUTOMATIC'
+                          ? () => toggleExpand(snapshot.id)
+                          : undefined
+                      }
+                    >
                       <TableCell className="px-2">
                         {snapshot.source === 'AUTOMATIC' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => toggleExpand(snapshot.id)}
-                            aria-label={isExpanded ? 'Collapse positions' : 'Expand positions'}
-                          >
+                          <span className="inline-flex items-center justify-center h-6 w-6">
                             {isExpanded ? (
                               <ChevronDown className="h-4 w-4" />
                             ) : (
                               <ChevronRight className="h-4 w-4" />
                             )}
-                          </Button>
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="font-medium">
@@ -286,7 +288,10 @@ export function SnapshotTable({
                         {snapshot.notes || '-'}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-center gap-1">
+                        <div
+                          className="flex items-center justify-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
