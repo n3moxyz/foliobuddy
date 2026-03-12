@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateManualSnapshot, useUpdateSnapshot } from '@/hooks/useSnapshots';
-import { Snapshot } from '@/lib/api';
+import type { Snapshot } from '@/lib/types';
 import { SnapshotImportTab } from './SnapshotImportTab';
 
 interface SnapshotFormProps {
@@ -25,12 +25,12 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
 
   // Add form state
   const [timestamp, setTimestamp] = useState(
-    snapshot ? new Date(snapshot.timestamp).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    snapshot
+      ? new Date(snapshot.timestamp).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0]
   );
   const [inputCurrency, setInputCurrency] = useState<'USD' | 'SGD'>('USD');
-  const [totalValue, setTotalValue] = useState(
-    snapshot ? snapshot.totalValueUsd.toString() : ''
-  );
+  const [totalValue, setTotalValue] = useState(snapshot ? snapshot.totalValueUsd.toString() : '');
   const [notes, setNotes] = useState(snapshot?.notes || '');
 
   const createSnapshot = useCreateManualSnapshot();
@@ -143,7 +143,12 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
           </div>
           {inputCurrency === 'SGD' && totalValue && (
             <p className="text-xs text-muted-foreground">
-              ≈ ${getValueInUsd().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD (rate: {fxRate.toFixed(4)})
+              ≈ $
+              {getValueInUsd().toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}{' '}
+              USD (rate: {fxRate.toFixed(4)})
             </p>
           )}
         </div>
@@ -268,7 +273,12 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
             </div>
             {inputCurrency === 'SGD' && totalValue && (
               <p className="text-xs text-muted-foreground">
-                ≈ ${getValueInUsd().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD (rate: {fxRate.toFixed(4)})
+                ≈ $
+                {getValueInUsd().toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{' '}
+                USD (rate: {fxRate.toFixed(4)})
               </p>
             )}
           </div>
