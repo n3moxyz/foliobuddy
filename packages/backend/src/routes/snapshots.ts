@@ -4,23 +4,30 @@ import { prisma } from '../index.js';
 import { snapshotService } from '../services/snapshotService.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../lib/logger.js';
-import { DEFAULT_SNAPSHOT_LIMIT } from '../lib/constants.js';
+import {
+  DEFAULT_SNAPSHOT_LIMIT,
+  SNAPSHOT_TYPES,
+  SnapshotType,
+  SnapshotSource,
+} from '../lib/constants.js';
 import { parsePagination, paginatedResponse } from '../lib/pagination.js';
 
 const router = Router();
 
-// Validation schemas
 const createManualSnapshotSchema = z.object({
   timestamp: z.string().transform((s) => new Date(s)),
-  snapshotType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).default('DAILY'),
+  snapshotType: z.enum(SNAPSHOT_TYPES).default(SnapshotType.DAILY),
   totalValueUsd: z.number().positive(),
   totalCostBasis: z.number().optional(),
   notes: z.string().optional(),
 });
 
 const updateSnapshotSchema = z.object({
-  timestamp: z.string().transform((s) => new Date(s)).optional(),
-  snapshotType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).optional(),
+  timestamp: z
+    .string()
+    .transform((s) => new Date(s))
+    .optional(),
+  snapshotType: z.enum(SNAPSHOT_TYPES).optional(),
   totalValueUsd: z.number().positive().optional(),
   totalCostBasis: z.number().optional(),
   notes: z.string().optional(),
@@ -110,7 +117,7 @@ router.get('/monthly', async (req, res, next) => {
 // Bulk import schema
 const bulkImportSnapshotSchema = z.object({
   timestamp: z.string(),
-  snapshotType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).default('DAILY'),
+  snapshotType: z.enum(SNAPSHOT_TYPES).default(SnapshotType.DAILY),
   totalValueUsd: z.number().min(0),
   totalCostBasis: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -157,7 +164,7 @@ router.post('/bulk', async (req, res, next) => {
               totalValueUsd: snap.totalValueUsd,
               totalCostBasis: snap.totalCostBasis ?? undefined,
               notes: snap.notes ?? undefined,
-              source: 'MANUAL',
+              source: SnapshotSource.MANUAL,
             },
           });
           results.push({ success: true, timestamp: snap.timestamp });
@@ -168,7 +175,7 @@ router.post('/bulk', async (req, res, next) => {
               userId,
               timestamp,
               snapshotType: snap.snapshotType,
-              source: 'MANUAL',
+              source: SnapshotSource.MANUAL,
               totalValueUsd: snap.totalValueUsd,
               totalCostBasis: snap.totalCostBasis ?? undefined,
               notes: snap.notes ?? undefined,
@@ -185,7 +192,7 @@ router.post('/bulk', async (req, res, next) => {
       }
     }
 
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
     res.status(201).json({ results, successCount, totalCount: snapshots.length });
   } catch (error) {
     next(error);
@@ -236,17 +243,19 @@ router.get('/:id/positions', async (req, res, next) => {
 
         return {
           ...pos,
-          asset: asset ? {
-            coingeckoId: asset.coingeckoId,
-            symbol: asset.symbol,
-            name: asset.name,
-            category: asset.category,
-          } : {
-            coingeckoId: null,
-            symbol: pos.assetSymbol,
-            name: pos.assetSymbol,
-            category: 'LIQUID_CRYPTO',
-          },
+          asset: asset
+            ? {
+                coingeckoId: asset.coingeckoId,
+                symbol: asset.symbol,
+                name: asset.name,
+                category: asset.category,
+              }
+            : {
+                coingeckoId: null,
+                symbol: pos.assetSymbol,
+                name: pos.assetSymbol,
+                category: 'LIQUID_CRYPTO',
+              },
         };
       })
     );
@@ -271,7 +280,7 @@ router.post('/', async (req, res, next) => {
           userId: req.userId!,
           timestamp: parsed.timestamp,
           snapshotType: parsed.snapshotType,
-          source: 'MANUAL',
+          source: SnapshotSource.MANUAL,
           totalValueUsd: parsed.totalValueUsd,
           totalCostBasis: parsed.totalCostBasis,
           notes: parsed.notes,
@@ -314,7 +323,7 @@ router.put('/:id', async (req, res, next) => {
     const parsed = updateSnapshotSchema.parse(req.body);
 
     // Only allow timestamp changes for manual snapshots
-    if (parsed.timestamp && existing.source === 'AUTOMATIC') {
+    if (parsed.timestamp && existing.source === SnapshotSource.AUTOMATIC) {
       throw new AppError('Cannot change timestamp of automatic snapshots', 400);
     }
 

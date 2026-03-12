@@ -4,36 +4,54 @@ import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { parsePagination, paginatedResponse } from '../lib/pagination.js';
 import { calculateTradePnL } from '../lib/tradePnL.js';
+import {
+  TRADE_DIRECTIONS,
+  TRADE_STATUSES,
+  ASSET_CATEGORIES,
+  TradeDirection,
+  TradeStatus,
+} from '../lib/constants.js';
 
 const router = Router();
 
-// Validation schemas
 const createTradeSchema = z.object({
   assetId: z.string().min(1),
-  direction: z.enum(['LONG', 'SHORT']).default('LONG'),
+  direction: z.enum(TRADE_DIRECTIONS).default(TradeDirection.LONG),
   entryPrice: z.number().positive(),
   exitPrice: z.number().positive().optional(),
   quantity: z.number().positive(),
-  entryDate: z.string().transform(s => new Date(s)),
-  exitDate: z.string().transform(s => new Date(s)).optional(),
+  entryDate: z.string().transform((s) => new Date(s)),
+  exitDate: z
+    .string()
+    .transform((s) => new Date(s))
+    .optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
 
 const updateTradeSchema = z.object({
-  direction: z.enum(['LONG', 'SHORT']).optional(),
+  direction: z.enum(TRADE_DIRECTIONS).optional(),
   entryPrice: z.number().positive().optional(),
   exitPrice: z.number().positive().optional(),
   quantity: z.number().positive().optional(),
-  entryDate: z.string().transform(s => new Date(s)).optional(),
-  exitDate: z.string().transform(s => new Date(s)).optional(),
+  entryDate: z
+    .string()
+    .transform((s) => new Date(s))
+    .optional(),
+  exitDate: z
+    .string()
+    .transform((s) => new Date(s))
+    .optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
 
 const closeTradeSchema = z.object({
   exitPrice: z.number().positive(),
-  exitDate: z.string().transform(s => new Date(s)).optional(),
+  exitDate: z
+    .string()
+    .transform((s) => new Date(s))
+    .optional(),
   notes: z.string().optional(),
 });
 
@@ -116,8 +134,8 @@ router.get('/analytics', async (req, res, next) => {
 
     // Calculate analytics
     const totalTrades = trades.length;
-    const winningTrades = trades.filter(t => (t.realizedPnL ?? 0) > 0);
-    const losingTrades = trades.filter(t => (t.realizedPnL ?? 0) < 0);
+    const winningTrades = trades.filter((t) => (t.realizedPnL ?? 0) > 0);
+    const losingTrades = trades.filter((t) => (t.realizedPnL ?? 0) < 0);
 
     const winRate = totalTrades > 0 ? (winningTrades.length / totalTrades) * 100 : 0;
 
@@ -133,16 +151,18 @@ router.get('/analytics', async (req, res, next) => {
     const avgLoss = losingTrades.length > 0 ? totalLosses / losingTrades.length : 0;
 
     // Breakdown by direction
-    const longTrades = trades.filter(t => t.direction === 'LONG');
-    const shortTrades = trades.filter(t => t.direction === 'SHORT');
+    const longTrades = trades.filter((t) => t.direction === 'LONG');
+    const shortTrades = trades.filter((t) => t.direction === 'SHORT');
 
-    const longWinRate = longTrades.length > 0
-      ? (longTrades.filter(t => (t.realizedPnL ?? 0) > 0).length / longTrades.length) * 100
-      : 0;
+    const longWinRate =
+      longTrades.length > 0
+        ? (longTrades.filter((t) => (t.realizedPnL ?? 0) > 0).length / longTrades.length) * 100
+        : 0;
 
-    const shortWinRate = shortTrades.length > 0
-      ? (shortTrades.filter(t => (t.realizedPnL ?? 0) > 0).length / shortTrades.length) * 100
-      : 0;
+    const shortWinRate =
+      shortTrades.length > 0
+        ? (shortTrades.filter((t) => (t.realizedPnL ?? 0) > 0).length / shortTrades.length) * 100
+        : 0;
 
     const longPnL = longTrades.reduce((sum, t) => sum + (t.realizedPnL ?? 0), 0);
     const shortPnL = shortTrades.reduce((sum, t) => sum + (t.realizedPnL ?? 0), 0);
@@ -197,20 +217,24 @@ router.get('/analytics', async (req, res, next) => {
           pnl: shortPnL,
         },
       },
-      bestTrade: bestTrade ? {
-        id: bestTrade.id,
-        asset: bestTrade.asset.symbol,
-        pnl: bestTrade.realizedPnL,
-        pnlPct: bestTrade.realizedPnLPct,
-        date: bestTrade.exitDate,
-      } : null,
-      worstTrade: worstTrade ? {
-        id: worstTrade.id,
-        asset: worstTrade.asset.symbol,
-        pnl: worstTrade.realizedPnL,
-        pnlPct: worstTrade.realizedPnLPct,
-        date: worstTrade.exitDate,
-      } : null,
+      bestTrade: bestTrade
+        ? {
+            id: bestTrade.id,
+            asset: bestTrade.asset.symbol,
+            pnl: bestTrade.realizedPnL,
+            pnlPct: bestTrade.realizedPnLPct,
+            date: bestTrade.exitDate,
+          }
+        : null,
+      worstTrade: worstTrade
+        ? {
+            id: worstTrade.id,
+            asset: worstTrade.asset.symbol,
+            pnl: worstTrade.realizedPnL,
+            pnlPct: worstTrade.realizedPnLPct,
+            date: worstTrade.exitDate,
+          }
+        : null,
       monthlyBreakdown,
     });
   } catch (error) {
@@ -253,13 +277,12 @@ router.post('/', async (req, res, next) => {
     }
 
     const positionSizeUsd = data.entryPrice * data.quantity;
-    let status: 'OPEN' | 'CLOSED' = 'OPEN';
+    let status: TradeStatus = TradeStatus.OPEN;
     let realizedPnL: number | null = null;
     let realizedPnLPct: number | null = null;
 
-    // If exit price provided, calculate P&L and mark as closed
     if (data.exitPrice) {
-      status = 'CLOSED';
+      status = TradeStatus.CLOSED;
       const pnlResult = calculateTradePnL(
         data.direction,
         data.entryPrice,
@@ -325,8 +348,13 @@ router.put('/:id', async (req, res, next) => {
     let status = existing.status;
 
     if (exitPrice && (data.entryPrice || data.exitPrice || data.quantity || data.direction)) {
-      status = 'CLOSED';
-      const pnlResult = calculateTradePnL(direction as 'LONG' | 'SHORT', entryPrice, exitPrice, quantity);
+      status = TradeStatus.CLOSED;
+      const pnlResult = calculateTradePnL(
+        direction as TradeDirection,
+        entryPrice,
+        exitPrice,
+        quantity
+      );
       realizedPnL = pnlResult.pnl;
       realizedPnLPct = pnlResult.pnlPct;
     }
@@ -370,12 +398,12 @@ router.patch('/:id/close', async (req, res, next) => {
       throw new AppError('Trade not found', 404);
     }
 
-    if (existing.status === 'CLOSED') {
+    if (existing.status === TradeStatus.CLOSED) {
       throw new AppError('Trade is already closed', 400);
     }
 
     const pnlResult = calculateTradePnL(
-      existing.direction as 'LONG' | 'SHORT',
+      existing.direction as TradeDirection,
       existing.entryPrice,
       data.exitPrice,
       existing.quantity
@@ -386,7 +414,7 @@ router.patch('/:id/close', async (req, res, next) => {
       data: {
         exitPrice: data.exitPrice,
         exitDate: data.exitDate ?? new Date(),
-        status: 'CLOSED',
+        status: TradeStatus.CLOSED,
         realizedPnL: pnlResult.pnl,
         realizedPnLPct: pnlResult.pnlPct,
         notes: data.notes ?? existing.notes,
@@ -422,21 +450,20 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/trades/bulk-import - Bulk import trades
 const bulkImportTradeSchema = z.object({
   asset: z.object({
     coingeckoId: z.string().nullable(),
     symbol: z.string().min(1),
     name: z.string().min(1),
-    category: z.enum(['LIQUID_CRYPTO', 'STABLECOIN', 'NFT', 'ANGEL', 'CASH']),
+    category: z.enum(ASSET_CATEGORIES),
   }),
-  direction: z.enum(['LONG', 'SHORT']),
+  direction: z.enum(TRADE_DIRECTIONS),
   entryPrice: z.number().positive(),
   exitPrice: z.number().positive().optional().nullable(),
   quantity: z.number().positive(),
   entryDate: z.string(),
   exitDate: z.string().optional().nullable(),
-  status: z.enum(['OPEN', 'CLOSED']).optional(),
+  status: z.enum(TRADE_STATUSES).optional(),
   notes: z.string().optional().nullable(),
   tags: z.array(z.string()).optional().nullable(),
 });
@@ -471,11 +498,12 @@ router.post('/bulk-import', async (req, res, next) => {
         const exitDate = tradeData.exitDate ? new Date(tradeData.exitDate) : null;
         const positionSizeUsd = tradeData.entryPrice * tradeData.quantity;
 
-        let status: 'OPEN' | 'CLOSED' = tradeData.status || (tradeData.exitPrice ? 'CLOSED' : 'OPEN');
+        let status: 'OPEN' | 'CLOSED' =
+          tradeData.status || (tradeData.exitPrice ? 'CLOSED' : 'OPEN');
         let realizedPnL: number | null = null;
         let realizedPnLPct: number | null = null;
 
-        if (tradeData.exitPrice && status === 'CLOSED') {
+        if (tradeData.exitPrice && status === TradeStatus.CLOSED) {
           const pnlResult = calculateTradePnL(
             tradeData.direction,
             tradeData.entryPrice,
