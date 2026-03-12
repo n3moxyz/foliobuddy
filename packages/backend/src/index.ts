@@ -17,10 +17,20 @@ import exportRouter from './routes/export.js';
 import healthRouter from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { clerkMiddleware, ensureUser } from './middleware/auth.js';
-import { startPriceRefreshJob, startSnapshotJob, startFxRateJob, createMissingSnapshots } from './services/scheduler.js';
+import {
+  startPriceRefreshJob,
+  startSnapshotJob,
+  startFxRateJob,
+  startPriceHistoryCleanupJob,
+  createMissingSnapshots,
+} from './services/scheduler.js';
 import { socketService } from './services/socketService.js';
 import { logger } from './lib/logger.js';
-import { MAX_PAYLOAD_SIZE, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS } from './lib/constants.js';
+import {
+  MAX_PAYLOAD_SIZE,
+  RATE_LIMIT_WINDOW_MS,
+  RATE_LIMIT_MAX_REQUESTS,
+} from './lib/constants.js';
 
 import { initSentry } from './lib/sentry.js';
 
@@ -71,7 +81,7 @@ export const prisma = basePrisma.$extends({
             logger.warn(
               `[Prisma Retry] Attempt ${attempt + 1}/${MAX_RETRIES} failed (${(error as any)?.code || 'unknown'}), retrying in ${delay}ms...`
             );
-            await new Promise(r => setTimeout(r, delay));
+            await new Promise((r) => setTimeout(r, delay));
             continue;
           }
           throw error;
@@ -91,10 +101,13 @@ async function connectWithRetry(maxRetries = 5, delayMs = 5000): Promise<boolean
       logger.info('Database connected successfully');
       return true;
     } catch (error) {
-      logger.warn(`Database connection attempt ${attempt}/${maxRetries} failed:`, error instanceof Error ? error.message : error);
+      logger.warn(
+        `Database connection attempt ${attempt}/${maxRetries} failed:`,
+        error instanceof Error ? error.message : error
+      );
       if (attempt < maxRetries) {
         logger.info(`Retrying in ${delayMs / 1000} seconds...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
   }
@@ -105,19 +118,21 @@ async function connectWithRetry(maxRetries = 5, delayMs = 5000): Promise<boolean
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
 
 // Middleware
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    // Use exact matching to prevent subdomain attacks (e.g., evil-example.com matching example.com)
-    // Only allow wildcard (*) as an explicit entry
-    if (allowedOrigins.some(allowed => origin === allowed || allowed === '*')) {
-      return callback(null, true);
-    }
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      // Use exact matching to prevent subdomain attacks (e.g., evil-example.com matching example.com)
+      // Only allow wildcard (*) as an explicit entry
+      if (allowedOrigins.some((allowed) => origin === allowed || allowed === '*')) {
+        return callback(null, true);
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: MAX_PAYLOAD_SIZE }));
 
 // Rate limiting
@@ -141,14 +156,30 @@ app.get('/health', (req, res) => {
 // Database health check (public, no auth)
 app.use('/api/health', healthRouter);
 
-// API Routes (protected - require authentication)
+// Create v1 router for versioned API
+const v1Router = express.Router();
+
+v1Router.use('/health', healthRouter);
+v1Router.use('/positions', ensureUser, positionsRouter);
+v1Router.use('/assets', assetsRouter);
+v1Router.use('/trades', ensureUser, tradesRouter);
+v1Router.use('/investors', ensureUser, investorsRouter);
+v1Router.use('/snapshots', ensureUser, snapshotsRouter);
+v1Router.use('/prices', pricesRouter);
+v1Router.use('/fx', fxRouter);
+v1Router.use('/export', ensureUser, exportRouter);
+
+// Mount v1 router at /api/v1
+app.use('/api/v1', v1Router);
+
+// Legacy routes for backward compatibility (same as v1)
 app.use('/api/positions', ensureUser, positionsRouter);
-app.use('/api/assets', assetsRouter); // Assets are shared, no auth needed
+app.use('/api/assets', assetsRouter);
 app.use('/api/trades', ensureUser, tradesRouter);
 app.use('/api/investors', ensureUser, investorsRouter);
 app.use('/api/snapshots', ensureUser, snapshotsRouter);
-app.use('/api/prices', pricesRouter); // Prices are shared, no auth needed
-app.use('/api/fx', fxRouter); // FX rates are shared, no auth needed
+app.use('/api/prices', pricesRouter);
+app.use('/api/fx', fxRouter);
 app.use('/api/export', ensureUser, exportRouter);
 
 // Error handling middleware
@@ -182,16 +213,6 @@ async function startServer() {
     logger.info(`API available at http://localhost:${port}/api`);
     logger.info('WebSocket server ready');
 
-    // Drop the unique constraint on Position table to allow duplicate positions
-    try {
-      await prisma.$executeRawUnsafe(`
-        ALTER TABLE "Position" DROP CONSTRAINT IF EXISTS "Position_userId_assetId_storageType_storageLocation_key"
-      `);
-      logger.info('Position unique constraint dropped (if it existed)');
-    } catch (error) {
-      logger.warn('Could not drop Position constraint (may already be gone):', error);
-    }
-
     // Start scheduled jobs only in production
     // In dev, the production backend (Coolify) handles price refresh, snapshots, and crons
     // against the shared DB — running them locally would duplicate work and risk race conditions
@@ -200,6 +221,7 @@ async function startServer() {
       startPriceRefreshJob();
       startSnapshotJob();
       startFxRateJob();
+      startPriceHistoryCleanupJob();
 
       // Create missing snapshots on startup (catch-up for days server wasn't running)
       // Delay slightly to ensure database connection is ready
