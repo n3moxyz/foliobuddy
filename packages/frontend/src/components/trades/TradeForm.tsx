@@ -2,14 +2,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { useCreateTrade, useUpdateTrade } from '@/hooks/useTrades';
-import type { Asset, Trade } from '@/lib/api';
+import type { Asset, Trade } from '@/lib/types';
 import { TradeImportTab } from './TradeImportTab';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
 
@@ -31,7 +26,9 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(trade?.asset || null);
 
   // Form fields - initialize from trade if editing
-  const [direction, setDirection] = useState<'LONG' | 'SHORT'>(trade?.direction as 'LONG' | 'SHORT' || 'LONG');
+  const [direction, setDirection] = useState<'LONG' | 'SHORT'>(
+    (trade?.direction as 'LONG' | 'SHORT') || 'LONG'
+  );
   const [entryPrice, setEntryPrice] = useState(trade?.entryPrice?.toString() || '');
   const [exitPrice, setExitPrice] = useState(trade?.exitPrice?.toString() || '');
   const [quantity, setQuantity] = useState(trade?.quantity?.toString() || '');
@@ -84,7 +81,6 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
     onSuccess();
   };
 
-
   return (
     <div className="space-y-3">
       {/* Mode Selection (Add New vs Import) - only show when not editing */}
@@ -136,7 +132,9 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             <Label>Direction</Label>
             <Select value={direction} onValueChange={(v) => setDirection(v as 'LONG' | 'SHORT')}>
               <SelectTrigger>
-                <span className={`font-medium ${direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}>
+                <span
+                  className={`font-medium ${direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {direction}
                 </span>
               </SelectTrigger>
