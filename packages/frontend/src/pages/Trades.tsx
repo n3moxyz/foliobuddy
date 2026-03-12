@@ -1,5 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useTrades, useTradeAnalytics, useDeleteAllTrades, useDeleteTrade } from '@/hooks/useTrades';
+import {
+  useTrades,
+  useTradeAnalytics,
+  useDeleteAllTrades,
+  useDeleteTrade,
+} from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { formatCurrency, formatPercent, formatDate, getPnLColorClass } from '@/lib/utils';
@@ -24,8 +29,22 @@ import {
 import { TradeForm } from '@/components/trades/TradeForm';
 import { TradeStatsCard } from '@/components/dashboard/TradeStatsCard';
 import { TickerPnLCard } from '@/components/trades/TickerPnLCard';
-import { Plus, TrendingUp, TrendingDown, Download, Copy, Check, Trash2, MoreVertical, Pencil, Columns2, Columns3, X } from 'lucide-react';
-import { api, Trade } from '@/lib/api';
+import {
+  Plus,
+  TrendingUp,
+  TrendingDown,
+  Download,
+  Copy,
+  Check,
+  Trash2,
+  MoreVertical,
+  Pencil,
+  Columns2,
+  Columns3,
+  X,
+} from 'lucide-react';
+import { api } from '@/lib/api';
+import type { Trade } from '@/lib/types';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import type { ColumnConfig } from '@/hooks/useTableSort';
@@ -38,7 +57,7 @@ import {
 
 // Format trades for clipboard - includes asset info for recreating
 function formatTradesForClipboard(trades: Trade[]) {
-  const formatted = trades.map(t => ({
+  const formatted = trades.map((t) => ({
     asset: {
       coingeckoId: t.asset.coingeckoId,
       symbol: t.asset.symbol,
@@ -93,17 +112,16 @@ export default function Trades() {
 
   const { currency } = useCurrencyStore();
   const { data: summary } = usePortfolioSummary();
-  const { data: trades, isLoading } = useTrades(
-    filter === 'all' ? undefined : { status: filter }
-  );
+  const { data: trades, isLoading } = useTrades(filter === 'all' ? undefined : { status: filter });
   const { data: analytics } = useTradeAnalytics();
   const deleteAllMutation = useDeleteAllTrades();
   const deleteTradeMutation = useDeleteTrade();
 
   // Calculate FX rate from summary
-  const fxRate = summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
-    ? summary.totalValueSgd / summary.totalValueUsd
-    : 1.35;
+  const fxRate =
+    summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
+      ? summary.totalValueSgd / summary.totalValueUsd
+      : 1.35;
 
   const filteredTrades = tickerFilter
     ? trades?.filter((t) => t.asset.symbol === tickerFilter) || []
@@ -160,7 +178,12 @@ export default function Trades() {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" aria-label="More options" className="touch-manipulation">
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="More options"
+                className="touch-manipulation"
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -193,11 +216,15 @@ export default function Trades() {
                 <Download className="h-4 w-4 mr-2" />
                 Export All Trades
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open(api.exportTradesCsv({ status: 'OPEN' }), '_blank')}>
+              <DropdownMenuItem
+                onClick={() => window.open(api.exportTradesCsv({ status: 'OPEN' }), '_blank')}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Export Open Trades
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open(api.exportTradesCsv({ status: 'CLOSED' }), '_blank')}>
+              <DropdownMenuItem
+                onClick={() => window.open(api.exportTradesCsv({ status: 'CLOSED' }), '_blank')}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Export Closed Trades
               </DropdownMenuItem>
@@ -208,7 +235,14 @@ export default function Trades() {
 
       {/* Trade Statistics */}
       {analytics && (
-        <TradeStatsCard analytics={analytics} currency={currency} fxRate={fxRate} onTradeClick={handleNotableTradeClick} isExpanded={statsExpanded} onToggle={() => setStatsExpanded(!statsExpanded)} />
+        <TradeStatsCard
+          analytics={analytics}
+          currency={currency}
+          fxRate={fxRate}
+          onTradeClick={handleNotableTradeClick}
+          isExpanded={statsExpanded}
+          onToggle={() => setStatsExpanded(!statsExpanded)}
+        />
       )}
 
       {/* P&L by Ticker */}
@@ -291,13 +325,12 @@ export default function Trades() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Trades</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone.
-            </DialogDescription>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete all <span className="font-semibold text-foreground">{trades?.length || 0}</span> trades?
+              Are you sure you want to delete all{' '}
+              <span className="font-semibold text-foreground">{trades?.length || 0}</span> trades?
               This will permanently remove all your trade history.
             </p>
             <div className="flex justify-end gap-2">
@@ -335,10 +368,7 @@ export default function Trades() {
             <DialogTitle>Edit Trade</DialogTitle>
           </DialogHeader>
           {editingTrade && (
-            <TradeForm
-              trade={editingTrade}
-              onSuccess={() => setEditingTrade(null)}
-            />
+            <TradeForm trade={editingTrade} onSuccess={() => setEditingTrade(null)} />
           )}
         </DialogContent>
       </Dialog>
@@ -348,9 +378,7 @@ export default function Trades() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Trade</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone.
-            </DialogDescription>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -445,7 +473,14 @@ interface TradeTableProps {
   onHighlightComplete?: () => void;
 }
 
-function TradeTable({ trades, isLoading, onEdit, onDelete, highlightTradeId, onHighlightComplete }: TradeTableProps) {
+function TradeTable({
+  trades,
+  isLoading,
+  onEdit,
+  onDelete,
+  highlightTradeId,
+  onHighlightComplete,
+}: TradeTableProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [flashId, setFlashId] = useState<string | null>(null);
@@ -456,7 +491,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete, highlightTradeId, onH
   useEffect(() => {
     if (!highlightTradeId) return;
     // Check if this table contains the trade
-    const hasTrade = trades.some(t => t.id === highlightTradeId);
+    const hasTrade = trades.some((t) => t.id === highlightTradeId);
     if (!hasTrade) return;
 
     setFlashId(highlightTradeId);
@@ -507,9 +542,7 @@ function TradeTable({ trades, isLoading, onEdit, onDelete, highlightTradeId, onH
     );
   }
 
-  const tableClass = showAllColumns
-    ? 'text-sm w-full min-w-[800px]'
-    : 'text-sm';
+  const tableClass = showAllColumns ? 'text-sm w-full min-w-[800px]' : 'text-sm';
 
   return (
     <>
@@ -522,135 +555,212 @@ function TradeTable({ trades, isLoading, onEdit, onDelete, highlightTradeId, onH
           onClick={() => setShowAllColumns(!showAllColumns)}
         >
           {showAllColumns ? (
-            <><Columns2 className="h-3.5 w-3.5 mr-1" /> Compact</>
+            <>
+              <Columns2 className="h-3.5 w-3.5 mr-1" /> Compact
+            </>
           ) : (
-            <><Columns3 className="h-3.5 w-3.5 mr-1" /> All columns</>
+            <>
+              <Columns3 className="h-3.5 w-3.5 mr-1" /> All columns
+            </>
           )}
         </Button>
       </div>
       <Card>
-      <CardContent className="p-0">
-        <div className="rounded-md border overflow-x-auto">
-          <Table className={tableClass}>
-            <TableHeader>
-              <TableRow>
-                <SortableHeader label="Asset" sortKey="asset" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
-                <SortableHeader label="Side" sortKey="direction" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
-                <SortableHeader label="Entry Date" sortKey="entryDate" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} className={HIDDEN_MD} />
-                <SortableHeader label="Exit Date" sortKey="exitDate" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} className={HIDDEN_MD} />
-                <SortableHeader label="Entry" sortKey="entryPrice" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" className={HIDDEN_MD} />
-                <SortableHeader label="Exit" sortKey="exitPrice" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" className={HIDDEN_MD} />
-                <SortableHeader label="Size" sortKey="size" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" className={HIDDEN_SM} />
-                <SortableHeader label="P&L" sortKey="pnl" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} align="right" />
-                <SortableHeader label="Status" sortKey="status" activeSortKey={sortKey} sortDirection={sortDirection} onSort={onSort} />
-                <TableHead className={HIDDEN_LG}>Notes</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedItems.map((trade) => (
-                <TableRow
-                  key={trade.id}
-                  ref={trade.id === flashId ? highlightRef : undefined}
-                  className={trade.id === flashId ? 'animate-highlight-flash' : ''}
-                >
-                  <TableCell className="font-medium whitespace-nowrap">{trade.asset.symbol}</TableCell>
-                  <TableCell>
-                    <span className={`flex items-center gap-1 whitespace-nowrap ${trade.direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}>
-                      {trade.direction === 'LONG' ? (
-                        <TrendingUp className="h-3.5 w-3.5" />
-                      ) : (
-                        <TrendingDown className="h-3.5 w-3.5" />
-                      )}
-                      {trade.direction}
-                    </span>
-                  </TableCell>
-                  <TableCell className={`${HIDDEN_MD} whitespace-nowrap`}>
-                    {formatDate(trade.entryDate)}
-                  </TableCell>
-                  <TableCell className={`${HIDDEN_MD} whitespace-nowrap`}>
-                    {trade.exitDate ? formatDate(trade.exitDate) : <span className="text-muted-foreground">-</span>}
-                  </TableCell>
-                  <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
-                    {formatCurrency(trade.entryPrice, 'USD')}
-                  </TableCell>
-                  <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
-                    {trade.exitPrice ? formatCurrency(trade.exitPrice, 'USD') : <span className="text-muted-foreground">-</span>}
-                  </TableCell>
-                  <TableCell className={`${HIDDEN_SM} text-right font-mono whitespace-nowrap`}>
-                    {formatCurrency(trade.positionSizeUsd, 'USD', 0)}
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    {trade.realizedPnL !== null ? (
-                      <div className={getPnLColorClass(trade.realizedPnL)}>
-                        <p className="font-mono">
-                          {formatCurrency(trade.realizedPnL, 'USD', 0)}
-                        </p>
-                        <p className="text-xs">
-                          {formatPercent(trade.realizedPnLPct)}
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
-                      trade.status === 'OPEN'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
-                    }`}>
-                      {trade.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className={`${HIDDEN_LG} max-w-[80px] truncate`}>
-                    {trade.notes || '-'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 touch-manipulation"
-                        onClick={() => handleCopy(trade)}
-                        title="Copy trade"
-                        aria-label="Copy trade"
-                      >
-                        {copiedId === trade.id ? (
-                          <Check className="h-3.5 w-3.5 text-green-500" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 touch-manipulation"
-                        onClick={() => onEdit(trade)}
-                        title="Edit trade"
-                        aria-label="Edit trade"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive touch-manipulation"
-                        onClick={() => onDelete(trade)}
-                        title="Delete trade"
-                        aria-label="Delete trade"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <CardContent className="p-0">
+          <div className="rounded-md border overflow-x-auto">
+            <Table className={tableClass}>
+              <TableHeader>
+                <TableRow>
+                  <SortableHeader
+                    label="Asset"
+                    sortKey="asset"
+                    activeSortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                  />
+                  <SortableHeader
+                    label="Side"
+                    sortKey="direction"
+                    activeSortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                  />
+                  <SortableHeader
+                    label="Entry Date"
+                    sortKey="entryDate"
+                    activeSortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                    className={HIDDEN_MD}
+                  />
+                  <SortableHeader
+                    label="Exit Date"
+                    sortKey="exitDate"
+                    activeSortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                    className={HIDDEN_MD}
+                  />
+                  <SortableHeader
+                    label="Entry"
+                    sortKey="entryPrice"
+                    activeSortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                    align="right"
+                    className={HIDDEN_MD}
+                  />
+                  <SortableHeader
+                    label="Exit"
+                    sortKey="exitPrice"
+                    activeSortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                    align="right"
+                    className={HIDDEN_MD}
+                  />
+                  <SortableHeader
+                    label="Size"
+                    sortKey="size"
+                    activeSortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                    align="right"
+                    className={HIDDEN_SM}
+                  />
+                  <SortableHeader
+                    label="P&L"
+                    sortKey="pnl"
+                    activeSortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                    align="right"
+                  />
+                  <SortableHeader
+                    label="Status"
+                    sortKey="status"
+                    activeSortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                  />
+                  <TableHead className={HIDDEN_LG}>Notes</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {sortedItems.map((trade) => (
+                  <TableRow
+                    key={trade.id}
+                    ref={trade.id === flashId ? highlightRef : undefined}
+                    className={trade.id === flashId ? 'animate-highlight-flash' : ''}
+                  >
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {trade.asset.symbol}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`flex items-center gap-1 whitespace-nowrap ${trade.direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}
+                      >
+                        {trade.direction === 'LONG' ? (
+                          <TrendingUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <TrendingDown className="h-3.5 w-3.5" />
+                        )}
+                        {trade.direction}
+                      </span>
+                    </TableCell>
+                    <TableCell className={`${HIDDEN_MD} whitespace-nowrap`}>
+                      {formatDate(trade.entryDate)}
+                    </TableCell>
+                    <TableCell className={`${HIDDEN_MD} whitespace-nowrap`}>
+                      {trade.exitDate ? (
+                        formatDate(trade.exitDate)
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
+                      {formatCurrency(trade.entryPrice, 'USD')}
+                    </TableCell>
+                    <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
+                      {trade.exitPrice ? (
+                        formatCurrency(trade.exitPrice, 'USD')
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className={`${HIDDEN_SM} text-right font-mono whitespace-nowrap`}>
+                      {formatCurrency(trade.positionSizeUsd, 'USD', 0)}
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      {trade.realizedPnL !== null ? (
+                        <div className={getPnLColorClass(trade.realizedPnL)}>
+                          <p className="font-mono">{formatCurrency(trade.realizedPnL, 'USD', 0)}</p>
+                          <p className="text-xs">{formatPercent(trade.realizedPnLPct)}</p>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
+                          trade.status === 'OPEN'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+                        }`}
+                      >
+                        {trade.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className={`${HIDDEN_LG} max-w-[80px] truncate`}>
+                      {trade.notes || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 touch-manipulation"
+                          onClick={() => handleCopy(trade)}
+                          title="Copy trade"
+                          aria-label="Copy trade"
+                        >
+                          {copiedId === trade.id ? (
+                            <Check className="h-3.5 w-3.5 text-green-500" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 touch-manipulation"
+                          onClick={() => onEdit(trade)}
+                          title="Edit trade"
+                          aria-label="Edit trade"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive touch-manipulation"
+                          onClick={() => onDelete(trade)}
+                          title="Delete trade"
+                          aria-label="Delete trade"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </>
   );
 }
