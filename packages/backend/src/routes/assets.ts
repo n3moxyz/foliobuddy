@@ -3,15 +3,15 @@ import { z } from 'zod';
 import { prisma } from '../index.js';
 import { priceService } from '../services/priceService.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { ASSET_CATEGORIES, AssetCategory } from '../lib/constants.js';
 
 const router = Router();
 
-// Validation schemas
 const createAssetSchema = z.object({
   coingeckoId: z.string().optional(),
   symbol: z.string().min(1).max(20),
   name: z.string().min(1),
-  category: z.enum(['LIQUID_CRYPTO', 'STABLECOIN', 'NFT', 'ANGEL', 'CASH']).default('LIQUID_CRYPTO'),
+  category: z.enum(ASSET_CATEGORIES).default(AssetCategory.LIQUID_CRYPTO),
 });
 
 const updateAssetSchema = createAssetSchema.partial();
@@ -36,9 +36,7 @@ router.get('/', async (req, res, next) => {
 
     const assets = await prisma.asset.findMany({
       where,
-      orderBy: [
-        { symbol: 'asc' },
-      ],
+      orderBy: [{ symbol: 'asc' }],
       take: 500,
     });
 
@@ -135,10 +133,7 @@ router.post('/from-coingecko', async (req, res, next) => {
     // Check if already exists
     const existing = await prisma.asset.findFirst({
       where: {
-        OR: [
-          { coingeckoId },
-          { symbol: symbol.toUpperCase() },
-        ],
+        OR: [{ coingeckoId }, { symbol: symbol.toUpperCase() }],
       },
     });
 
@@ -160,7 +155,7 @@ router.post('/from-coingecko', async (req, res, next) => {
         coingeckoId,
         symbol: symbol.toUpperCase(),
         name,
-        category: category || 'LIQUID_CRYPTO',
+        category: category || AssetCategory.LIQUID_CRYPTO,
         currentPriceUsd,
         priceUpdatedAt: currentPriceUsd ? new Date() : null,
       },

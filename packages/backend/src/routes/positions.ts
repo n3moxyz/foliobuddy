@@ -4,16 +4,21 @@ import { prisma } from '../index.js';
 import { portfolioService } from '../services/portfolioService.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../lib/logger.js';
-import { MAX_POSITIONS_PER_CATEGORY } from '../lib/constants.js';
+import {
+  MAX_POSITIONS_PER_CATEGORY,
+  ASSET_CATEGORIES,
+  STORAGE_TYPES,
+  STABLECOIN_CATEGORIES,
+  StorageType,
+} from '../lib/constants.js';
 
 const router = Router();
 
-// Validation schemas
 const createPositionSchema = z.object({
   assetId: z.string().min(1),
   quantity: z.number().positive(),
   avgCostUsd: z.number().min(0).default(0),
-  storageType: z.enum(['WALLET', 'CEX', 'DEFI', 'BANK']).default('WALLET'),
+  storageType: z.enum(STORAGE_TYPES).default(StorageType.WALLET),
   storageLocation: z.string().optional(),
   notes: z.string().optional(),
   custodyOf: z.string().nullable().optional(),
@@ -31,10 +36,7 @@ router.get('/', async (req, res, next) => {
       include: {
         asset: true,
       },
-      orderBy: [
-        { marketValueUsd: 'desc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ marketValueUsd: 'desc' }, { createdAt: 'desc' }],
       take: 500,
     });
 
@@ -96,17 +98,16 @@ router.get('/performers/worst', async (req, res, next) => {
   }
 });
 
-// Bulk import schema
 const bulkImportPositionSchema = z.object({
   asset: z.object({
     coingeckoId: z.string().nullable().optional(),
     symbol: z.string().min(1),
     name: z.string().min(1),
-    category: z.enum(['LIQUID_CRYPTO', 'STABLECOIN', 'NFT', 'ANGEL', 'CASH']).default('LIQUID_CRYPTO'),
+    category: z.enum(ASSET_CATEGORIES).default('LIQUID_CRYPTO'),
   }),
   quantity: z.number().positive(),
   avgCostUsd: z.number().min(0).default(0),
-  storageType: z.enum(['WALLET', 'CEX', 'DEFI', 'BANK']).default('CEX'),
+  storageType: z.enum(STORAGE_TYPES).default(StorageType.CEX),
   storageLocation: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   custodyOf: z.string().nullable().optional(),
@@ -119,7 +120,10 @@ const bulkImportSchema = z.object({
 // POST /api/positions/bulk - Bulk import positions (must be before /:id routes)
 router.post('/bulk', async (req, res, next) => {
   try {
-    logger.info('Bulk position import request received:', JSON.stringify(req.body).substring(0, 200));
+    logger.info(
+      'Bulk position import request received:',
+      JSON.stringify(req.body).substring(0, 200)
+    );
     const userId = req.userId!;
     const { positions } = bulkImportSchema.parse(req.body);
 
@@ -127,17 +131,18 @@ router.post('/bulk', async (req, res, next) => {
 
     // Get all existing assets once
     const existingAssets = await prisma.asset.findMany();
-    const assetMap = new Map(existingAssets.map(a => [a.symbol.toUpperCase(), a]));
+    const assetMap = new Map(existingAssets.map((a) => [a.symbol.toUpperCase(), a]));
     const coingeckoMap = new Map(
-      existingAssets.filter(a => a.coingeckoId).map(a => [a.coingeckoId!, a])
+      existingAssets.filter((a) => a.coingeckoId).map((a) => [a.coingeckoId!, a])
     );
 
     // Process all positions
     for (const pos of positions) {
       try {
         // Find existing asset by coingeckoId or symbol
-        let asset = (pos.asset.coingeckoId && coingeckoMap.get(pos.asset.coingeckoId)) ||
-                    assetMap.get(pos.asset.symbol.toUpperCase());
+        let asset =
+          (pos.asset.coingeckoId && coingeckoMap.get(pos.asset.coingeckoId)) ||
+          assetMap.get(pos.asset.symbol.toUpperCase());
 
         // Create asset if it doesn't exist
         if (!asset) {
@@ -158,14 +163,11 @@ router.post('/bulk', async (req, res, next) => {
         }
 
         // Calculate market value if asset has price
-        const marketValueUsd = asset.currentPriceUsd
-          ? pos.quantity * asset.currentPriceUsd
-          : null;
+        const marketValueUsd = asset.currentPriceUsd ? pos.quantity * asset.currentPriceUsd : null;
         const costBasis = pos.quantity * pos.avgCostUsd;
         const unrealizedPnL = marketValueUsd !== null ? marketValueUsd - costBasis : null;
-        const unrealizedPnLPct = costBasis > 0 && unrealizedPnL !== null
-          ? (unrealizedPnL / costBasis) * 100
-          : null;
+        const unrealizedPnLPct =
+          costBasis > 0 && unrealizedPnL !== null ? (unrealizedPnL / costBasis) * 100 : null;
 
         // Create position
         await prisma.position.create({
@@ -194,7 +196,7 @@ router.post('/bulk', async (req, res, next) => {
       }
     }
 
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
     res.status(201).json({ results, successCount, totalCount: positions.length });
   } catch (error) {
     next(error);
@@ -235,17 +237,14 @@ router.post('/', async (req, res, next) => {
       throw new AppError('Asset not found', 404);
     }
 
-    // Check position limit (20 per category)
-    const isStablecoin = asset.category === 'STABLECOIN' || asset.category === 'CASH';
+    const isStablecoin = (STABLECOIN_CATEGORIES as string[]).includes(asset.category);
     const categoryPositions = await prisma.position.findMany({
       where: {
         userId: req.userId!,
         custodyOf: null,
         asset: {
-          category: isStablecoin
-            ? { in: ['STABLECOIN', 'CASH'] }
-            : { notIn: ['STABLECOIN', 'CASH'] }
-        }
+          category: isStablecoin ? { in: STABLECOIN_CATEGORIES } : { notIn: STABLECOIN_CATEGORIES },
+        },
       },
     });
 
@@ -257,14 +256,11 @@ router.post('/', async (req, res, next) => {
     }
 
     // Calculate market value if asset has price
-    const marketValueUsd = asset.currentPriceUsd
-      ? data.quantity * asset.currentPriceUsd
-      : null;
+    const marketValueUsd = asset.currentPriceUsd ? data.quantity * asset.currentPriceUsd : null;
     const costBasis = data.quantity * data.avgCostUsd;
     const unrealizedPnL = marketValueUsd !== null ? marketValueUsd - costBasis : null;
-    const unrealizedPnLPct = costBasis > 0 && unrealizedPnL !== null
-      ? (unrealizedPnL / costBasis) * 100
-      : null;
+    const unrealizedPnLPct =
+      costBasis > 0 && unrealizedPnL !== null ? (unrealizedPnL / costBasis) * 100 : null;
 
     // Convert empty string to null for storageLocation
     const storageLocation = data.storageLocation?.trim() || null;
@@ -323,19 +319,15 @@ router.put('/:id', async (req, res, next) => {
     const marketValueUsd = price ? quantity * price : null;
     const costBasis = quantity * avgCostUsd;
     const unrealizedPnL = marketValueUsd !== null ? marketValueUsd - costBasis : null;
-    const unrealizedPnLPct = costBasis > 0 && unrealizedPnL !== null
-      ? (unrealizedPnL / costBasis) * 100
-      : null;
+    const unrealizedPnLPct =
+      costBasis > 0 && unrealizedPnL !== null ? (unrealizedPnL / costBasis) * 100 : null;
 
     // Convert empty string to null for storageLocation and custodyOf
     const updateData = {
       ...data,
-      storageLocation: data.storageLocation !== undefined
-        ? (data.storageLocation?.trim() || null)
-        : undefined,
-      custodyOf: data.custodyOf !== undefined
-        ? (data.custodyOf?.trim() || null)
-        : undefined,
+      storageLocation:
+        data.storageLocation !== undefined ? data.storageLocation?.trim() || null : undefined,
+      custodyOf: data.custodyOf !== undefined ? data.custodyOf?.trim() || null : undefined,
     };
 
     const position = await prisma.position.update({
