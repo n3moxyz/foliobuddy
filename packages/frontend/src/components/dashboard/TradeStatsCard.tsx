@@ -1,7 +1,7 @@
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrency, formatNumber, formatDate, getPnLColorClass } from '@/lib/utils';
-import type { TradeAnalytics } from '@/lib/api';
+import type { TradeAnalytics } from '@/lib/types';
 import { useTradeStatsStore, type SegmentId } from '@/stores/tradeStatsStore';
 import {
   DndContext,
@@ -34,9 +34,7 @@ function MetricLabel({ label, tip }: { label: string; tip: React.ReactNode }) {
         <div className="border-b border-border/50 bg-muted/50 px-3 py-1.5">
           <p className="text-xs font-semibold tracking-wide">{label}</p>
         </div>
-        <div className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-          {tip}
-        </div>
+        <div className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">{tip}</div>
       </TooltipContent>
     </Tooltip>
   );
@@ -51,17 +49,39 @@ interface TradeStatsCardProps {
   onToggle?: () => void;
 }
 
-function ratingLabel(value: number, thresholds: [number, string][]): { text: string; color: string } {
+function ratingLabel(
+  value: number,
+  thresholds: [number, string][]
+): { text: string; color: string } {
   for (const [min, text] of thresholds) {
-    if (value >= min) return { text, color: min >= 1.5 ? 'text-profit' : min >= 1 ? 'text-yellow-600 dark:text-yellow-400' : 'text-loss' };
+    if (value >= min)
+      return {
+        text,
+        color:
+          min >= 1.5
+            ? 'text-profit'
+            : min >= 1
+              ? 'text-yellow-600 dark:text-yellow-400'
+              : 'text-loss',
+      };
   }
   return { text: thresholds[thresholds.length - 1][1], color: 'text-loss' };
 }
 
 // --- Sortable segment wrapper ---
 
-function SortableSegment({ id, isFirst, children }: { id: string; isFirst: boolean; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+function SortableSegment({
+  id,
+  isFirst,
+  children,
+}: {
+  id: string;
+  isFirst: boolean;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -71,7 +91,11 @@ function SortableSegment({ id, isFirst, children }: { id: string; isFirst: boole
   };
 
   return (
-    <div ref={setNodeRef} style={style} className={`${!isFirst ? 'border-t pt-4' : ''} ${isDragging ? 'bg-muted/30 rounded-md' : ''}`}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`${!isFirst ? 'border-t pt-4' : ''} ${isDragging ? 'bg-muted/30 rounded-md' : ''}`}
+    >
       <div className="flex items-start gap-1">
         <button
           type="button"
@@ -81,9 +105,7 @@ function SortableSegment({ id, isFirst, children }: { id: string; isFirst: boole
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <div className="flex-1 min-w-0">
-          {children}
-        </div>
+        <div className="flex-1 min-w-0">{children}</div>
       </div>
     </div>
   );
@@ -91,7 +113,15 @@ function SortableSegment({ id, isFirst, children }: { id: string; isFirst: boole
 
 // --- Segment render functions ---
 
-function MetricsSegment({ analytics, convert, currency, expectancy, pfRating, riskReward, rrRating }: {
+function MetricsSegment({
+  analytics,
+  convert,
+  currency,
+  expectancy,
+  pfRating,
+  riskReward,
+  rrRating,
+}: {
   analytics: TradeAnalytics;
   convert: (v: number | null | undefined) => number | null | undefined;
   currency: 'USD' | 'SGD';
@@ -121,7 +151,13 @@ function MetricsSegment({ analytics, convert, currency, expectancy, pfRating, ri
       <div>
         <MetricLabel
           label="Profit Factor"
-          tip={<>total gains &divide; total losses<br />Above 1.0 = profitable system</>}
+          tip={
+            <>
+              total gains &divide; total losses
+              <br />
+              Above 1.0 = profitable system
+            </>
+          }
         />
         <p className="text-xl font-bold tabular-nums">
           {analytics.profitFactor === Infinity ? '∞' : formatNumber(analytics.profitFactor)}
@@ -131,7 +167,13 @@ function MetricsSegment({ analytics, convert, currency, expectancy, pfRating, ri
       <div>
         <MetricLabel
           label="Risk : Reward"
-          tip={<>avg win &divide; avg loss<br />Higher = winners are bigger than losers</>}
+          tip={
+            <>
+              avg win &divide; avg loss
+              <br />
+              Higher = winners are bigger than losers
+            </>
+          }
         />
         <p className="text-xl font-bold tabular-nums">
           1 : {riskReward === Infinity ? '∞' : formatNumber(riskReward)}
@@ -146,21 +188,13 @@ function WinRateSegment({ analytics }: { analytics: TradeAnalytics }) {
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
-        <MetricLabel
-          label="Win Rate"
-          tip={<>winning trades &divide; total trades</>}
-        />
-        <p className="text-xl font-bold tabular-nums">
-          {formatNumber(analytics.winRate)}%
-        </p>
+        <MetricLabel label="Win Rate" tip={<>winning trades &divide; total trades</>} />
+        <p className="text-xl font-bold tabular-nums">{formatNumber(analytics.winRate)}%</p>
       </div>
       <div className="flex h-2.5 rounded-full overflow-hidden bg-muted">
         {analytics.totalTrades > 0 && (
           <>
-            <div
-              className="bg-profit transition-all"
-              style={{ width: `${analytics.winRate}%` }}
-            />
+            <div className="bg-profit transition-all" style={{ width: `${analytics.winRate}%` }} />
             <div
               className="bg-loss transition-all"
               style={{ width: `${100 - analytics.winRate}%` }}
@@ -170,14 +204,20 @@ function WinRateSegment({ analytics }: { analytics: TradeAnalytics }) {
       </div>
       <div className="flex items-center justify-between text-xs tabular-nums">
         <span className="text-profit font-medium">{analytics.winningTrades} wins</span>
-        <span className="text-muted-foreground font-medium">TOTAL: {analytics.totalTrades} trades</span>
+        <span className="text-muted-foreground font-medium">
+          TOTAL: {analytics.totalTrades} trades
+        </span>
         <span className="text-loss font-medium">{analytics.losingTrades} losses</span>
       </div>
     </div>
   );
 }
 
-function AvgWinLossSegment({ analytics, convert, currency }: {
+function AvgWinLossSegment({
+  analytics,
+  convert,
+  currency,
+}: {
   analytics: TradeAnalytics;
   convert: (v: number | null | undefined) => number | null | undefined;
   currency: 'USD' | 'SGD';
@@ -216,7 +256,11 @@ function AvgWinLossSegment({ analytics, convert, currency }: {
   );
 }
 
-function ByDirectionSegment({ analytics, convert, currency }: {
+function ByDirectionSegment({
+  analytics,
+  convert,
+  currency,
+}: {
   analytics: TradeAnalytics;
   convert: (v: number | null | undefined) => number | null | undefined;
   currency: 'USD' | 'SGD';
@@ -228,24 +272,32 @@ function ByDirectionSegment({ analytics, convert, currency }: {
         <div className="space-y-1 rounded-md bg-muted/50 p-3">
           <div className="flex items-center gap-1.5">
             <span className="text-green-600 font-medium">LONG</span>
-            <span className="text-xs text-muted-foreground">({analytics.breakdown.long.count})</span>
+            <span className="text-xs text-muted-foreground">
+              ({analytics.breakdown.long.count})
+            </span>
           </div>
           <p className="text-xs text-muted-foreground">
             Win rate: {formatNumber(analytics.breakdown.long.winRate)}%
           </p>
-          <p className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.long.pnl)}`}>
+          <p
+            className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.long.pnl)}`}
+          >
             {formatCurrency(convert(analytics.breakdown.long.pnl), currency)}
           </p>
         </div>
         <div className="space-y-1 rounded-md bg-muted/50 p-3">
           <div className="flex items-center gap-1.5">
             <span className="text-red-600 font-medium">SHORT</span>
-            <span className="text-xs text-muted-foreground">({analytics.breakdown.short.count})</span>
+            <span className="text-xs text-muted-foreground">
+              ({analytics.breakdown.short.count})
+            </span>
           </div>
           <p className="text-xs text-muted-foreground">
             Win rate: {formatNumber(analytics.breakdown.short.winRate)}%
           </p>
-          <p className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.short.pnl)}`}>
+          <p
+            className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.short.pnl)}`}
+          >
             {formatCurrency(convert(analytics.breakdown.short.pnl), currency)}
           </p>
         </div>
@@ -254,7 +306,12 @@ function ByDirectionSegment({ analytics, convert, currency }: {
   );
 }
 
-function NotableTradesSegment({ analytics, convert, currency, onTradeClick }: {
+function NotableTradesSegment({
+  analytics,
+  convert,
+  currency,
+  onTradeClick,
+}: {
   analytics: TradeAnalytics;
   convert: (v: number | null | undefined) => number | null | undefined;
   currency: 'USD' | 'SGD';
@@ -273,7 +330,10 @@ function NotableTradesSegment({ analytics, convert, currency, onTradeClick }: {
         <p className="text-xs text-muted-foreground">{type === 'best' ? 'Best' : 'Worst'}</p>
         <p className={`font-medium ${colorClass} tabular-nums`}>
           {formatCurrency(convert(trade.pnl), currency)}
-          <span className="text-xs ml-1">({trade.pnlPct >= 0 ? '+' : ''}{formatNumber(trade.pnlPct)}%)</span>
+          <span className="text-xs ml-1">
+            ({trade.pnlPct >= 0 ? '+' : ''}
+            {formatNumber(trade.pnlPct)}%)
+          </span>
         </p>
         <p className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2">
           {trade.asset} · {formatDate(trade.date)}
@@ -295,7 +355,14 @@ function NotableTradesSegment({ analytics, convert, currency, onTradeClick }: {
 
 // --- Main component ---
 
-export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1, onTradeClick, isExpanded = true, onToggle }: TradeStatsCardProps) {
+export function TradeStatsCard({
+  analytics,
+  currency = 'USD',
+  fxRate = 1,
+  onTradeClick,
+  isExpanded = true,
+  onToggle,
+}: TradeStatsCardProps) {
   const { segmentOrder, setOrder } = useTradeStatsStore();
 
   const convert = (usdValue: number | null | undefined) => {
@@ -304,23 +371,38 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1, onTrad
   };
 
   // Derived metrics
-  const lossRate = analytics.totalTrades > 0
-    ? (analytics.losingTrades / analytics.totalTrades) * 100
-    : 0;
-  const expectancy = analytics.totalTrades > 0
-    ? ((analytics.winRate / 100) * analytics.avgWin) - ((lossRate / 100) * analytics.avgLoss)
-    : 0;
-  const riskReward = analytics.avgLoss > 0
-    ? analytics.avgWin / analytics.avgLoss
-    : analytics.avgWin > 0 ? Infinity : 0;
+  const lossRate =
+    analytics.totalTrades > 0 ? (analytics.losingTrades / analytics.totalTrades) * 100 : 0;
+  const expectancy =
+    analytics.totalTrades > 0
+      ? (analytics.winRate / 100) * analytics.avgWin - (lossRate / 100) * analytics.avgLoss
+      : 0;
+  const riskReward =
+    analytics.avgLoss > 0
+      ? analytics.avgWin / analytics.avgLoss
+      : analytics.avgWin > 0
+        ? Infinity
+        : 0;
 
   // Rating helpers
-  const pfRating = analytics.profitFactor === Infinity
-    ? { text: 'No losses', color: 'text-profit' }
-    : ratingLabel(analytics.profitFactor, [[2, 'Excellent'], [1.5, 'Strong'], [1, 'Marginal'], [0, 'Negative']]);
-  const rrRating = riskReward === Infinity
-    ? { text: 'No losses', color: 'text-profit' }
-    : ratingLabel(riskReward, [[3, 'Excellent'], [2, 'Good'], [1, 'Below 1:1'], [0, 'Poor']]);
+  const pfRating =
+    analytics.profitFactor === Infinity
+      ? { text: 'No losses', color: 'text-profit' }
+      : ratingLabel(analytics.profitFactor, [
+          [2, 'Excellent'],
+          [1.5, 'Strong'],
+          [1, 'Marginal'],
+          [0, 'Negative'],
+        ]);
+  const rrRating =
+    riskReward === Infinity
+      ? { text: 'No losses', color: 'text-profit' }
+      : ratingLabel(riskReward, [
+          [3, 'Excellent'],
+          [2, 'Good'],
+          [1, 'Below 1:1'],
+          [0, 'Poor'],
+        ]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -338,14 +420,22 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1, onTrad
 
   // Filter out notableTrades if no data
   const hasNotableTrades = !!(analytics.bestTrade || analytics.worstTrade);
-  const visibleOrder = segmentOrder.filter(
-    id => id !== 'notableTrades' || hasNotableTrades
-  );
+  const visibleOrder = segmentOrder.filter((id) => id !== 'notableTrades' || hasNotableTrades);
 
   function renderSegment(id: SegmentId) {
     switch (id) {
       case 'metrics':
-        return <MetricsSegment analytics={analytics} convert={convert} currency={currency} expectancy={expectancy} pfRating={pfRating} riskReward={riskReward} rrRating={rrRating} />;
+        return (
+          <MetricsSegment
+            analytics={analytics}
+            convert={convert}
+            currency={currency}
+            expectancy={expectancy}
+            pfRating={pfRating}
+            riskReward={riskReward}
+            rrRating={rrRating}
+          />
+        );
       case 'winRate':
         return <WinRateSegment analytics={analytics} />;
       case 'avgWinLoss':
@@ -353,25 +443,40 @@ export function TradeStatsCard({ analytics, currency = 'USD', fxRate = 1, onTrad
       case 'byDirection':
         return <ByDirectionSegment analytics={analytics} convert={convert} currency={currency} />;
       case 'notableTrades':
-        return <NotableTradesSegment analytics={analytics} convert={convert} currency={currency} onTradeClick={onTradeClick} />;
+        return (
+          <NotableTradesSegment
+            analytics={analytics}
+            convert={convert}
+            currency={currency}
+            onTradeClick={onTradeClick}
+          />
+        );
     }
   }
 
   return (
     <TooltipProvider delayDuration={200}>
-    <CollapsibleCard title="Trade Analytics" isExpanded={isExpanded} onToggle={onToggle ?? (() => {})}>
-      <div className="space-y-5">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={visibleOrder} strategy={verticalListSortingStrategy}>
-            {visibleOrder.map((id, index) => (
-              <SortableSegment key={id} id={id} isFirst={index === 0}>
-                {renderSegment(id)}
-              </SortableSegment>
-            ))}
-          </SortableContext>
-        </DndContext>
-      </div>
-    </CollapsibleCard>
+      <CollapsibleCard
+        title="Trade Analytics"
+        isExpanded={isExpanded}
+        onToggle={onToggle ?? (() => {})}
+      >
+        <div className="space-y-5">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={visibleOrder} strategy={verticalListSortingStrategy}>
+              {visibleOrder.map((id, index) => (
+                <SortableSegment key={id} id={id} isFirst={index === 0}>
+                  {renderSegment(id)}
+                </SortableSegment>
+              ))}
+            </SortableContext>
+          </DndContext>
+        </div>
+      </CollapsibleCard>
     </TooltipProvider>
   );
 }

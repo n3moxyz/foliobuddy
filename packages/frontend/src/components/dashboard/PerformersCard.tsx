@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import type { Performer } from '@/lib/api';
+import type { Performer } from '@/lib/types';
 
 interface PerformersCardProps {
   title: string;
@@ -12,7 +12,14 @@ interface PerformersCardProps {
   stakeMultiplier?: number;
 }
 
-export function PerformersCard({ title, performers, type, currency = 'USD', fxRate = 1, stakeMultiplier = 1 }: PerformersCardProps) {
+export function PerformersCard({
+  title,
+  performers,
+  type,
+  currency = 'USD',
+  fxRate = 1,
+  stakeMultiplier = 1,
+}: PerformersCardProps) {
   // Helper to convert values based on currency and apply stake multiplier
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
@@ -55,14 +62,9 @@ export function PerformersCard({ title, performers, type, currency = 'USD', fxRa
       <CardContent>
         <div className="space-y-4">
           {performers.map((performer, index) => (
-            <div
-              key={performer.assetId}
-              className="flex items-center justify-between"
-            >
+            <div key={performer.assetId} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-muted-foreground text-sm w-4">
-                  {index + 1}.
-                </span>
+                <span className="text-muted-foreground text-sm w-4">{index + 1}.</span>
                 <div>
                   <p className="font-medium">{performer.symbol}</p>
                   <p className="text-sm text-muted-foreground truncate max-w-[120px]">

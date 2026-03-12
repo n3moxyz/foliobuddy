@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import type { Position } from '@/lib/api';
+import type { Position } from '@/lib/types';
 
 interface AllocationChartsProps {
   positions: Position[];
@@ -11,7 +11,18 @@ interface AllocationChartsProps {
 
 // Color palettes — maximally distinct hues per chart,
 // avoiding benchmark line colors (orange #F7931A, blue-purple #627EEA, teal #14B8A6, red #EF4444, purple #8B5CF6, amber #F59E0B)
-const ASSET_COLORS = ['#BE185D', '#1D4ED8', '#059669', '#A21CAF', '#0891B2', '#854D0E', '#475569', '#B91C1C', '#4F46E5', '#65A30D'];
+const ASSET_COLORS = [
+  '#BE185D',
+  '#1D4ED8',
+  '#059669',
+  '#A21CAF',
+  '#0891B2',
+  '#854D0E',
+  '#475569',
+  '#B91C1C',
+  '#4F46E5',
+  '#65A30D',
+];
 const STORAGE_COLORS = ['#16A34A', '#0284C7', '#64748B'];
 const STABLES_COLORS = ['#0369A1', '#16A34A', '#BE185D', '#854D0E', '#64748B'];
 
@@ -39,7 +50,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     const assetMap = new Map<string, number>();
     let stablesTotal = 0;
 
-    positions.forEach(p => {
+    positions.forEach((p) => {
       const value = p.marketValueUsd || 0;
       if (p.asset.category === 'STABLECOIN' || p.asset.category === 'CASH') {
         stablesTotal += value;
@@ -65,7 +76,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     // Storage allocation: CEX, Onchain, Onchain Ledger
     const storageMap = new Map<string, number>();
 
-    positions.forEach(p => {
+    positions.forEach((p) => {
       const value = p.marketValueUsd || 0;
       let storageLabel: string;
 
@@ -91,7 +102,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     // Stables by type
     const stablesMap = new Map<string, number>();
 
-    positions.forEach(p => {
+    positions.forEach((p) => {
       if (p.asset.category === 'STABLECOIN' || p.asset.category === 'CASH') {
         const value = p.marketValueUsd || 0;
         const symbol = p.asset.symbol;
@@ -149,9 +160,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
       return (
         <div className="bg-background border rounded-lg shadow-lg p-3">
           <p className="font-medium">{data.name}</p>
-          <p className="text-sm text-muted-foreground">
-            {formatCurrency(data.value, 'USD', 0)}
-          </p>
+          <p className="text-sm text-muted-foreground">{formatCurrency(data.value, 'USD', 0)}</p>
           <p className="text-sm text-muted-foreground">
             {formatNumber(data.displayPercentage ?? data.percentage, 1)}%
           </p>
@@ -168,9 +177,9 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     setHidden: React.Dispatch<React.SetStateAction<Set<string>>>,
     title: string
   ) => {
-    const filteredData = data.filter(d => !hidden.has(d.name));
+    const filteredData = data.filter((d) => !hidden.has(d.name));
     const visibleTotal = filteredData.reduce((sum, d) => sum + d.value, 0);
-    const visibleData = filteredData.map(d => ({
+    const visibleData = filteredData.map((d) => ({
       ...d,
       displayPercentage: visibleTotal > 0 ? (d.value / visibleTotal) * 100 : 0,
     }));
@@ -196,7 +205,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                     dataKey="value"
                   >
                     {visibleData.map((entry) => {
-                      const originalIndex = data.findIndex(d => d.name === entry.name);
+                      const originalIndex = data.findIndex((d) => d.name === entry.name);
                       return (
                         <Cell
                           key={`cell-${entry.name}`}
@@ -209,15 +218,20 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                 </PieChart>
               </ResponsiveContainer>
               {/* Center label — top visible item */}
-              {visibleData.length > 0 && (() => {
-                const top = visibleData.reduce((a, b) => a.value > b.value ? a : b);
-                return (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-lg font-bold leading-tight">{Math.round(top.displayPercentage)}%</span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">{top.name}</span>
-                  </div>
-                );
-              })()}
+              {visibleData.length > 0 &&
+                (() => {
+                  const top = visibleData.reduce((a, b) => (a.value > b.value ? a : b));
+                  return (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-lg font-bold leading-tight">
+                        {Math.round(top.displayPercentage)}%
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight">
+                        {top.name}
+                      </span>
+                    </div>
+                  );
+                })()}
             </div>
 
             {/* Side Legend */}
@@ -226,7 +240,9 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                 const isHidden = hidden.has(item.name);
                 const displayPct = isHidden
                   ? item.percentage
-                  : visibleTotal > 0 ? (item.value / visibleTotal) * 100 : 0;
+                  : visibleTotal > 0
+                    ? (item.value / visibleTotal) * 100
+                    : 0;
                 return (
                   <button
                     key={item.name}
@@ -242,7 +258,9 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                       style={{ backgroundColor: colors[index % colors.length] }}
                     />
                     <span className="truncate">{item.name}</span>
-                    <span className={`ml-auto font-medium tabular-nums ${isHidden ? '' : 'text-muted-foreground'}`}>
+                    <span
+                      className={`ml-auto font-medium tabular-nums ${isHidden ? '' : 'text-muted-foreground'}`}
+                    >
                       {formatNumber(displayPct, 0)}%
                     </span>
                   </button>
@@ -257,13 +275,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-      {renderPieChart(
-        assetAllocation,
-        ASSET_COLORS,
-        hiddenAssets,
-        setHiddenAssets,
-        'By Asset'
-      )}
+      {renderPieChart(assetAllocation, ASSET_COLORS, hiddenAssets, setHiddenAssets, 'By Asset')}
       {renderPieChart(
         storageAllocation,
         STORAGE_COLORS,
@@ -271,13 +283,14 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         setHiddenStorage,
         'By Storage'
       )}
-      {stablesAllocation.length > 0 && renderPieChart(
-        stablesAllocation,
-        STABLES_COLORS,
-        hiddenStables,
-        setHiddenStables,
-        'Stables Breakdown'
-      )}
+      {stablesAllocation.length > 0 &&
+        renderPieChart(
+          stablesAllocation,
+          STABLES_COLORS,
+          hiddenStables,
+          setHiddenStables,
+          'Stables Breakdown'
+        )}
     </div>
   );
 }
