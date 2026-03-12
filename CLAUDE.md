@@ -1,6 +1,7 @@
 # CLAUDE.md
 
 > **Self-Updating Rule**: This file is a living document. Claude should proactively update it when:
+>
 > - New patterns, conventions, or architectural decisions are established
 > - New key files or directories are added
 > - Commands or workflows change
@@ -8,6 +9,7 @@
 > - Environment variables are added/removed
 
 > **FORET.md Maintenance**: After completing significant changes to this project, Claude MUST update `FORET.md` to reflect:
+>
 > - New features or architectural changes (add to relevant sections)
 > - Bugs encountered and how they were fixed (add to "Lessons Learned the Hard Way" section)
 > - New patterns or best practices discovered (add to "Best Practices" section)
@@ -17,11 +19,13 @@
 > Keep the engaging, conversational tone. Use analogies where helpful. This is a learning document, not dry documentation.
 
 ## Project Overview
+
 **FolioBuddy** — personal portfolio dashboard tracking positions and net worth across crypto, equities, NFTs, and alternative investments. Multi-user support with investor stake tracking.
 
 ## Tech Stack
 
 ### Backend (`packages/backend/`)
+
 - **Runtime**: Node.js + TypeScript (ES2022 modules)
 - **Framework**: Express.js 4.18
 - **Database**: PostgreSQL (prod on DigitalOcean, local via Docker)
@@ -31,6 +35,7 @@
 - **Validation**: Zod
 
 ### Frontend (`packages/frontend/`)
+
 - **Framework**: React 18 + TypeScript
 - **Build**: Vite 5
 - **Routing**: React Router v6
@@ -42,23 +47,38 @@
 ## Key Files
 
 ### Backend
-- `src/index.ts` - Server entry point (rate limiting, logger, FX job init)
+
+- `src/index.ts` - Server entry point (rate limiting, logger, FX job init, API versioning with `/api/v1` prefix)
 - `src/routes/` - API endpoints (positions, trades, investors, snapshots, etc.)
 - `src/services/` - Business logic (portfolioService, priceService, snapshotService)
 - `src/middleware/` - Auth and error handling
-- `src/lib/` - Shared utilities (constants, logger, pagination, tradePnL, sentry)
+- `src/lib/` - Shared utilities (constants, logger, pagination, tradePnL, sentry, TTLCache)
+- `src/lib/constants.ts` - Domain enums (AssetCategory, StorageType, TradeDirection, TradeStatus, SnapshotType, SnapshotSource)
+- `src/lib/TTLCache.ts` - Generic TTL cache with LRU eviction (used by priceService)
 - `src/__tests__/` - Unit + integration tests (vitest)
 - `src/__tests__/routes/` - Route integration tests (supertest + mocked Prisma)
 - `src/__tests__/helpers/` - Test utilities (createTestApp, fixtures)
 - `prisma/schema.prisma` - Database schema
 
 ### Frontend
+
 - `src/App.tsx` - Main app with routing
 - `src/pages/` - Dashboard, Portfolio, Trades, Investors, Settings
 - `src/components/` - Reusable UI components
 - `src/hooks/` - React Query hooks (usePortfolio, useTrades, etc.)
-- `src/lib/api.ts` - API client and types
+- `src/hooks/__tests__/` - Hook unit tests (vitest + React Testing Library)
+- `src/lib/api.ts` - API client methods (305 lines, methods only)
+- `src/lib/types.ts` - Frontend type definitions (347 lines, extracted from api.ts)
 - `src/stores/` - Zustand stores
+
+### Shared
+
+- `packages/shared/src/types.ts` - Cross-package type definitions (Position, Trade, Snapshot, Asset, Investor)
+
+### E2E
+
+- `playwright.config.ts` - Playwright configuration (Chromium only)
+- `e2e/smoke.spec.ts` - Smoke tests (health, app load, auth redirect)
 
 ## First Run Setup
 
@@ -88,6 +108,7 @@ cd packages/frontend && npm run dev
 ```
 
 ## Commands
+
 ```bash
 # Root (monorepo)
 npm install              # Install all dependencies
@@ -139,70 +160,91 @@ Background Jobs (node-cron):
 ## Key Patterns
 
 ### Auto-Create User
+
 First-time Clerk users are auto-created in database via `ensureUser` middleware.
 
 ### Snapshot System
+
 Captures portfolio state at points in time for performance tracking. Calculates daily/weekly/monthly/YTD returns and benchmark outperformance vs BTC/ETH.
 
 ### CoinGecko Rate Limiting
+
 Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. Batch requests up to 50 coins.
 
 ### React Query + Zustand Split
+
 - React Query: Server state (positions, trades, snapshots)
 - Zustand: Client state (currency preference)
 
 ### Structured Logging
+
 All backend code uses `logger` from `src/lib/logger.ts` instead of `console.log`. Respects `LOG_LEVEL` env var (debug/info/warn/error). No `console.log` in production code.
 
 ### Rate Limiting
+
 Express-rate-limit applied globally to `/api` routes. Default: 200 requests per 15 minutes. Override with `RATE_LIMIT_MAX` env var (local dev uses 10000). Constants in `src/lib/constants.ts`.
 
 ### Pagination (Backend)
+
 Trades and snapshots routes support optional pagination via `?page=1&limit=50`. Backwards-compatible — returns full array when no `page` param. Uses `parsePagination()` and `paginatedResponse()` from `src/lib/pagination.ts`.
 
 ### Lazy-Loaded Routes
+
 All pages except Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. Reduces initial bundle size.
 
 ### Dev Demo Route
+
 `src/dev/demoMode.tsx` provides a local-only `/dev/demo` route for UI testing without Clerk sign-in or backend access. Important constraints:
+
 - It must stay **dev-only**. `App.tsx` lazy-loads it only when `import.meta.env.DEV` is true so the mock payload does not ship in production bundles.
 - It mocks `/api/*` in the browser and restores the original `fetch` + token getter on unmount. Do not leave global network monkey-patches installed after navigating away.
 - Use it for responsive/UI checks only. It is not a persistence path and must never point at production write APIs.
 
 ### Ownership Checks on Mutations
+
 For protected backend resources, update/delete routes must filter by both `id` and `req.userId!`, not just `id`. Reads already did this in many places; writes now need to follow the same rule consistently to prevent cross-user mutation if an ID is guessed.
 
 ### WebSocket CORS
+
 Socket.io origin validation should use exact origin matching (`origin === allowed`) just like the Express CORS middleware. Never use prefix matching for trusted origins.
 
 ### Optimistic Deletes
+
 Delete mutations in `usePortfolio`, `useTrades`, `useSnapshots` use optimistic updates with rollback on error.
 
 ### Responsive Mobile Design
+
 All pages follow iOS HIG-inspired responsive patterns:
+
 - **Column toggle**: Portfolio and Trades tables have a mobile-only "All columns" / "Compact" toggle. Compact hides secondary columns (`hidden md:table-cell`), expanded shows all with horizontal scroll (`overflow-x-auto` + `min-w-[700px]`).
 - **Touch targets**: All interactive elements use `touch-manipulation` CSS and minimum 44px hit areas (`h-8 w-8` buttons).
 - **Responsive headers**: Page headers stack vertically on mobile (`flex-col gap-3 sm:flex-row`). Secondary actions move to `DropdownMenu` overflow menus.
 - **Dialog safety**: Dialogs use `w-[calc(100%-2rem)]` for viewport margins and `max-h-[85vh] overflow-y-auto` for scroll.
 
 ### Trade Analytics Card
+
 `TradeStatsCard` displays analytics with derived metrics (expectancy, risk:reward ratio) calculated client-side from backend data. Uses `CollapsibleCard` — collapsed by default on the Trades page to save space. Metric labels use `MetricLabel` component with shadcn `Tooltip` for hover definitions — formulas use `×`, `÷`, `−` symbols where math is clearer than words. Trade form defaults entry date to 5 days ago and exit date to today (optimized for logging closed trades).
 
 ### P&L by Ticker Card
+
 `TickerPnLCard` (`components/trades/TickerPnLCard.tsx`) shows aggregated P&L per ticker — one row per asset with columns: Ticker, Trades, Win Rate, Total P&L. Only includes closed trades (those with `realizedPnL`). Default sort: P&L descending. Uses `CollapsibleCard` — collapsed by default. Clicking a ticker row filters the main trade table below; a filter chip appears next to the tabs to clear the filter.
 
 ### Portfolio Section Headers
+
 Positions are grouped two-level: **Crypto/Stables** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, green for Stables, purple for Custody).
 
 ### Custody Positions ("Held for Others")
+
 Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `custodyOf String?` field on the Position model — `null` = owned by user, non-null = custody.
 
 **Backend behavior:**
+
 - `portfolioService` filters `custodyOf: null` on all queries (summary, allocation, performers) — custody positions excluded from net worth, P&L, and exposure
 - `snapshotService` excludes custody positions from snapshots
 - `positions.ts` routes accept `custodyOf` in create/update/bulk Zod schemas (`z.string().nullable().optional()`), converting empty strings to null
 
 **Frontend behavior:**
+
 - `Portfolio.tsx` splits positions into `ownedPositions` (sections) and `custodyPositions` (separate purple "Held for Others" `CollapsibleCard`, collapsed by default)
 - Custody section reuses `PositionTable` for identical columns/sorting as Crypto and Stables
 - `PositionForm.tsx` uses `CustodyCheckbox` component above the mode tabs (applies to Add, Import, and Edit). When checked, shows a `<Select>` dropdown with existing names + "Add new person" option. Edit mode sends empty string (not undefined) when unchecking custody to properly clear the field
@@ -212,19 +254,23 @@ Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `cus
 - `PositionTable.tsx` includes `custodyOf` in clipboard JSON format when set
 
 ### Dashboard Charts
+
 - **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
 - **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
 - **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Center label shows top item's % and name. Clickable legends toggle slices — percentages recalculate for visible items (both legend and tooltip). Maximally distinct hues per slice, avoiding benchmark line colors.
 
 ### Dashboard Stat Cards
+
 4-column compact grid: YTD Start, YTD P&L (with inline percentage), Live Positions (links to /portfolio), Closed Trades (links to /trades).
 
 ### Net Worth Card
+
 Hero card with gradient background (`from-primary/15 via-primary/8 to-background`). Shows net worth, YTD trend arrow, 3-column grid: YTD P&L, YTD Start, vs 30D ago (period-over-period comparison from `usePerformanceHistory`). Alternate currency value at bottom.
 
 ## Environment Variables
 
 ### Backend (`.env`)
+
 ```
 DATABASE_URL=              # Local: postgresql://dev:dev@localhost:5433/example_portfolio_db
 PRODUCTION_DATABASE_URL=   # Production DB (used by npm run db:sync)
@@ -236,6 +282,7 @@ SENTRY_DSN=                # Optional — error tracking (skipped if empty)
 ```
 
 ### Frontend (`.env`)
+
 ```
 VITE_API_URL=http://localhost:4001/api    # Backend API URL (or prod URL for frontend-only dev)
 VITE_WS_BACKEND_URL=http://localhost:4001 # WebSocket URL
@@ -243,19 +290,25 @@ VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 ```
 
 ### Frontend-Only Development (No Docker)
+
 For testing frontend changes without running Docker or the local backend, point `VITE_API_URL` at the production Coolify backend:
+
 ```
 VITE_API_URL=https://api.foliobuddy.xyz/api
 ```
+
 `http://localhost:4000` is already in Coolify's `ALLOWED_ORIGINS`, so CORS works. Remember to switch back to `http://localhost:4001/api` when doing backend work.
 
 ### Local Authenticated UI Testing
+
 For frontend-only layout verification without real auth, use the dev demo route instead of pointing the app at production with a bypass:
+
 - Run `npm run dev --workspace=@foliobuddy/frontend`
 - Open `http://localhost:4000/dev/demo`
 - This route is available only in Vite dev mode and uses mocked `/api` responses
 
 ## Deployment
+
 - **Backend**: Coolify on DigitalOcean — `https://api.foliobuddy.xyz` (HTTPS via Let's Encrypt/Traefik)
 - **Frontend**: Vercel — `https://foliobuddy.xyz` (rewrites API calls to backend)
 - **Database**: Self-hosted PostgreSQL on DigitalOcean via Coolify (203.0.113.10:5432)
@@ -263,14 +316,18 @@ For frontend-only layout verification without real auth, use the dev demo route 
 - **DB Backups**: Automated daily/weekly/monthly to DigitalOcean Spaces (`example-backup-bucket`). Retention: 7 daily, 4 weekly, 12 monthly.
 
 ### Copy/Paste JSON Import Pattern
+
 All data tables (Portfolio, Trades, History) follow the same copy/import pattern:
+
 - **Copy individual**: Clipboard icon per row, copies single item as JSON
 - **Copy All**: Button in header, copies all items as JSON array
 - **Import**: Tab in Add/Log dialog with textarea for pasting JSON
 - **Format**: Single unified JSON format used for both copy and import (no simplified versions)
 
 ### Trade Form Editing
+
 `TradeForm` component supports both create and edit modes:
+
 ```typescript
 <TradeForm trade={existingTrade} onSuccess={handleClose} />  // Edit mode
 <TradeForm onSuccess={handleClose} />                         // Create mode
@@ -281,10 +338,12 @@ All data tables (Portfolio, Trades, History) follow the same copy/import pattern
 **Prerequisites:** Docker Desktop installed.
 
 **One-time setup:**
+
 1. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env` (get from Coolify dashboard)
 2. Verify `DATABASE_URL` in `.env` points to `postgresql://dev:dev@localhost:5433/example_portfolio_db`
 
 **Daily workflow:**
+
 ```bash
 npm run db:local       # Start local Postgres (port 5433)
 npm run db:sync        # Pull fresh production data → local
@@ -294,12 +353,20 @@ npm run dev            # Start dev servers
 **How it works:** Local backend connects to local Postgres (your sandbox). Production data is pulled on-demand via `db:sync`. Local changes do NOT affect production. Run `db:sync` anytime you want fresh data.
 
 ### Branding
+
 - **App name**: FolioBuddy (formerly "PA Portfolio")
 - **Logo**: Growth-chart SVG icon (trending line with arrow). Favicon at `public/logo.svg` (indigo→purple gradient). Sidebar icon uses inline SVG with `bg-primary`/`text-primary-foreground` for theme adaptivity.
 - **Package scope**: `@foliobuddy/*` (root: `foliobuddy`)
-- **Infrastructure names unchanged**: database `example_portfolio_db`, DO Spaces bucket `example-backup-bucket`, repo name `PA-portfolio-dash` — renaming these would require migration
+- **GitHub repo**: `n3moxyz/foliobuddy` (renamed from `PA-portfolio-dash`)
+- **Infrastructure names unchanged**: database `example_portfolio_db`, DO Spaces bucket `example-backup-bucket` — renaming these would require migration
+
+### Clickable Snapshot Rows
+
+History page snapshot rows (AUTOMATIC source) are clickable anywhere to expand/collapse positions — not just the chevron arrow. Action buttons (copy/edit/delete) use `stopPropagation` to avoid triggering the row toggle.
 
 ## Gotchas & Notes
+
+- `.env.local` overrides `.env` in Vite — if you see wrong ports or "DB Down", check `.env.local` first
 - Always define `onDelete: Cascade` in Prisma relations to avoid FK errors
 - FX rates need fallback values for when API is slow
 - Snapshots use unique constraint + check-before-create to prevent duplicates
@@ -312,3 +379,5 @@ npm run dev            # Start dev servers
 - vitest `exclude: ['dist/**']` prevents duplicate test runs after `npm run build`
 - If a protected route mutates by `id` only, treat it as a security bug. All writes for positions/trades/investors should be ownership-scoped.
 - Do not gate the dev demo route with extra env flags unless the frontend actually reads them at build time. `import.meta.env.DEV` is the safe default because it cannot be enabled in production accidentally.
+- `VITE_WS_BACKEND_URL` must be set in Vercel env vars for production WebSocket to work (warns + disables if missing)
+- When deploying: backend must deploy before frontend when API versioning paths change (frontend uses `/api/v1`)
