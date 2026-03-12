@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, CreateTradeData, Trade } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { CreateTradeData, Trade } from '@/lib/types';
 
 export function useTrades(params?: {
   status?: string;

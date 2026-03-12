@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, CreateAssetData } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { CreateAssetData } from '@/lib/types';
 
 export function useAssets(params?: { category?: string; search?: string }) {
   return useQuery({

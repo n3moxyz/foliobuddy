@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, CreateManualSnapshotData, UpdateSnapshotData, Snapshot } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { CreateManualSnapshotData, Snapshot, UpdateSnapshotData } from '@/lib/types';
 
 export function useSnapshots(params?: {
   type?: string;
