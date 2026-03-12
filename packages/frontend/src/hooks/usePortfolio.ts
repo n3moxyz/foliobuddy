@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, CreatePositionData, Position } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { CreatePositionData, Position } from '@/lib/types';
 
 export function usePositions() {
   return useQuery({
