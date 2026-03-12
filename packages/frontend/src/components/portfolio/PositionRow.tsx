@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { formatCurrency, formatNumber, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { Pencil, Trash2, Copy, Check } from 'lucide-react';
-import type { Position } from '@/lib/api';
+import type { Position } from '@/lib/types';
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
   WALLET: 'Onchain',
@@ -54,29 +54,34 @@ export function PositionRow({
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
 
   return (
-    <TableRow
-      className="cursor-pointer hover:bg-muted/50"
-      onClick={() => onView(position)}
-    >
+    <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => onView(position)}>
       <TableCell>
         <div className="truncate">
           <p className="font-medium text-sm">{position.asset.symbol}</p>
-          <p className="text-xs text-muted-foreground truncate">
-            {position.asset.name}
-          </p>
+          <p className="text-xs text-muted-foreground truncate">{position.asset.name}</p>
         </div>
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
-        {formatCurrency(convert(position.avgCostUsd), currency, getSmartDecimals(convert(position.avgCostUsd)))}
+        {formatCurrency(
+          convert(position.avgCostUsd),
+          currency,
+          getSmartDecimals(convert(position.avgCostUsd))
+        )}
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         {formatCurrency(convert(totalCost), currency, 0)}
       </TableCell>
-      <TableCell className={`text-right font-mono text-sm text-slate-500 dark:text-slate-400 ${HIDDEN_MOBILE}`}>
-        {formatCurrency(convert(position.asset.currentPriceUsd), currency, getSmartDecimals(convert(position.asset.currentPriceUsd)))}
+      <TableCell
+        className={`text-right font-mono text-sm text-slate-500 dark:text-slate-400 ${HIDDEN_MOBILE}`}
+      >
+        {formatCurrency(
+          convert(position.asset.currentPriceUsd),
+          currency,
+          getSmartDecimals(convert(position.asset.currentPriceUsd))
+        )}
       </TableCell>
       <TableCell className="text-right font-mono text-sm font-medium">
         {formatCurrency(convert(position.marketValueUsd), currency, 0)}
@@ -86,9 +91,7 @@ export function PositionRow({
           <p className="font-mono text-sm">
             {formatCurrency(convert(position.unrealizedPnL), currency, 0)}
           </p>
-          <p className="text-xs">
-            {formatPercent(position.unrealizedPnLPct)}
-          </p>
+          <p className="text-xs">{formatPercent(position.unrealizedPnLPct)}</p>
         </div>
       </TableCell>
       <TableCell className={`text-right ${HIDDEN_MOBILE}`}>

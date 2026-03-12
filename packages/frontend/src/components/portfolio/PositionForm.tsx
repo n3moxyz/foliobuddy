@@ -12,7 +12,7 @@ import {
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
 import { useCreatePosition, useUpdatePosition } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
-import type { Position, Asset, CoinSearchResult } from '@/lib/api';
+import type { Asset, CoinSearchResult, Position } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
@@ -91,7 +91,13 @@ const TOP_STABLECOINS = [
 
 const MAX_POSITIONS_PER_CATEGORY = 20;
 
-export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCount = 0, existingCustodyNames = [] }: PositionFormProps) {
+export function PositionForm({
+  position,
+  onSuccess,
+  cryptoCount = 0,
+  stablesCount = 0,
+  existingCustodyNames = [],
+}: PositionFormProps) {
   // Form mode state (add new or import)
   const [mode, setMode] = useState<FormMode>('add');
   const queryClient = useQueryClient();
@@ -178,7 +184,8 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   const updatePosition = useUpdatePosition();
 
   const isEditing = !!position;
-  const isLoading = createPosition.isPending || updatePosition.isPending || createAssetFromCoinGecko.isPending;
+  const isLoading =
+    createPosition.isPending || updatePosition.isPending || createAssetFromCoinGecko.isPending;
 
   // Form validation
   const isFormValid = useMemo(() => {
@@ -237,7 +244,7 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
     // Stamp custodyOf on all positions if custody checkbox is checked
     const positionsToImport = isCustody
-      ? parsedPositions.map(p => ({ ...p, custodyOf: custodyOf.trim() || 'Someone' }))
+      ? parsedPositions.map((p) => ({ ...p, custodyOf: custodyOf.trim() || 'Someone' }))
       : parsedPositions;
 
     try {
@@ -297,15 +304,14 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
     // Filter by category - exclude stablecoins for crypto
     if (category === 'crypto') {
-      filtered = filtered.filter(a => a.category !== 'STABLECOIN' && a.category !== 'CASH');
+      filtered = filtered.filter((a) => a.category !== 'STABLECOIN' && a.category !== 'CASH');
     }
 
     // Filter by search query
     if (searchQuery.length > 0) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(a =>
-        a.symbol.toLowerCase().includes(query) ||
-        a.name.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (a) => a.symbol.toLowerCase().includes(query) || a.name.toLowerCase().includes(query)
       );
     }
 
@@ -316,18 +322,19 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   const combinedResults = useMemo(() => {
     if (category !== 'crypto') return [];
 
-    const results: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: CoinSearchResult }> = [];
+    const results: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: CoinSearchResult }> =
+      [];
 
     // Add existing portfolio assets first
-    filteredAssets.forEach(asset => {
+    filteredAssets.forEach((asset) => {
       results.push({ type: 'existing', asset });
     });
 
     // Add CoinGecko search results that aren't already in portfolio
     if (searchResults && searchQuery.length >= 1) {
-      searchResults.forEach(coin => {
+      searchResults.forEach((coin) => {
         const existsInPortfolio = assets?.some(
-          a => a.coingeckoId === coin.id || a.symbol.toLowerCase() === coin.symbol.toLowerCase()
+          (a) => a.coingeckoId === coin.id || a.symbol.toLowerCase() === coin.symbol.toLowerCase()
         );
         if (!existsInPortfolio) {
           results.push({ type: 'search', coin });
@@ -373,15 +380,11 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev =>
-          prev < combinedResults.length - 1 ? prev + 1 : 0
-        );
+        setHighlightedIndex((prev) => (prev < combinedResults.length - 1 ? prev + 1 : 0));
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev =>
-          prev > 0 ? prev - 1 : combinedResults.length - 1
-        );
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : combinedResults.length - 1));
         break;
       case 'Enter':
         e.preventDefault();
@@ -411,11 +414,11 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     setSelectedStablecoinId(coinId);
     setError(null);
 
-    const stablecoin = TOP_STABLECOINS.find(s => s.id === coinId);
+    const stablecoin = TOP_STABLECOINS.find((s) => s.id === coinId);
     if (!stablecoin) return;
 
     // Check if asset already exists in our database
-    const existingAsset = assets?.find(a => a.coingeckoId === coinId);
+    const existingAsset = assets?.find((a) => a.coingeckoId === coinId);
     if (existingAsset) {
       setAssetId(existingAsset.id);
       setSelectedAsset(existingAsset);
@@ -474,7 +477,7 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
   const handleCustodySave = () => {
     if (isCustody && custodyOf.trim()) {
       saveCustodyName(custodyOf.trim());
-      setCustodyNamesVersion(v => v + 1);
+      setCustodyNamesVersion((v) => v + 1);
     }
   };
 
@@ -482,7 +485,7 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     const name = newNameInput.trim();
     if (name) {
       saveCustodyName(name);
-      setCustodyNamesVersion(v => v + 1);
+      setCustodyNamesVersion((v) => v + 1);
       setCustodyOf(name);
       setNewNameInput('');
       setAddingNewName(false);
@@ -516,24 +519,24 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
     if (!isEditing) {
       const currentCount = category === 'crypto' ? cryptoCount : stablesCount;
       if (currentCount >= MAX_POSITIONS_PER_CATEGORY) {
-        setError(`Maximum ${MAX_POSITIONS_PER_CATEGORY} ${category === 'crypto' ? 'crypto' : 'stables'} positions allowed`);
+        setError(
+          `Maximum ${MAX_POSITIONS_PER_CATEGORY} ${category === 'crypto' ? 'crypto' : 'stables'} positions allowed`
+        );
         return;
       }
     }
 
     // Determine final storage location value
-    const finalStorageLocation = storageLocation === 'Others'
-      ? customLocation
-      : storageLocation;
+    const finalStorageLocation = storageLocation === 'Others' ? customLocation : storageLocation;
 
     const data = {
       assetId,
       quantity: parseFloat(quantity),
-      avgCostUsd: category === 'crypto' ? (parseFloat(avgCostUsd) || 0) : 1,
+      avgCostUsd: category === 'crypto' ? parseFloat(avgCostUsd) || 0 : 1,
       storageType: storageType as 'WALLET' | 'CEX' | 'DEFI' | 'BANK',
       storageLocation: finalStorageLocation || undefined,
       notes: notes.trim() || undefined,
-      custodyOf: isCustody ? (custodyOf.trim() || 'Someone') : (isEditing ? '' : undefined),
+      custodyOf: isCustody ? custodyOf.trim() || 'Someone' : isEditing ? '' : undefined,
     };
 
     try {
@@ -568,7 +571,10 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
         showDescription={!isEditing}
         onCustodyChange={handleCustodyChange}
         onCustodyOfChange={setCustodyOf}
-        onStartAddingName={() => { setAddingNewName(true); setNewNameInput(''); }}
+        onStartAddingName={() => {
+          setAddingNewName(true);
+          setNewNameInput('');
+        }}
         onNewNameInputChange={setNewNameInput}
         onAddNewName={handleAddNewName}
         onCancelAddingName={() => setAddingNewName(false)}
@@ -688,7 +694,11 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
                   disabled={createAssetFromCoinGecko.isPending}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={createAssetFromCoinGecko.isPending ? "Loading..." : "Select a stablecoin"} />
+                    <SelectValue
+                      placeholder={
+                        createAssetFromCoinGecko.isPending ? 'Loading...' : 'Select a stablecoin'
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {TOP_STABLECOINS.map((coin) => (
@@ -735,7 +745,9 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
                     onChange={() => setCostInputMode('total')}
                     className="w-3.5 h-3.5 accent-primary"
                   />
-                  <span className={costInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'}>
+                  <span
+                    className={costInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'}
+                  >
                     Total Cost
                   </span>
                 </label>
@@ -747,7 +759,9 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
                     onChange={() => setCostInputMode('avg')}
                     className="w-3.5 h-3.5 accent-primary"
                   />
-                  <span className={costInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'}>
+                  <span
+                    className={costInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'}
+                  >
                     Avg Cost
                   </span>
                 </label>
@@ -755,7 +769,9 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="totalCost" className="text-sm">Total Cost (USD)</Label>
+                  <Label htmlFor="totalCost" className="text-sm">
+                    Total Cost (USD)
+                  </Label>
                   <Input
                     id="totalCost"
                     type="number"
@@ -768,7 +784,9 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="avgCost" className="text-sm">Average Cost (USD)</Label>
+                  <Label htmlFor="avgCost" className="text-sm">
+                    Average Cost (USD)
+                  </Label>
                   <Input
                     id="avgCost"
                     type="number"
@@ -787,7 +805,10 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
           {/* Storage Type */}
           <div className="space-y-1">
             <Label className="text-sm">Storage Type</Label>
-            <Select value={storageType} onValueChange={(value) => setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK')}>
+            <Select
+              value={storageType}
+              onValueChange={(value) => setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK')}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -804,12 +825,15 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
           {/* Storage Location */}
           <div className="space-y-1">
             <Label className="text-sm">Storage Location (Optional)</Label>
-            <Select value={storageLocation} onValueChange={(v) => {
-              setStorageLocation(v);
-              if (v !== 'Others') {
-                setCustomLocation('');
-              }
-            }}>
+            <Select
+              value={storageLocation}
+              onValueChange={(v) => {
+                setStorageLocation(v);
+                if (v !== 'Others') {
+                  setCustomLocation('');
+                }
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select location" />
               </SelectTrigger>
@@ -835,7 +859,9 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
           {/* Notes */}
           <div className="space-y-1">
-            <Label htmlFor="notes" className="text-sm">Notes (Optional)</Label>
+            <Label htmlFor="notes" className="text-sm">
+              Notes (Optional)
+            </Label>
             <textarea
               id="notes"
               value={notes}
@@ -848,9 +874,7 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
 
           {/* Error Display */}
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-              {error}
-            </div>
+            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
           )}
 
           {/* Validation Error Display */}
@@ -863,7 +887,8 @@ export function PositionForm({ position, onSuccess, cryptoCount = 0, stablesCoun
           {/* Position Limit Info */}
           {!isEditing && (
             <div className="text-xs text-muted-foreground">
-              {category === 'crypto' ? cryptoCount : stablesCount} / {MAX_POSITIONS_PER_CATEGORY} {category === 'crypto' ? 'crypto' : 'stables'} positions
+              {category === 'crypto' ? cryptoCount : stablesCount} / {MAX_POSITIONS_PER_CATEGORY}{' '}
+              {category === 'crypto' ? 'crypto' : 'stables'} positions
             </div>
           )}
 

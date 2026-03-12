@@ -16,7 +16,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { formatCurrency, formatNumber, formatPercent, formatDateTime, getPnLColorClass } from '@/lib/utils';
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercent,
+  formatDateTime,
+  getPnLColorClass,
+} from '@/lib/utils';
 import { useDeletePosition } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
 import { PositionRow } from './PositionRow';
@@ -26,7 +32,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
-import type { Position } from '@/lib/api';
+import type { Position } from '@/lib/types';
 
 const SKIP_DELETE_CONFIRM_KEY = 'pa-portfolio-skip-delete-confirm';
 
@@ -34,7 +40,7 @@ const SKIP_DELETE_CONFIRM_KEY = 'pa-portfolio-skip-delete-confirm';
 export function formatPositionsForClipboard(positions: Position | Position[]) {
   const posArray = Array.isArray(positions) ? positions : [positions];
 
-  const formatted = posArray.map(p => ({
+  const formatted = posArray.map((p) => ({
     asset: {
       coingeckoId: p.asset.coingeckoId,
       symbol: p.asset.symbol,
@@ -87,7 +93,12 @@ const POSITION_COLUMNS: Record<string, ColumnConfig<Position>> = {
   storage: { accessor: (p) => `${p.storageType}-${p.storageLocation || ''}`, type: 'string' },
 };
 
-export function PositionTable({ positions, currency = 'USD', fxRate = 1, sectionPrefix }: PositionTableProps) {
+export function PositionTable({
+  positions,
+  currency = 'USD',
+  fxRate = 1,
+  sectionPrefix,
+}: PositionTableProps) {
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [deletePosition, setDeletePosition] = useState<Position | null>(null);
@@ -128,7 +139,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
     const cex: Position[] = [];
     const onchain: Position[] = [];
 
-    positions.forEach(pos => {
+    positions.forEach((pos) => {
       if (pos.storageType === 'CEX') {
         cex.push(pos);
       } else {
@@ -213,26 +224,79 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
   // When compact: hide secondary columns on mobile. When expanded: show all + scroll.
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
 
-  const renderTableHeader = (sortState: { sortKey: string | null; sortDirection: SortDirection; onSort: (key: string) => void }) => (
+  const renderTableHeader = (sortState: {
+    sortKey: string | null;
+    sortDirection: SortDirection;
+    onSort: (key: string) => void;
+  }) => (
     <TableHeader>
       <TableRow>
-        <SortableHeader label="Asset" sortKey="asset" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} style={{width: '9%'}} />
-        <TableHead style={{width: '12%'}} className={`text-right ${HIDDEN_MOBILE}`}>Quantity</TableHead>
-        <TableHead style={{width: '10%'}} className={`text-right ${HIDDEN_MOBILE}`}>Avg Cost</TableHead>
-        <SortableHeader label="Total Cost" sortKey="totalCost" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '12%'}} className={HIDDEN_MOBILE} />
-        <TableHead style={{width: '10%'}} className={`text-right ${HIDDEN_MOBILE}`}>Price</TableHead>
-        <SortableHeader label="Value" sortKey="value" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '12%'}} />
-        <SortableHeader label="P&L" sortKey="pnl" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '11%'}} />
-        <SortableHeader label="Storage" sortKey="storage" activeSortKey={sortState.sortKey} sortDirection={sortState.sortDirection} onSort={sortState.onSort} align="right" style={{width: '9%'}} className={HIDDEN_MOBILE} />
-        <TableHead style={{width: '15%'}} className="text-center">Actions</TableHead>
+        <SortableHeader
+          label="Asset"
+          sortKey="asset"
+          activeSortKey={sortState.sortKey}
+          sortDirection={sortState.sortDirection}
+          onSort={sortState.onSort}
+          style={{ width: '9%' }}
+        />
+        <TableHead style={{ width: '12%' }} className={`text-right ${HIDDEN_MOBILE}`}>
+          Quantity
+        </TableHead>
+        <TableHead style={{ width: '10%' }} className={`text-right ${HIDDEN_MOBILE}`}>
+          Avg Cost
+        </TableHead>
+        <SortableHeader
+          label="Total Cost"
+          sortKey="totalCost"
+          activeSortKey={sortState.sortKey}
+          sortDirection={sortState.sortDirection}
+          onSort={sortState.onSort}
+          align="right"
+          style={{ width: '12%' }}
+          className={HIDDEN_MOBILE}
+        />
+        <TableHead style={{ width: '10%' }} className={`text-right ${HIDDEN_MOBILE}`}>
+          Price
+        </TableHead>
+        <SortableHeader
+          label="Value"
+          sortKey="value"
+          activeSortKey={sortState.sortKey}
+          sortDirection={sortState.sortDirection}
+          onSort={sortState.onSort}
+          align="right"
+          style={{ width: '12%' }}
+        />
+        <SortableHeader
+          label="P&L"
+          sortKey="pnl"
+          activeSortKey={sortState.sortKey}
+          sortDirection={sortState.sortDirection}
+          onSort={sortState.onSort}
+          align="right"
+          style={{ width: '11%' }}
+        />
+        <SortableHeader
+          label="Storage"
+          sortKey="storage"
+          activeSortKey={sortState.sortKey}
+          sortDirection={sortState.sortDirection}
+          onSort={sortState.onSort}
+          align="right"
+          style={{ width: '9%' }}
+          className={HIDDEN_MOBILE}
+        />
+        <TableHead style={{ width: '15%' }} className="text-center">
+          Actions
+        </TableHead>
       </TableRow>
     </TableHeader>
   );
 
   // Table class: compact on mobile = fixed layout. Expanded = auto layout with scroll.
   const tableClass = showAllColumns
-    ? 'w-full min-w-[700px]'  // auto-sized columns, scrollable
-    : 'table-fixed w-full';    // fixed columns, fits viewport
+    ? 'w-full min-w-[700px]' // auto-sized columns, scrollable
+    : 'table-fixed w-full'; // fixed columns, fits viewport
 
   return (
     <>
@@ -246,9 +310,13 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
             onClick={() => setShowAllColumns(!showAllColumns)}
           >
             {showAllColumns ? (
-              <><Columns2 className="h-3.5 w-3.5 mr-1" /> Compact</>
+              <>
+                <Columns2 className="h-3.5 w-3.5 mr-1" /> Compact
+              </>
             ) : (
-              <><Columns3 className="h-3.5 w-3.5 mr-1" /> All columns</>
+              <>
+                <Columns3 className="h-3.5 w-3.5 mr-1" /> All columns
+              </>
             )}
           </Button>
         </div>
@@ -266,9 +334,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
                   CEX
                 </p>
-                <span className="text-xs text-muted-foreground">
-                  ({cexPositions.length})
-                </span>
+                <span className="text-xs text-muted-foreground">({cexPositions.length})</span>
                 {!isExpanded(cexId) && (
                   <span className="text-xs font-mono text-muted-foreground ml-auto">
                     {formatCurrency(convertSub(cexTotal), currency, 0)}
@@ -280,9 +346,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
               <div className="rounded-md border overflow-x-auto">
                 <Table className={tableClass}>
                   {renderTableHeader(cexSort)}
-                  <TableBody>
-                    {cexPositions.map(renderPositionRow)}
-                  </TableBody>
+                  <TableBody>{cexPositions.map(renderPositionRow)}</TableBody>
                 </Table>
               </div>
             </CollapsibleContent>
@@ -302,9 +366,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
                   Onchain
                 </p>
-                <span className="text-xs text-muted-foreground">
-                  ({onchainPositions.length})
-                </span>
+                <span className="text-xs text-muted-foreground">({onchainPositions.length})</span>
                 {!isExpanded(onchainId) && (
                   <span className="text-xs font-mono text-muted-foreground ml-auto">
                     {formatCurrency(convertSub(onchainTotal), currency, 0)}
@@ -316,9 +378,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
               <div className="rounded-md border overflow-x-auto">
                 <Table className={tableClass}>
                   {renderTableHeader(onchainSort)}
-                  <TableBody>
-                    {onchainPositions.map(renderPositionRow)}
-                  </TableBody>
+                  <TableBody>{onchainPositions.map(renderPositionRow)}</TableBody>
                 </Table>
               </div>
             </CollapsibleContent>
@@ -349,25 +409,25 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
             <DialogTitle>Edit Position</DialogTitle>
           </DialogHeader>
           {editPosition && (
-            <PositionForm
-              position={editPosition}
-              onSuccess={() => setEditPosition(null)}
-            />
+            <PositionForm position={editPosition} onSuccess={() => setEditPosition(null)} />
           )}
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deletePosition} onOpenChange={() => {
-        setDeletePosition(null);
-        setDontAskAgain(false);
-      }}>
+      <Dialog
+        open={!!deletePosition}
+        onOpenChange={() => {
+          setDeletePosition(null);
+          setDontAskAgain(false);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Position</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete your {deletePosition?.asset.symbol} position?
-              This action cannot be undone.
+              Are you sure you want to delete your {deletePosition?.asset.symbol} position? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center space-x-2 py-2">
@@ -378,18 +438,18 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
               onChange={(e) => setDontAskAgain(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300"
             />
-            <label
-              htmlFor="dontAskAgain"
-              className="text-sm text-muted-foreground cursor-pointer"
-            >
+            <label htmlFor="dontAskAgain" className="text-sm text-muted-foreground cursor-pointer">
               Don't ask me again
             </label>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setDeletePosition(null);
-              setDontAskAgain(false);
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeletePosition(null);
+                setDontAskAgain(false);
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -409,9 +469,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span>{viewPosition?.asset.symbol}</span>
-              <span className="text-muted-foreground font-normal">
-                {viewPosition?.asset.name}
-              </span>
+              <span className="text-muted-foreground font-normal">{viewPosition?.asset.name}</span>
             </DialogTitle>
           </DialogHeader>
           {viewPosition && (
@@ -421,7 +479,8 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Quantity</p>
                   <p className="font-mono font-medium">
-                    {viewPosition.asset.category === 'STABLECOIN' || viewPosition.asset.category === 'CASH'
+                    {viewPosition.asset.category === 'STABLECOIN' ||
+                    viewPosition.asset.category === 'CASH'
                       ? formatNumber(viewPosition.quantity, 0)
                       : formatNumber(viewPosition.quantity, 4)}
                   </p>
@@ -429,19 +488,31 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Current Price</p>
                   <p className="font-mono font-medium text-slate-500 dark:text-slate-400">
-                    {formatCurrency(convert(viewPosition.asset.currentPriceUsd), currency, getSmartDecimals(convert(viewPosition.asset.currentPriceUsd)))}
+                    {formatCurrency(
+                      convert(viewPosition.asset.currentPriceUsd),
+                      currency,
+                      getSmartDecimals(convert(viewPosition.asset.currentPriceUsd))
+                    )}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Average Cost</p>
                   <p className="font-mono">
-                    {formatCurrency(convert(viewPosition.avgCostUsd), currency, getSmartDecimals(convert(viewPosition.avgCostUsd)))}
+                    {formatCurrency(
+                      convert(viewPosition.avgCostUsd),
+                      currency,
+                      getSmartDecimals(convert(viewPosition.avgCostUsd))
+                    )}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Total Cost</p>
                   <p className="font-mono">
-                    {formatCurrency(convert(viewPosition.quantity * viewPosition.avgCostUsd), currency, 0)}
+                    {formatCurrency(
+                      convert(viewPosition.quantity * viewPosition.avgCostUsd),
+                      currency,
+                      0
+                    )}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -452,9 +523,13 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Unrealized P&L</p>
-                  <p className={`font-mono font-medium ${getPnLColorClass(viewPosition.unrealizedPnL)}`}>
+                  <p
+                    className={`font-mono font-medium ${getPnLColorClass(viewPosition.unrealizedPnL)}`}
+                  >
                     {formatCurrency(convert(viewPosition.unrealizedPnL), currency, 0)}
-                    <span className="text-xs ml-1">({formatPercent(viewPosition.unrealizedPnLPct)})</span>
+                    <span className="text-xs ml-1">
+                      ({formatPercent(viewPosition.unrealizedPnLPct)})
+                    </span>
                   </p>
                 </div>
               </div>
@@ -470,9 +545,7 @@ export function PositionTable({ positions, currency = 'USD', fxRate = 1, section
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Storage Location</p>
-                    <p className="text-sm">
-                      {viewPosition.storageLocation || '-'}
-                    </p>
+                    <p className="text-sm">{viewPosition.storageLocation || '-'}</p>
                   </div>
                 </div>
               </div>

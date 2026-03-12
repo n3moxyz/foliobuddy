@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import type { Asset, CoinSearchResult } from '@/lib/api';
+import type { Asset, CoinSearchResult } from '@/lib/types';
 
 interface AssetSearchDropdownProps {
   selectedAsset: Asset | null;
@@ -74,12 +74,7 @@ export function AssetSearchDropdown({
           disabled
           className="bg-muted flex-1"
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onClearSelection}
-        >
+        <Button type="button" variant="outline" size="sm" onClick={onClearSelection}>
           Change
         </Button>
       </div>
@@ -106,18 +101,14 @@ export function AssetSearchDropdown({
           className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
         >
           {searchLoading && searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">
-              Searching...
-            </div>
+            <div className="p-3 text-sm text-muted-foreground">Searching...</div>
           ) : combinedResults.length > 0 ? (
             combinedResults.map((result, index) => (
               <button
                 key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
                 type="button"
                 className={`w-full px-3 py-2 text-left flex items-center justify-between ${
-                  index === highlightedIndex
-                    ? 'bg-muted'
-                    : 'hover:bg-muted'
+                  index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
                 }`}
                 onClick={() => {
                   if (result.type === 'existing') {
@@ -135,31 +126,21 @@ export function AssetSearchDropdown({
                       : result.coin!.symbol.toUpperCase()}
                   </span>
                   <span className="text-muted-foreground ml-2">
-                    {result.type === 'existing'
-                      ? result.asset!.name
-                      : result.coin!.name}
+                    {result.type === 'existing' ? result.asset!.name : result.coin!.name}
                   </span>
                 </span>
                 {result.type === 'search' && result.coin!.rank && (
-                  <span className="text-xs text-muted-foreground">
-                    #{result.coin!.rank}
-                  </span>
+                  <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
                 )}
                 {result.type === 'existing' && (
-                  <span className="text-xs text-green-600">
-                    In portfolio
-                  </span>
+                  <span className="text-xs text-green-600">In portfolio</span>
                 )}
               </button>
             ))
           ) : searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">
-              No coins found
-            </div>
+            <div className="p-3 text-sm text-muted-foreground">No coins found</div>
           ) : (
-            <div className="p-3 text-sm text-muted-foreground">
-              Type to search coins...
-            </div>
+            <div className="p-3 text-sm text-muted-foreground">Type to search coins...</div>
           )}
         </div>
       )}
