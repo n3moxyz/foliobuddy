@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
-import type { Asset, CoinSearchResult } from '@/lib/api';
+import type { Asset, CoinSearchResult } from '@/lib/types';
 
 interface AssetSearchDropdownProps {
   selectedAsset: Asset | null;
@@ -10,7 +10,11 @@ interface AssetSearchDropdownProps {
   disabled?: boolean;
 }
 
-export function AssetSearchDropdown({ selectedAsset, onSelectAsset, disabled }: AssetSearchDropdownProps) {
+export function AssetSearchDropdown({
+  selectedAsset,
+  onSelectAsset,
+  disabled,
+}: AssetSearchDropdownProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -24,13 +28,12 @@ export function AssetSearchDropdown({ selectedAsset, onSelectAsset, disabled }: 
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
 
-    let filtered = assets.filter(a => a.category !== 'STABLECOIN' && a.category !== 'CASH');
+    let filtered = assets.filter((a) => a.category !== 'STABLECOIN' && a.category !== 'CASH');
 
     if (searchQuery.length > 0) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(a =>
-        a.symbol.toLowerCase().includes(query) ||
-        a.name.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (a) => a.symbol.toLowerCase().includes(query) || a.name.toLowerCase().includes(query)
       );
     }
 
@@ -39,18 +42,19 @@ export function AssetSearchDropdown({ selectedAsset, onSelectAsset, disabled }: 
 
   // Combine existing assets with CoinGecko search results
   const combinedResults = useMemo(() => {
-    const results: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: CoinSearchResult }> = [];
+    const results: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: CoinSearchResult }> =
+      [];
 
     // Add existing portfolio assets first
-    filteredAssets.forEach(asset => {
+    filteredAssets.forEach((asset) => {
       results.push({ type: 'existing', asset });
     });
 
     // Add CoinGecko search results that aren't already in portfolio
     if (searchResults && searchQuery.length >= 1) {
-      searchResults.forEach(coin => {
+      searchResults.forEach((coin) => {
         const existsInPortfolio = assets?.some(
-          a => a.coingeckoId === coin.id || a.symbol.toLowerCase() === coin.symbol.toLowerCase()
+          (a) => a.coingeckoId === coin.id || a.symbol.toLowerCase() === coin.symbol.toLowerCase()
         );
         if (!existsInPortfolio) {
           results.push({ type: 'search', coin });
@@ -94,15 +98,11 @@ export function AssetSearchDropdown({ selectedAsset, onSelectAsset, disabled }: 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev =>
-          prev < combinedResults.length - 1 ? prev + 1 : 0
-        );
+        setHighlightedIndex((prev) => (prev < combinedResults.length - 1 ? prev + 1 : 0));
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev =>
-          prev > 0 ? prev - 1 : combinedResults.length - 1
-        );
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : combinedResults.length - 1));
         break;
       case 'Enter':
         e.preventDefault();
@@ -154,12 +154,7 @@ export function AssetSearchDropdown({ selectedAsset, onSelectAsset, disabled }: 
           disabled
           className="bg-muted flex-1"
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleClearSelection}
-        >
+        <Button type="button" variant="outline" size="sm" onClick={handleClearSelection}>
           Change
         </Button>
       </div>
@@ -186,18 +181,14 @@ export function AssetSearchDropdown({ selectedAsset, onSelectAsset, disabled }: 
           className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
         >
           {searchLoading && searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">
-              Searching...
-            </div>
+            <div className="p-3 text-sm text-muted-foreground">Searching...</div>
           ) : combinedResults.length > 0 ? (
             combinedResults.map((result, index) => (
               <button
                 key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
                 type="button"
                 className={`w-full px-3 py-2 text-left flex items-center justify-between ${
-                  index === highlightedIndex
-                    ? 'bg-muted'
-                    : 'hover:bg-muted'
+                  index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
                 }`}
                 onClick={() => {
                   if (result.type === 'existing') {
@@ -215,31 +206,21 @@ export function AssetSearchDropdown({ selectedAsset, onSelectAsset, disabled }: 
                       : result.coin!.symbol.toUpperCase()}
                   </span>
                   <span className="text-muted-foreground ml-2">
-                    {result.type === 'existing'
-                      ? result.asset!.name
-                      : result.coin!.name}
+                    {result.type === 'existing' ? result.asset!.name : result.coin!.name}
                   </span>
                 </span>
                 {result.type === 'search' && result.coin!.rank && (
-                  <span className="text-xs text-muted-foreground">
-                    #{result.coin!.rank}
-                  </span>
+                  <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
                 )}
                 {result.type === 'existing' && (
-                  <span className="text-xs text-green-600">
-                    In portfolio
-                  </span>
+                  <span className="text-xs text-green-600">In portfolio</span>
                 )}
               </button>
             ))
           ) : searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">
-              No coins found
-            </div>
+            <div className="p-3 text-sm text-muted-foreground">No coins found</div>
           ) : (
-            <div className="p-3 text-sm text-muted-foreground">
-              Type to search coins...
-            </div>
+            <div className="p-3 text-sm text-muted-foreground">Type to search coins...</div>
           )}
         </div>
       )}

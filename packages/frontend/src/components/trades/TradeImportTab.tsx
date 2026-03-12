@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
-import type { BulkImportTrade } from '@/lib/api';
+import type { BulkImportTrade } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
@@ -89,8 +89,8 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
     queryClient.invalidateQueries({ queryKey: ['trades'] });
   };
 
-  const successCount = importResults?.filter(r => r.success).length ?? 0;
-  const failCount = importResults?.filter(r => !r.success).length ?? 0;
+  const successCount = importResults?.filter((r) => r.success).length ?? 0;
+  const failCount = importResults?.filter((r) => !r.success).length ?? 0;
 
   // If showing import results, show the results UI
   if (importResults) {
@@ -123,9 +123,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
               )}
               <span className="font-medium">{result.symbol}</span>
               {result.error && (
-                <span className="text-red-600 dark:text-red-400 text-xs">
-                  {result.error}
-                </span>
+                <span className="text-red-600 dark:text-red-400 text-xs">{result.error}</span>
               )}
             </div>
           ))}
@@ -174,7 +172,9 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
           <div className="max-h-40 overflow-y-auto space-y-1">
             {parsedTrades.map((t, i) => (
               <div key={i} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
-                <span className={`font-medium ${t.direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}>
+                <span
+                  className={`font-medium ${t.direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {t.direction}
                 </span>
                 <span className="font-medium ml-2">{t.asset.symbol}</span>
@@ -193,18 +193,16 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
       )}
 
       <div className="flex justify-end">
-        <Button
-          type="button"
-          onClick={handleImport}
-          disabled={!parsedTrades || importing}
-        >
+        <Button type="button" onClick={handleImport} disabled={!parsedTrades || importing}>
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
               Importing...
             </>
           ) : (
-            <>Import {parsedTrades?.length ?? 0} Trade{parsedTrades?.length !== 1 ? 's' : ''}</>
+            <>
+              Import {parsedTrades?.length ?? 0} Trade{parsedTrades?.length !== 1 ? 's' : ''}
+            </>
           )}
         </Button>
       </div>
