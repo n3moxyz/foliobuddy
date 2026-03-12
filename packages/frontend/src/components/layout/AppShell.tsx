@@ -35,6 +35,8 @@ import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
 
 interface AppShellProps {
   children: ReactNode;
+  basePath?: string;
+  demoMode?: boolean;
 }
 
 const navigation = [
@@ -51,7 +53,7 @@ const themeIcons: Record<Theme, typeof Sun> = {
   dark: Moon,
 };
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, basePath = '', demoMode = false }: AppShellProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,6 +62,7 @@ export function AppShell({ children }: AppShellProps) {
   const queryClient = useQueryClient();
   const { status: wsStatus, lastUpdate } = useWebSocket();
   const ThemeIcon = themeIcons[theme];
+  const buildPath = (href: string) => `${basePath}${href === '/' ? '' : href}` || '/';
 
   const handleRefreshPrices = async () => {
     setRefreshing(true);
@@ -97,7 +100,7 @@ export function AppShell({ children }: AppShellProps) {
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-6 border-b">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to={buildPath('/')} className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <svg className="h-5 w-5 text-primary-foreground" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 15l4-5 3.5 2.5L17 5"/>
@@ -118,11 +121,12 @@ export function AppShell({ children }: AppShellProps) {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
           {navigation.map((item) => {
-            const isActive = location.pathname === item.href;
+            const targetHref = buildPath(item.href);
+            const isActive = location.pathname === targetHref;
             return (
               <Link
                 key={item.name}
-                to={item.href}
+                to={targetHref}
                 className={cn(
                   'flex items-center justify-between px-3 py-3 rounded-md text-sm font-medium transition-colors touch-manipulation',
                   isActive
@@ -241,14 +245,24 @@ export function AppShell({ children }: AppShellProps) {
           <Separator orientation="vertical" className="h-6" />
 
           {/* User menu */}
-          <UserButton
-            afterSignOutUrl="/"
-            appearance={{
-              elements: {
-                avatarBox: 'h-8 w-8',
-              },
-            }}
-          />
+          {demoMode ? (
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
+              aria-label="Demo user"
+              title="Demo mode"
+            >
+              DM
+            </div>
+          ) : (
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: 'h-8 w-8',
+                },
+              }}
+            />
+          )}
         </header>
 
         {/* Page content */}

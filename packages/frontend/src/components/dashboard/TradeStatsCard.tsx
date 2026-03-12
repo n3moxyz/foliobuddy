@@ -101,7 +101,7 @@ function MetricsSegment({ analytics, convert, currency, expectancy, pfRating, ri
   rrRating: { text: string; color: string };
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <div>
         <MetricLabel label="Total P&L" tip="Sum of all realized profits and losses" />
         <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(analytics.totalPnL)}`}>
@@ -224,7 +224,7 @@ function ByDirectionSegment({ analytics, convert, currency }: {
   return (
     <div>
       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">By Direction</p>
-      <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
         <div className="space-y-1 rounded-md bg-muted/50 p-3">
           <div className="flex items-center gap-1.5">
             <span className="text-green-600 font-medium">LONG</span>
@@ -285,7 +285,7 @@ function NotableTradesSegment({ analytics, convert, currency, onTradeClick }: {
   return (
     <div>
       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Notable Trades</p>
-      <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
         {analytics.bestTrade && tradeItem(analytics.bestTrade, 'best')}
         {analytics.worstTrade && tradeItem(analytics.worstTrade, 'worst')}
       </div>

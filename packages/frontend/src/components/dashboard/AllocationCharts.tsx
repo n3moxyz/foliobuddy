@@ -181,9 +181,9 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
           <CardTitle className="text-base">{title}</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             {/* Donut Chart with Center Label */}
-            <div className="w-[140px] h-[140px] flex-shrink-0 relative">
+            <div className="mx-auto h-[140px] w-[140px] flex-shrink-0 relative sm:mx-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -221,7 +221,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
             </div>
 
             {/* Side Legend */}
-            <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+            <div className="flex min-w-0 flex-col gap-1.5 flex-1">
               {data.map((item, index) => {
                 const isHidden = hidden.has(item.name);
                 const displayPct = isHidden

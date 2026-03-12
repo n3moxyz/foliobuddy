@@ -303,8 +303,11 @@ router.put('/:id', async (req, res, next) => {
   try {
     const data = updateTradeSchema.parse(req.body);
 
-    const existing = await prisma.trade.findUnique({
-      where: { id: req.params.id },
+    const existing = await prisma.trade.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
     });
 
     if (!existing) {
@@ -356,8 +359,11 @@ router.patch('/:id/close', async (req, res, next) => {
   try {
     const data = closeTradeSchema.parse(req.body);
 
-    const existing = await prisma.trade.findUnique({
-      where: { id: req.params.id },
+    const existing = await prisma.trade.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
     });
 
     if (!existing) {
@@ -399,9 +405,16 @@ router.patch('/:id/close', async (req, res, next) => {
 // DELETE /api/trades/:id - Delete a trade
 router.delete('/:id', async (req, res, next) => {
   try {
-    await prisma.trade.delete({
-      where: { id: req.params.id },
+    const result = await prisma.trade.deleteMany({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
     });
+
+    if (result.count === 0) {
+      throw new AppError('Trade not found', 404);
+    }
 
     res.status(204).send();
   } catch (error) {

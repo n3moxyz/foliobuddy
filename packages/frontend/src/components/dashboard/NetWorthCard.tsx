@@ -69,7 +69,11 @@ export function NetWorthCard({ summary, currency, stakeMultiplier = 1, valueUsd3
           </div>
         </div>
 
-        <div className={`mt-4 grid gap-4 text-sm ${change30d ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <div
+          className={`mt-4 grid gap-3 text-sm ${
+            change30d ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'
+          }`}
+        >
           <div>
             <p className="text-muted-foreground">YTD P&L</p>
             <p className={`font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}>

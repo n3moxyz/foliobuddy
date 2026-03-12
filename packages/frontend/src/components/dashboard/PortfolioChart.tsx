@@ -186,8 +186,8 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
   return (
     <Card className="col-span-2">
       <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
             <CardTitle>Portfolio $ Value</CardTitle>
             {valueChange && (
               <div className={`text-sm ${valueChange.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -203,7 +203,8 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
             )}
           </div>
           {/* Time Period Selector - CoinGecko style */}
-          <div className="flex rounded-md border">
+          <div className="-mx-1 overflow-x-auto pb-1">
+            <div className="flex w-max rounded-md border">
             {periods.map((p) => (
               <Button
                 key={p}
@@ -217,6 +218,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
                 {p}
               </Button>
             ))}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -242,7 +244,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
               </div>
             )}
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData} margin={{ top: 5, right: 55, left: 20, bottom: 5 }}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <defs>
                 <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -264,7 +266,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
                 tickLine={false}
                 axisLine={false}
                 className="text-muted-foreground"
-                width={80}
+                width={56}
               />
               <Tooltip
                 content={({ active, payload }) => {

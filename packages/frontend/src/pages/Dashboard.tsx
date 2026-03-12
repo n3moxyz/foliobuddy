@@ -106,7 +106,7 @@ export default function Dashboard() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">Dashboard</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <p className="text-sm text-muted-foreground sm:text-base">
               Overview of your portfolio performance
             </p>
@@ -117,13 +117,13 @@ export default function Dashboard() {
         {/* Investor Filter */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-9">
+            <Button variant="outline" className="h-9 w-full justify-between sm:w-auto">
               <Users className="h-4 w-4 mr-2" />
-              {getInvestorLabel()}
+              <span className="truncate">{getInvestorLabel()}</span>
               <ChevronDown className="h-3 w-3 ml-2" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-56">
+          <PopoverContent align="end" className="w-[calc(100vw-2rem)] max-w-56">
             <div className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b">
                 <span className="text-sm font-medium">Filter by Investor</span>
@@ -173,11 +173,11 @@ export default function Dashboard() {
       {summary && <NetWorthCard summary={summary} currency={currency} stakeMultiplier={stakeMultiplier} valueUsd30dAgo={valueUsd30dAgo} />}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
         <Card className="py-3">
           <CardHeader className="py-0">
             <CardDescription>YTD Start</CardDescription>
-            <CardTitle className="text-2xl">
+            <CardTitle className="text-lg sm:text-2xl">
               {formatCurrency(convert(summary?.totalCostBasis), currency, 0)}
             </CardTitle>
           </CardHeader>
@@ -186,9 +186,9 @@ export default function Dashboard() {
         <Card className="py-3">
           <CardHeader className="py-0">
             <CardDescription>YTD P&L</CardDescription>
-            <CardTitle className={`text-2xl ${getPnLColorClass(summary?.unrealizedPnL)}`}>
+            <CardTitle className={`text-lg sm:text-2xl ${getPnLColorClass(summary?.unrealizedPnL)}`}>
               {formatCurrency(convert(summary?.unrealizedPnL), currency, 0)}
-              <span className={`text-sm font-normal ml-1.5 ${getPnLColorClass(summary?.unrealizedPnLPct)}`}>
+              <span className={`mt-1 block text-xs font-normal sm:ml-1.5 sm:mt-0 sm:inline sm:text-sm ${getPnLColorClass(summary?.unrealizedPnLPct)}`}>
                 {formatPercent(summary?.unrealizedPnLPct)}
               </span>
             </CardTitle>
@@ -199,7 +199,7 @@ export default function Dashboard() {
           <Card className="py-3 hover:bg-muted/50 transition-colors cursor-pointer">
             <CardHeader className="py-0">
               <CardDescription>Live Positions</CardDescription>
-              <CardTitle className="text-2xl">{summary?.positionCount ?? 0}</CardTitle>
+              <CardTitle className="text-lg sm:text-2xl">{summary?.positionCount ?? 0}</CardTitle>
             </CardHeader>
           </Card>
         </Link>
@@ -208,7 +208,7 @@ export default function Dashboard() {
           <Card className="py-3 hover:bg-muted/50 transition-colors cursor-pointer">
             <CardHeader className="py-0">
               <CardDescription>Closed Trades</CardDescription>
-              <CardTitle className="text-2xl">{tradeAnalytics?.totalTrades ?? 0}</CardTitle>
+              <CardTitle className="text-lg sm:text-2xl">{tradeAnalytics?.totalTrades ?? 0}</CardTitle>
             </CardHeader>
           </Card>
         </Link>

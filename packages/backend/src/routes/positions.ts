@@ -303,8 +303,11 @@ router.put('/:id', async (req, res, next) => {
     const data = updatePositionSchema.parse(req.body);
 
     // Get existing position
-    const existing = await prisma.position.findUnique({
-      where: { id: req.params.id },
+    const existing = await prisma.position.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
       include: { asset: true },
     });
 
@@ -357,9 +360,16 @@ router.put('/:id', async (req, res, next) => {
 // DELETE /api/positions/:id - Delete a position
 router.delete('/:id', async (req, res, next) => {
   try {
-    await prisma.position.delete({
-      where: { id: req.params.id },
+    const result = await prisma.position.deleteMany({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
     });
+
+    if (result.count === 0) {
+      throw new AppError('Position not found', 404);
+    }
 
     res.status(204).send();
   } catch (error) {

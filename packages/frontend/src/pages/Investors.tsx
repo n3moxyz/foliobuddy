@@ -98,7 +98,7 @@ export default function Investors() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Investors</CardDescription>
@@ -236,7 +236,7 @@ export default function Investors() {
 
       {/* Add Investor Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Investor</DialogTitle>
             {totalStake >= 100 && (
@@ -256,7 +256,7 @@ export default function Investors() {
 
       {/* Edit Investor Dialog */}
       <Dialog open={!!editInvestor} onOpenChange={() => setEditInvestor(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Investor</DialogTitle>
           </DialogHeader>

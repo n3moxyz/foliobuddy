@@ -29,17 +29,17 @@ export function CollapsibleCard({
       <Card className={accentColor ? `border-l-2 ${accentColor}` : undefined}>
         <CollapsibleTrigger asChild>
           <CardHeader className="py-3 px-4 cursor-pointer hover:bg-muted/30 transition-colors select-none">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-2">
                 <ChevronRight
                   className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
                     isExpanded ? 'rotate-90' : ''
                   }`}
                 />
                 {icon}
-                <CardTitle className="text-base">{title}</CardTitle>
+                <CardTitle className="min-w-0 text-base truncate">{title}</CardTitle>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
                 {headerRight}
               </div>
             </div>

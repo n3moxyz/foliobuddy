@@ -245,8 +245,11 @@ router.put('/:id', async (req, res, next) => {
   try {
     const data = updateInvestorSchema.parse(req.body);
 
-    const existing = await prisma.investor.findUnique({
-      where: { id: req.params.id },
+    const existing = await prisma.investor.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
     });
 
     if (!existing) {
@@ -259,6 +262,26 @@ router.put('/:id', async (req, res, next) => {
         where: { userId: req.userId!, isOwner: true, id: { not: req.params.id } },
         data: { isOwner: false },
       });
+    }
+
+    if (data.stakePercentage !== undefined) {
+      const otherStakeTotal = await prisma.investor.aggregate({
+        where: {
+          userId: req.userId!,
+          id: { not: req.params.id },
+        },
+        _sum: {
+          stakePercentage: true,
+        },
+      });
+
+      const projectedTotal = (otherStakeTotal._sum.stakePercentage ?? 0) + data.stakePercentage;
+      if (projectedTotal > 100) {
+        throw new AppError(
+          `Total stake percentage cannot exceed 100%. Projected: ${projectedTotal}%`,
+          400
+        );
+      }
     }
 
     // Record stake change if stake percentage is being updated
@@ -290,8 +313,11 @@ router.put('/:id', async (req, res, next) => {
 // Query param: reassignTo - ID of investor to receive the freed stake
 router.delete('/:id', async (req, res, next) => {
   try {
-    const investorToDelete = await prisma.investor.findUnique({
-      where: { id: req.params.id },
+    const investorToDelete = await prisma.investor.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
     });
 
     if (!investorToDelete) {
@@ -302,8 +328,15 @@ router.delete('/:id', async (req, res, next) => {
 
     // If reassignTo is provided, transfer the stake
     if (reassignToId) {
-      const targetInvestor = await prisma.investor.findUnique({
-        where: { id: reassignToId },
+      if (reassignToId === req.params.id) {
+        throw new AppError('Cannot reassign stake to the same investor', 400);
+      }
+
+      const targetInvestor = await prisma.investor.findFirst({
+        where: {
+          id: reassignToId,
+          userId: req.userId!,
+        },
       });
 
       if (!targetInvestor) {
@@ -330,7 +363,7 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     await prisma.investor.delete({
-      where: { id: req.params.id },
+      where: { id: investorToDelete.id },
     });
 
     res.status(204).send();
