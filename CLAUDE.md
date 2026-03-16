@@ -198,7 +198,8 @@ All pages except Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. Red
 
 - It must stay **dev-only**. `App.tsx` lazy-loads it only when `import.meta.env.DEV` is true so the mock payload does not ship in production bundles.
 - It mocks `/api/*` in the browser and restores the original `fetch` + token getter on unmount. Do not leave global network monkey-patches installed after navigating away.
-- Use it for responsive/UI checks only. It is not a persistence path and must never point at production write APIs.
+- It now supports stateful in-browser portfolio CRUD for testing. Use `/dev/demo/portfolio` to validate add, edit, delete, and import UX without touching the real backend. The state resets on full refresh.
+- Use it for responsive/UI checks and demo-mode interaction testing only. It must never point at production write APIs.
 
 ### Ownership Checks on Mutations
 
@@ -253,6 +254,20 @@ Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `cus
 - `PositionImportTab.tsx` shows a purple banner when importing as custody; all imported positions get `custodyOf` stamped
 - `PositionTable.tsx` includes `custodyOf` in clipboard JSON format when set
 
+### Position Edit Modes
+
+`PositionForm.tsx` edit mode now has two distinct tabs:
+
+- `Edit Totals` for manual corrections to quantity/cost basis
+- `Add/Reduce Position` for normal position changes without hand-editing aggregate totals
+
+Rules:
+
+- `Add` asks for additional quantity and additional total cost, then recomputes weighted average cost automatically
+- `Reduce` asks for quantity only and removes cost basis using the current average cost, so average cost stays unchanged unless the position goes to zero
+- Custody changes made from either edit tab must persist
+- The confirmation preview uses an Old/New comparison table for quantity, avg cost, and total cost
+
 ### Dashboard Charts
 
 - **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
@@ -261,7 +276,15 @@ Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `cus
 
 ### Dashboard Stat Cards
 
-4-column compact grid: YTD Start, YTD P&L (with inline percentage), Live Positions (links to /portfolio), Closed Trades (links to /trades).
+5-card compact grid: YTD Start, YTD P&L (with inline percentage), Exposure, Live Positions, Closed Trades.
+
+- `Exposure` sits between YTD P&L and Live Positions
+- `Exposure` and `Live Positions` both link to `/portfolio`
+- Cards should render at equal height within the row
+
+### Dashboard Investor Default
+
+The dashboard investor filter should default to the primary owner investor (`isOwner = true`) rather than "all investors" when an owner record exists.
 
 ### Net Worth Card
 
@@ -305,6 +328,7 @@ For frontend-only layout verification without real auth, use the dev demo route 
 
 - Run `npm run dev --workspace=@foliobuddy/frontend`
 - Open `http://localhost:4000/dev/demo`
+- Use `http://localhost:4000/dev/demo/portfolio` for position form and edit-flow testing
 - This route is available only in Vite dev mode and uses mocked `/api` responses
 
 ## Deployment
