@@ -244,7 +244,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
               </div>
             )}
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 56, left: 0, bottom: 5 }}>
               <defs>
                 <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />

@@ -9,10 +9,13 @@ import {
   type Asset,
   type AssetPrice,
   type BenchmarkHistoricalData,
+  type BulkImportPosition,
+  type CreatePositionData,
   type DbHealth,
   type FxRate,
   type Investor,
   type PerformancePoint,
+  type Position,
   type PortfolioSummary,
   type Snapshot,
   type SnapshotPosition,
@@ -29,7 +32,7 @@ const Settings = lazy(() => import('@/pages/Settings'));
 
 const NOW = '2026-03-12T12:00:00.000Z';
 
-const assets: Asset[] = [
+const initialAssets: Asset[] = [
   { id: 'btc', coingeckoId: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', category: 'LIQUID_CRYPTO', currentPriceUsd: 81250, priceUpdatedAt: NOW },
   { id: 'eth', coingeckoId: 'ethereum', symbol: 'ETH', name: 'Ethereum', category: 'LIQUID_CRYPTO', currentPriceUsd: 4320, priceUpdatedAt: NOW },
   { id: 'sol', coingeckoId: 'solana', symbol: 'SOL', name: 'Solana', category: 'LIQUID_CRYPTO', currentPriceUsd: 178, priceUpdatedAt: NOW },
@@ -37,11 +40,11 @@ const assets: Asset[] = [
   { id: 'cash-sgd', coingeckoId: null, symbol: 'SGD', name: 'Cash SGD', category: 'CASH', currentPriceUsd: 0.74, priceUpdatedAt: NOW },
 ];
 
-const positions = [
+const initialPositions: Position[] = [
   {
     id: 'pos-btc',
     assetId: 'btc',
-    asset: assets[0],
+    asset: initialAssets[0],
     quantity: 1.42,
     avgCostUsd: 52300,
     storageType: 'WALLET',
@@ -57,7 +60,7 @@ const positions = [
   {
     id: 'pos-eth',
     assetId: 'eth',
-    asset: assets[1],
+    asset: initialAssets[1],
     quantity: 11.8,
     avgCostUsd: 2850,
     storageType: 'WALLET',
@@ -73,7 +76,7 @@ const positions = [
   {
     id: 'pos-sol',
     assetId: 'sol',
-    asset: assets[2],
+    asset: initialAssets[2],
     quantity: 220,
     avgCostUsd: 132,
     storageType: 'CEX',
@@ -89,7 +92,7 @@ const positions = [
   {
     id: 'pos-usdc',
     assetId: 'usdc',
-    asset: assets[3],
+    asset: initialAssets[3],
     quantity: 24500,
     avgCostUsd: 1,
     storageType: 'CEX',
@@ -105,7 +108,7 @@ const positions = [
   {
     id: 'pos-custody-btc',
     assetId: 'btc',
-    asset: assets[0],
+    asset: initialAssets[0],
     quantity: 0.23,
     avgCostUsd: 47800,
     storageType: 'WALLET',
@@ -119,17 +122,6 @@ const positions = [
     updatedAt: NOW,
   },
 ];
-
-const summary: PortfolioSummary = {
-  totalValueUsd: 230011,
-  totalValueSgd: 309835,
-  totalCostBasis: 156250,
-  unrealizedPnL: 73761,
-  unrealizedPnLPct: 47.2,
-  positionCount: positions.length,
-  lastUpdated: NOW,
-  ytdStartDate: '2026-01-01T00:00:00.000Z',
-};
 
 const investors: Investor[] = [
   {
@@ -177,7 +169,7 @@ const trades: Trade[] = [
   {
     id: 'trade-1',
     assetId: 'btc',
-    asset: assets[0],
+    asset: initialAssets[0],
     direction: 'LONG',
     entryPrice: 67200,
     exitPrice: 78100,
@@ -194,7 +186,7 @@ const trades: Trade[] = [
   {
     id: 'trade-2',
     assetId: 'eth',
-    asset: assets[1],
+    asset: initialAssets[1],
     direction: 'LONG',
     entryPrice: 3180,
     exitPrice: 4025,
@@ -211,7 +203,7 @@ const trades: Trade[] = [
   {
     id: 'trade-3',
     assetId: 'sol',
-    asset: assets[2],
+    asset: initialAssets[2],
     direction: 'SHORT',
     entryPrice: 192,
     exitPrice: 201,
@@ -228,7 +220,7 @@ const trades: Trade[] = [
   {
     id: 'trade-4',
     assetId: 'sol',
-    asset: assets[2],
+    asset: initialAssets[2],
     direction: 'LONG',
     entryPrice: 166,
     exitPrice: null,
@@ -316,14 +308,14 @@ const snapshots: Snapshot[] = [
 
 const snapshotPositions: Record<string, SnapshotPosition[]> = {
   'snap-2': [
-    { id: 'sp-1', snapshotId: 'snap-2', assetSymbol: 'BTC', quantity: 1.42, priceUsd: 80400, valueUsd: 114168, allocation: 54.3, asset: assets[0] },
-    { id: 'sp-2', snapshotId: 'snap-2', assetSymbol: 'ETH', quantity: 11.8, priceUsd: 4210, valueUsd: 49678, allocation: 23.6, asset: assets[1] },
-    { id: 'sp-3', snapshotId: 'snap-2', assetSymbol: 'USDC', quantity: 24500, priceUsd: 1, valueUsd: 24500, allocation: 11.6, asset: assets[3] },
+    { id: 'sp-1', snapshotId: 'snap-2', assetSymbol: 'BTC', quantity: 1.42, priceUsd: 80400, valueUsd: 114168, allocation: 54.3, asset: initialAssets[0] },
+    { id: 'sp-2', snapshotId: 'snap-2', assetSymbol: 'ETH', quantity: 11.8, priceUsd: 4210, valueUsd: 49678, allocation: 23.6, asset: initialAssets[1] },
+    { id: 'sp-3', snapshotId: 'snap-2', assetSymbol: 'USDC', quantity: 24500, priceUsd: 1, valueUsd: 24500, allocation: 11.6, asset: initialAssets[3] },
   ],
   'snap-3': [
-    { id: 'sp-4', snapshotId: 'snap-3', assetSymbol: 'BTC', quantity: 1.42, priceUsd: 81250, valueUsd: 115375, allocation: 52.7, asset: assets[0] },
-    { id: 'sp-5', snapshotId: 'snap-3', assetSymbol: 'ETH', quantity: 11.8, priceUsd: 4320, valueUsd: 50976, allocation: 23.3, asset: assets[1] },
-    { id: 'sp-6', snapshotId: 'snap-3', assetSymbol: 'SOL', quantity: 220, priceUsd: 178, valueUsd: 39160, allocation: 17.9, asset: assets[2] },
+    { id: 'sp-4', snapshotId: 'snap-3', assetSymbol: 'BTC', quantity: 1.42, priceUsd: 81250, valueUsd: 115375, allocation: 52.7, asset: initialAssets[0] },
+    { id: 'sp-5', snapshotId: 'snap-3', assetSymbol: 'ETH', quantity: 11.8, priceUsd: 4320, valueUsd: 50976, allocation: 23.3, asset: initialAssets[1] },
+    { id: 'sp-6', snapshotId: 'snap-3', assetSymbol: 'SOL', quantity: 220, priceUsd: 178, valueUsd: 39160, allocation: 17.9, asset: initialAssets[2] },
   ],
 };
 
@@ -338,14 +330,190 @@ const performance: PerformancePoint[] = [
 
 const dbHealth: DbHealth = { status: 'ok', latency_ms: 22 };
 const fxRates: FxRate[] = [{ id: 'usd-sgd', fromCcy: 'USD', toCcy: 'SGD', rate: 1.3471, timestamp: NOW }];
-const currentPrices: AssetPrice[] = assets.map((asset) => ({
-  id: asset.id,
-  symbol: asset.symbol,
-  name: asset.name,
-  coingeckoId: asset.coingeckoId,
-  currentPriceUsd: asset.currentPriceUsd,
-  priceUpdatedAt: asset.priceUpdatedAt,
-}));
+let demoAssets: Asset[] = [...initialAssets];
+let demoPositions: Position[] = [...initialPositions];
+
+function round(value: number, decimals = 2) {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
+function computePosition(asset: Asset, data: {
+  id: string;
+  assetId: string;
+  quantity: number;
+  avgCostUsd: number;
+  storageType: Position['storageType'];
+  storageLocation: string | null;
+  notes: string | null;
+  custodyOf: string | null;
+  createdAt: string;
+  updatedAt: string;
+}): Position {
+  const price = asset.currentPriceUsd ?? 0;
+  const marketValueUsd = round(data.quantity * price);
+  const totalCostUsd = data.quantity * data.avgCostUsd;
+  const unrealizedPnL = round(marketValueUsd - totalCostUsd);
+  const unrealizedPnLPct = totalCostUsd > 0 ? round((unrealizedPnL / totalCostUsd) * 100, 1) : 0;
+
+  return {
+    ...data,
+    asset,
+    marketValueUsd,
+    unrealizedPnL,
+    unrealizedPnLPct,
+  };
+}
+
+function getOwnedPositions() {
+  return demoPositions.filter((position) => !position.custodyOf);
+}
+
+function getSummary(): PortfolioSummary {
+  const owned = getOwnedPositions();
+  const totalValueUsd = round(owned.reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0));
+  const totalCostBasis = round(owned.reduce((sum, position) => sum + (position.quantity * position.avgCostUsd), 0));
+  const unrealizedPnL = round(totalValueUsd - totalCostBasis);
+  const unrealizedPnLPct = totalCostBasis > 0 ? round((unrealizedPnL / totalCostBasis) * 100, 1) : 0;
+  const fxRate = fxRates[0]?.rate ?? 1.3471;
+
+  return {
+    totalValueUsd,
+    totalValueSgd: round(totalValueUsd * fxRate),
+    totalCostBasis,
+    unrealizedPnL,
+    unrealizedPnLPct,
+    positionCount: owned.length,
+    lastUpdated: new Date().toISOString(),
+    ytdStartDate: '2026-01-01T00:00:00.000Z',
+  };
+}
+
+function getPerformers(type: 'top' | 'worst') {
+  const owned = getOwnedPositions()
+    .map((position) => ({
+      assetId: position.assetId,
+      symbol: position.asset.symbol,
+      name: position.asset.name,
+      unrealizedPnL: position.unrealizedPnL ?? 0,
+      unrealizedPnLPct: position.unrealizedPnLPct ?? 0,
+      marketValueUsd: position.marketValueUsd ?? 0,
+    }))
+    .sort((a, b) => type === 'top' ? b.unrealizedPnL - a.unrealizedPnL : a.unrealizedPnL - b.unrealizedPnL);
+
+  return owned.slice(0, 5);
+}
+
+function getCurrentPrices(): AssetPrice[] {
+  return demoAssets.map((asset) => ({
+    id: asset.id,
+    symbol: asset.symbol,
+    name: asset.name,
+    coingeckoId: asset.coingeckoId,
+    currentPriceUsd: asset.currentPriceUsd,
+    priceUpdatedAt: asset.priceUpdatedAt,
+  }));
+}
+
+function createDemoAsset(data: { coingeckoId: string; symbol: string; name: string; category?: Asset['category'] }) {
+  const existing = demoAssets.find(
+    (asset) =>
+      asset.coingeckoId === data.coingeckoId ||
+      asset.symbol.toLowerCase() === data.symbol.toLowerCase()
+  );
+  if (existing) return existing;
+
+  const asset: Asset = {
+    id: `asset-${Date.now()}`,
+    coingeckoId: data.coingeckoId,
+    symbol: data.symbol.toUpperCase(),
+    name: data.name,
+    category: data.category ?? 'LIQUID_CRYPTO',
+    currentPriceUsd: null,
+    priceUpdatedAt: new Date().toISOString(),
+  };
+  demoAssets = [...demoAssets, asset];
+  return asset;
+}
+
+function createDemoPosition(data: CreatePositionData): Position {
+  const asset = demoAssets.find((item) => item.id === data.assetId);
+  if (!asset) {
+    throw new Error('Asset not found');
+  }
+
+  const timestamp = new Date().toISOString();
+  const position = computePosition(asset, {
+    id: `pos-${Date.now()}`,
+    assetId: data.assetId,
+    quantity: data.quantity,
+    avgCostUsd: data.avgCostUsd ?? 0,
+    storageType: data.storageType ?? 'WALLET',
+    storageLocation: data.storageLocation ?? null,
+    notes: data.notes ?? null,
+    custodyOf: data.custodyOf?.trim() ? data.custodyOf : null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+
+  demoPositions = [position, ...demoPositions];
+  return position;
+}
+
+function updateDemoPosition(id: string, data: Partial<CreatePositionData>) {
+  const existing = demoPositions.find((position) => position.id === id);
+  if (!existing) {
+    throw new Error('Position not found');
+  }
+
+  const asset = demoAssets.find((item) => item.id === (data.assetId ?? existing.assetId));
+  if (!asset) {
+    throw new Error('Asset not found');
+  }
+
+  const updated = computePosition(asset, {
+    id: existing.id,
+    assetId: asset.id,
+    quantity: data.quantity ?? existing.quantity,
+    avgCostUsd: data.avgCostUsd ?? existing.avgCostUsd,
+    storageType: data.storageType ?? existing.storageType,
+    storageLocation: data.storageLocation ?? existing.storageLocation,
+    notes: data.notes === undefined ? existing.notes : (data.notes || null),
+    custodyOf: data.custodyOf === undefined ? existing.custodyOf : (data.custodyOf?.trim() ? data.custodyOf : null),
+    createdAt: existing.createdAt,
+    updatedAt: new Date().toISOString(),
+  });
+
+  demoPositions = demoPositions.map((position) => position.id === id ? updated : position);
+  return updated;
+}
+
+function createImportedPosition(position: BulkImportPosition) {
+  let asset = demoAssets.find(
+    (item) =>
+      item.coingeckoId === position.asset.coingeckoId ||
+      item.symbol.toLowerCase() === position.asset.symbol.toLowerCase()
+  );
+
+  if (!asset) {
+    asset = createDemoAsset({
+      coingeckoId: position.asset.coingeckoId ?? position.asset.symbol.toLowerCase(),
+      symbol: position.asset.symbol,
+      name: position.asset.name,
+      category: position.asset.category,
+    });
+  }
+
+  createDemoPosition({
+    assetId: asset.id,
+    quantity: position.quantity,
+    avgCostUsd: position.avgCostUsd,
+    storageType: position.storageType,
+    storageLocation: position.storageLocation ?? undefined,
+    notes: position.notes ?? undefined,
+    custodyOf: position.custodyOf ?? undefined,
+  });
+}
 
 function benchmarkHistory(id: string): BenchmarkHistoricalData {
   const starts: Record<string, number> = {
@@ -383,23 +551,46 @@ function filterTrades(url: URL) {
   return status ? trades.filter((trade) => trade.status === status) : trades;
 }
 
-function handleDemoApi(url: URL, method: string) {
+async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   const path = url.pathname;
 
-  if (path === '/api/positions' && method === 'GET') return json(positions);
-  if (path === '/api/positions/summary' && method === 'GET') return json(summary);
+  if (path === '/api/positions' && method === 'GET') return json(demoPositions);
+  if (path === '/api/positions' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as CreatePositionData;
+    return json(createDemoPosition(body), 201);
+  }
+  if (path === '/api/positions' && method === 'DELETE') {
+    const count = demoPositions.length;
+    demoPositions = [];
+    return json({ count });
+  }
+  if (path === '/api/positions/summary' && method === 'GET') return json(getSummary());
   if (path === '/api/positions/performers/top' && method === 'GET') {
-    return json([
-      { assetId: 'btc', symbol: 'BTC', name: 'Bitcoin', unrealizedPnL: 41009, unrealizedPnLPct: 55.1, marketValueUsd: 115375 },
-      { assetId: 'eth', symbol: 'ETH', name: 'Ethereum', unrealizedPnL: 17346, unrealizedPnLPct: 51.5, marketValueUsd: 50976 },
-      { assetId: 'sol', symbol: 'SOL', name: 'Solana', unrealizedPnL: 10120, unrealizedPnLPct: 34.9, marketValueUsd: 39160 },
-    ]);
+    return json(getPerformers('top'));
   }
   if (path === '/api/positions/performers/worst' && method === 'GET') {
-    return json([
-      { assetId: 'usdc', symbol: 'USDC', name: 'USD Coin', unrealizedPnL: 0, unrealizedPnLPct: 0, marketValueUsd: 24500 },
-      { assetId: 'sol', symbol: 'SOL', name: 'Solana', unrealizedPnL: 10120, unrealizedPnLPct: 34.9, marketValueUsd: 39160 },
-    ]);
+    return json(getPerformers('worst'));
+  }
+  if (path.startsWith('/api/positions/') && method === 'PUT') {
+    const id = path.split('/')[3];
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as Partial<CreatePositionData>;
+    return json(updateDemoPosition(id, body));
+  }
+  if (path.startsWith('/api/positions/') && method === 'DELETE') {
+    const id = path.split('/')[3];
+    const before = demoPositions.length;
+    demoPositions = demoPositions.filter((position) => position.id !== id);
+    return before === demoPositions.length ? json({ error: 'Position not found' }, 404) : new Response(null, { status: 204 });
+  }
+  if (path === '/api/positions/bulk' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as { positions?: BulkImportPosition[] };
+    const imports = body.positions ?? [];
+    imports.forEach(createImportedPosition);
+    return json({
+      results: imports.map((position) => ({ success: true, symbol: position.asset.symbol })),
+      successCount: imports.length,
+      totalCount: imports.length,
+    }, 201);
   }
   if (path === '/api/trades' && method === 'GET') return json(filterTrades(url));
   if (path === '/api/trades/analytics' && method === 'GET') return json(tradeAnalytics);
@@ -413,12 +604,12 @@ function handleDemoApi(url: URL, method: string) {
   if (path === '/api/health/db' && method === 'GET') return json(dbHealth);
   if (path === '/api/fx/rates' && method === 'GET') return json(fxRates);
   if (path === '/api/fx/refresh' && method === 'POST') return json({ rates: fxRates });
-  if (path === '/api/prices/current' && method === 'GET') return json(currentPrices);
-  if (path === '/api/prices/refresh' && method === 'POST') return json({ updated: currentPrices.length, errors: 0 });
+  if (path === '/api/prices/current' && method === 'GET') return json(getCurrentPrices());
+  if (path === '/api/prices/refresh' && method === 'POST') return json({ updated: getCurrentPrices().length, errors: 0 });
   if (path.startsWith('/api/prices/historical/') && method === 'GET') {
     return json(benchmarkHistory(path.split('/').pop() ?? 'benchmark'));
   }
-  if (path === '/api/assets' && method === 'GET') return json(assets);
+  if (path === '/api/assets' && method === 'GET') return json(demoAssets);
   if (path === '/api/assets/search' && method === 'GET') {
     const q = (url.searchParams.get('q') ?? '').toLowerCase();
     const results = [
@@ -429,6 +620,10 @@ function handleDemoApi(url: URL, method: string) {
       { id: 'hyperliquid', symbol: 'hype', name: 'Hyperliquid', rank: 25 },
     ].filter((coin) => !q || coin.name.toLowerCase().includes(q) || coin.symbol.includes(q));
     return json(results);
+  }
+  if (path === '/api/assets/from-coingecko' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as { coingeckoId: string; symbol: string; name: string; category?: Asset['category'] };
+    return json(createDemoAsset(body), 201);
   }
   if (path === '/api/snapshots' && method === 'POST') return json({ ...snapshots[0], id: 'snap-demo-created' });
   if (path.startsWith('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return json({ ok: true });
@@ -449,7 +644,7 @@ function installDemoApiMock() {
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = parseUrl(input as string | URL | Request);
     const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
-    const mocked = handleDemoApi(url, method);
+    const mocked = await handleDemoApi(url, method, init);
     if (mocked) return mocked;
     return originalFetch(input, init);
   };
