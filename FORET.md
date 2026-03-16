@@ -483,6 +483,8 @@ const displayedNetWorth = totalNetWorth * stakeMultiplier;
 
 This answers: "How much is Mom's portion worth today?"
 
+The default now prefers the primary owner investor when one exists. That's a subtle but important choice: most of the time the dashboard should open on the owner's view, not on an ambiguous blended state.
+
 ---
 
 ## Frontend State Management: The Right Tool for Each Job
@@ -593,6 +595,8 @@ components/ui/
 
 Each card is self-contained. Data flows down, events bubble up.
 
+Recent refinement: the compact stat row now includes `Exposure` between `YTD P&L` and `Live Positions`, and both `Exposure` and `Live Positions` link straight to the Portfolio page. It's a small detail, but it turns those cards from dead summaries into useful navigation.
+
 ---
 
 ## Lessons Learned the Hard Way
@@ -670,7 +674,19 @@ const unrealizedPnLPct = ((marketValue - costBasis) / costBasis) * 100;
 // Returns: +23.5% or -12.3%
 ```
 
-### Lesson 5: Railway Deployment Gotchas
+### Lesson 5: Demo mode has to be genuinely testable, not just pretty
+
+**The bug:** The original `/dev/demo` route was fine for screenshots, but weak for real workflow testing. A form could say "success" while nothing changed on screen, which is basically a showroom car with no engine.
+
+**The fix:** Make demo mode stateful in the browser. `/dev/demo/portfolio` now supports add, edit, delete, and import flows without Clerk or the backend. It behaves like a safe sandbox and resets on refresh.
+
+**The gotchas we had to fix immediately:**
+
+- New demo assets need seeded prices or portfolio totals fall apart
+- Demo ids cannot rely on plain `Date.now()` during bulk inserts
+- If a demo flow mimics real editing, it has to preserve related fields like custody too
+
+### Lesson 6: Railway Deployment Gotchas
 
 **The bug:** Backend returning 502 errors after deployment.
 
@@ -688,7 +704,7 @@ const unrealizedPnLPct = ((marketValue - costBasis) / costBasis) * 100;
 
 **Key lesson:** Railway doesn't auto-detect your port. If your app listens on a different port than Railway expects, you get silent 502s.
 
-### Lesson 6: Position Uniqueness
+### Lesson 7: Position Uniqueness
 
 **The bug:** Could accidentally create duplicate positions for the same asset in the same storage location.
 
@@ -1419,6 +1435,15 @@ const mutation = isEditing ? useUpdateTrade() : useCreateTrade();
 
 This pattern keeps forms DRY—one component, two modes.
 
+### Position Editing: correction vs accumulation
+
+This workflow got better once we stopped pretending every edit is the same kind of edit.
+
+- `Edit Totals` is for corrections
+- `Add/Reduce Position` is for the normal "I bought more" or "I trimmed some" flow
+
+`Add` asks for quantity plus total cost, then recalculates weighted average cost automatically. `Reduce` only asks for quantity and removes cost basis using the current average cost. The preview also moved from a loose inline display to a proper Old/New comparison table, because financial UI should make deltas obvious without making you squint.
+
 ### Real-Time WebSocket Updates
 
 No more waiting 60 seconds for price updates. The dashboard now receives instant updates via WebSocket when prices refresh.
@@ -1502,6 +1527,9 @@ Features I want to add:
 Recently completed:
 
 - [x] Local-only `/dev/demo` route for authenticated UI testing with mocked API responses; lazy-loaded in dev so mock data does not ship to production bundles
+- [x] Stateful demo-mode portfolio sandbox: `/dev/demo/portfolio` now supports in-browser add/edit/delete/import testing and resets on refresh
+- [x] Position edit UX overhaul: `Add/Reduce Position` inside the existing pencil flow, with auto cost-basis handling and Old/New comparison table
+- [x] Dashboard stat row refinement: owner investor selected by default when present, plus clickable `Exposure` card between YTD P&L and Live Positions
 - [x] Security hardening: protected position/trade/investor mutations now enforce ownership on update/delete paths
 - [x] WebSocket CORS hardening: exact origin matching instead of prefix matching
 - [x] Major refactor: extract backend utilities (logger, constants, pagination, tradePnL) with unit tests
