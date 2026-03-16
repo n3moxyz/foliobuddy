@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolioSummary, usePositions, useTopPerformers, useWorstPerformers, useInvestors, usePerformanceHistory } from '@/hooks/usePortfolio';
 import { useTradeAnalytics } from '@/hooks/useTrades';
@@ -21,6 +21,8 @@ import { BenchmarkComparisonChart } from '@/components/dashboard/BenchmarkCompar
 import { ChevronDown, Users } from 'lucide-react';
 import { DbStatusBanner } from '@/components/dashboard/DbStatusBanner';
 
+const PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
+
 export default function Dashboard() {
   const { currency } = useCurrencyStore();
   const { data: summary, isLoading: summaryLoading } = usePortfolioSummary();
@@ -39,6 +41,16 @@ export default function Dashboard() {
 
   // Investor filter state - lifted to Dashboard level
   const [selectedInvestors, setSelectedInvestors] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!investors || investors.length === 0) return;
+    if (selectedInvestors.length > 0) return;
+
+    const owner = investors.find((investor) => investor.isOwner);
+    if (owner) {
+      setSelectedInvestors([owner.id]);
+    }
+  }, [investors, selectedInvestors.length]);
 
   // Calculate FX rate from summary
   const fxRate = useMemo(() => {
@@ -63,6 +75,21 @@ export default function Dashboard() {
     const converted = currency === 'SGD' ? usdValue * fxRate : usdValue;
     return converted * stakeMultiplier;
   };
+
+  const perpExposure = useMemo(() => {
+    const saved = localStorage.getItem(PERP_EXPOSURE_KEY);
+    return saved ? parseFloat(saved) : 0;
+  }, []);
+
+  const exposurePct = useMemo(() => {
+    if (!positions || !summary?.totalValueUsd || summary.totalValueUsd <= 0) return 0;
+    const ownedCryptoTotal = positions
+      .filter((position) => !position.custodyOf)
+      .filter((position) => position.asset.category !== 'STABLECOIN' && position.asset.category !== 'CASH')
+      .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
+
+    return ((ownedCryptoTotal + perpExposure) / summary.totalValueUsd) * 100;
+  }, [positions, summary?.totalValueUsd, perpExposure]);
 
   const handleInvestorToggle = (investorId: string) => {
     setSelectedInvestors((prev) =>
@@ -173,9 +200,9 @@ export default function Dashboard() {
       {summary && <NetWorthCard summary={summary} currency={currency} stakeMultiplier={stakeMultiplier} valueUsd30dAgo={valueUsd30dAgo} />}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
-        <Card className="py-3">
-          <CardHeader className="py-0">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-5">
+        <Card className="h-full py-3">
+          <CardHeader className="flex h-full justify-center py-0">
             <CardDescription>YTD Start</CardDescription>
             <CardTitle className="text-lg sm:text-2xl">
               {formatCurrency(convert(summary?.totalCostBasis), currency, 0)}
@@ -183,8 +210,8 @@ export default function Dashboard() {
           </CardHeader>
         </Card>
 
-        <Card className="py-3">
-          <CardHeader className="py-0">
+        <Card className="h-full py-3">
+          <CardHeader className="flex h-full justify-center py-0">
             <CardDescription>YTD P&L</CardDescription>
             <CardTitle className={`text-lg sm:text-2xl ${getPnLColorClass(summary?.unrealizedPnL)}`}>
               {formatCurrency(convert(summary?.unrealizedPnL), currency, 0)}
@@ -195,18 +222,29 @@ export default function Dashboard() {
           </CardHeader>
         </Card>
 
-        <Link to="/portfolio" className="block">
-          <Card className="py-3 hover:bg-muted/50 transition-colors cursor-pointer">
-            <CardHeader className="py-0">
+        <Link to="/portfolio" className="block h-full">
+          <Card className="h-full py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardHeader className="flex h-full justify-center py-0">
+              <CardDescription>Exposure</CardDescription>
+              <CardTitle className="text-lg sm:text-2xl">
+                {`${exposurePct.toFixed(1)}%`}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link to="/portfolio" className="block h-full">
+          <Card className="h-full py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardHeader className="flex h-full justify-center py-0">
               <CardDescription>Live Positions</CardDescription>
               <CardTitle className="text-lg sm:text-2xl">{summary?.positionCount ?? 0}</CardTitle>
             </CardHeader>
           </Card>
         </Link>
 
-        <Link to="/trades" className="block">
-          <Card className="py-3 hover:bg-muted/50 transition-colors cursor-pointer">
-            <CardHeader className="py-0">
+        <Link to="/trades" className="block h-full">
+          <Card className="h-full py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardHeader className="flex h-full justify-center py-0">
               <CardDescription>Closed Trades</CardDescription>
               <CardTitle className="text-lg sm:text-2xl">{tradeAnalytics?.totalTrades ?? 0}</CardTitle>
             </CardHeader>
