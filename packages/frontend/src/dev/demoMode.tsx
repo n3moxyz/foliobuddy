@@ -332,10 +332,43 @@ const dbHealth: DbHealth = { status: 'ok', latency_ms: 22 };
 const fxRates: FxRate[] = [{ id: 'usd-sgd', fromCcy: 'USD', toCcy: 'SGD', rate: 1.3471, timestamp: NOW }];
 let demoAssets: Asset[] = [...initialAssets];
 let demoPositions: Position[] = [...initialPositions];
+let demoIdCounter = 0;
 
 function round(value: number, decimals = 2) {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
+}
+
+function nextDemoId(prefix: string) {
+  demoIdCounter += 1;
+  return `${prefix}-${Date.now()}-${demoIdCounter}`;
+}
+
+function seedDemoPrice(coingeckoId: string | null, category: Asset['category']) {
+  if (category === 'STABLECOIN') return 1;
+  if (category === 'CASH') return 0.74;
+
+  const seededPrices: Record<string, number> = {
+    bitcoin: 81250,
+    ethereum: 4320,
+    solana: 178,
+    chainlink: 19,
+    hyperliquid: 8,
+    'avalanche-2': 41,
+    aave: 127,
+    uniswap: 14,
+    tether: 1,
+    'usd-coin': 1,
+    'ethena-usde': 1,
+    'first-digital-usd': 1,
+    dai: 1,
+  };
+
+  if (coingeckoId && seededPrices[coingeckoId] !== undefined) {
+    return seededPrices[coingeckoId];
+  }
+
+  return 25;
 }
 
 function computePosition(asset: Asset, data: {
@@ -424,12 +457,12 @@ function createDemoAsset(data: { coingeckoId: string; symbol: string; name: stri
   if (existing) return existing;
 
   const asset: Asset = {
-    id: `asset-${Date.now()}`,
+    id: nextDemoId('asset'),
     coingeckoId: data.coingeckoId,
     symbol: data.symbol.toUpperCase(),
     name: data.name,
     category: data.category ?? 'LIQUID_CRYPTO',
-    currentPriceUsd: null,
+    currentPriceUsd: seedDemoPrice(data.coingeckoId, data.category ?? 'LIQUID_CRYPTO'),
     priceUpdatedAt: new Date().toISOString(),
   };
   demoAssets = [...demoAssets, asset];
@@ -444,7 +477,7 @@ function createDemoPosition(data: CreatePositionData): Position {
 
   const timestamp = new Date().toISOString();
   const position = computePosition(asset, {
-    id: `pos-${Date.now()}`,
+    id: nextDemoId('pos'),
     assetId: data.assetId,
     quantity: data.quantity,
     avgCostUsd: data.avgCostUsd ?? 0,

@@ -575,8 +575,10 @@ export function PositionForm({
           data: {
             quantity: nextQuantity,
             avgCostUsd: nextAvgCost,
+            custodyOf: isCustody ? (custodyOf.trim() || 'Someone') : '',
           },
         });
+        handleCustodySave();
         onSuccess();
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to save position';
