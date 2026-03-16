@@ -18,6 +18,8 @@ import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
 import { ImportResults } from './ImportResults';
 import { CustodyCheckbox } from './CustodyCheckbox';
+import { formatNumber } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 const CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
 
@@ -100,6 +102,8 @@ export function PositionForm({
 }: PositionFormProps) {
   // Form mode state (add new or import)
   const [mode, setMode] = useState<FormMode>('add');
+  const [editMode, setEditMode] = useState<'edit' | 'delta'>('edit');
+  const [deltaMode, setDeltaMode] = useState<'add' | 'reduce'>('add');
   const queryClient = useQueryClient();
 
   // Import state
@@ -175,6 +179,8 @@ export function PositionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingCustodyNames, custodyNamesVersion]);
   const [notes, setNotes] = useState(position?.notes || '');
+  const [additionalQuantity, setAdditionalQuantity] = useState('');
+  const [additionalTotalCost, setAdditionalTotalCost] = useState('');
 
   // Hooks
   const { data: assets } = useAssets();
@@ -295,6 +301,31 @@ export function PositionForm({
 
   // Final avg cost for form submission
   const avgCostUsd = costInputMode === 'total' ? calculatedAvgCost : avgCostInput;
+
+  const addPreview = useMemo(() => {
+    if (!position || editMode !== 'delta') return null;
+    const deltaQty = parseFloat(additionalQuantity);
+    const deltaCost = deltaMode === 'reduce'
+      ? deltaQty * position.avgCostUsd
+      : parseFloat(additionalTotalCost);
+    if (!(deltaQty > 0) || !(deltaCost >= 0)) return null;
+
+    const currentTotalCost = position.quantity * position.avgCostUsd;
+    const multiplier = deltaMode === 'add' ? 1 : -1;
+    const nextQuantity = position.quantity + (deltaQty * multiplier);
+    const nextTotalCost = currentTotalCost + (deltaCost * multiplier);
+    if (nextQuantity < 0 || nextTotalCost < 0) return null;
+    const nextAvgCost = nextQuantity > 0 ? nextTotalCost / nextQuantity : 0;
+
+    return {
+      currentQuantity: position.quantity,
+      currentAvgCost: position.avgCostUsd,
+      currentTotalCost,
+      nextQuantity,
+      nextAvgCost,
+      nextTotalCost,
+    };
+  }, [position, editMode, additionalQuantity, additionalTotalCost, deltaMode]);
 
   // Filter existing assets based on search and category
   const filteredAssets = useMemo(() => {
@@ -505,6 +536,55 @@ export function PositionForm({
     setError(null);
     setValidationError(null);
 
+    if (isEditing && editMode === 'delta' && position) {
+      const deltaQty = parseFloat(additionalQuantity);
+      const deltaCost = deltaMode === 'reduce'
+        ? deltaQty * position.avgCostUsd
+        : parseFloat(additionalTotalCost);
+
+      if (!(deltaQty > 0)) {
+        setValidationError(`Please enter a valid ${deltaMode} quantity`);
+        return;
+      }
+
+      if (deltaMode === 'add' && !(deltaCost >= 0)) {
+        setValidationError(`Please enter a valid ${deltaMode} total cost`);
+        return;
+      }
+
+      const currentTotalCost = position.quantity * position.avgCostUsd;
+      const multiplier = deltaMode === 'add' ? 1 : -1;
+      const nextQuantity = position.quantity + (deltaQty * multiplier);
+      const nextTotalCost = currentTotalCost + (deltaCost * multiplier);
+
+      if (nextQuantity < 0) {
+        setValidationError('You cannot reduce below zero quantity');
+        return;
+      }
+
+      if (nextTotalCost < 0) {
+        setValidationError('You cannot reduce more cost basis than the position has');
+        return;
+      }
+
+      const nextAvgCost = nextQuantity > 0 ? nextTotalCost / nextQuantity : 0;
+
+      try {
+        await updatePosition.mutateAsync({
+          id: position.id,
+          data: {
+            quantity: nextQuantity,
+            avgCostUsd: nextAvgCost,
+          },
+        });
+        onSuccess();
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to save position';
+        setError(errorMessage);
+      }
+      return;
+    }
+
     // Validate required fields
     if (!isFormValid) {
       if (!assetId) {
@@ -630,6 +710,178 @@ export function PositionForm({
       ) : (
         /* Add New Mode */
         <form onSubmit={handleSubmit} className="space-y-3">
+          {isEditing && (
+            <div className="flex border-b mb-2">
+              <button
+                type="button"
+                onClick={() => setEditMode('edit')}
+                className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  editMode === 'edit'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Edit Totals
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditMode('delta')}
+                className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  editMode === 'delta'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Add/Reduce Position
+              </button>
+            </div>
+          )}
+
+          {isEditing && editMode === 'delta' && position ? (
+            <>
+              <div className="rounded-md border bg-muted/30 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{position.asset.symbol}</p>
+                    <p className="text-sm text-muted-foreground">{position.asset.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Current quantity</p>
+                    <p className="font-mono text-sm">
+                      {position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH'
+                        ? formatNumber(position.quantity, 0)
+                        : formatNumber(position.quantity, 4)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeltaMode('add')}
+                  className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                    deltaMode === 'add'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {deltaMode === 'add' && <Check className="h-4 w-4" />}
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeltaMode('reduce')}
+                  className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                    deltaMode === 'reduce'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {deltaMode === 'reduce' && <Check className="h-4 w-4" />}
+                  Reduce
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="additionalQuantity" className="text-sm">
+                  {deltaMode === 'add' ? 'Additional Quantity' : 'Reduce Quantity'}
+                </Label>
+                <Input
+                  id="additionalQuantity"
+                  type="number"
+                  step="any"
+                  value={additionalQuantity}
+                  onChange={(e) => {
+                    setAdditionalQuantity(e.target.value);
+                    setValidationError(null);
+                  }}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              {deltaMode === 'add' ? (
+                <div className="space-y-1">
+                  <Label htmlFor="additionalTotalCost" className="text-sm">
+                    Additional Total Cost (USD)
+                  </Label>
+                  <Input
+                    id="additionalTotalCost"
+                    type="number"
+                    step="any"
+                    value={additionalTotalCost}
+                    onChange={(e) => {
+                      setAdditionalTotalCost(e.target.value);
+                      setValidationError(null);
+                    }}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+                  Cost basis will be reduced automatically using the current average cost.
+                </div>
+              )}
+
+              {addPreview && (
+                <div className="rounded-md border bg-muted/20 p-3">
+                  <div className="grid grid-cols-[64px_1fr_1fr_1fr] gap-x-4 gap-y-2 text-sm">
+                    <div />
+                    <div className="text-right text-xs text-muted-foreground">Quantity</div>
+                    <div className="text-right text-xs text-muted-foreground">Avg Cost</div>
+                    <div className="text-right text-xs text-muted-foreground">Total Cost</div>
+
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Old</div>
+                    <div className="text-right font-mono text-muted-foreground">
+                      {position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH'
+                        ? formatNumber(addPreview.currentQuantity, 0)
+                        : formatNumber(addPreview.currentQuantity, 4)}
+                    </div>
+                    <div className="text-right font-mono text-muted-foreground">
+                      {addPreview.currentAvgCost.toFixed(addPreview.currentAvgCost >= 1000 ? 0 : 2)}
+                    </div>
+                    <div className="text-right font-mono text-muted-foreground">
+                      {addPreview.currentTotalCost.toFixed(0)}
+                    </div>
+
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-primary">New</div>
+                    <div className="text-right font-mono font-medium text-primary">
+                      {position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH'
+                        ? formatNumber(addPreview.nextQuantity, 0)
+                        : formatNumber(addPreview.nextQuantity, 4)}
+                    </div>
+                    <div className="text-right font-mono font-medium text-primary">
+                      {addPreview.nextAvgCost.toFixed(addPreview.nextAvgCost >= 1000 ? 0 : 2)}
+                    </div>
+                    <div className="text-right font-mono font-medium text-primary">
+                      {addPreview.nextTotalCost.toFixed(0)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  {error}
+                </div>
+              )}
+
+              {validationError && (
+                <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
+                  {validationError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Saving...' : deltaMode === 'add' ? 'Add to Position' : 'Reduce Position'}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
           {/* Category Selection */}
           {!isEditing && (
             <div className="space-y-1">
@@ -902,6 +1154,8 @@ export function PositionForm({
               {isLoading ? 'Saving...' : isEditing ? 'Update Position' : 'Add Position'}
             </Button>
           </div>
+            </>
+          )}
         </form>
       )}
     </div>

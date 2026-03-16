@@ -83,7 +83,7 @@ export function NetWorthCard({ summary, currency, stakeMultiplier = 1, valueUsd3
             <div>
               <p className="text-muted-foreground">vs 30D ago</p>
               <p className={`font-medium ${getPnLColorClass(change30d.diff)}`}>
-                {change30d.diff >= 0 ? '+' : ''}{formatPercent(change30d.pct)}
+                {formatPercent(change30d.pct)}
               </p>
             </div>
           )}
