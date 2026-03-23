@@ -14,9 +14,11 @@ import snapshotsRouter from './routes/snapshots.js';
 import pricesRouter from './routes/prices.js';
 import fxRouter from './routes/fx.js';
 import exportRouter from './routes/export.js';
+import agentRouter from './routes/agent.js';
 import healthRouter from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { clerkMiddleware, ensureUser } from './middleware/auth.js';
+import { agentAuth } from './middleware/agentAuth.js';
 import {
   startPriceRefreshJob,
   startSnapshotJob,
@@ -168,6 +170,7 @@ v1Router.use('/snapshots', ensureUser, snapshotsRouter);
 v1Router.use('/prices', pricesRouter);
 v1Router.use('/fx', fxRouter);
 v1Router.use('/export', ensureUser, exportRouter);
+v1Router.use('/agent', agentAuth, agentRouter);
 
 // Mount v1 router at /api/v1
 app.use('/api/v1', v1Router);
