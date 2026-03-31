@@ -4,7 +4,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronRight } from 'lucide-react';
 
 interface CollapsibleCardProps {
-  title: string;
+  title: string | ReactNode;
   isExpanded: boolean;
   onToggle: () => void;
   headerRight?: ReactNode;
@@ -47,9 +47,7 @@ export function CollapsibleCard({
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-          <CardContent className="px-4 pb-3 pt-0">
-            {children}
-          </CardContent>
+          <CardContent className="px-4 pb-3 pt-0">{children}</CardContent>
         </CollapsibleContent>
       </Card>
     </Collapsible>

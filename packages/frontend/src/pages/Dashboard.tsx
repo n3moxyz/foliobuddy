@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { usePortfolioSummary, usePositions, useTopPerformers, useWorstPerformers, useInvestors, usePerformanceHistory } from '@/hooks/usePortfolio';
+import {
+  usePortfolioSummary,
+  usePositions,
+  useTopPerformers,
+  useWorstPerformers,
+  useInvestors,
+  usePerformanceHistory,
+} from '@/hooks/usePortfolio';
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatCurrency, formatPercent, getPnLColorClass, formatDateTime } from '@/lib/utils';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { NetWorthCard } from '@/components/dashboard/NetWorthCard';
 import { AllocationCharts } from '@/components/dashboard/AllocationCharts';
 import { PerformersCard } from '@/components/dashboard/PerformersCard';
@@ -64,7 +67,7 @@ export default function Dashboard() {
   const stakeMultiplier = useMemo(() => {
     if (selectedInvestors.length === 0 || !investors) return 1;
     const totalStake = investors
-      .filter(inv => selectedInvestors.includes(inv.id))
+      .filter((inv) => selectedInvestors.includes(inv.id))
       .reduce((sum, inv) => sum + inv.stakePercentage, 0);
     return totalStake / 100;
   }, [selectedInvestors, investors]);
@@ -85,7 +88,9 @@ export default function Dashboard() {
     if (!positions || !summary?.totalValueUsd || summary.totalValueUsd <= 0) return 0;
     const ownedCryptoTotal = positions
       .filter((position) => !position.custodyOf)
-      .filter((position) => position.asset.category !== 'STABLECOIN' && position.asset.category !== 'CASH')
+      .filter(
+        (position) => position.asset.category !== 'STABLECOIN' && position.asset.category !== 'CASH'
+      )
       .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
 
     return ((ownedCryptoTotal + perpExposure) / summary.totalValueUsd) * 100;
@@ -93,9 +98,7 @@ export default function Dashboard() {
 
   const handleInvestorToggle = (investorId: string) => {
     setSelectedInvestors((prev) =>
-      prev.includes(investorId)
-        ? prev.filter((id) => id !== investorId)
-        : [...prev, investorId]
+      prev.includes(investorId) ? prev.filter((id) => id !== investorId) : [...prev, investorId]
     );
   };
 
@@ -121,8 +124,34 @@ export default function Dashboard() {
 
   if (summaryLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-muted-foreground">Loading dashboard...</div>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-4 w-48 mt-2" />
+          </div>
+          <Skeleton className="h-9 w-full sm:w-32" />
+        </div>
+
+        {/* Net worth loading skeleton */}
+        <div className="pb-6 mb-2 border-b">
+          <Skeleton className="h-4 w-20 mb-2" />
+          <Skeleton className="h-12 w-48 mb-2" />
+          <div className="mt-4 flex gap-6">
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-6 w-20" />
+          </div>
+        </div>
+
+        {/* Stats strip loading skeleton */}
+        <div className="py-4 border-b flex items-baseline gap-6 flex-wrap">
+          <Skeleton className="h-6 w-20" />
+          <Skeleton className="h-6 w-20" />
+          <Skeleton className="h-6 w-20" />
+          <Skeleton className="h-6 w-20" />
+          <Skeleton className="h-6 w-20" />
+        </div>
       </div>
     );
   }
@@ -132,13 +161,8 @@ export default function Dashboard() {
       {/* Page header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Dashboard</h1>
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-            <p className="text-sm text-muted-foreground sm:text-base">
-              Overview of your portfolio performance
-            </p>
-            <DbStatusBanner />
-          </div>
+          <h1 className="text-xl font-semibold">Dashboard</h1>
+          <DbStatusBanner />
         </div>
 
         {/* Investor Filter */}
@@ -197,58 +221,91 @@ export default function Dashboard() {
       </div>
 
       {/* Net Worth Card */}
-      {summary && <NetWorthCard summary={summary} currency={currency} stakeMultiplier={stakeMultiplier} valueUsd30dAgo={valueUsd30dAgo} />}
+      {summary && (
+        <NetWorthCard
+          summary={summary}
+          currency={currency}
+          stakeMultiplier={stakeMultiplier}
+          valueUsd30dAgo={valueUsd30dAgo}
+        />
+      )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-5">
-        <Card className="h-full py-3">
-          <CardHeader className="flex h-full justify-center py-0">
-            <CardDescription>YTD Start</CardDescription>
-            <CardTitle className="text-lg sm:text-2xl">
-              {formatCurrency(convert(summary?.totalCostBasis), currency, 0)}
-            </CardTitle>
-          </CardHeader>
-        </Card>
+      {/* Stats Strip */}
+      <div className="py-4 border-b hidden sm:flex items-baseline gap-6 flex-wrap">
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">YTD Start</p>
+          <p className="text-lg font-semibold tabular-nums">
+            {formatCurrency(convert(summary?.totalCostBasis), currency, 0)}
+          </p>
+        </div>
 
-        <Card className="h-full py-3">
-          <CardHeader className="flex h-full justify-center py-0">
-            <CardDescription>YTD P&L</CardDescription>
-            <CardTitle className={`text-lg sm:text-2xl ${getPnLColorClass(summary?.unrealizedPnL)}`}>
-              {formatCurrency(convert(summary?.unrealizedPnL), currency, 0)}
-              <span className={`mt-1 block text-xs font-normal sm:ml-1.5 sm:mt-0 sm:inline sm:text-sm ${getPnLColorClass(summary?.unrealizedPnLPct)}`}>
-                {formatPercent(summary?.unrealizedPnLPct)}
-              </span>
-            </CardTitle>
-          </CardHeader>
-        </Card>
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">YTD P&L</p>
+          <p
+            className={`text-lg font-semibold tabular-nums ${getPnLColorClass(summary?.unrealizedPnL)}`}
+          >
+            {formatCurrency(convert(summary?.unrealizedPnL), currency, 0)}
+            <span className={`text-xs ml-1.5 ${getPnLColorClass(summary?.unrealizedPnLPct)}`}>
+              {formatPercent(summary?.unrealizedPnLPct)}
+            </span>
+          </p>
+        </div>
 
-        <Link to="/portfolio" className="block h-full">
-          <Card className="h-full py-3 hover:bg-muted/50 transition-colors cursor-pointer">
-            <CardHeader className="flex h-full justify-center py-0">
-              <CardDescription>Exposure</CardDescription>
-              <CardTitle className="text-lg sm:text-2xl">
-                {`${exposurePct.toFixed(1)}%`}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+        <Link to="/portfolio" className="hover:text-primary transition-colors cursor-pointer">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Exposure</p>
+          <p className="text-lg font-semibold tabular-nums">{`${exposurePct.toFixed(1)}%`}</p>
         </Link>
 
-        <Link to="/portfolio" className="block h-full">
-          <Card className="h-full py-3 hover:bg-muted/50 transition-colors cursor-pointer">
-            <CardHeader className="flex h-full justify-center py-0">
-              <CardDescription>Live Positions</CardDescription>
-              <CardTitle className="text-lg sm:text-2xl">{summary?.positionCount ?? 0}</CardTitle>
-            </CardHeader>
-          </Card>
+        <Link to="/portfolio" className="hover:text-primary transition-colors cursor-pointer">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Live Positions</p>
+          <p className="text-lg font-semibold tabular-nums">{summary?.positionCount ?? 0}</p>
         </Link>
 
-        <Link to="/trades" className="block h-full">
-          <Card className="h-full py-3 hover:bg-muted/50 transition-colors cursor-pointer">
-            <CardHeader className="flex h-full justify-center py-0">
-              <CardDescription>Closed Trades</CardDescription>
-              <CardTitle className="text-lg sm:text-2xl">{tradeAnalytics?.totalTrades ?? 0}</CardTitle>
-            </CardHeader>
-          </Card>
+        <Link to="/trades" className="hover:text-primary transition-colors cursor-pointer">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Closed Trades</p>
+          <p className="text-lg font-semibold tabular-nums">{tradeAnalytics?.totalTrades ?? 0}</p>
+        </Link>
+      </div>
+
+      {/* Mobile Stats Grid */}
+      <div className="sm:hidden grid grid-cols-2 gap-4 py-4 border-b">
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">YTD Start</p>
+          <p className="text-lg font-semibold tabular-nums">
+            {formatCurrency(convert(summary?.totalCostBasis), currency, 0)}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">YTD P&L</p>
+          <p
+            className={`text-lg font-semibold tabular-nums ${getPnLColorClass(summary?.unrealizedPnL)}`}
+          >
+            {formatCurrency(convert(summary?.unrealizedPnL), currency, 0)}
+            <span
+              className={`text-xs ml-1.5 block sm:inline ${getPnLColorClass(summary?.unrealizedPnLPct)}`}
+            >
+              {formatPercent(summary?.unrealizedPnLPct)}
+            </span>
+          </p>
+        </div>
+
+        <Link to="/portfolio" className="hover:text-primary transition-colors cursor-pointer">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Exposure</p>
+          <p className="text-lg font-semibold tabular-nums">{`${exposurePct.toFixed(1)}%`}</p>
+        </Link>
+
+        <Link to="/portfolio" className="hover:text-primary transition-colors cursor-pointer">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Live Positions</p>
+          <p className="text-lg font-semibold tabular-nums">{summary?.positionCount ?? 0}</p>
+        </Link>
+
+        <Link
+          to="/trades"
+          className="hover:text-primary transition-colors cursor-pointer col-span-2"
+        >
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Closed Trades</p>
+          <p className="text-lg font-semibold tabular-nums">{tradeAnalytics?.totalTrades ?? 0}</p>
         </Link>
       </div>
 
@@ -264,12 +321,7 @@ export default function Dashboard() {
       <BenchmarkComparisonChart />
 
       {/* Allocation Charts */}
-      {positions && (
-        <AllocationCharts
-          positions={positions}
-          isLoading={positionsLoading}
-        />
-      )}
+      {positions && <AllocationCharts positions={positions} isLoading={positionsLoading} />}
 
       {/* Performers */}
       <div className="grid gap-4 sm:gap-6 md:grid-cols-2">

@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useQueries } from '@tanstack/react-query';
 import { usePerformanceHistory, useBenchmarkHistory } from '@/hooks/usePortfolio';
@@ -408,8 +409,17 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
 
       <CardContent>
         {isLoading ? (
-          <div className="h-[300px] flex items-center justify-center">
-            <div className="animate-pulse text-muted-foreground">Loading chart data...</div>
+          <div className="h-[300px] flex flex-col justify-between py-4">
+            <div className="flex items-end justify-between px-2">
+              <Skeleton className="h-3 w-10" />
+              <Skeleton className="h-[200px] w-full mx-4 rounded-none opacity-50" />
+              <Skeleton className="h-3 w-10" />
+            </div>
+            <div className="flex justify-between px-2 mt-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-3 w-12" />
+              ))}
+            </div>
           </div>
         ) : chartData.length === 0 ? (
           <div className="h-[300px] flex items-center justify-center">

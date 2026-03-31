@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
 import { formatCurrency } from '@/lib/utils';
@@ -77,7 +78,12 @@ function formatTooltipDate(timestamp: string): string {
   });
 }
 
-export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier = 1, liveValueUsd }: PortfolioChartProps) {
+export function PortfolioChart({
+  currency = 'USD',
+  fxRate = 1,
+  stakeMultiplier = 1,
+  liveValueUsd,
+}: PortfolioChartProps) {
   const [period, setPeriod] = useState<TimePeriod>('1M');
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
@@ -96,9 +102,10 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
     if (!performanceData || performanceData.length === 0) return [];
 
     const data = performanceData.map((point) => {
-      const baseValue = currency === 'SGD'
-        ? (point.totalValueSgd ?? point.totalValueUsd * fxRate)
-        : point.totalValueUsd;
+      const baseValue =
+        currency === 'SGD'
+          ? (point.totalValueSgd ?? point.totalValueUsd * fxRate)
+          : point.totalValueUsd;
 
       return {
         date: formatXAxisDate(point.timestamp, dataSpanDays),
@@ -158,7 +165,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
   const yAxisDomain = useMemo(() => {
     if (chartData.length === 0) return [0, 100];
 
-    const values = chartData.map(d => d.value);
+    const values = chartData.map((d) => d.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const range = max - min;
@@ -190,7 +197,7 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
           <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
             <CardTitle>Portfolio $ Value</CardTitle>
             {valueChange && (
-              <div className={`text-sm ${valueChange.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={`text-sm ${valueChange.change >= 0 ? 'text-profit' : 'text-loss'}`}>
                 <span className="font-medium">
                   {valueChange.change >= 0 ? '+' : ''}
                   {formatCurrency(valueChange.change, currency, 0)}
@@ -205,34 +212,45 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
           {/* Time Period Selector - CoinGecko style */}
           <div className="-mx-1 overflow-x-auto pb-1">
             <div className="flex w-max rounded-md border">
-            {periods.map((p) => (
-              <Button
-                key={p}
-                variant={period === p ? 'secondary' : 'ghost'}
-                size="sm"
-                className={`h-8 px-3 rounded-none first:rounded-l-md last:rounded-r-md ${
-                  period === p ? '' : 'hover:bg-muted'
-                }`}
-                onClick={() => setPeriod(p)}
-              >
-                {p}
-              </Button>
-            ))}
+              {periods.map((p) => (
+                <Button
+                  key={p}
+                  variant={period === p ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className={`h-8 px-3 rounded-none first:rounded-l-md last:rounded-r-md ${
+                    period === p ? '' : 'hover:bg-muted'
+                  }`}
+                  onClick={() => setPeriod(p)}
+                >
+                  {p}
+                </Button>
+              ))}
             </div>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="h-[300px] flex items-center justify-center">
-            <div className="animate-pulse text-muted-foreground">Loading chart data...</div>
+          <div className="h-[300px] flex flex-col justify-between py-4">
+            <div className="flex items-end justify-between px-2">
+              <Skeleton className="h-3 w-10" />
+              <Skeleton className="h-[200px] w-full mx-4 rounded-none opacity-50" />
+              <Skeleton className="h-3 w-10" />
+            </div>
+            <div className="flex justify-between px-2 mt-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-3 w-12" />
+              ))}
+            </div>
           </div>
         ) : chartData.length === 0 ? (
           <div className="h-[300px] flex items-center justify-center">
             <div className="text-center text-muted-foreground">
               <p>No data for {period} period</p>
               <p className="text-xs mt-1">
-                {period === 'Max' ? 'Create a snapshot to start tracking your portfolio' : 'Try selecting a longer time period'}
+                {period === 'Max'
+                  ? 'Create a snapshot to start tracking your portfolio'
+                  : 'Try selecting a longer time period'}
               </p>
             </div>
           </div>
@@ -243,78 +261,91 @@ export function PortfolioChart({ currency = 'USD', fxRate = 1, stakeMultiplier =
                 <span className="text-sm text-muted-foreground animate-pulse">Loading...</span>
               </div>
             )}
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData} margin={{ top: 5, right: 56, left: 0, bottom: 5 }}>
-              <defs>
-                <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="text-muted-foreground"
-                interval={tickInterval}
-              />
-              <YAxis
-                domain={yAxisDomain}
-                tickFormatter={(value) => formatCurrency(value, currency, true)}
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="text-muted-foreground"
-                width={56}
-              />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const data = payload[0].payload;
-                  return (
-                    <div className="rounded-lg border bg-background p-3 shadow-md">
-                      <p className="text-xs text-muted-foreground mb-1">
-                        {data.tooltipDate}
-                        {data.isLive && <span className="ml-1 text-green-600">(Live)</span>}
-                      </p>
-                      <p className="font-mono font-medium">
-                        {formatCurrency(data.value, currency, 0)}
-                      </p>
-                      {stakeMultiplier < 1 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Full portfolio: {formatCurrency(data.fullValue, currency, 0)}
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={chartData} margin={{ top: 5, right: 56, left: 0, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                  interval={tickInterval}
+                />
+                <YAxis
+                  domain={yAxisDomain}
+                  tickFormatter={(value) => formatCurrency(value, currency, true)}
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                  width={56}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const data = payload[0].payload;
+                    return (
+                      <div className="rounded-lg border bg-background p-3 shadow-md">
+                        <p className="text-xs text-muted-foreground mb-1">
+                          {data.tooltipDate}
+                          {data.isLive && <span className="ml-1 text-green-600">(Live)</span>}
                         </p>
-                      )}
-                    </div>
-                  );
-                }}
-              />
-              {chartData.length > 0 && (
-                <ReferenceLine y={chartData[0].value} stroke="currentColor" strokeOpacity={0.15} strokeDasharray="4 4" />
-              )}
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                fill="url(#portfolioGradient)"
-                dot={(props: Record<string, unknown>) => {
-                  const { cx, cy, index } = props as { cx: number; cy: number; index: number };
-                  if (index !== chartData.length - 1) return <g key={`dot-${index}`} />;
-                  return (
-                    <g key={`dot-${index}`}>
-                      <circle cx={cx} cy={cy} r={3} fill="hsl(var(--primary))" />
-                      <text x={cx + 8} y={cy} fontSize={11} dominantBaseline="middle" fontWeight={500} fill="currentColor" opacity={0.7}>
-                        {formatCurrency(chartData[index].value, currency, true)}
-                      </text>
-                    </g>
-                  );
-                }}
-                activeDot={{ r: 4, strokeWidth: 0 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+                        <p className="font-mono font-medium">
+                          {formatCurrency(data.value, currency, 0)}
+                        </p>
+                        {stakeMultiplier < 1 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Full portfolio: {formatCurrency(data.fullValue, currency, 0)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }}
+                />
+                {chartData.length > 0 && (
+                  <ReferenceLine
+                    y={chartData[0].value}
+                    stroke="currentColor"
+                    strokeOpacity={0.15}
+                    strokeDasharray="4 4"
+                  />
+                )}
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  fill="url(#portfolioGradient)"
+                  dot={(props: Record<string, unknown>) => {
+                    const { cx, cy, index } = props as { cx: number; cy: number; index: number };
+                    if (index !== chartData.length - 1) return <g key={`dot-${index}`} />;
+                    return (
+                      <g key={`dot-${index}`}>
+                        <circle cx={cx} cy={cy} r={3} fill="hsl(var(--primary))" />
+                        <text
+                          x={cx + 8}
+                          y={cy}
+                          fontSize={11}
+                          dominantBaseline="middle"
+                          fontWeight={500}
+                          fill="currentColor"
+                          opacity={0.7}
+                        >
+                          {formatCurrency(chartData[index].value, currency, true)}
+                        </text>
+                      </g>
+                    );
+                  }}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         )}
       </CardContent>

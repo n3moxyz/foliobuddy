@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -150,21 +151,33 @@ export function SnapshotTable({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center h-32">
-          <div className="animate-pulse text-muted-foreground">Loading snapshots...</div>
-        </CardContent>
-      </Card>
+      <div className="rounded-md border">
+        <div className="p-4 space-y-3">
+          <div className="flex gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-4 w-20" />
+            ))}
+          </div>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      </div>
     );
   }
 
   if (snapshots.length === 0 && !showLiveRow) {
     return (
-      <Card>
-        <CardContent className="text-center py-12">
-          <p className="text-muted-foreground">No snapshots yet</p>
-        </CardContent>
-      </Card>
+      <div className="py-16 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <Clock className="h-6 w-6 text-primary" />
+        </div>
+        <h3 className="text-lg font-semibold mb-1">No snapshots yet</h3>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+          Snapshots capture your portfolio value at points in time. They're created automatically
+          each day, or you can add one manually.
+        </p>
+      </div>
     );
   }
 

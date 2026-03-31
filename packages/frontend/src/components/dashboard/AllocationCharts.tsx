@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import type { Position } from '@/lib/types';
@@ -128,11 +129,29 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="h-[300px] flex items-center justify-center">
-          <div className="animate-pulse text-muted-foreground">Loading allocations...</div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-4 w-24" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 items-center">
+                <Skeleton className="h-[120px] w-[120px] rounded-full flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  {Array.from({ length: 4 }).map((_, j) => (
+                    <div key={j} className="flex items-center gap-2">
+                      <Skeleton className="h-2.5 w-2.5 rounded-full" />
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-8 ml-auto" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     );
   }
 

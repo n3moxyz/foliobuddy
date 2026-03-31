@@ -3,7 +3,6 @@ import { useSnapshots, useDeleteSnapshot, useDeleteAllSnapshots } from '@/hooks/
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -16,16 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { SnapshotForm } from '@/components/history/SnapshotForm';
 import { SnapshotTable } from '@/components/history/SnapshotTable';
-import {
-  Plus,
-  Trash2,
-  History as HistoryIcon,
-  Copy,
-  Check,
-  Bot,
-  Clock,
-  MoreVertical,
-} from 'lucide-react';
+import { Plus, Trash2, Copy, Check, MoreVertical } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -112,10 +102,7 @@ export default function History() {
       {/* Page header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Snapshot History</h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
-            View and manage portfolio snapshots
-          </p>
+          <h1 className="text-xl font-semibold">Snapshot History</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -206,35 +193,20 @@ export default function History() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Snapshots</CardTitle>
-            <HistoryIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Automatic</CardTitle>
-            <Bot className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{automaticCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Manual</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{manualCount}</div>
-          </CardContent>
-        </Card>
+      {/* Stats */}
+      <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Total</p>
+          <p className="text-lg font-semibold tabular-nums">{totalCount}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Automatic</p>
+          <p className="text-lg font-semibold tabular-nums">{automaticCount}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Manual</p>
+          <p className="text-lg font-semibold tabular-nums">{manualCount}</p>
+        </div>
       </div>
 
       {/* Snapshot Table with Tabs */}

@@ -102,9 +102,17 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
         <div className="flex h-16 items-center justify-between px-6 border-b">
           <Link to={buildPath('/')} className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <svg className="h-5 w-5 text-primary-foreground" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 15l4-5 3.5 2.5L17 5"/>
-                <path d="M13 5h4v4"/>
+              <svg
+                className="h-5 w-5 text-primary-foreground"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 15l4-5 3.5 2.5L17 5" />
+                <path d="M13 5h4v4" />
               </svg>
             </div>
             <span className="font-semibold text-lg">FolioBuddy</span>
@@ -128,10 +136,10 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
                 key={item.name}
                 to={targetHref}
                 className={cn(
-                  'flex items-center justify-between px-3 py-3 rounded-md text-sm font-medium transition-colors touch-manipulation',
+                  'flex items-center justify-between px-3 py-3 rounded-md text-sm transition-colors touch-manipulation',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-primary/10 text-primary font-semibold border-r-2 border-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground font-medium'
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
@@ -139,25 +147,18 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
                   <item.icon className="h-5 w-5" />
                   {item.name}
                 </span>
-                <kbd className={cn(
-                  'hidden lg:inline-block text-xs px-1.5 py-0.5 rounded',
-                  isActive
-                    ? 'bg-primary-foreground/20 text-primary-foreground'
-                    : 'bg-muted text-muted-foreground'
-                )}>
+                <kbd
+                  className={cn(
+                    'hidden lg:inline-block text-xs px-1.5 py-0.5 rounded',
+                    isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
+                  )}
+                >
                   {item.shortcut}
                 </kbd>
               </Link>
             );
           })}
         </nav>
-
-        {/* Footer */}
-        <div className="p-4 border-t">
-          <p className="text-xs text-muted-foreground text-center">
-            FolioBuddy v1.0
-          </p>
-        </div>
       </aside>
 
       {/* Main content */}
@@ -215,14 +216,25 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
           </Button>
 
-          <Button variant="ghost" size="icon" onClick={handleExport} aria-label="Export data" className="hidden sm:inline-flex h-9 w-9">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleExport}
+            aria-label="Export data"
+            className="hidden sm:inline-flex h-9 w-9"
+          >
             <Download className="h-4 w-4" />
           </Button>
 
           {/* Mobile: overflow menu for secondary actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="sm:hidden h-9 w-9 touch-manipulation" aria-label="More actions">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="sm:hidden h-9 w-9 touch-manipulation"
+                aria-label="More actions"
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
