@@ -595,7 +595,7 @@ components/ui/
 
 Each card is self-contained. Data flows down, events bubble up.
 
-Recent refinement: the stat strip is now borderless (no Card wrappers) — just labels + values in a horizontal flex row with a bottom border. `Exposure` and `Live Positions` link to Portfolio, `Closed Trades` links to Trades. All labels have `HelpTooltip` with contextual definitions. The Net Worth card is also borderless — large `text-4xl` typography with sub-metrics separated by `border-r` dividers. The overall aesthetic follows Linear/Raycast (calm, precise) rather than generic SaaS dashboard patterns.
+Recent refinement: the stat strip was merged into NetWorthCard as an equal-width 6-column grid (`grid-cols-6 divide-x`) with HelpTooltips on every label. `Exposure` and `Positions` link to Portfolio, `Trades` links to Trades. The card shows investor context in its title (`Net Worth (Nemo)`). PerformersCard went borderless (no Card wrapper) — plain list with divide-y, subtle rank numbers. Allocation chart tooltips were replaced with hover info inline in the card header row (Recharts Tooltip caused overlap). Benchmark chart Portfolio legend color was fixed to match the actual line (#64748B slate, not indigo). All pages now use staggered fade-in-up entrance animations (60ms intervals, prefers-reduced-motion respected) and consistent header sizing (`text-2xl font-bold`, `size="sm"` buttons). The overall aesthetic follows Linear/Raycast (calm, precise) rather than generic SaaS dashboard patterns.
 
 ---
 
@@ -1594,6 +1594,13 @@ Recently completed:
   - HelpTooltip component on finance-specific labels (YTD Start, Exposure, CEX, etc.)
   - Improved empty states: icon + heading + descriptive text + CTA button
   - Emerald profit colors, thinner scrollbars, `.impeccable.md` design context
+- [x] **Dashboard polish (critique follow-up):**
+  - Merged stat strip into NetWorthCard (6-column grid with HelpTooltips, investor label)
+  - PerformersCard restyled borderless (no Card wrapper, divide-y list)
+  - Allocation chart hover: replaced Recharts Tooltip with inline header info (avoids overlap)
+  - Benchmark chart: fixed Portfolio legend color to #64748B slate (matching line)
+  - Staggered fade-in-up entrance animations on Dashboard, History, Investors
+  - Normalized all page headers to `text-2xl font-bold` with `size="sm"` buttons
 
 ---
 
