@@ -33,6 +33,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
 import type { Position } from '@/lib/types';
+import { HelpTooltip } from '@/components/ui/HelpTooltip';
 
 const SKIP_DELETE_CONFIRM_KEY = 'pa-portfolio-skip-delete-confirm';
 
@@ -333,6 +334,7 @@ export function PositionTable({
                 />
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
                   CEX
+                  <HelpTooltip content="Centralized exchange — assets held on platforms like Binance or Coinbase" />
                 </p>
                 <span className="text-xs text-muted-foreground">({cexPositions.length})</span>
                 {!isExpanded(cexId) && (
@@ -365,6 +367,7 @@ export function PositionTable({
                 />
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
                   Onchain
+                  <HelpTooltip content="Assets in your own wallets (not on an exchange)" />
                 </p>
                 <span className="text-xs text-muted-foreground">({onchainPositions.length})</span>
                 {!isExpanded(onchainId) && (

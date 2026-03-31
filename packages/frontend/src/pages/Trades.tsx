@@ -54,6 +54,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Format trades for clipboard - includes asset info for recreating
 function formatTradesForClipboard(trades: Trade[]) {
@@ -524,21 +525,34 @@ function TradeTable({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center h-32">
-          <div className="animate-pulse text-muted-foreground">Loading trades...</div>
-        </CardContent>
-      </Card>
+      <div className="rounded-md border">
+        <div className="p-4 space-y-3">
+          {/* Header skeleton */}
+          <div className="flex gap-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-4 w-20" />
+            ))}
+          </div>
+          {/* Row skeletons */}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
     );
   }
 
   if (trades.length === 0) {
     return (
-      <Card>
-        <CardContent className="text-center py-12">
-          <p className="text-muted-foreground">No trades yet</p>
-        </CardContent>
-      </Card>
+      <div className="py-16 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <TrendingUp className="h-6 w-6 text-primary" />
+        </div>
+        <h3 className="text-lg font-semibold mb-1">No trades logged</h3>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+          Start logging your trades to track performance, win rate, and P&L analytics.
+        </p>
+      </div>
     );
   }
 

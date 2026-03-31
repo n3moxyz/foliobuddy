@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { usePositions, usePortfolioSummary, useDeleteAllPositions } from '@/hooks/usePortfolio';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
@@ -32,11 +32,14 @@ import {
   Coins,
   Banknote,
   Users,
+  Wallet,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
 import type { Position } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { HelpTooltip } from '@/components/ui/HelpTooltip';
 
 const PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
 
@@ -254,7 +257,10 @@ export default function Portfolio() {
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
           <Card className="py-2">
             <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">Total Value</p>
+              <p className="text-xs text-muted-foreground">
+                Total Value
+                <HelpTooltip content="Current market value of all your positions" />
+              </p>
               <CardTitle className="text-lg">
                 {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
               </CardTitle>
@@ -263,7 +269,10 @@ export default function Portfolio() {
 
           <Card className="py-2">
             <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">YTD Start</p>
+              <p className="text-xs text-muted-foreground">
+                YTD Start
+                <HelpTooltip content="Your total cost basis — how much you invested" />
+              </p>
               <CardTitle className="text-lg">
                 {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
               </CardTitle>
@@ -272,7 +281,10 @@ export default function Portfolio() {
 
           <Card className="py-2">
             <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">YTD P&L</p>
+              <p className="text-xs text-muted-foreground">
+                YTD P&L
+                <HelpTooltip content="Unrealized profit or loss since the start of the year" />
+              </p>
               <CardTitle className={`text-lg ${getPnLColorClass(summary.unrealizedPnL)}`}>
                 {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}
                 <span className="text-sm ml-1">({formatPercent(summary.unrealizedPnLPct)})</span>
@@ -282,7 +294,10 @@ export default function Portfolio() {
 
           <Card className="py-2">
             <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">Exposure</p>
+              <p className="text-xs text-muted-foreground">
+                Exposure
+                <HelpTooltip content="Percentage of portfolio in volatile crypto (excluding stablecoins)" />
+              </p>
               <CardTitle className="text-lg">
                 {summary.totalValueUsd > 0
                   ? `${(((cryptoTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
@@ -293,7 +308,10 @@ export default function Portfolio() {
 
           <Card className="py-2">
             <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">Positions</p>
+              <p className="text-xs text-muted-foreground">
+                Positions
+                <HelpTooltip content="Number of assets you currently hold" />
+              </p>
               <CardTitle className="text-lg">{summary.positionCount}</CardTitle>
             </CardHeader>
           </Card>
@@ -302,24 +320,52 @@ export default function Portfolio() {
 
       {/* Loading State */}
       {positionsLoading && (
-        <div className="flex items-center justify-center h-20">
-          <div className="animate-pulse text-muted-foreground text-sm">Loading positions...</div>
+        <div className="space-y-3">
+          {/* Skeleton summary cards */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="py-3 px-4">
+                <Skeleton className="h-3 w-16 mb-2" />
+                <Skeleton className="h-6 w-24" />
+              </div>
+            ))}
+          </div>
+          {/* Skeleton position sections */}
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="rounded-md border p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-4 rounded-full" />
+                <Skeleton className="h-4 w-24" />
+                <div className="ml-auto">
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, j) => (
+                  <Skeleton key={j} className="h-10 w-full" />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Empty State */}
       {!positionsLoading && (!positions || positions.length === 0) && (
-        <Card>
-          <CardContent className="py-8">
-            <div className="text-center">
-              <p className="text-muted-foreground mb-3 text-sm">No positions yet</p>
-              <Button size="sm" onClick={() => setShowAddForm(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add your first position
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="py-16 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Wallet className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="text-lg font-semibold mb-1">No positions yet</h3>
+          <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+            Add your first crypto or stablecoin position to start tracking your portfolio value and
+            P&L.
+          </p>
+          <Button onClick={() => setShowAddForm(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            Add Position
+          </Button>
+        </div>
       )}
 
       {/* Position Sections */}
@@ -361,7 +407,9 @@ export default function Portfolio() {
                         {formatCurrency(convertValue(section.total - perpExposure), currency, 0)}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        Perp: {formatCurrency(convertValue(perpExposure), currency, 0)}
+                        Perp:
+                        <HelpTooltip content="Open perpetual futures position size — adds to your crypto exposure calculation" />{' '}
+                        {formatCurrency(convertValue(perpExposure), currency, 0)}
                       </span>
                     </>
                   )}
@@ -391,7 +439,12 @@ export default function Portfolio() {
       {/* Custody: Held for Others */}
       {!positionsLoading && custodyPositions.length > 0 && (
         <CollapsibleCard
-          title={`Held for Others (${custodyPositions.length})`}
+          title={
+            <>
+              Held for Others ({custodyPositions.length})
+              <HelpTooltip content="Positions you're holding on behalf of other people — these are excluded from your personal net worth and P&L" />
+            </>
+          }
           icon={<Users className="h-4 w-4 text-purple-500" />}
           accentColor="border-l-purple-500"
           isExpanded={isExpanded('custody')}
