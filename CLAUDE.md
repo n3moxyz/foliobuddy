@@ -276,15 +276,8 @@ Rules:
 
 - **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
 - **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
-- **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Center label shows top item's % and name. Clickable legends toggle slices — percentages recalculate for visible items (both legend and tooltip). Maximally distinct hues per slice, avoiding benchmark line colors.
-
-### Dashboard Stat Strip
-
-Borderless stat strip (not cards): YTD Start, YTD P&L (with inline percentage), Exposure, Live Positions, Closed Trades. Uses `flex items-baseline gap-6 flex-wrap py-4 border-b` — no Card wrappers.
-
-- `Exposure` and `Live Positions` link to `/portfolio`, `Closed Trades` links to `/trades`
-- All stat labels have `HelpTooltip` with contextual definitions
-- Separate mobile layout: `grid grid-cols-2 gap-4` below `sm` breakpoint
+- **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items. Hover on pie slices shows info inline in the card header row (no Recharts Tooltip — removed to avoid overlap with legend). Maximally distinct hues per slice, avoiding benchmark line colors.
+- **Benchmark chart legend**: Portfolio line color is `#64748B` (slate gray) with matching color swatch dot — not the default `text-primary` indigo.
 
 ### Dashboard Investor Default
 
@@ -292,7 +285,23 @@ The dashboard investor filter should default to the primary owner investor (`isO
 
 ### Net Worth Card
 
-Borderless hero section (no Card wrapper). Net worth displayed at `text-4xl sm:text-5xl font-bold tracking-tight` — the largest element on the page. YTD trend arrow inline. Sub-metrics (YTD P&L, YTD Start, vs 30D ago) in horizontal row with `border-r` separators. Alternate currency in small text below.
+Borderless hero section (no Card wrapper) with merged stat metrics. Shows investor label in title: `Net Worth (Nemo)`. Net worth at `text-4xl sm:text-5xl font-bold tracking-tight`. YTD trend arrow inline. Desktop: `grid grid-cols-6 divide-x divide-border` for equal-width metric sections (YTD P&L, YTD Start, vs 30D ago, Exposure, Positions, Trades). Mobile: `grid grid-cols-2 gap-4`. All labels have `HelpTooltip`. Exposure/Positions link to `/portfolio`, Trades links to `/trades`. Alternate currency in small text below.
+
+### Performers Card
+
+Borderless layout (no Card wrapper) — plain `<div className="pb-4">` with `divide-y` list. Title uses small icons (`h-4 w-4`) with `text-profit`/`text-loss opacity-70`. Rank numbers in subtle `text-xs text-muted-foreground tabular-nums`.
+
+### Page Entrance Animations
+
+Dashboard, History, and Investors pages use staggered `animate-fade-in-up` entrance animations (CSS keyframe in `index.css`). 12px upward slide + opacity fade, 450ms with `cubic-bezier(0.16, 1, 0.3, 1)`. Each section has 60ms stagger delay. Respects `prefers-reduced-motion`.
+
+### Consistent Page Headers
+
+All pages MUST use the same header pattern for visual consistency when switching tabs:
+- **Wrapper**: `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`
+- **Title**: `text-2xl font-bold` (no responsive upsizing like `sm:text-3xl`)
+- **Subtitle**: `text-sm text-muted-foreground` (no `sm:text-base`)
+- **Buttons**: `size="sm"` with `mr-1` icon spacing
 
 ### Design System & Visual Identity
 
