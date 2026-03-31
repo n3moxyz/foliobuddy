@@ -305,15 +305,14 @@ export function PositionForm({
   const addPreview = useMemo(() => {
     if (!position || editMode !== 'delta') return null;
     const deltaQty = parseFloat(additionalQuantity);
-    const deltaCost = deltaMode === 'reduce'
-      ? deltaQty * position.avgCostUsd
-      : parseFloat(additionalTotalCost);
+    const deltaCost =
+      deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : parseFloat(additionalTotalCost);
     if (!(deltaQty > 0) || !(deltaCost >= 0)) return null;
 
     const currentTotalCost = position.quantity * position.avgCostUsd;
     const multiplier = deltaMode === 'add' ? 1 : -1;
-    const nextQuantity = position.quantity + (deltaQty * multiplier);
-    const nextTotalCost = currentTotalCost + (deltaCost * multiplier);
+    const nextQuantity = position.quantity + deltaQty * multiplier;
+    const nextTotalCost = currentTotalCost + deltaCost * multiplier;
     if (nextQuantity < 0 || nextTotalCost < 0) return null;
     const nextAvgCost = nextQuantity > 0 ? nextTotalCost / nextQuantity : 0;
 
@@ -538,9 +537,8 @@ export function PositionForm({
 
     if (isEditing && editMode === 'delta' && position) {
       const deltaQty = parseFloat(additionalQuantity);
-      const deltaCost = deltaMode === 'reduce'
-        ? deltaQty * position.avgCostUsd
-        : parseFloat(additionalTotalCost);
+      const deltaCost =
+        deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : parseFloat(additionalTotalCost);
 
       if (!(deltaQty > 0)) {
         setValidationError(`Please enter a valid ${deltaMode} quantity`);
@@ -554,8 +552,8 @@ export function PositionForm({
 
       const currentTotalCost = position.quantity * position.avgCostUsd;
       const multiplier = deltaMode === 'add' ? 1 : -1;
-      const nextQuantity = position.quantity + (deltaQty * multiplier);
-      const nextTotalCost = currentTotalCost + (deltaCost * multiplier);
+      const nextQuantity = position.quantity + deltaQty * multiplier;
+      const nextTotalCost = currentTotalCost + deltaCost * multiplier;
 
       if (nextQuantity < 0) {
         setValidationError('You cannot reduce below zero quantity');
@@ -575,7 +573,7 @@ export function PositionForm({
           data: {
             quantity: nextQuantity,
             avgCostUsd: nextAvgCost,
-            custodyOf: isCustody ? (custodyOf.trim() || 'Someone') : '',
+            custodyOf: isCustody ? custodyOf.trim() || 'Someone' : '',
           },
         });
         handleCustodySave();
@@ -750,7 +748,8 @@ export function PositionForm({
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Current quantity</p>
                     <p className="font-mono text-sm">
-                      {position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH'
+                      {position.asset.category === 'STABLECOIN' ||
+                      position.asset.category === 'CASH'
                         ? formatNumber(position.quantity, 0)
                         : formatNumber(position.quantity, 4)}
                     </p>
@@ -835,9 +834,12 @@ export function PositionForm({
                     <div className="text-right text-xs text-muted-foreground">Avg Cost</div>
                     <div className="text-right text-xs text-muted-foreground">Total Cost</div>
 
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Old</div>
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Old
+                    </div>
                     <div className="text-right font-mono text-muted-foreground">
-                      {position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH'
+                      {position.asset.category === 'STABLECOIN' ||
+                      position.asset.category === 'CASH'
                         ? formatNumber(addPreview.currentQuantity, 0)
                         : formatNumber(addPreview.currentQuantity, 4)}
                     </div>
@@ -848,9 +850,12 @@ export function PositionForm({
                       {addPreview.currentTotalCost.toFixed(0)}
                     </div>
 
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-primary">New</div>
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-primary">
+                      New
+                    </div>
                     <div className="text-right font-mono font-medium text-primary">
-                      {position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH'
+                      {position.asset.category === 'STABLECOIN' ||
+                      position.asset.category === 'CASH'
                         ? formatNumber(addPreview.nextQuantity, 0)
                         : formatNumber(addPreview.nextQuantity, 4)}
                     </div>
@@ -878,284 +883,299 @@ export function PositionForm({
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Saving...' : deltaMode === 'add' ? 'Add to Position' : 'Reduce Position'}
+                  {isLoading
+                    ? 'Saving...'
+                    : deltaMode === 'add'
+                      ? 'Add to Position'
+                      : 'Reduce Position'}
                 </Button>
               </div>
             </>
           ) : (
             <>
-          {/* Category Selection */}
-          {!isEditing && (
-            <div className="space-y-1">
-              <Label className="text-sm">Category</Label>
-              <Select value={category} onValueChange={(v) => setCategory(v as CategoryType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="crypto">Crypto</SelectItem>
-                  <SelectItem value="cash">Stables</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+              {/* Category Selection */}
+              {!isEditing && (
+                <div className="space-y-1">
+                  <Label className="text-sm">Category</Label>
+                  <Select value={category} onValueChange={(v) => setCategory(v as CategoryType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="crypto">Crypto</SelectItem>
+                      <SelectItem value="cash">Stables</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-          {/* Asset Selection - Different UI for Crypto vs Cash */}
-          {category === 'crypto' ? (
-            <div className="space-y-1">
-              <Label className="text-sm">Asset</Label>
-              <AssetSearchDropdown
-                selectedAsset={selectedAsset}
-                searchQuery={searchQuery}
-                showDropdown={showDropdown}
-                highlightedIndex={highlightedIndex}
-                searchLoading={searchLoading}
-                combinedResults={combinedResults}
-                isEditing={isEditing}
-                positionAssetSymbol={position?.asset.symbol}
-                positionAssetName={position?.asset.name}
-                onSearchChange={(value) => {
-                  setSearchQuery(value);
-                  setShowDropdown(true);
-                }}
-                onFocus={() => setShowDropdown(true)}
-                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                onKeyDown={handleSearchKeyDown}
-                onSelectExistingAsset={handleSelectExistingAsset}
-                onSelectCoin={handleSelectCoin}
-                onClearSelection={() => {
-                  setAssetId('');
-                  setSelectedAsset(null);
-                }}
-                setHighlightedIndex={setHighlightedIndex}
-                setValidationError={setValidationError}
-              />
-            </div>
-          ) : (
-            /* Cash / Stablecoin Selection */
-            <div className="space-y-1">
-              <Label className="text-sm">Stablecoin</Label>
-              {isEditing ? (
-                <Input
-                  value={`${position.asset.symbol} - ${position.asset.name}`}
-                  disabled
-                  className="bg-muted"
-                />
+              {/* Asset Selection - Different UI for Crypto vs Cash */}
+              {category === 'crypto' ? (
+                <div className="space-y-1">
+                  <Label className="text-sm">Asset</Label>
+                  <AssetSearchDropdown
+                    selectedAsset={selectedAsset}
+                    searchQuery={searchQuery}
+                    showDropdown={showDropdown}
+                    highlightedIndex={highlightedIndex}
+                    searchLoading={searchLoading}
+                    combinedResults={combinedResults}
+                    isEditing={isEditing}
+                    positionAssetSymbol={position?.asset.symbol}
+                    positionAssetName={position?.asset.name}
+                    onSearchChange={(value) => {
+                      setSearchQuery(value);
+                      setShowDropdown(true);
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                    onKeyDown={handleSearchKeyDown}
+                    onSelectExistingAsset={handleSelectExistingAsset}
+                    onSelectCoin={handleSelectCoin}
+                    onClearSelection={() => {
+                      setAssetId('');
+                      setSelectedAsset(null);
+                    }}
+                    setHighlightedIndex={setHighlightedIndex}
+                    setValidationError={setValidationError}
+                  />
+                </div>
               ) : (
+                /* Cash / Stablecoin Selection */
+                <div className="space-y-1">
+                  <Label className="text-sm">Stablecoin</Label>
+                  {isEditing ? (
+                    <Input
+                      value={`${position.asset.symbol} - ${position.asset.name}`}
+                      disabled
+                      className="bg-muted"
+                    />
+                  ) : (
+                    <Select
+                      value={selectedStablecoinId}
+                      onValueChange={handleSelectStablecoin}
+                      disabled={createAssetFromCoinGecko.isPending}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            createAssetFromCoinGecko.isPending
+                              ? 'Loading...'
+                              : 'Select a stablecoin'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TOP_STABLECOINS.map((coin) => (
+                          <SelectItem key={coin.id} value={coin.id}>
+                            {coin.symbol}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+
+              {/* Quantity / Amount */}
+              <div className="space-y-1">
+                <Label htmlFor="quantity" className="text-sm">
+                  {category === 'crypto' ? 'Quantity' : 'Amount'}
+                </Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  step="any"
+                  value={quantity}
+                  onChange={(e) => {
+                    setQuantity(e.target.value);
+                    setValidationError(null);
+                  }}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              {/* Total Cost & Average Cost (Crypto only) */}
+              {category === 'crypto' && (
+                <div className="space-y-2">
+                  {/* Toggle for cost input mode */}
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-muted-foreground">Enter:</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="costMode"
+                        checked={costInputMode === 'total'}
+                        onChange={() => setCostInputMode('total')}
+                        className="w-3.5 h-3.5 accent-primary"
+                      />
+                      <span
+                        className={
+                          costInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'
+                        }
+                      >
+                        Total Cost
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="costMode"
+                        checked={costInputMode === 'avg'}
+                        onChange={() => setCostInputMode('avg')}
+                        className="w-3.5 h-3.5 accent-primary"
+                      />
+                      <span
+                        className={
+                          costInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'
+                        }
+                      >
+                        Avg Cost
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="totalCost" className="text-sm">
+                        Total Cost (USD)
+                      </Label>
+                      <Input
+                        id="totalCost"
+                        type="number"
+                        step="any"
+                        value={costInputMode === 'total' ? totalCost : calculatedTotalCost}
+                        onChange={(e) => setTotalCost(e.target.value)}
+                        placeholder="0.00"
+                        disabled={costInputMode !== 'total'}
+                        className={costInputMode !== 'total' ? 'bg-muted' : ''}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="avgCost" className="text-sm">
+                        Average Cost (USD)
+                      </Label>
+                      <Input
+                        id="avgCost"
+                        type="number"
+                        step="any"
+                        value={costInputMode === 'avg' ? avgCostInput : calculatedAvgCost}
+                        onChange={(e) => setAvgCostInput(e.target.value)}
+                        placeholder="0.00"
+                        disabled={costInputMode !== 'avg'}
+                        className={costInputMode !== 'avg' ? 'bg-muted' : ''}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Storage Type */}
+              <div className="space-y-1">
+                <Label className="text-sm">Storage Type</Label>
                 <Select
-                  value={selectedStablecoinId}
-                  onValueChange={handleSelectStablecoin}
-                  disabled={createAssetFromCoinGecko.isPending}
+                  value={storageType}
+                  onValueChange={(value) =>
+                    setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK')
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        createAssetFromCoinGecko.isPending ? 'Loading...' : 'Select a stablecoin'
-                      }
-                    />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TOP_STABLECOINS.map((coin) => (
-                      <SelectItem key={coin.id} value={coin.id}>
-                        {coin.symbol}
+                    {STORAGE_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Storage Location */}
+              <div className="space-y-1">
+                <Label className="text-sm">Storage Location (Optional)</Label>
+                <Select
+                  value={storageLocation}
+                  onValueChange={(v) => {
+                    setStorageLocation(v);
+                    if (v !== 'Others') {
+                      setCustomLocation('');
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locationOptions.map((loc) => (
+                      <SelectItem key={loc} value={loc}>
+                        {loc}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Custom location input when "Others" is selected */}
+                {storageLocation === 'Others' && (
+                  <Input
+                    value={customLocation}
+                    onChange={(e) => setCustomLocation(e.target.value)}
+                    placeholder="Enter custom location..."
+                    className="mt-2"
+                  />
+                )}
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-1">
+                <Label htmlFor="notes" className="text-sm">
+                  Notes (Optional)
+                </Label>
+                <textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add any notes..."
+                  rows={2}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                />
+              </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  {error}
+                </div>
               )}
-            </div>
-          )}
 
-          {/* Quantity / Amount */}
-          <div className="space-y-1">
-            <Label htmlFor="quantity" className="text-sm">
-              {category === 'crypto' ? 'Quantity' : 'Amount'}
-            </Label>
-            <Input
-              id="quantity"
-              type="number"
-              step="any"
-              value={quantity}
-              onChange={(e) => {
-                setQuantity(e.target.value);
-                setValidationError(null);
-              }}
-              placeholder="0.00"
-              required
-            />
-          </div>
-
-          {/* Total Cost & Average Cost (Crypto only) */}
-          {category === 'crypto' && (
-            <div className="space-y-2">
-              {/* Toggle for cost input mode */}
-              <div className="flex items-center gap-4 text-sm">
-                <span className="text-muted-foreground">Enter:</span>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="costMode"
-                    checked={costInputMode === 'total'}
-                    onChange={() => setCostInputMode('total')}
-                    className="w-3.5 h-3.5 accent-primary"
-                  />
-                  <span
-                    className={costInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'}
-                  >
-                    Total Cost
-                  </span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="costMode"
-                    checked={costInputMode === 'avg'}
-                    onChange={() => setCostInputMode('avg')}
-                    className="w-3.5 h-3.5 accent-primary"
-                  />
-                  <span
-                    className={costInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'}
-                  >
-                    Avg Cost
-                  </span>
-                </label>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="totalCost" className="text-sm">
-                    Total Cost (USD)
-                  </Label>
-                  <Input
-                    id="totalCost"
-                    type="number"
-                    step="any"
-                    value={costInputMode === 'total' ? totalCost : calculatedTotalCost}
-                    onChange={(e) => setTotalCost(e.target.value)}
-                    placeholder="0.00"
-                    disabled={costInputMode !== 'total'}
-                    className={costInputMode !== 'total' ? 'bg-muted' : ''}
-                  />
+              {/* Validation Error Display */}
+              {validationError && (
+                <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
+                  {validationError}
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="avgCost" className="text-sm">
-                    Average Cost (USD)
-                  </Label>
-                  <Input
-                    id="avgCost"
-                    type="number"
-                    step="any"
-                    value={costInputMode === 'avg' ? avgCostInput : calculatedAvgCost}
-                    onChange={(e) => setAvgCostInput(e.target.value)}
-                    placeholder="0.00"
-                    disabled={costInputMode !== 'avg'}
-                    className={costInputMode !== 'avg' ? 'bg-muted' : ''}
-                  />
+              )}
+
+              {/* Position Limit Info */}
+              {!isEditing && (
+                <div className="text-xs text-muted-foreground">
+                  {category === 'crypto' ? cryptoCount : stablesCount} /{' '}
+                  {MAX_POSITIONS_PER_CATEGORY} {category === 'crypto' ? 'crypto' : 'stables'}{' '}
+                  positions
                 </div>
+              )}
+
+              {/* Submit */}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className={!isFormValid && !isLoading ? 'opacity-50 cursor-not-allowed' : ''}
+                >
+                  {isLoading ? 'Saving...' : isEditing ? 'Update Position' : 'Add Position'}
+                </Button>
               </div>
-            </div>
-          )}
-
-          {/* Storage Type */}
-          <div className="space-y-1">
-            <Label className="text-sm">Storage Type</Label>
-            <Select
-              value={storageType}
-              onValueChange={(value) => setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK')}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STORAGE_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Storage Location */}
-          <div className="space-y-1">
-            <Label className="text-sm">Storage Location (Optional)</Label>
-            <Select
-              value={storageLocation}
-              onValueChange={(v) => {
-                setStorageLocation(v);
-                if (v !== 'Others') {
-                  setCustomLocation('');
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locationOptions.map((loc) => (
-                  <SelectItem key={loc} value={loc}>
-                    {loc}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Custom location input when "Others" is selected */}
-            {storageLocation === 'Others' && (
-              <Input
-                value={customLocation}
-                onChange={(e) => setCustomLocation(e.target.value)}
-                placeholder="Enter custom location..."
-                className="mt-2"
-              />
-            )}
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-1">
-            <Label htmlFor="notes" className="text-sm">
-              Notes (Optional)
-            </Label>
-            <textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any notes..."
-              rows={2}
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-            />
-          </div>
-
-          {/* Error Display */}
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
-          )}
-
-          {/* Validation Error Display */}
-          {validationError && (
-            <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
-              {validationError}
-            </div>
-          )}
-
-          {/* Position Limit Info */}
-          {!isEditing && (
-            <div className="text-xs text-muted-foreground">
-              {category === 'crypto' ? cryptoCount : stablesCount} / {MAX_POSITIONS_PER_CATEGORY}{' '}
-              {category === 'crypto' ? 'crypto' : 'stables'} positions
-            </div>
-          )}
-
-          {/* Submit */}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className={!isFormValid && !isLoading ? 'opacity-50 cursor-not-allowed' : ''}
-            >
-              {isLoading ? 'Saving...' : isEditing ? 'Update Position' : 'Add Position'}
-            </Button>
-          </div>
             </>
           )}
         </form>

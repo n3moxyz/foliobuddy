@@ -1,9 +1,5 @@
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ConnectionStatus as ConnectionStatusType } from '@/hooks/useWebSocket';
 
 interface ConnectionStatusProps {
@@ -53,28 +49,21 @@ export function ConnectionStatus({ status, lastUpdate }: ConnectionStatusProps) 
             {status === 'connected' && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
             )}
-            <span
-              className={cn(
-                'relative inline-flex rounded-full h-2 w-2',
-                config.dotClass
-              )}
-            />
+            <span className={cn('relative inline-flex rounded-full h-2 w-2', config.dotClass)} />
           </span>
-          <span className="text-xs font-medium text-muted-foreground">
-            {config.label}
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">{config.label}</span>
         </div>
       </TooltipTrigger>
       <TooltipContent>
         <div className="text-xs">
           <p className="font-medium">
-            {status === 'connected' ? 'Real-time updates active' :
-             status === 'connecting' ? 'Establishing connection...' :
-             'Using polling fallback'}
+            {status === 'connected'
+              ? 'Real-time updates active'
+              : status === 'connecting'
+                ? 'Establishing connection...'
+                : 'Using polling fallback'}
           </p>
-          <p className="text-muted-foreground mt-1">
-            Last update: {formatLastUpdate(lastUpdate)}
-          </p>
+          <p className="text-muted-foreground mt-1">Last update: {formatLastUpdate(lastUpdate)}</p>
         </div>
       </TooltipContent>
     </Tooltip>

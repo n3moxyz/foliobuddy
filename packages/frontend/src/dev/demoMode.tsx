@@ -33,11 +33,51 @@ const Settings = lazy(() => import('@/pages/Settings'));
 const NOW = '2026-03-12T12:00:00.000Z';
 
 const initialAssets: Asset[] = [
-  { id: 'btc', coingeckoId: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', category: 'LIQUID_CRYPTO', currentPriceUsd: 81250, priceUpdatedAt: NOW },
-  { id: 'eth', coingeckoId: 'ethereum', symbol: 'ETH', name: 'Ethereum', category: 'LIQUID_CRYPTO', currentPriceUsd: 4320, priceUpdatedAt: NOW },
-  { id: 'sol', coingeckoId: 'solana', symbol: 'SOL', name: 'Solana', category: 'LIQUID_CRYPTO', currentPriceUsd: 178, priceUpdatedAt: NOW },
-  { id: 'usdc', coingeckoId: 'usd-coin', symbol: 'USDC', name: 'USD Coin', category: 'STABLECOIN', currentPriceUsd: 1, priceUpdatedAt: NOW },
-  { id: 'cash-sgd', coingeckoId: null, symbol: 'SGD', name: 'Cash SGD', category: 'CASH', currentPriceUsd: 0.74, priceUpdatedAt: NOW },
+  {
+    id: 'btc',
+    coingeckoId: 'bitcoin',
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    category: 'LIQUID_CRYPTO',
+    currentPriceUsd: 81250,
+    priceUpdatedAt: NOW,
+  },
+  {
+    id: 'eth',
+    coingeckoId: 'ethereum',
+    symbol: 'ETH',
+    name: 'Ethereum',
+    category: 'LIQUID_CRYPTO',
+    currentPriceUsd: 4320,
+    priceUpdatedAt: NOW,
+  },
+  {
+    id: 'sol',
+    coingeckoId: 'solana',
+    symbol: 'SOL',
+    name: 'Solana',
+    category: 'LIQUID_CRYPTO',
+    currentPriceUsd: 178,
+    priceUpdatedAt: NOW,
+  },
+  {
+    id: 'usdc',
+    coingeckoId: 'usd-coin',
+    symbol: 'USDC',
+    name: 'USD Coin',
+    category: 'STABLECOIN',
+    currentPriceUsd: 1,
+    priceUpdatedAt: NOW,
+  },
+  {
+    id: 'cash-sgd',
+    coingeckoId: null,
+    symbol: 'SGD',
+    name: 'Cash SGD',
+    category: 'CASH',
+    currentPriceUsd: 0.74,
+    priceUpdatedAt: NOW,
+  },
 ];
 
 const initialPositions: Position[] = [
@@ -250,8 +290,20 @@ const tradeAnalytics: TradeAnalytics = {
     long: { count: 2, winRate: 100, pnl: 8830 },
     short: { count: 1, winRate: 0, pnl: -765 },
   },
-  bestTrade: { id: 'trade-1', asset: 'BTC', pnl: 5450, pnlPct: 16.2, date: '2026-02-04T00:00:00.000Z' },
-  worstTrade: { id: 'trade-3', asset: 'SOL', pnl: -765, pnlPct: -4.7, date: '2026-03-02T00:00:00.000Z' },
+  bestTrade: {
+    id: 'trade-1',
+    asset: 'BTC',
+    pnl: 5450,
+    pnlPct: 16.2,
+    date: '2026-02-04T00:00:00.000Z',
+  },
+  worstTrade: {
+    id: 'trade-3',
+    asset: 'SOL',
+    pnl: -765,
+    pnlPct: -4.7,
+    date: '2026-03-02T00:00:00.000Z',
+  },
   monthlyBreakdown: [
     { month: 'Jan 2026', pnl: 0, count: 0, winRate: 0 },
     { month: 'Feb 2026', pnl: 8065, count: 3, winRate: 66.7 },
@@ -308,28 +360,126 @@ const snapshots: Snapshot[] = [
 
 const snapshotPositions: Record<string, SnapshotPosition[]> = {
   'snap-2': [
-    { id: 'sp-1', snapshotId: 'snap-2', assetSymbol: 'BTC', quantity: 1.42, priceUsd: 80400, valueUsd: 114168, allocation: 54.3, asset: initialAssets[0] },
-    { id: 'sp-2', snapshotId: 'snap-2', assetSymbol: 'ETH', quantity: 11.8, priceUsd: 4210, valueUsd: 49678, allocation: 23.6, asset: initialAssets[1] },
-    { id: 'sp-3', snapshotId: 'snap-2', assetSymbol: 'USDC', quantity: 24500, priceUsd: 1, valueUsd: 24500, allocation: 11.6, asset: initialAssets[3] },
+    {
+      id: 'sp-1',
+      snapshotId: 'snap-2',
+      assetSymbol: 'BTC',
+      quantity: 1.42,
+      priceUsd: 80400,
+      valueUsd: 114168,
+      allocation: 54.3,
+      asset: initialAssets[0],
+    },
+    {
+      id: 'sp-2',
+      snapshotId: 'snap-2',
+      assetSymbol: 'ETH',
+      quantity: 11.8,
+      priceUsd: 4210,
+      valueUsd: 49678,
+      allocation: 23.6,
+      asset: initialAssets[1],
+    },
+    {
+      id: 'sp-3',
+      snapshotId: 'snap-2',
+      assetSymbol: 'USDC',
+      quantity: 24500,
+      priceUsd: 1,
+      valueUsd: 24500,
+      allocation: 11.6,
+      asset: initialAssets[3],
+    },
   ],
   'snap-3': [
-    { id: 'sp-4', snapshotId: 'snap-3', assetSymbol: 'BTC', quantity: 1.42, priceUsd: 81250, valueUsd: 115375, allocation: 52.7, asset: initialAssets[0] },
-    { id: 'sp-5', snapshotId: 'snap-3', assetSymbol: 'ETH', quantity: 11.8, priceUsd: 4320, valueUsd: 50976, allocation: 23.3, asset: initialAssets[1] },
-    { id: 'sp-6', snapshotId: 'snap-3', assetSymbol: 'SOL', quantity: 220, priceUsd: 178, valueUsd: 39160, allocation: 17.9, asset: initialAssets[2] },
+    {
+      id: 'sp-4',
+      snapshotId: 'snap-3',
+      assetSymbol: 'BTC',
+      quantity: 1.42,
+      priceUsd: 81250,
+      valueUsd: 115375,
+      allocation: 52.7,
+      asset: initialAssets[0],
+    },
+    {
+      id: 'sp-5',
+      snapshotId: 'snap-3',
+      assetSymbol: 'ETH',
+      quantity: 11.8,
+      priceUsd: 4320,
+      valueUsd: 50976,
+      allocation: 23.3,
+      asset: initialAssets[1],
+    },
+    {
+      id: 'sp-6',
+      snapshotId: 'snap-3',
+      assetSymbol: 'SOL',
+      quantity: 220,
+      priceUsd: 178,
+      valueUsd: 39160,
+      allocation: 17.9,
+      asset: initialAssets[2],
+    },
   ],
 };
 
 const performance: PerformancePoint[] = [
-  { timestamp: '2026-02-12T13:00:00.000Z', totalValueUsd: 168200, totalValueSgd: 226230, unrealizedPnL: 11950, btcPrice: 72100, ethPrice: 3320 },
-  { timestamp: '2026-02-19T13:00:00.000Z', totalValueUsd: 176950, totalValueSgd: 238018, unrealizedPnL: 20700, btcPrice: 74420, ethPrice: 3510 },
-  { timestamp: '2026-02-26T13:00:00.000Z', totalValueUsd: 189300, totalValueSgd: 254805, unrealizedPnL: 33050, btcPrice: 76810, ethPrice: 3890 },
-  { timestamp: '2026-03-05T13:00:00.000Z', totalValueUsd: 202480, totalValueSgd: 272337, unrealizedPnL: 46230, btcPrice: 79120, ethPrice: 4075 },
-  { timestamp: '2026-03-10T13:00:00.000Z', totalValueUsd: 210400, totalValueSgd: 283040, unrealizedPnL: 54150, btcPrice: 80400, ethPrice: 4210 },
-  { timestamp: '2026-03-11T13:00:00.000Z', totalValueUsd: 218900, totalValueSgd: 294072, unrealizedPnL: 62650, btcPrice: 81250, ethPrice: 4320 },
+  {
+    timestamp: '2026-02-12T13:00:00.000Z',
+    totalValueUsd: 168200,
+    totalValueSgd: 226230,
+    unrealizedPnL: 11950,
+    btcPrice: 72100,
+    ethPrice: 3320,
+  },
+  {
+    timestamp: '2026-02-19T13:00:00.000Z',
+    totalValueUsd: 176950,
+    totalValueSgd: 238018,
+    unrealizedPnL: 20700,
+    btcPrice: 74420,
+    ethPrice: 3510,
+  },
+  {
+    timestamp: '2026-02-26T13:00:00.000Z',
+    totalValueUsd: 189300,
+    totalValueSgd: 254805,
+    unrealizedPnL: 33050,
+    btcPrice: 76810,
+    ethPrice: 3890,
+  },
+  {
+    timestamp: '2026-03-05T13:00:00.000Z',
+    totalValueUsd: 202480,
+    totalValueSgd: 272337,
+    unrealizedPnL: 46230,
+    btcPrice: 79120,
+    ethPrice: 4075,
+  },
+  {
+    timestamp: '2026-03-10T13:00:00.000Z',
+    totalValueUsd: 210400,
+    totalValueSgd: 283040,
+    unrealizedPnL: 54150,
+    btcPrice: 80400,
+    ethPrice: 4210,
+  },
+  {
+    timestamp: '2026-03-11T13:00:00.000Z',
+    totalValueUsd: 218900,
+    totalValueSgd: 294072,
+    unrealizedPnL: 62650,
+    btcPrice: 81250,
+    ethPrice: 4320,
+  },
 ];
 
 const dbHealth: DbHealth = { status: 'ok', latency_ms: 22 };
-const fxRates: FxRate[] = [{ id: 'usd-sgd', fromCcy: 'USD', toCcy: 'SGD', rate: 1.3471, timestamp: NOW }];
+const fxRates: FxRate[] = [
+  { id: 'usd-sgd', fromCcy: 'USD', toCcy: 'SGD', rate: 1.3471, timestamp: NOW },
+];
 let demoAssets: Asset[] = [...initialAssets];
 let demoPositions: Position[] = [...initialPositions];
 let demoIdCounter = 0;
@@ -371,18 +521,21 @@ function seedDemoPrice(coingeckoId: string | null, category: Asset['category']) 
   return 25;
 }
 
-function computePosition(asset: Asset, data: {
-  id: string;
-  assetId: string;
-  quantity: number;
-  avgCostUsd: number;
-  storageType: Position['storageType'];
-  storageLocation: string | null;
-  notes: string | null;
-  custodyOf: string | null;
-  createdAt: string;
-  updatedAt: string;
-}): Position {
+function computePosition(
+  asset: Asset,
+  data: {
+    id: string;
+    assetId: string;
+    quantity: number;
+    avgCostUsd: number;
+    storageType: Position['storageType'];
+    storageLocation: string | null;
+    notes: string | null;
+    custodyOf: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }
+): Position {
   const price = asset.currentPriceUsd ?? 0;
   const marketValueUsd = round(data.quantity * price);
   const totalCostUsd = data.quantity * data.avgCostUsd;
@@ -404,10 +557,15 @@ function getOwnedPositions() {
 
 function getSummary(): PortfolioSummary {
   const owned = getOwnedPositions();
-  const totalValueUsd = round(owned.reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0));
-  const totalCostBasis = round(owned.reduce((sum, position) => sum + (position.quantity * position.avgCostUsd), 0));
+  const totalValueUsd = round(
+    owned.reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0)
+  );
+  const totalCostBasis = round(
+    owned.reduce((sum, position) => sum + position.quantity * position.avgCostUsd, 0)
+  );
   const unrealizedPnL = round(totalValueUsd - totalCostBasis);
-  const unrealizedPnLPct = totalCostBasis > 0 ? round((unrealizedPnL / totalCostBasis) * 100, 1) : 0;
+  const unrealizedPnLPct =
+    totalCostBasis > 0 ? round((unrealizedPnL / totalCostBasis) * 100, 1) : 0;
   const fxRate = fxRates[0]?.rate ?? 1.3471;
 
   return {
@@ -432,7 +590,9 @@ function getPerformers(type: 'top' | 'worst') {
       unrealizedPnLPct: position.unrealizedPnLPct ?? 0,
       marketValueUsd: position.marketValueUsd ?? 0,
     }))
-    .sort((a, b) => type === 'top' ? b.unrealizedPnL - a.unrealizedPnL : a.unrealizedPnL - b.unrealizedPnL);
+    .sort((a, b) =>
+      type === 'top' ? b.unrealizedPnL - a.unrealizedPnL : a.unrealizedPnL - b.unrealizedPnL
+    );
 
   return owned.slice(0, 5);
 }
@@ -448,7 +608,12 @@ function getCurrentPrices(): AssetPrice[] {
   }));
 }
 
-function createDemoAsset(data: { coingeckoId: string; symbol: string; name: string; category?: Asset['category'] }) {
+function createDemoAsset(data: {
+  coingeckoId: string;
+  symbol: string;
+  name: string;
+  category?: Asset['category'];
+}) {
   const existing = demoAssets.find(
     (asset) =>
       asset.coingeckoId === data.coingeckoId ||
@@ -511,13 +676,18 @@ function updateDemoPosition(id: string, data: Partial<CreatePositionData>) {
     avgCostUsd: data.avgCostUsd ?? existing.avgCostUsd,
     storageType: data.storageType ?? existing.storageType,
     storageLocation: data.storageLocation ?? existing.storageLocation,
-    notes: data.notes === undefined ? existing.notes : (data.notes || null),
-    custodyOf: data.custodyOf === undefined ? existing.custodyOf : (data.custodyOf?.trim() ? data.custodyOf : null),
+    notes: data.notes === undefined ? existing.notes : data.notes || null,
+    custodyOf:
+      data.custodyOf === undefined
+        ? existing.custodyOf
+        : data.custodyOf?.trim()
+          ? data.custodyOf
+          : null,
     createdAt: existing.createdAt,
     updatedAt: new Date().toISOString(),
   });
 
-  demoPositions = demoPositions.map((position) => position.id === id ? updated : position);
+  demoPositions = demoPositions.map((position) => (position.id === id ? updated : position));
   return updated;
 }
 
@@ -562,7 +732,9 @@ function benchmarkHistory(id: string): BenchmarkHistoricalData {
     days: 30,
     data: performance.map((point, index) => ({
       timestamp: new Date(point.timestamp).getTime(),
-      price: Math.round((start + index * start * 0.018 + Math.sin(index * 0.7) * start * 0.01) * 100) / 100,
+      price:
+        Math.round((start + index * start * 0.018 + Math.sin(index * 0.7) * start * 0.01) * 100) /
+        100,
     })),
   };
 }
@@ -575,7 +747,8 @@ function json(data: unknown, status = 200) {
 }
 
 function parseUrl(input: string | URL | Request) {
-  const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  const raw =
+    typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   return new URL(raw, window.location.origin);
 }
 
@@ -606,24 +779,33 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   }
   if (path.startsWith('/api/positions/') && method === 'PUT') {
     const id = path.split('/')[3];
-    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as Partial<CreatePositionData>;
+    const body = JSON.parse(
+      (init?.body as string | undefined) ?? '{}'
+    ) as Partial<CreatePositionData>;
     return json(updateDemoPosition(id, body));
   }
   if (path.startsWith('/api/positions/') && method === 'DELETE') {
     const id = path.split('/')[3];
     const before = demoPositions.length;
     demoPositions = demoPositions.filter((position) => position.id !== id);
-    return before === demoPositions.length ? json({ error: 'Position not found' }, 404) : new Response(null, { status: 204 });
+    return before === demoPositions.length
+      ? json({ error: 'Position not found' }, 404)
+      : new Response(null, { status: 204 });
   }
   if (path === '/api/positions/bulk' && method === 'POST') {
-    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as { positions?: BulkImportPosition[] };
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
+      positions?: BulkImportPosition[];
+    };
     const imports = body.positions ?? [];
     imports.forEach(createImportedPosition);
-    return json({
-      results: imports.map((position) => ({ success: true, symbol: position.asset.symbol })),
-      successCount: imports.length,
-      totalCount: imports.length,
-    }, 201);
+    return json(
+      {
+        results: imports.map((position) => ({ success: true, symbol: position.asset.symbol })),
+        successCount: imports.length,
+        totalCount: imports.length,
+      },
+      201
+    );
   }
   if (path === '/api/trades' && method === 'GET') return json(filterTrades(url));
   if (path === '/api/trades/analytics' && method === 'GET') return json(tradeAnalytics);
@@ -638,7 +820,8 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   if (path === '/api/fx/rates' && method === 'GET') return json(fxRates);
   if (path === '/api/fx/refresh' && method === 'POST') return json({ rates: fxRates });
   if (path === '/api/prices/current' && method === 'GET') return json(getCurrentPrices());
-  if (path === '/api/prices/refresh' && method === 'POST') return json({ updated: getCurrentPrices().length, errors: 0 });
+  if (path === '/api/prices/refresh' && method === 'POST')
+    return json({ updated: getCurrentPrices().length, errors: 0 });
   if (path.startsWith('/api/prices/historical/') && method === 'GET') {
     return json(benchmarkHistory(path.split('/').pop() ?? 'benchmark'));
   }
@@ -655,11 +838,18 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
     return json(results);
   }
   if (path === '/api/assets/from-coingecko' && method === 'POST') {
-    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as { coingeckoId: string; symbol: string; name: string; category?: Asset['category'] };
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
+      coingeckoId: string;
+      symbol: string;
+      name: string;
+      category?: Asset['category'];
+    };
     return json(createDemoAsset(body), 201);
   }
-  if (path === '/api/snapshots' && method === 'POST') return json({ ...snapshots[0], id: 'snap-demo-created' });
-  if (path.startsWith('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return json({ ok: true });
+  if (path === '/api/snapshots' && method === 'POST')
+    return json({ ...snapshots[0], id: 'snap-demo-created' });
+  if (path.startsWith('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method))
+    return json({ ok: true });
 
   return null;
 }
@@ -676,7 +866,9 @@ function installDemoApiMock() {
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = parseUrl(input as string | URL | Request);
-    const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
+    const method = (
+      init?.method ?? (input instanceof Request ? input.method : 'GET')
+    ).toUpperCase();
     const mocked = await handleDemoApi(url, method, init);
     if (mocked) return mocked;
     return originalFetch(input, init);
@@ -707,7 +899,13 @@ function DemoPages() {
   return (
     <>
       <AppShell basePath="/dev/demo" demoMode>
-        <Suspense fallback={<div className="flex h-64 items-center justify-center text-muted-foreground">Loading...</div>}>
+        <Suspense
+          fallback={
+            <div className="flex h-64 items-center justify-center text-muted-foreground">
+              Loading...
+            </div>
+          }
+        >
           <Routes>
             <Route index element={<Dashboard />} />
             <Route path="portfolio" element={<Portfolio />} />
@@ -725,7 +923,5 @@ function DemoPages() {
 }
 
 export function DemoModeApp() {
-  return import.meta.env.DEV
-    ? <DemoPages />
-    : <Navigate to="/" replace />;
+  return import.meta.env.DEV ? <DemoPages /> : <Navigate to="/" replace />;
 }

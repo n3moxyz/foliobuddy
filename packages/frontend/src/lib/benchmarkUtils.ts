@@ -31,7 +31,7 @@ export function normalizeToPercentChange(values: number[]): number[] {
   if (values.length === 0) return [];
   const firstValue = values[0];
   if (firstValue === 0) return values.map(() => 0);
-  return values.map(v => ((v - firstValue) / firstValue) * 100);
+  return values.map((v) => ((v - firstValue) / firstValue) * 100);
 }
 
 /**
@@ -43,7 +43,7 @@ export function normalizePerformanceHistory(
 ): NormalizedDataPoint[] {
   if (performanceData.length === 0) return [];
 
-  const portfolioValues = performanceData.map(p => p.totalValueUsd);
+  const portfolioValues = performanceData.map((p) => p.totalValueUsd);
   const portfolioNorm = normalizeToPercentChange(portfolioValues);
 
   return performanceData.map((point, i) => ({
@@ -115,18 +115,21 @@ export function mergeAdditionalBenchmark(
   const firstPrice = baselineResult.price;
 
   // Dynamic threshold: 3x the average data spacing, minimum 48 hours
-  const avgSpacing = sortedData.length > 1
-    ? (sortedData[sortedData.length - 1].timestamp - sortedData[0].timestamp) / (sortedData.length - 1)
-    : 24 * 60 * 60 * 1000;
+  const avgSpacing =
+    sortedData.length > 1
+      ? (sortedData[sortedData.length - 1].timestamp - sortedData[0].timestamp) /
+        (sortedData.length - 1)
+      : 24 * 60 * 60 * 1000;
   const threshold = Math.max(avgSpacing * 3, 48 * 60 * 60 * 1000);
 
-  return normalizedData.map(point => {
+  return normalizedData.map((point) => {
     const targetTime = point.date.getTime();
     const result = findClosestPrice(sortedData, targetTime);
 
-    const percentChange = result && result.diff < threshold
-      ? ((result.price - firstPrice) / firstPrice) * 100
-      : undefined;
+    const percentChange =
+      result && result.diff < threshold
+        ? ((result.price - firstPrice) / firstPrice) * 100
+        : undefined;
 
     return {
       ...point,

@@ -16,12 +16,7 @@ export class AppError extends Error {
   }
 }
 
-export function errorHandler(
-  err: Error,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+export function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
   logger.error('Error:', err);
 
   // Zod validation errors
@@ -69,8 +64,6 @@ export function errorHandler(
 
   // Unknown errors
   return res.status(500).json({
-    error: process.env.NODE_ENV === 'production'
-      ? 'Internal server error'
-      : err.message,
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
   });
 }

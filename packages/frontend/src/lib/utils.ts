@@ -34,10 +34,7 @@ export function formatCurrency(
   return formatted;
 }
 
-export function formatNumber(
-  value: number | null | undefined,
-  decimals: number = 2
-): string {
+export function formatNumber(value: number | null | undefined, decimals: number = 2): string {
   if (value === null || value === undefined) return '-';
 
   return new Intl.NumberFormat('en-US', {

@@ -28,7 +28,7 @@ router.get('/csv/positions', async (req, res, next) => {
       'Storage Location',
     ];
 
-    const rows = positions.map(p => [
+    const rows = positions.map((p) => [
       p.asset.symbol,
       p.asset.name,
       p.asset.category,
@@ -43,7 +43,7 @@ router.get('/csv/positions', async (req, res, next) => {
     ]);
 
     const csv = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
@@ -88,7 +88,7 @@ router.get('/csv/trades', async (req, res, next) => {
       'Notes',
     ];
 
-    const rows = trades.map(t => [
+    const rows = trades.map((t) => [
       t.asset.symbol,
       t.direction,
       t.status,
@@ -104,7 +104,7 @@ router.get('/csv/trades', async (req, res, next) => {
     ]);
 
     const csv = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
@@ -173,7 +173,7 @@ router.get('/excel', async (req, res, next) => {
       { header: 'Storage', key: 'storage', width: 10 },
       { header: 'Location', key: 'location', width: 20 },
     ];
-    positions.forEach(p => {
+    positions.forEach((p) => {
       positionsSheet.addRow({
         symbol: p.asset.symbol,
         name: p.asset.name,
@@ -205,7 +205,7 @@ router.get('/excel', async (req, res, next) => {
       { header: 'P&L %', key: 'pnlPct', width: 10 },
       { header: 'Notes', key: 'notes', width: 30 },
     ];
-    trades.forEach(t => {
+    trades.forEach((t) => {
       tradesSheet.addRow({
         asset: t.asset.symbol,
         direction: t.direction,
@@ -233,7 +233,7 @@ router.get('/excel', async (req, res, next) => {
       { header: 'Return %', key: 'returnPct', width: 10 },
       { header: 'Join Date', key: 'joinDate', width: 12 },
     ];
-    investors.forEach(i => {
+    investors.forEach((i) => {
       investorsSheet.addRow({
         name: i.name,
         stakePct: i.stakePercentage,
@@ -259,7 +259,7 @@ router.get('/excel', async (req, res, next) => {
       { header: 'BTC Outperform', key: 'btcOutperform', width: 15 },
       { header: 'ETH Outperform', key: 'ethOutperform', width: 15 },
     ];
-    snapshots.forEach(s => {
+    snapshots.forEach((s) => {
       snapshotsSheet.addRow({
         date: s.timestamp,
         type: s.snapshotType,
@@ -277,8 +277,14 @@ router.get('/excel', async (req, res, next) => {
     // Write to buffer
     const buffer = await workbook.xlsx.writeBuffer();
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=portfolio_${new Date().toISOString().split('T')[0]}.xlsx`);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=portfolio_${new Date().toISOString().split('T')[0]}.xlsx`
+    );
     res.send(buffer);
   } catch (error) {
     next(error);
