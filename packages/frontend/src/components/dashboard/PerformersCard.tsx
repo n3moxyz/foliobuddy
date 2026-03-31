@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import type { Performer } from '@/lib/types';
@@ -29,61 +28,58 @@ export function PerformersCard({
 
   if (performers.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {type === 'top' ? (
-              <TrendingUp className="h-5 w-5 text-green-500" />
-            ) : (
-              <TrendingDown className="h-5 w-5 text-red-500" />
-            )}
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">No positions yet</p>
-        </CardContent>
-      </Card>
+      <div className="pb-4">
+        <p className="flex items-center gap-2 font-medium mb-3">
+          {type === 'top' ? (
+            <TrendingUp className="h-4 w-4 text-profit opacity-70" />
+          ) : (
+            <TrendingDown className="h-4 w-4 text-loss opacity-70" />
+          )}
+          {title}
+        </p>
+        <p className="text-muted-foreground text-sm">No positions yet</p>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          {type === 'top' ? (
-            <TrendingUp className="h-5 w-5 text-green-500" />
-          ) : (
-            <TrendingDown className="h-5 w-5 text-red-500" />
-          )}
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {performers.map((performer, index) => (
-            <div key={performer.assetId} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-muted-foreground text-sm w-4">{index + 1}.</span>
-                <div>
-                  <p className="font-medium">{performer.symbol}</p>
-                  <p className="text-sm text-muted-foreground truncate max-w-[120px]">
-                    {performer.name}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className={`font-medium ${getPnLColorClass(performer.unrealizedPnL)}`}>
-                  {formatCurrency(convert(performer.unrealizedPnL), currency, 0)}
-                </p>
-                <p className={`text-sm ${getPnLColorClass(performer.unrealizedPnLPct)}`}>
-                  {formatPercent(performer.unrealizedPnLPct)}
+    <div className="pb-4">
+      <p className="flex items-center gap-2 font-medium mb-3">
+        {type === 'top' ? (
+          <TrendingUp className="h-4 w-4 text-profit opacity-70" />
+        ) : (
+          <TrendingDown className="h-4 w-4 text-loss opacity-70" />
+        )}
+        {title}
+      </p>
+      <div className="divide-y">
+        {performers.map((performer, index) => (
+          <div
+            key={performer.assetId}
+            className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground text-xs tabular-nums w-4">{index + 1}</span>
+              <div>
+                <p className="font-medium text-sm">{performer.symbol}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[120px]">
+                  {performer.name}
                 </p>
               </div>
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            <div className="text-right">
+              <p
+                className={`font-semibold tabular-nums ${getPnLColorClass(performer.unrealizedPnL)}`}
+              >
+                {formatCurrency(convert(performer.unrealizedPnL), currency, 0)}
+              </p>
+              <p className={`text-xs ${getPnLColorClass(performer.unrealizedPnLPct)}`}>
+                {formatPercent(performer.unrealizedPnLPct)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -85,24 +85,25 @@ export default function Investors() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Investors</h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
+          <h1 className="text-2xl font-bold">Investors</h1>
+          <p className="text-sm text-muted-foreground">
             Manage investor stakes and track their returns
           </p>
         </div>
         <Button
-          className="touch-manipulation self-start sm:self-auto"
+          size="sm"
+          className="touch-manipulation"
           onClick={() => setShowAddForm(true)}
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-1" />
           Add Investor
         </Button>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
+      <div className="animate-fade-in-up grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4" style={{ animationDelay: '60ms' }}>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Investors</CardDescription>
@@ -137,7 +138,7 @@ export default function Investors() {
       </div>
 
       {/* Investors Table */}
-      <Card>
+      <Card className="animate-fade-in-up" style={{ animationDelay: '120ms' }}>
         <CardHeader>
           <CardTitle>Investor List</CardTitle>
           <CardDescription>All investors and their current values</CardDescription>

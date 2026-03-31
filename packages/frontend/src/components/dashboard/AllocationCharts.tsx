@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import type { Position } from '@/lib/types';
 
@@ -173,21 +173,8 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     setHidden(newHidden);
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-background border rounded-lg shadow-lg p-3">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-sm text-muted-foreground">{formatCurrency(data.value, 'USD', 0)}</p>
-          <p className="text-sm text-muted-foreground">
-            {formatNumber(data.displayPercentage ?? data.percentage, 1)}%
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  // Track hovered slice index per chart for center label
+  const [hoveredSlice, setHoveredSlice] = useState<Record<string, number | null>>({});
 
   const renderPieChart = (
     data: ChartData[],
@@ -206,51 +193,67 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     return (
       <Card className="flex-1">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">{title}</CardTitle>
+          <div className="flex items-baseline justify-between gap-3 min-h-[24px]">
+            <CardTitle className="text-base flex-shrink-0">{title}</CardTitle>
+            {/* Hover info — inline with title, no layout shift */}
+            {(() => {
+              const hIdx = hoveredSlice[title];
+              if (hIdx == null || !visibleData[hIdx]) return null;
+              const hovered = visibleData[hIdx];
+              return (
+                <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap truncate">
+                  {hovered.name} &middot; {formatCurrency(hovered.value, 'USD', 0)} &middot; {formatNumber(hovered.displayPercentage, 1)}%
+                </span>
+              );
+            })()}
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             {/* Donut Chart with Center Label */}
             <div className="mx-auto h-[140px] w-[140px] flex-shrink-0 relative sm:mx-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={visibleData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={35}
-                    outerRadius={60}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {visibleData.map((entry) => {
-                      const originalIndex = data.findIndex((d) => d.name === entry.name);
-                      return (
-                        <Cell
-                          key={`cell-${entry.name}`}
-                          fill={colors[originalIndex % colors.length]}
-                        />
-                      );
-                    })}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Center label — top visible item */}
-              {visibleData.length > 0 &&
-                (() => {
-                  const top = visibleData.reduce((a, b) => (a.value > b.value ? a : b));
-                  return (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-lg font-bold leading-tight">
-                        {Math.round(top.displayPercentage)}%
-                      </span>
-                      <span className="text-[10px] text-muted-foreground leading-tight">
-                        {top.name}
-                      </span>
-                    </div>
-                  );
-                })()}
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={visibleData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={35}
+                      outerRadius={60}
+                      paddingAngle={2}
+                      dataKey="value"
+                      onMouseLeave={() => setHoveredSlice((prev) => ({ ...prev, [title]: null }))}
+                    >
+                      {visibleData.map((entry, i) => {
+                        const originalIndex = data.findIndex((d) => d.name === entry.name);
+                        return (
+                          <Cell
+                            key={`cell-${entry.name}`}
+                            fill={colors[originalIndex % colors.length]}
+                            onMouseEnter={() => setHoveredSlice((prev) => ({ ...prev, [title]: i }))}
+                            style={{ cursor: 'pointer', outline: 'none' }}
+                          />
+                        );
+                      })}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Center label — always shows top visible item */}
+                {visibleData.length > 0 &&
+                  (() => {
+                    const top = visibleData.reduce((a, b) => (a.value > b.value ? a : b));
+                    const shortName = top.name.length > 8 ? top.name.slice(0, 7) + '\u2026' : top.name;
+                    return (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-lg font-bold leading-tight">
+                          {Math.round(top.displayPercentage)}%
+                        </span>
+                        <span className="text-[10px] text-muted-foreground leading-tight">
+                          {shortName}
+                        </span>
+                      </div>
+                    );
+                  })()}
             </div>
 
             {/* Side Legend */}
@@ -265,7 +268,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                 return (
                   <button
                     key={item.name}
-                    className={`flex items-center gap-2 text-xs transition-all hover:opacity-80 ${
+                    className={`flex items-center gap-2 text-xs transition-colors cursor-pointer ${
                       isHidden ? 'opacity-40 line-through text-muted-foreground' : ''
                     }`}
                     onClick={() => toggleLegendItem(item.name, hidden, setHidden)}

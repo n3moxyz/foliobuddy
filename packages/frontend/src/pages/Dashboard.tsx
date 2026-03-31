@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   usePortfolioSummary,
   usePositions,
@@ -10,7 +9,7 @@ import {
 } from '@/hooks/usePortfolio';
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
-import { formatCurrency, formatPercent, getPnLColorClass, formatDateTime } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -71,13 +70,6 @@ export default function Dashboard() {
       .reduce((sum, inv) => sum + inv.stakePercentage, 0);
     return totalStake / 100;
   }, [selectedInvestors, investors]);
-
-  // Helper to convert values based on currency and apply stake multiplier
-  const convert = (usdValue: number | null | undefined) => {
-    if (usdValue === null || usdValue === undefined) return usdValue;
-    const converted = currency === 'SGD' ? usdValue * fxRate : usdValue;
-    return converted * stakeMultiplier;
-  };
 
   const perpExposure = useMemo(() => {
     const saved = localStorage.getItem(PERP_EXPOSURE_KEY);
@@ -141,16 +133,10 @@ export default function Dashboard() {
             <Skeleton className="h-6 w-20" />
             <Skeleton className="h-6 w-20" />
             <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-6 w-20" />
           </div>
-        </div>
-
-        {/* Stats strip loading skeleton */}
-        <div className="py-4 border-b flex items-baseline gap-6 flex-wrap">
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-6 w-20" />
         </div>
       </div>
     );
@@ -159,16 +145,16 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
           <DbStatusBanner />
         </div>
 
         {/* Investor Filter */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-9 w-full justify-between sm:w-auto">
+            <Button variant="outline" size="sm" className="w-full justify-between sm:w-auto">
               <Users className="h-4 w-4 mr-2" />
               <span className="truncate">{getInvestorLabel()}</span>
               <ChevronDown className="h-3 w-3 ml-2" />
@@ -222,109 +208,47 @@ export default function Dashboard() {
 
       {/* Net Worth Card */}
       {summary && (
-        <NetWorthCard
-          summary={summary}
-          currency={currency}
-          stakeMultiplier={stakeMultiplier}
-          valueUsd30dAgo={valueUsd30dAgo}
-        />
+        <div className="animate-fade-in-up" style={{ animationDelay: '60ms' }}>
+          <NetWorthCard
+            summary={summary}
+            currency={currency}
+            stakeMultiplier={stakeMultiplier}
+            valueUsd30dAgo={valueUsd30dAgo}
+            exposurePct={exposurePct}
+            positionCount={summary.positionCount ?? 0}
+            closedTrades={tradeAnalytics?.totalTrades ?? 0}
+            investorLabel={getInvestorLabel()}
+          />
+        </div>
       )}
 
-      {/* Stats Strip */}
-      <div className="py-4 border-b hidden sm:flex items-baseline gap-6 flex-wrap">
-        <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">YTD Start</p>
-          <p className="text-lg font-semibold tabular-nums">
-            {formatCurrency(convert(summary?.totalCostBasis), currency, 0)}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">YTD P&L</p>
-          <p
-            className={`text-lg font-semibold tabular-nums ${getPnLColorClass(summary?.unrealizedPnL)}`}
-          >
-            {formatCurrency(convert(summary?.unrealizedPnL), currency, 0)}
-            <span className={`text-xs ml-1.5 ${getPnLColorClass(summary?.unrealizedPnLPct)}`}>
-              {formatPercent(summary?.unrealizedPnLPct)}
-            </span>
-          </p>
-        </div>
-
-        <Link to="/portfolio" className="hover:text-primary transition-colors cursor-pointer">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Exposure</p>
-          <p className="text-lg font-semibold tabular-nums">{`${exposurePct.toFixed(1)}%`}</p>
-        </Link>
-
-        <Link to="/portfolio" className="hover:text-primary transition-colors cursor-pointer">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Live Positions</p>
-          <p className="text-lg font-semibold tabular-nums">{summary?.positionCount ?? 0}</p>
-        </Link>
-
-        <Link to="/trades" className="hover:text-primary transition-colors cursor-pointer">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Closed Trades</p>
-          <p className="text-lg font-semibold tabular-nums">{tradeAnalytics?.totalTrades ?? 0}</p>
-        </Link>
-      </div>
-
-      {/* Mobile Stats Grid */}
-      <div className="sm:hidden grid grid-cols-2 gap-4 py-4 border-b">
-        <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">YTD Start</p>
-          <p className="text-lg font-semibold tabular-nums">
-            {formatCurrency(convert(summary?.totalCostBasis), currency, 0)}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">YTD P&L</p>
-          <p
-            className={`text-lg font-semibold tabular-nums ${getPnLColorClass(summary?.unrealizedPnL)}`}
-          >
-            {formatCurrency(convert(summary?.unrealizedPnL), currency, 0)}
-            <span
-              className={`text-xs ml-1.5 block sm:inline ${getPnLColorClass(summary?.unrealizedPnLPct)}`}
-            >
-              {formatPercent(summary?.unrealizedPnLPct)}
-            </span>
-          </p>
-        </div>
-
-        <Link to="/portfolio" className="hover:text-primary transition-colors cursor-pointer">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Exposure</p>
-          <p className="text-lg font-semibold tabular-nums">{`${exposurePct.toFixed(1)}%`}</p>
-        </Link>
-
-        <Link to="/portfolio" className="hover:text-primary transition-colors cursor-pointer">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Live Positions</p>
-          <p className="text-lg font-semibold tabular-nums">{summary?.positionCount ?? 0}</p>
-        </Link>
-
-        <Link
-          to="/trades"
-          className="hover:text-primary transition-colors cursor-pointer col-span-2"
-        >
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Closed Trades</p>
-          <p className="text-lg font-semibold tabular-nums">{tradeAnalytics?.totalTrades ?? 0}</p>
-        </Link>
-      </div>
-
       {/* Portfolio Value Chart */}
-      <PortfolioChart
-        currency={currency}
-        fxRate={fxRate}
-        stakeMultiplier={stakeMultiplier}
-        liveValueUsd={summary?.totalValueUsd}
-      />
+      <div className="animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+        <PortfolioChart
+          currency={currency}
+          fxRate={fxRate}
+          stakeMultiplier={stakeMultiplier}
+          liveValueUsd={summary?.totalValueUsd}
+        />
+      </div>
 
       {/* Benchmark Comparison Chart */}
-      <BenchmarkComparisonChart />
+      <div className="animate-fade-in-up" style={{ animationDelay: '180ms' }}>
+        <BenchmarkComparisonChart />
+      </div>
 
       {/* Allocation Charts */}
-      {positions && <AllocationCharts positions={positions} isLoading={positionsLoading} />}
+      {positions && (
+        <div className="animate-fade-in-up" style={{ animationDelay: '240ms' }}>
+          <AllocationCharts positions={positions} isLoading={positionsLoading} />
+        </div>
+      )}
 
       {/* Performers */}
-      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+      <div
+        className="animate-fade-in-up grid gap-4 sm:gap-6 md:grid-cols-2"
+        style={{ animationDelay: '300ms' }}
+      >
         {topPerformers && (
           <PerformersCard
             title="Top Performers"
@@ -348,7 +272,10 @@ export default function Dashboard() {
       </div>
 
       {/* Last Updated */}
-      <div className="text-center text-sm text-muted-foreground">
+      <div
+        className="animate-fade-in-up text-center text-sm text-muted-foreground"
+        style={{ animationDelay: '360ms' }}
+      >
         Last updated: {formatDateTime(summary?.lastUpdated)}
       </div>
     </div>
