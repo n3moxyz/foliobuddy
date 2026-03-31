@@ -100,9 +100,9 @@ export default function History() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Snapshot History</h1>
+          <h1 className="text-2xl font-bold">Snapshot History</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -194,7 +194,7 @@ export default function History() {
       </div>
 
       {/* Stats */}
-      <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
+      <div className="animate-fade-in-up flex items-baseline gap-6 flex-wrap py-4 border-b" style={{ animationDelay: '60ms' }}>
         <div>
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Total</p>
           <p className="text-lg font-semibold tabular-nums">{totalCount}</p>
@@ -210,7 +210,7 @@ export default function History() {
       </div>
 
       {/* Snapshot Table with Tabs */}
-      <Tabs defaultValue="all" onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
+      <Tabs className="animate-fade-in-up" style={{ animationDelay: '120ms' }} defaultValue="all" onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
         <TabsList className="sm:w-auto">
           <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
           <TabsTrigger value="AUTOMATIC">Automatic ({automaticCount})</TabsTrigger>

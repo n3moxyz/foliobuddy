@@ -390,11 +390,17 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
           )}
 
           {/* Portfolio Legend Item */}
-          <div className="w-full text-sm sm:ml-auto sm:w-auto">
-            <span className="text-primary font-medium">Portfolio</span>
+          <div className="w-full text-sm sm:ml-auto sm:w-auto flex items-center gap-1.5">
+            <div
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: '#64748B' }}
+            />
+            <span className="font-medium" style={{ color: '#64748B' }}>
+              Portfolio
+            </span>
             {chartData.length > 0 && (
               <span
-                className={`ml-1 ${(getCurrentChange(chartData, 'portfolio') ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                className={`ml-0.5 ${(getCurrentChange(chartData, 'portfolio') ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
               >
                 {(() => {
                   const change = getCurrentChange(chartData, 'portfolio');

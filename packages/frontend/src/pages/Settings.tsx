@@ -76,11 +76,13 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold sm:text-3xl">Settings</h1>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          Configure your portfolio dashboard
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Settings</h1>
+          <p className="text-sm text-muted-foreground">
+            Configure your portfolio dashboard
+          </p>
+        </div>
       </div>
 
       {/* Display Settings */}

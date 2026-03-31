@@ -135,8 +135,8 @@ export default function Trades() {
       {/* Page header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Trade Journal</h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
+          <h1 className="text-2xl font-bold">Trade Journal</h1>
+          <p className="text-sm text-muted-foreground">
             Track and analyze your trading performance
           </p>
         </div>
