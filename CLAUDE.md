@@ -67,7 +67,7 @@
 - `src/App.tsx` - Main app with routing
 - `src/pages/` - Dashboard, Portfolio, Trades, Investors, Settings
 - `src/components/` - Reusable UI components
-- `src/hooks/` - React Query hooks (usePortfolio, useTrades, etc.)
+- `src/hooks/` - React Query hooks (usePortfolio, useTrades, etc.) + `useAnimatedNumber` (rAF-based number ticker)
 - `src/hooks/__tests__/` - Hook unit tests (vitest + React Testing Library)
 - `src/lib/api.ts` - API client methods (305 lines, methods only)
 - `src/lib/types.ts` - Frontend type definitions (347 lines, extracted from api.ts)
@@ -276,7 +276,7 @@ Rules:
 
 - **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
 - **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
-- **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items. Hover on pie slices shows info inline in the card header row (no Recharts Tooltip — removed to avoid overlap with legend). Maximally distinct hues per slice, avoiding benchmark line colors.
+- **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items. Hover on pie slices shows info inline in the card header row using `compactUsd()` for short dollar values ($1.2K, $3.4M, $1.2B) — no Recharts Tooltip (removed to avoid overlap with legend). Maximally distinct hues per slice, avoiding benchmark line colors.
 - **Benchmark chart legend**: Portfolio line color is `#64748B` (slate gray) with matching color swatch dot — not the default `text-primary` indigo.
 
 ### Dashboard Investor Default
@@ -285,7 +285,7 @@ The dashboard investor filter should default to the primary owner investor (`isO
 
 ### Net Worth Card
 
-Borderless hero section (no Card wrapper) with merged stat metrics. Shows investor label in title: `Net Worth (Nemo)`. Net worth at `text-4xl sm:text-5xl font-bold tracking-tight`. YTD trend arrow inline. Desktop: `grid grid-cols-6 divide-x divide-border` for equal-width metric sections (YTD P&L, YTD Start, vs 30D ago, Exposure, Positions, Trades). Mobile: `grid grid-cols-2 gap-4`. All labels have `HelpTooltip`. Exposure/Positions link to `/portfolio`, Trades links to `/trades`. Alternate currency in small text below.
+Borderless hero section (no Card wrapper) with merged stat metrics. Shows investor label in title: `Net Worth (Nemo)`. Net worth at `text-4xl sm:text-5xl font-bold tracking-tight`. YTD trend arrow inline. Desktop: `grid grid-cols-6 divide-x divide-border` for equal-width metric sections (YTD P&L, YTD Start, vs 30D ago, Exposure, Positions, Trades). Mobile: `grid grid-cols-2 gap-4`. All labels have `HelpTooltip`. Exposure/Positions link to `/portfolio`, Trades links to `/trades`. Alternate currency in small text below. Key numeric values (net worth, P&L, cost basis, alt currency) use `useAnimatedNumber` hook for smooth counting transitions on value changes.
 
 ### Performers Card
 
