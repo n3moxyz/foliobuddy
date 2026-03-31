@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
+import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
 import type { PortfolioSummary } from '@/lib/types';
 
 interface NetWorthCardProps {
@@ -42,7 +43,14 @@ export function NetWorthCard({
   };
 
   const value = convert(summary.totalValueUsd);
+  const pnlValue = convert(summary.unrealizedPnL);
+  const costBasisValue = convert(summary.totalCostBasis);
   const isPositive = summary.unrealizedPnL >= 0;
+
+  // Animated numbers — smooth count on value changes
+  const animatedValue = useAnimatedNumber(value);
+  const animatedPnl = useAnimatedNumber(pnlValue);
+  const animatedCostBasis = useAnimatedNumber(costBasisValue);
 
   // 30-day period comparison
   const change30d = useMemo(() => {
@@ -59,6 +67,7 @@ export function NetWorthCard({
     currency === 'USD'
       ? summary.totalValueSgd * stakeMultiplier
       : summary.totalValueUsd * stakeMultiplier;
+  const animatedAltValue = useAnimatedNumber(altValue);
 
   return (
     <div className="pb-6 mb-2 border-b">
@@ -68,7 +77,7 @@ export function NetWorthCard({
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-3">
         <span className="text-4xl font-bold tracking-tight sm:text-5xl tabular-nums">
-          {formatCurrency(value, currency, 0)}
+          {formatCurrency(animatedValue, currency, 0)}
         </span>
         <div
           className={`flex items-center gap-1 text-lg ${getPnLColorClass(summary.unrealizedPnL)}`}
@@ -88,7 +97,7 @@ export function NetWorthCard({
             <HelpTooltip content="Unrealized profit/loss since January 1st" />
           </div>
           <p className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}>
-            {formatCurrency(convert(summary.unrealizedPnL), currency, 0)}
+            {formatCurrency(animatedPnl, currency, 0)}
             <span className={`text-xs ml-1.5 ${getPnLColorClass(summary.unrealizedPnLPct)}`}>
               {formatPercent(summary.unrealizedPnLPct)}
             </span>
@@ -100,7 +109,7 @@ export function NetWorthCard({
             <HelpTooltip content="Total cost basis of your portfolio as of January 1st" />
           </div>
           <p className="font-medium tabular-nums">
-            {formatCurrency(convert(summary.totalCostBasis), currency, 0)}
+            {formatCurrency(animatedCostBasis, currency, 0)}
           </p>
         </div>
         <div className="px-4">
@@ -146,7 +155,7 @@ export function NetWorthCard({
         <div>
           <p className="text-muted-foreground text-sm">YTD P&L</p>
           <p className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}>
-            {formatCurrency(convert(summary.unrealizedPnL), currency, 0)}
+            {formatCurrency(animatedPnl, currency, 0)}
             <span className={`text-xs ml-1.5 block ${getPnLColorClass(summary.unrealizedPnLPct)}`}>
               {formatPercent(summary.unrealizedPnLPct)}
             </span>
@@ -155,7 +164,7 @@ export function NetWorthCard({
         <div>
           <p className="text-muted-foreground text-sm">YTD Start</p>
           <p className="font-medium tabular-nums">
-            {formatCurrency(convert(summary.totalCostBasis), currency, 0)}
+            {formatCurrency(animatedCostBasis, currency, 0)}
           </p>
         </div>
         {exposurePct !== undefined && (
@@ -184,7 +193,7 @@ export function NetWorthCard({
 
       <p className="text-xs text-muted-foreground mt-4">
         {currency === 'USD' ? 'SGD' : 'USD'} Value:{' '}
-        {formatCurrency(altValue, currency === 'USD' ? 'SGD' : 'USD', 0)}
+        {formatCurrency(animatedAltValue, currency === 'USD' ? 'SGD' : 'USD', 0)}
       </p>
     </div>
   );

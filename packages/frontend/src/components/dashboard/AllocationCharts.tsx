@@ -2,7 +2,17 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
+
+/** Compact dollar format: $1.2K, $3.4M, $1.2B — keeps hover info short */
+function compactUsd(value: number): string {
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
+  return `${sign}$${abs.toFixed(0)}`;
+}
 import type { Position } from '@/lib/types';
 
 interface AllocationChartsProps {
@@ -202,7 +212,8 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
               const hovered = visibleData[hIdx];
               return (
                 <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap truncate">
-                  {hovered.name} &middot; {formatCurrency(hovered.value, 'USD', 0)} &middot; {formatNumber(hovered.displayPercentage, 1)}%
+                  {hovered.name} &middot; {compactUsd(hovered.value)} &middot;{' '}
+                  {formatNumber(hovered.displayPercentage, 1)}%
                 </span>
               );
             })()}
@@ -212,48 +223,49 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             {/* Donut Chart with Center Label */}
             <div className="mx-auto h-[140px] w-[140px] flex-shrink-0 relative sm:mx-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={visibleData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={35}
-                      outerRadius={60}
-                      paddingAngle={2}
-                      dataKey="value"
-                      onMouseLeave={() => setHoveredSlice((prev) => ({ ...prev, [title]: null }))}
-                    >
-                      {visibleData.map((entry, i) => {
-                        const originalIndex = data.findIndex((d) => d.name === entry.name);
-                        return (
-                          <Cell
-                            key={`cell-${entry.name}`}
-                            fill={colors[originalIndex % colors.length]}
-                            onMouseEnter={() => setHoveredSlice((prev) => ({ ...prev, [title]: i }))}
-                            style={{ cursor: 'pointer', outline: 'none' }}
-                          />
-                        );
-                      })}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                {/* Center label — always shows top visible item */}
-                {visibleData.length > 0 &&
-                  (() => {
-                    const top = visibleData.reduce((a, b) => (a.value > b.value ? a : b));
-                    const shortName = top.name.length > 8 ? top.name.slice(0, 7) + '\u2026' : top.name;
-                    return (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-lg font-bold leading-tight">
-                          {Math.round(top.displayPercentage)}%
-                        </span>
-                        <span className="text-[10px] text-muted-foreground leading-tight">
-                          {shortName}
-                        </span>
-                      </div>
-                    );
-                  })()}
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={visibleData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={35}
+                    outerRadius={60}
+                    paddingAngle={2}
+                    dataKey="value"
+                    onMouseLeave={() => setHoveredSlice((prev) => ({ ...prev, [title]: null }))}
+                  >
+                    {visibleData.map((entry, i) => {
+                      const originalIndex = data.findIndex((d) => d.name === entry.name);
+                      return (
+                        <Cell
+                          key={`cell-${entry.name}`}
+                          fill={colors[originalIndex % colors.length]}
+                          onMouseEnter={() => setHoveredSlice((prev) => ({ ...prev, [title]: i }))}
+                          style={{ cursor: 'pointer', outline: 'none' }}
+                        />
+                      );
+                    })}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Center label — always shows top visible item */}
+              {visibleData.length > 0 &&
+                (() => {
+                  const top = visibleData.reduce((a, b) => (a.value > b.value ? a : b));
+                  const shortName =
+                    top.name.length > 8 ? top.name.slice(0, 7) + '\u2026' : top.name;
+                  return (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-lg font-bold leading-tight">
+                        {Math.round(top.displayPercentage)}%
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight">
+                        {shortName}
+                      </span>
+                    </div>
+                  );
+                })()}
             </div>
 
             {/* Side Legend */}
