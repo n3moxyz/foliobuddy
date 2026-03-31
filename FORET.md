@@ -1601,6 +1601,8 @@ Recently completed:
   - Benchmark chart: fixed Portfolio legend color to #64748B slate (matching line)
   - Staggered fade-in-up entrance animations on Dashboard, History, Investors
   - Normalized all page headers to `text-2xl font-bold` with `size="sm"` buttons
+  - Animated number tickers (`useAnimatedNumber` hook) for Net Worth, P&L, Cost Basis values
+  - Compact dollar formatting (`compactUsd`) on allocation chart hover to prevent truncation
 
 ---
 
