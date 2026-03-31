@@ -32,9 +32,7 @@ export function ErrorFallback({ error, eventId, resetError }: ErrorFallbackProps
           </p>
           {error?.message && (
             <div className="p-3 bg-muted rounded-md">
-              <p className="text-xs font-mono text-muted-foreground break-all">
-                {error.message}
-              </p>
+              <p className="text-xs font-mono text-muted-foreground break-all">{error.message}</p>
             </div>
           )}
           {eventId && (

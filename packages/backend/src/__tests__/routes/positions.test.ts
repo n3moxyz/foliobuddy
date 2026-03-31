@@ -99,9 +99,7 @@ describe('POST /api/positions', () => {
   });
 
   it('returns 400 for missing assetId', async () => {
-    const res = await request(app)
-      .post('/api/positions')
-      .send({ quantity: 1 });
+    const res = await request(app).post('/api/positions').send({ quantity: 1 });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Validation error');
@@ -195,9 +193,7 @@ describe('POST /api/positions (custody)', () => {
   it('rejects when category is full (20 owned positions)', async () => {
     const asset = mockAsset({ currentPriceUsd: 60000 });
     mockPrisma.asset.findUnique.mockResolvedValue(asset);
-    const fullCategory = Array.from({ length: 20 }, (_, i) =>
-      mockPosition({ id: `pos-${i}` })
-    );
+    const fullCategory = Array.from({ length: 20 }, (_, i) => mockPosition({ id: `pos-${i}` }));
     mockPrisma.position.findMany.mockResolvedValue(fullCategory);
 
     const res = await request(app)

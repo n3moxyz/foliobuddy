@@ -12,50 +12,50 @@ const DEFAULT_USER_ID = 'default-user';
 
 // Common crypto mappings (symbol -> coingecko ID)
 const COINGECKO_MAPPINGS: Record<string, string> = {
-  'BTC': 'bitcoin',
-  'ETH': 'ethereum',
-  'SOL': 'solana',
-  'AVAX': 'avalanche-2',
-  'MATIC': 'matic-network',
-  'LINK': 'chainlink',
-  'UNI': 'uniswap',
-  'AAVE': 'aave',
-  'MKR': 'maker',
-  'CRV': 'curve-dao-token',
-  'SUSHI': 'sushi',
-  'COMP': 'compound-governance-token',
-  'SNX': 'havven',
-  'YFI': 'yearn-finance',
-  'DOGE': 'dogecoin',
-  'SHIB': 'shiba-inu',
-  'PEPE': 'pepe',
-  'ARB': 'arbitrum',
-  'OP': 'optimism',
-  'APT': 'aptos',
-  'SUI': 'sui',
-  'NEAR': 'near',
-  'ATOM': 'cosmos',
-  'DOT': 'polkadot',
-  'ADA': 'cardano',
-  'XRP': 'ripple',
-  'BNB': 'binancecoin',
-  'TRX': 'tron',
-  'LTC': 'litecoin',
-  'BCH': 'bitcoin-cash',
-  'XLM': 'stellar',
-  'ALGO': 'algorand',
-  'VET': 'vechain',
-  'FTM': 'fantom',
-  'MANA': 'decentraland',
-  'SAND': 'the-sandbox',
-  'AXS': 'axie-infinity',
-  'GALA': 'gala',
-  'ENJ': 'enjincoin',
-  'IMX': 'immutable-x',
-  'USDT': 'tether',
-  'USDC': 'usd-coin',
-  'DAI': 'dai',
-  'BUSD': 'binance-usd',
+  BTC: 'bitcoin',
+  ETH: 'ethereum',
+  SOL: 'solana',
+  AVAX: 'avalanche-2',
+  MATIC: 'matic-network',
+  LINK: 'chainlink',
+  UNI: 'uniswap',
+  AAVE: 'aave',
+  MKR: 'maker',
+  CRV: 'curve-dao-token',
+  SUSHI: 'sushi',
+  COMP: 'compound-governance-token',
+  SNX: 'havven',
+  YFI: 'yearn-finance',
+  DOGE: 'dogecoin',
+  SHIB: 'shiba-inu',
+  PEPE: 'pepe',
+  ARB: 'arbitrum',
+  OP: 'optimism',
+  APT: 'aptos',
+  SUI: 'sui',
+  NEAR: 'near',
+  ATOM: 'cosmos',
+  DOT: 'polkadot',
+  ADA: 'cardano',
+  XRP: 'ripple',
+  BNB: 'binancecoin',
+  TRX: 'tron',
+  LTC: 'litecoin',
+  BCH: 'bitcoin-cash',
+  XLM: 'stellar',
+  ALGO: 'algorand',
+  VET: 'vechain',
+  FTM: 'fantom',
+  MANA: 'decentraland',
+  SAND: 'the-sandbox',
+  AXS: 'axie-infinity',
+  GALA: 'gala',
+  ENJ: 'enjincoin',
+  IMX: 'immutable-x',
+  USDT: 'tether',
+  USDC: 'usd-coin',
+  DAI: 'dai',
+  BUSD: 'binance-usd',
 };
 
 interface ImportResult {
@@ -118,13 +118,28 @@ async function getOrCreateAsset(
 
 function parseStorageType(value: string): StorageType {
   const upper = value?.toUpperCase() ?? '';
-  if (upper.includes('CEX') || upper.includes('BINANCE') || upper.includes('COINBASE') || upper.includes('KRAKEN')) {
+  if (
+    upper.includes('CEX') ||
+    upper.includes('BINANCE') ||
+    upper.includes('COINBASE') ||
+    upper.includes('KRAKEN')
+  ) {
     return 'CEX';
   }
-  if (upper.includes('DEFI') || upper.includes('AAVE') || upper.includes('COMPOUND') || upper.includes('CURVE')) {
+  if (
+    upper.includes('DEFI') ||
+    upper.includes('AAVE') ||
+    upper.includes('COMPOUND') ||
+    upper.includes('CURVE')
+  ) {
     return 'DEFI';
   }
-  if (upper.includes('BANK') || upper.includes('FIAT') || upper.includes('USD') || upper.includes('SGD')) {
+  if (
+    upper.includes('BANK') ||
+    upper.includes('FIAT') ||
+    upper.includes('USD') ||
+    upper.includes('SGD')
+  ) {
     return 'BANK';
   }
   return 'WALLET';
@@ -132,7 +147,12 @@ function parseStorageType(value: string): StorageType {
 
 function parseCategory(value: string): AssetCategory {
   const upper = value?.toUpperCase() ?? '';
-  if (upper.includes('STABLE') || upper.includes('USDT') || upper.includes('USDC') || upper.includes('DAI')) {
+  if (
+    upper.includes('STABLE') ||
+    upper.includes('USDT') ||
+    upper.includes('USDC') ||
+    upper.includes('DAI')
+  ) {
     return 'STABLECOIN';
   }
   if (upper.includes('NFT')) {
@@ -153,7 +173,7 @@ function getCellValue(row: ExcelJS.Row, colIndex: number): any {
 
   // Handle rich text
   if (typeof cell.value === 'object' && 'richText' in cell.value) {
-    return (cell.value as ExcelJS.CellRichTextValue).richText.map(rt => rt.text).join('');
+    return (cell.value as ExcelJS.CellRichTextValue).richText.map((rt) => rt.text).join('');
   }
 
   // Handle formula results
@@ -270,7 +290,11 @@ async function importTrades(
       const symbol = String(firstCell).trim();
       if (!symbol) continue;
 
-      const direction = String(getCellValue(row, 2) || 'LONG').toUpperCase().includes('SHORT') ? 'SHORT' : 'LONG';
+      const direction = String(getCellValue(row, 2) || 'LONG')
+        .toUpperCase()
+        .includes('SHORT')
+        ? 'SHORT'
+        : 'LONG';
       const entryDateRaw = getCellValue(row, 3);
       const exitDateRaw = getCellValue(row, 4);
       const entryPrice = parseFloat(getCellValue(row, 5)) || 0;
@@ -453,7 +477,10 @@ async function importFromExcel(filePath: string): Promise<ImportResult> {
     return result;
   }
 
-  console.log('Available sheets:', workbook.worksheets.map(ws => ws.name));
+  console.log(
+    'Available sheets:',
+    workbook.worksheets.map((ws) => ws.name)
+  );
 
   await ensureDefaultUser();
 

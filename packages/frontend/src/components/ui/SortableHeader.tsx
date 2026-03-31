@@ -27,8 +27,8 @@ export function SortableHeader({
   const isActive = activeSortKey === sortKey;
   const ariaSort = isActive
     ? sortDirection === 'asc'
-      ? 'ascending' as const
-      : 'descending' as const
+      ? ('ascending' as const)
+      : ('descending' as const)
     : undefined;
 
   return (
@@ -42,7 +42,9 @@ export function SortableHeader({
       onClick={() => onSort(sortKey)}
       aria-sort={ariaSort}
     >
-      <div className={`inline-flex items-center gap-1 ${align === 'right' ? 'justify-end w-full' : ''}`}>
+      <div
+        className={`inline-flex items-center gap-1 ${align === 'right' ? 'justify-end w-full' : ''}`}
+      >
         <span>{label}</span>
         {isActive ? (
           sortDirection === 'asc' ? (

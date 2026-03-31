@@ -3,7 +3,13 @@ import { persist } from 'zustand/middleware';
 
 export type SegmentId = 'metrics' | 'winRate' | 'avgWinLoss' | 'byDirection' | 'notableTrades';
 
-const DEFAULT_ORDER: SegmentId[] = ['metrics', 'winRate', 'avgWinLoss', 'byDirection', 'notableTrades'];
+const DEFAULT_ORDER: SegmentId[] = [
+  'metrics',
+  'winRate',
+  'avgWinLoss',
+  'byDirection',
+  'notableTrades',
+];
 
 interface TradeStatsState {
   segmentOrder: SegmentId[];

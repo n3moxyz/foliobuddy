@@ -21,9 +21,7 @@ export function agentAuth(req: Request, res: Response, next: NextFunction) {
   const provided = Buffer.from(Array.isArray(apiKey) ? apiKey[0] : apiKey);
   const expected = Buffer.from(expectedKey);
 
-  const keyMatch =
-    provided.length === expected.length &&
-    timingSafeEqual(provided, expected);
+  const keyMatch = provided.length === expected.length && timingSafeEqual(provided, expected);
 
   if (!keyMatch) {
     logger.warn('Agent auth failed: invalid or missing API key');

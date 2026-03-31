@@ -11,7 +11,10 @@ const createInvestorSchema = z.object({
   name: z.string().min(1),
   stakePercentage: z.number().min(0).max(100).optional(), // Optional - will auto-calculate as remainder
   initialCapital: z.number().min(0).default(0),
-  joinDate: z.string().transform(s => new Date(s)).optional(),
+  joinDate: z
+    .string()
+    .transform((s) => new Date(s))
+    .optional(),
   notes: z.string().optional(),
   isOwner: z.boolean().optional(),
 });
@@ -30,14 +33,12 @@ router.get('/', async (req, res, next) => {
     });
 
     // Calculate current values and YTD returns based on stake percentage
-    const investorsWithValues = investors.map(investor => {
+    const investorsWithValues = investors.map((investor) => {
       const currentValue = summary.totalValueUsd * (investor.stakePercentage / 100);
       // Use initialCapital as capital at start of year (if set)
       const capitalAtYearStart = investor.initialCapital || 0;
       const ytdReturn = capitalAtYearStart > 0 ? currentValue - capitalAtYearStart : null;
-      const ytdReturnPct = capitalAtYearStart > 0
-        ? (ytdReturn! / capitalAtYearStart) * 100
-        : null;
+      const ytdReturnPct = capitalAtYearStart > 0 ? (ytdReturn! / capitalAtYearStart) * 100 : null;
 
       return {
         ...investor,
@@ -75,9 +76,8 @@ router.get('/:id', async (req, res, next) => {
     const summary = await portfolioService.getSummary(req.userId!);
     const currentValue = summary.totalValueUsd * (investor.stakePercentage / 100);
     const totalReturn = currentValue - investor.initialCapital;
-    const totalReturnPct = investor.initialCapital > 0
-      ? (totalReturn / investor.initialCapital) * 100
-      : 0;
+    const totalReturnPct =
+      investor.initialCapital > 0 ? (totalReturn / investor.initialCapital) * 100 : 0;
 
     res.json({
       ...investor,
@@ -127,7 +127,7 @@ router.get('/:id/report', async (req, res, next) => {
     });
 
     // Calculate investor's share of each snapshot
-    const performanceHistory = snapshots.map(snapshot => ({
+    const performanceHistory = snapshots.map((snapshot) => ({
       timestamp: snapshot.timestamp,
       portfolioValue: snapshot.totalValueUsd,
       investorValue: snapshot.totalValueUsd * (investor.stakePercentage / 100),
@@ -136,9 +136,8 @@ router.get('/:id/report', async (req, res, next) => {
     }));
 
     const totalReturn = currentValue - investor.initialCapital;
-    const totalReturnPct = investor.initialCapital > 0
-      ? (totalReturn / investor.initialCapital) * 100
-      : 0;
+    const totalReturnPct =
+      investor.initialCapital > 0 ? (totalReturn / investor.initialCapital) * 100 : 0;
 
     res.json({
       investor: {
@@ -181,13 +180,10 @@ router.post('/', async (req, res, next) => {
       where: { userId: req.userId! },
     });
 
-    const currentTotalStake = existingInvestors.reduce(
-      (sum, inv) => sum + inv.stakePercentage,
-      0
-    );
+    const currentTotalStake = existingInvestors.reduce((sum, inv) => sum + inv.stakePercentage, 0);
 
     // Auto-calculate stake as remainder if not provided
-    const stakePercentage = data.stakePercentage ?? (100 - currentTotalStake);
+    const stakePercentage = data.stakePercentage ?? 100 - currentTotalStake;
 
     // Verify total stake doesn't exceed 100%
     if (currentTotalStake + stakePercentage > 100) {
@@ -198,10 +194,7 @@ router.post('/', async (req, res, next) => {
     }
 
     if (stakePercentage <= 0) {
-      throw new AppError(
-        `No stake available. Current total: ${currentTotalStake}%`,
-        400
-      );
+      throw new AppError(`No stake available. Current total: ${currentTotalStake}%`, 400);
     }
 
     // Get current portfolio value
@@ -216,9 +209,10 @@ router.post('/', async (req, res, next) => {
         initialCapital: data.initialCapital,
         currentValue,
         totalReturn: currentValue - data.initialCapital,
-        totalReturnPct: data.initialCapital > 0
-          ? ((currentValue - data.initialCapital) / data.initialCapital) * 100
-          : 0,
+        totalReturnPct:
+          data.initialCapital > 0
+            ? ((currentValue - data.initialCapital) / data.initialCapital) * 100
+            : 0,
         joinDate: data.joinDate ?? new Date(),
         notes: data.notes,
         isOwner: data.isOwner ?? false,

@@ -13,8 +13,8 @@ interface ImportResultsProps {
 }
 
 export function ImportResults({ results, onDone }: ImportResultsProps) {
-  const successCount = results.filter(r => r.success).length;
-  const failCount = results.filter(r => !r.success).length;
+  const successCount = results.filter((r) => r.success).length;
+  const failCount = results.filter((r) => !r.success).length;
 
   return (
     <div className="space-y-4">
@@ -45,9 +45,7 @@ export function ImportResults({ results, onDone }: ImportResultsProps) {
             )}
             <span className="font-medium">{result.symbol}</span>
             {result.error && (
-              <span className="text-red-600 dark:text-red-400 text-xs">
-                {result.error}
-              </span>
+              <span className="text-red-600 dark:text-red-400 text-xs">{result.error}</span>
             )}
           </div>
         ))}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parsePagination, paginatedResponse } from '../lib/pagination.js';
 
-const mockRequest = (query: Record<string, string>) => ({ query } as any);
+const mockRequest = (query: Record<string, string>) => ({ query }) as any;
 
 describe('parsePagination', () => {
   it('returns null when no page param', () => {

@@ -1,10 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import {
-  SignedIn,
-  SignedOut,
-  SignIn,
-} from '@clerk/clerk-react';
+import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
 import { AppShell } from './components/layout/AppShell';
 import { useAuthSetup } from './hooks/useAuthSetup';
 import { useThemeEffect } from './hooks/useThemeEffect';
@@ -35,7 +31,13 @@ function AuthenticatedApp() {
   return (
     <>
       <AppShell>
-        <Suspense fallback={<div className="flex items-center justify-center h-64 text-muted-foreground">Loading...</div>}>
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
+              Loading...
+            </div>
+          }
+        >
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/portfolio" element={<Portfolio />} />
@@ -46,10 +48,7 @@ function AuthenticatedApp() {
           </Routes>
         </Suspense>
       </AppShell>
-      <ShortcutsHelpModal
-        open={showShortcutsHelp}
-        onOpenChange={setShowShortcutsHelp}
-      />
+      <ShortcutsHelpModal open={showShortcutsHelp} onOpenChange={setShowShortcutsHelp} />
     </>
   );
 }
@@ -61,7 +60,13 @@ function App() {
         <Route
           path="/dev/demo/*"
           element={
-            <Suspense fallback={<div className="flex items-center justify-center h-64 text-muted-foreground">Loading...</div>}>
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-64 text-muted-foreground">
+                  Loading...
+                </div>
+              }
+            >
               <DemoModeApp />
             </Suspense>
           }
@@ -77,9 +82,7 @@ function App() {
                 <div className="text-center space-y-6">
                   <div className="space-y-2">
                     <h1 className="text-3xl font-bold">FolioBuddy</h1>
-                    <p className="text-muted-foreground">
-                      Sign in to track your portfolio
-                    </p>
+                    <p className="text-muted-foreground">Sign in to track your portfolio</p>
                   </div>
                   <SignIn
                     appearance={{

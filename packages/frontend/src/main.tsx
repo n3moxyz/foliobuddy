@@ -31,9 +31,11 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Sentry.ErrorBoundary fallback={({ error, eventId, resetError }) => (
-      <ErrorFallback error={error as Error} eventId={eventId} resetError={resetError} />
-    )}>
+    <Sentry.ErrorBoundary
+      fallback={({ error, eventId, resetError }) => (
+        <ErrorFallback error={error as Error} eventId={eventId} resetError={resetError} />
+      )}
+    >
       <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider delayDuration={300}>

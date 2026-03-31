@@ -71,7 +71,7 @@ export default function Settings() {
     }
   };
 
-  const usdSgdRate = fxRates?.find(r => r.fromCcy === 'USD' && r.toCcy === 'SGD');
+  const usdSgdRate = fxRates?.find((r) => r.fromCcy === 'USD' && r.toCcy === 'SGD');
 
   return (
     <div className="space-y-6">
@@ -87,17 +87,13 @@ export default function Settings() {
       <Card>
         <CardHeader>
           <CardTitle>Display Settings</CardTitle>
-          <CardDescription>
-            Customize how data is displayed
-          </CardDescription>
+          <CardDescription>Customize how data is displayed</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Default Currency</Label>
-              <p className="text-sm text-muted-foreground">
-                Display values in USD or SGD
-              </p>
+              <p className="text-sm text-muted-foreground">Display values in USD or SGD</p>
             </div>
             <Select value={currency} onValueChange={(v) => setCurrency(v as 'USD' | 'SGD')}>
               <SelectTrigger className="w-full sm:w-[120px]">
@@ -113,7 +109,8 @@ export default function Settings() {
           {usdSgdRate && (
             <div className="p-3 bg-muted rounded-md">
               <p className="text-sm">
-                Current USD/SGD rate: <span className="font-mono">{usdSgdRate.rate.toFixed(4)}</span>
+                Current USD/SGD rate:{' '}
+                <span className="font-mono">{usdSgdRate.rate.toFixed(4)}</span>
               </p>
               <p className="text-xs text-muted-foreground">
                 Last updated: {formatDateTime(usdSgdRate.timestamp)}
@@ -126,9 +123,7 @@ export default function Settings() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Appearance</Label>
-              <p className="text-sm text-muted-foreground">
-                Choose your preferred theme
-              </p>
+              <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
             </div>
             <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
               <SelectTrigger className="w-full sm:w-[120px]">
@@ -148,9 +143,7 @@ export default function Settings() {
       <Card>
         <CardHeader>
           <CardTitle>Data Management</CardTitle>
-          <CardDescription>
-            Refresh prices and manage snapshots
-          </CardDescription>
+          <CardDescription>Refresh prices and manage snapshots</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -176,9 +169,7 @@ export default function Settings() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Refresh FX Rates</Label>
-              <p className="text-sm text-muted-foreground">
-                Update USD/SGD exchange rate
-              </p>
+              <p className="text-sm text-muted-foreground">Update USD/SGD exchange rate</p>
             </div>
             <Button
               variant="outline"
@@ -217,19 +208,19 @@ export default function Settings() {
       <Card>
         <CardHeader>
           <CardTitle>Export Data</CardTitle>
-          <CardDescription>
-            Download your portfolio data
-          </CardDescription>
+          <CardDescription>Download your portfolio data</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Full Portfolio Export</Label>
-              <p className="text-sm text-muted-foreground">
-                Download all data as Excel file
-              </p>
+              <p className="text-sm text-muted-foreground">Download all data as Excel file</p>
             </div>
-            <Button variant="outline" className="self-start sm:self-auto touch-manipulation" onClick={() => window.open(api.exportExcel(), '_blank')}>
+            <Button
+              variant="outline"
+              className="self-start sm:self-auto touch-manipulation"
+              onClick={() => window.open(api.exportExcel(), '_blank')}
+            >
               <Download className="h-4 w-4 mr-2" />
               Export Excel
             </Button>
@@ -240,11 +231,13 @@ export default function Settings() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Positions CSV</Label>
-              <p className="text-sm text-muted-foreground">
-                Download positions as CSV
-              </p>
+              <p className="text-sm text-muted-foreground">Download positions as CSV</p>
             </div>
-            <Button variant="outline" className="self-start sm:self-auto touch-manipulation" onClick={() => window.open(api.exportPositionsCsv(), '_blank')}>
+            <Button
+              variant="outline"
+              className="self-start sm:self-auto touch-manipulation"
+              onClick={() => window.open(api.exportPositionsCsv(), '_blank')}
+            >
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
@@ -255,11 +248,13 @@ export default function Settings() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Trades CSV</Label>
-              <p className="text-sm text-muted-foreground">
-                Download trade history as CSV
-              </p>
+              <p className="text-sm text-muted-foreground">Download trade history as CSV</p>
             </div>
-            <Button variant="outline" className="self-start sm:self-auto touch-manipulation" onClick={() => window.open(api.exportTradesCsv(), '_blank')}>
+            <Button
+              variant="outline"
+              className="self-start sm:self-auto touch-manipulation"
+              onClick={() => window.open(api.exportTradesCsv(), '_blank')}
+            >
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
@@ -274,10 +269,12 @@ export default function Settings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
-            <p><strong>FolioBuddy</strong> v1.0.0</p>
+            <p>
+              <strong>FolioBuddy</strong> v1.0.0
+            </p>
             <p className="text-muted-foreground">
-              A portfolio tracking application for managing crypto investments,
-              trade journaling, and multi-investor support.
+              A portfolio tracking application for managing crypto investments, trade journaling,
+              and multi-investor support.
             </p>
             <div className="pt-4">
               <p className="text-muted-foreground">Data Sources:</p>

@@ -116,8 +116,8 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
     onOpenChange(false);
   };
 
-  const successCount = results?.filter(r => r.success).length ?? 0;
-  const failCount = results?.filter(r => !r.success).length ?? 0;
+  const successCount = results?.filter((r) => r.success).length ?? 0;
+  const failCount = results?.filter((r) => !r.success).length ?? 0;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -159,7 +159,8 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
             {parsedPositions && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">
-                  Ready to import {parsedPositions.length} position{parsedPositions.length !== 1 ? 's' : ''}:
+                  Ready to import {parsedPositions.length} position
+                  {parsedPositions.length !== 1 ? 's' : ''}:
                 </p>
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {parsedPositions.map((pos, i) => (
@@ -169,9 +170,7 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
                         {pos.quantity} @ ${pos.avgCostUsd.toLocaleString()}
                       </span>
                       {pos.storageLocation && (
-                        <span className="text-muted-foreground ml-2">
-                          ({pos.storageLocation})
-                        </span>
+                        <span className="text-muted-foreground ml-2">({pos.storageLocation})</span>
                       )}
                     </div>
                   ))}
@@ -183,17 +182,17 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button
-                onClick={handleImport}
-                disabled={!parsedPositions || importing}
-              >
+              <Button onClick={handleImport} disabled={!parsedPositions || importing}>
                 {importing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                     Importing...
                   </>
                 ) : (
-                  <>Import {parsedPositions?.length ?? 0} Position{parsedPositions?.length !== 1 ? 's' : ''}</>
+                  <>
+                    Import {parsedPositions?.length ?? 0} Position
+                    {parsedPositions?.length !== 1 ? 's' : ''}
+                  </>
                 )}
               </Button>
             </DialogFooter>
@@ -217,7 +216,9 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
                 <div
                   key={i}
                   className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
-                    result.success ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'
+                    result.success
+                      ? 'bg-green-50 dark:bg-green-950/30'
+                      : 'bg-red-50 dark:bg-red-950/30'
                   }`}
                 >
                   {result.success ? (
@@ -227,9 +228,7 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
                   )}
                   <span className="font-medium">{result.symbol}</span>
                   {result.error && (
-                    <span className="text-red-600 dark:text-red-400 text-xs">
-                      {result.error}
-                    </span>
+                    <span className="text-red-600 dark:text-red-400 text-xs">{result.error}</span>
                   )}
                 </div>
               ))}

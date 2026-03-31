@@ -9,8 +9,18 @@ const SAMPLE_ASSETS = [
   { symbol: 'BTC', name: 'Bitcoin', coingeckoId: 'bitcoin', category: 'LIQUID_CRYPTO' as const },
   { symbol: 'ETH', name: 'Ethereum', coingeckoId: 'ethereum', category: 'LIQUID_CRYPTO' as const },
   { symbol: 'SOL', name: 'Solana', coingeckoId: 'solana', category: 'LIQUID_CRYPTO' as const },
-  { symbol: 'AVAX', name: 'Avalanche', coingeckoId: 'avalanche-2', category: 'LIQUID_CRYPTO' as const },
-  { symbol: 'LINK', name: 'Chainlink', coingeckoId: 'chainlink', category: 'LIQUID_CRYPTO' as const },
+  {
+    symbol: 'AVAX',
+    name: 'Avalanche',
+    coingeckoId: 'avalanche-2',
+    category: 'LIQUID_CRYPTO' as const,
+  },
+  {
+    symbol: 'LINK',
+    name: 'Chainlink',
+    coingeckoId: 'chainlink',
+    category: 'LIQUID_CRYPTO' as const,
+  },
   { symbol: 'AAVE', name: 'Aave', coingeckoId: 'aave', category: 'LIQUID_CRYPTO' as const },
   { symbol: 'UNI', name: 'Uniswap', coingeckoId: 'uniswap', category: 'LIQUID_CRYPTO' as const },
   { symbol: 'USDC', name: 'USD Coin', coingeckoId: 'usd-coin', category: 'STABLECOIN' as const },
@@ -65,17 +75,23 @@ async function seed() {
   const sol = await prisma.asset.findFirst({ where: { symbol: 'SOL' } });
 
   // Check if sample positions exist to avoid duplicates on re-run
-  const existingBtcPosition = btc ? await prisma.position.findFirst({
-    where: { userId: DEFAULT_USER_ID, assetId: btc.id, storageLocation: 'Ledger' }
-  }) : null;
+  const existingBtcPosition = btc
+    ? await prisma.position.findFirst({
+        where: { userId: DEFAULT_USER_ID, assetId: btc.id, storageLocation: 'Ledger' },
+      })
+    : null;
 
-  const existingEthPosition = eth ? await prisma.position.findFirst({
-    where: { userId: DEFAULT_USER_ID, assetId: eth.id, storageLocation: 'Binance' }
-  }) : null;
+  const existingEthPosition = eth
+    ? await prisma.position.findFirst({
+        where: { userId: DEFAULT_USER_ID, assetId: eth.id, storageLocation: 'Binance' },
+      })
+    : null;
 
-  const existingSolPosition = sol ? await prisma.position.findFirst({
-    where: { userId: DEFAULT_USER_ID, assetId: sol.id, storageLocation: 'Phantom' }
-  }) : null;
+  const existingSolPosition = sol
+    ? await prisma.position.findFirst({
+        where: { userId: DEFAULT_USER_ID, assetId: sol.id, storageLocation: 'Phantom' },
+      })
+    : null;
 
   if (btc && !existingBtcPosition) {
     await prisma.position.create({

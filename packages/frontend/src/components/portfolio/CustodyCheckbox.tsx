@@ -87,8 +87,13 @@ export function CustodyCheckbox({
               value={newNameInput}
               onChange={(e) => onNewNameInputChange(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); onAddNewName(); }
-                if (e.key === 'Escape') { onCancelAddingName(); }
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  onAddNewName();
+                }
+                if (e.key === 'Escape') {
+                  onCancelAddingName();
+                }
               }}
               placeholder="Enter name..."
               autoFocus

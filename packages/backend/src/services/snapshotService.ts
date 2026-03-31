@@ -18,10 +18,7 @@ class SnapshotService {
   /**
    * Create a new portfolio snapshot
    */
-  async createSnapshot(
-    userId: string,
-    snapshotType: string = 'DAILY'
-  ): Promise<string> {
+  async createSnapshot(userId: string, snapshotType: string = 'DAILY'): Promise<string> {
     // Get current portfolio summary
     const summary = await portfolioService.getSummary(userId);
 
@@ -57,14 +54,15 @@ class SnapshotService {
         ethPrice,
         ...metrics,
         positions: {
-          create: positions.map(p => ({
+          create: positions.map((p) => ({
             assetSymbol: p.asset.symbol,
             quantity: p.quantity,
             priceUsd: p.asset.currentPriceUsd ?? 0,
             valueUsd: p.marketValueUsd ?? 0,
-            allocation: summary.totalValueUsd > 0
-              ? ((p.marketValueUsd ?? 0) / summary.totalValueUsd) * 100
-              : 0,
+            allocation:
+              summary.totalValueUsd > 0
+                ? ((p.marketValueUsd ?? 0) / summary.totalValueUsd) * 100
+                : 0,
           })),
         },
       },
@@ -86,7 +84,10 @@ class SnapshotService {
     const [yesterday, lastWeek, lastMonth, startOfYear, ath] = await Promise.all([
       this.getSnapshotByDate(userId, new Date(now.getTime() - 24 * 60 * 60 * 1000)),
       this.getSnapshotByDate(userId, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
-      this.getSnapshotByDate(userId, new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())),
+      this.getSnapshotByDate(
+        userId,
+        new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
+      ),
       this.getSnapshotByDate(userId, new Date(now.getFullYear(), 0, 1)),
       this.getAllTimeHigh(userId),
     ]);
@@ -175,10 +176,7 @@ class SnapshotService {
   /**
    * Get historical performance data for charts (by number of days)
    */
-  async getPerformanceHistory(
-    userId: string,
-    days: number = 30
-  ) {
+  async getPerformanceHistory(userId: string, days: number = 30) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
@@ -208,11 +206,7 @@ class SnapshotService {
   /**
    * Get historical performance data for charts (by date range)
    */
-  async getPerformanceHistoryByRange(
-    userId: string,
-    fromDate?: Date,
-    toDate?: Date
-  ) {
+  async getPerformanceHistoryByRange(userId: string, fromDate?: Date, toDate?: Date) {
     const where: any = { userId };
 
     if (fromDate || toDate) {

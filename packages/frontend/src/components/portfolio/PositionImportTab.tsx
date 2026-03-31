@@ -72,7 +72,8 @@ export function PositionImportTab({
       {parsedPositions && (
         <div className="space-y-2">
           <p className="text-sm font-medium">
-            Ready to import {parsedPositions.length} position{parsedPositions.length !== 1 ? 's' : ''}:
+            Ready to import {parsedPositions.length} position
+            {parsedPositions.length !== 1 ? 's' : ''}:
           </p>
           <div className="max-h-40 overflow-y-auto space-y-1">
             {parsedPositions.map((pos, i) => (
@@ -82,9 +83,7 @@ export function PositionImportTab({
                   {pos.quantity} @ ${pos.avgCostUsd.toLocaleString()}
                 </span>
                 {pos.storageLocation && (
-                  <span className="text-muted-foreground ml-2">
-                    ({pos.storageLocation})
-                  </span>
+                  <span className="text-muted-foreground ml-2">({pos.storageLocation})</span>
                 )}
               </div>
             ))}
@@ -93,18 +92,17 @@ export function PositionImportTab({
       )}
 
       <div className="flex justify-end">
-        <Button
-          type="button"
-          onClick={onImport}
-          disabled={!parsedPositions || importing}
-        >
+        <Button type="button" onClick={onImport} disabled={!parsedPositions || importing}>
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
               Importing...
             </>
           ) : (
-            <>Import {parsedPositions?.length ?? 0} Position{parsedPositions?.length !== 1 ? 's' : ''}</>
+            <>
+              Import {parsedPositions?.length ?? 0} Position
+              {parsedPositions?.length !== 1 ? 's' : ''}
+            </>
           )}
         </Button>
       </div>
