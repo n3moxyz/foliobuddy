@@ -107,7 +107,7 @@ function formatTooltipDate(timestamp: string): string {
 }
 
 export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) {
-  const [period, setPeriod] = useState<TimePeriod>('1M');
+  const [period, setPeriod] = useState<TimePeriod>('YTD');
   const [benchmarks, setBenchmarks] = useState<BenchmarkConfig[]>(DEFAULT_BENCHMARKS);
   const [additionalBenchmarks, setAdditionalBenchmarks] = useState<BenchmarkConfig[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -255,7 +255,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
 
   // Get all active benchmarks for legend
   const allBenchmarks = [
-    { id: 'portfolio', symbol: 'Portfolio', color: 'hsl(var(--primary))', enabled: true },
+    { id: 'portfolio', symbol: 'Portfolio', color: '#64748B', enabled: true },
     ...benchmarks,
     ...additionalBenchmarks,
   ];
@@ -495,7 +495,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                 <Line
                   type="monotone"
                   dataKey="portfolio"
-                  stroke="hsl(var(--primary))"
+                  stroke="#64748B"
                   strokeWidth={2}
                   dot={(props: Record<string, unknown>) => {
                     const { cx, cy, index, value } = props as {
@@ -508,7 +508,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                       return <g key={`p-${index}`} />;
                     return (
                       <g key={`p-${index}`}>
-                        <circle cx={cx} cy={cy} r={3} fill="hsl(var(--primary))" />
+                        <circle cx={cx} cy={cy} r={3} fill="#64748B" />
                         <text
                           x={cx + 8}
                           y={cy}

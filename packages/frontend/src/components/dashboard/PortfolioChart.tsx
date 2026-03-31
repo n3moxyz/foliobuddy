@@ -84,7 +84,7 @@ export function PortfolioChart({
   stakeMultiplier = 1,
   liveValueUsd,
 }: PortfolioChartProps) {
-  const [period, setPeriod] = useState<TimePeriod>('1M');
+  const [period, setPeriod] = useState<TimePeriod>('YTD');
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const { data: performanceData, isLoading, isFetching } = usePerformanceHistory(dateRange);
@@ -265,8 +265,8 @@ export function PortfolioChart({
               <AreaChart data={chartData} margin={{ top: 5, right: 56, left: 0, bottom: 5 }}>
                 <defs>
                   <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#64748B" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#64748B" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -319,7 +319,7 @@ export function PortfolioChart({
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="hsl(var(--primary))"
+                  stroke="#64748B"
                   strokeWidth={2}
                   fill="url(#portfolioGradient)"
                   dot={(props: Record<string, unknown>) => {
@@ -327,7 +327,7 @@ export function PortfolioChart({
                     if (index !== chartData.length - 1) return <g key={`dot-${index}`} />;
                     return (
                       <g key={`dot-${index}`}>
-                        <circle cx={cx} cy={cy} r={3} fill="hsl(var(--primary))" />
+                        <circle cx={cx} cy={cy} r={3} fill="#64748B" />
                         <text
                           x={cx + 8}
                           y={cy}
