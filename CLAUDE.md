@@ -43,6 +43,8 @@
 - **Client State**: Zustand
 - **UI**: shadcn/ui + Radix UI + Tailwind CSS 3.4
 - **Charts**: Recharts
+- **Fonts**: Plus Jakarta Sans (body) + JetBrains Mono (numbers) via Google Fonts
+- **Design System**: `.impeccable.md` at project root for design context
 
 ## Key Files
 
@@ -70,6 +72,8 @@
 - `src/lib/api.ts` - API client methods (305 lines, methods only)
 - `src/lib/types.ts` - Frontend type definitions (347 lines, extracted from api.ts)
 - `src/stores/` - Zustand stores
+- `src/components/ui/skeleton.tsx` - Shimmer skeleton loading component (CSS-based animation)
+- `src/components/ui/HelpTooltip.tsx` - Contextual ? icon tooltip for domain-specific terms
 
 ### Shared
 
@@ -274,13 +278,13 @@ Rules:
 - **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
 - **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Center label shows top item's % and name. Clickable legends toggle slices — percentages recalculate for visible items (both legend and tooltip). Maximally distinct hues per slice, avoiding benchmark line colors.
 
-### Dashboard Stat Cards
+### Dashboard Stat Strip
 
-5-card compact grid: YTD Start, YTD P&L (with inline percentage), Exposure, Live Positions, Closed Trades.
+Borderless stat strip (not cards): YTD Start, YTD P&L (with inline percentage), Exposure, Live Positions, Closed Trades. Uses `flex items-baseline gap-6 flex-wrap py-4 border-b` — no Card wrappers.
 
-- `Exposure` sits between YTD P&L and Live Positions
-- `Exposure` and `Live Positions` both link to `/portfolio`
-- Cards should render at equal height within the row
+- `Exposure` and `Live Positions` link to `/portfolio`, `Closed Trades` links to `/trades`
+- All stat labels have `HelpTooltip` with contextual definitions
+- Separate mobile layout: `grid grid-cols-2 gap-4` below `sm` breakpoint
 
 ### Dashboard Investor Default
 
@@ -288,7 +292,19 @@ The dashboard investor filter should default to the primary owner investor (`isO
 
 ### Net Worth Card
 
-Hero card with gradient background (`from-primary/15 via-primary/8 to-background`). Shows net worth, YTD trend arrow, 3-column grid: YTD P&L, YTD Start, vs 30D ago (period-over-period comparison from `usePerformanceHistory`). Alternate currency value at bottom.
+Borderless hero section (no Card wrapper). Net worth displayed at `text-4xl sm:text-5xl font-bold tracking-tight` — the largest element on the page. YTD trend arrow inline. Sub-metrics (YTD P&L, YTD Start, vs 30D ago) in horizontal row with `border-r` separators. Alternate currency in small text below.
+
+### Design System & Visual Identity
+
+- **Color palette**: Indigo-tinted neutrals (not stock shadcn/ui grays) — `--primary: 234 89% 55%` (light), `234 89% 67%` (dark)
+- **Fonts**: Plus Jakarta Sans (body/headings) + JetBrains Mono (tabular numbers) — loaded via Google Fonts in `index.html`
+- **Profit/loss colors**: Emerald green (`text-profit`) and red (`text-loss`) — defined in `index.css`
+- **Skeleton loading**: CSS shimmer animation via `.skeleton` class — used on all pages and chart components
+- **HelpTooltip**: `?` icon tooltips on domain-specific finance terms (YTD Start, Exposure, CEX, Onchain, etc.)
+- **Sidebar**: Linear-style active state — `bg-primary/10 text-primary font-semibold border-r-2 border-primary`
+- **Scrollbars**: Thin 6px with transparent track, rounded thumb
+- **Empty states**: Icon + heading + descriptive text + action CTA (Portfolio, Trades, History)
+- **Design context**: `.impeccable.md` at project root — brand personality, aesthetic direction, design principles
 
 ## Environment Variables
 

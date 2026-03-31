@@ -595,7 +595,7 @@ components/ui/
 
 Each card is self-contained. Data flows down, events bubble up.
 
-Recent refinement: the compact stat row now includes `Exposure` between `YTD P&L` and `Live Positions`, and both `Exposure` and `Live Positions` link straight to the Portfolio page. It's a small detail, but it turns those cards from dead summaries into useful navigation.
+Recent refinement: the stat strip is now borderless (no Card wrappers) — just labels + values in a horizontal flex row with a bottom border. `Exposure` and `Live Positions` link to Portfolio, `Closed Trades` links to Trades. All labels have `HelpTooltip` with contextual definitions. The Net Worth card is also borderless — large `text-4xl` typography with sub-metrics separated by `border-r` dividers. The overall aesthetic follows Linear/Raycast (calm, precise) rather than generic SaaS dashboard patterns.
 
 ---
 
@@ -1251,9 +1251,9 @@ Vercel provides:
 
 ## What I'd Do Differently
 
-### 1. Start with a Design System
+### 1. ~~Start with a Design System~~ (Done!)
 
-I added shadcn/ui components as needed. Should have set up a complete design system from day one—typography, spacing, color tokens.
+Ran a full design critique using the impeccable toolkit (scored 25/40), then executed a 9-skill design overhaul. The project now has: custom indigo-tinted color palette, Plus Jakarta Sans + JetBrains Mono fonts, `.impeccable.md` design context file, skeleton loading states, HelpTooltip components, and a coherent visual identity inspired by Linear/Raycast and Dune Analytics. The lesson still stands: starting with this would have saved the retrofit.
 
 ### 2. ~~API Versioning~~ (Done!)
 
@@ -1584,6 +1584,16 @@ Recently completed:
   - Playwright E2E smoke tests (health, app load, auth redirect)
   - Deploy workflow health check with timeout
 - [x] Clickable snapshot rows: entire AUTOMATIC row toggles expand/collapse, not just chevron
+- [x] **Design overhaul (impeccable critique → 9-skill execution):**
+  - Indigo-tinted color palette replacing stock shadcn/ui grays (light + dark modes)
+  - Plus Jakarta Sans + JetBrains Mono fonts via Google Fonts
+  - Net Worth Card: borderless hero section with large typography (removed gradient Card)
+  - Dashboard/History stat strips replacing Card grids (borderless flex layout)
+  - Sidebar: Linear-style tinted active state with border accent (removed solid block)
+  - Shimmer skeleton loading states on all pages and chart components
+  - HelpTooltip component on finance-specific labels (YTD Start, Exposure, CEX, etc.)
+  - Improved empty states: icon + heading + descriptive text + CTA button
+  - Emerald profit colors, thinner scrollbars, `.impeccable.md` design context
 
 ---
 
