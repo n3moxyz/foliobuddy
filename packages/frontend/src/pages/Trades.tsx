@@ -163,16 +163,6 @@ export default function Trades() {
             )}
             {copiedAll ? 'Copied!' : 'Copy All'}
           </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={() => setShowDeleteAllConfirm(true)}
-            disabled={!trades || trades.length === 0}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Delete All
-          </Button>
           <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Log Trade
@@ -206,7 +196,7 @@ export default function Trades() {
                 Copy All
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="sm:hidden text-destructive"
+                className="text-destructive"
                 onClick={() => setShowDeleteAllConfirm(true)}
                 disabled={!trades || trades.length === 0}
               >
@@ -271,13 +261,15 @@ export default function Trades() {
             <TabsTrigger value="CLOSED">Closed ({closedTrades.length})</TabsTrigger>
           </TabsList>
           {tickerFilter && (
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-6 rounded-full text-xs gap-1"
               onClick={() => setTickerFilter(null)}
-              className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
             >
               {tickerFilter}
               <X className="h-3 w-3" />
-            </button>
+            </Button>
           )}
         </div>
 
@@ -698,11 +690,11 @@ function TradeTable({
                       )}
                     </TableCell>
                     <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
-                      {formatCurrency(trade.entryPrice, 'USD')}
+                      {formatCurrency(trade.entryPrice, 'USD', 0)}
                     </TableCell>
                     <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
                       {trade.exitPrice ? (
-                        formatCurrency(trade.exitPrice, 'USD')
+                        formatCurrency(trade.exitPrice, 'USD', 0)
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
@@ -731,7 +723,7 @@ function TradeTable({
                         {trade.status}
                       </span>
                     </TableCell>
-                    <TableCell className={`${HIDDEN_LG} max-w-[80px] truncate`}>
+                    <TableCell className={`${HIDDEN_LG} max-w-[140px] truncate`}>
                       {trade.notes || '-'}
                     </TableCell>
                     <TableCell>

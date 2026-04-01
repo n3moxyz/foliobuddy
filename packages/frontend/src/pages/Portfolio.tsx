@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { usePositions, usePortfolioSummary, useDeleteAllPositions } from '@/hooks/usePortfolio';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
@@ -33,6 +32,8 @@ import {
   Banknote,
   Users,
   Wallet,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
@@ -193,16 +194,6 @@ export default function Portfolio() {
             )}
             {copiedAll ? 'Copied!' : 'Copy All'}
           </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={() => setShowDeleteAllConfirm(true)}
-            disabled={!positions || positions.length === 0}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Delete All
-          </Button>
           <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Add Position
@@ -237,7 +228,7 @@ export default function Portfolio() {
                 Copy All
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="sm:hidden text-destructive"
+                className="text-destructive"
                 onClick={() => setShowDeleteAllConfirm(true)}
                 disabled={!positions || positions.length === 0}
               >
@@ -257,72 +248,110 @@ export default function Portfolio() {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Portfolio Hero */}
       {summary && (
-        <div
-          className="animate-fade-in-up grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5"
-          style={{ animationDelay: '60ms' }}
-        >
-          <Card className="py-2">
-            <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">
-                Total Value
-                <HelpTooltip content="Current market value of all your positions" />
-              </p>
-              <CardTitle className="text-lg">
-                {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+        <div className="animate-fade-in-up pb-6 mb-2 border-b" style={{ animationDelay: '60ms' }}>
+          {/* Hero: Total Value */}
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <p className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums">
+              {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
+            </p>
+            {summary.unrealizedPnL !== 0 && (
+              <span
+                className={`inline-flex items-center gap-1 text-sm font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}
+              >
+                {summary.unrealizedPnL >= 0 ? (
+                  <TrendingUp className="h-4 w-4" />
+                ) : (
+                  <TrendingDown className="h-4 w-4" />
+                )}
+                {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)} (
+                {formatPercent(summary.unrealizedPnLPct)})
+              </span>
+            )}
+          </div>
 
-          <Card className="py-2">
-            <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">
-                YTD Start
+          {/* Desktop: 4-col divide-x */}
+          <div className="mt-4 hidden sm:grid sm:grid-cols-4 divide-x divide-border">
+            <div className="pr-4">
+              <div className="flex items-center gap-1">
+                <p className="text-muted-foreground text-sm">YTD Start</p>
                 <HelpTooltip content="Your total cost basis — how much you invested" />
-              </p>
-              <CardTitle className="text-lg">
+              </div>
+              <p className="font-medium tabular-nums">
                 {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card className="py-2">
-            <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">
-                YTD P&L
-                <HelpTooltip content="Unrealized profit or loss since the start of the year" />
               </p>
-              <CardTitle className={`text-lg ${getPnLColorClass(summary.unrealizedPnL)}`}>
-                {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}
-                <span className="text-sm ml-1">({formatPercent(summary.unrealizedPnLPct)})</span>
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card className="py-2">
-            <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">
-                Exposure
+            </div>
+            <div className="px-4">
+              <div className="flex items-center gap-1">
+                <p className="text-muted-foreground text-sm">Exposure</p>
                 <HelpTooltip content="Percentage of portfolio in volatile crypto (excluding stablecoins)" />
-              </p>
-              <CardTitle className="text-lg">
+              </div>
+              <p className="font-medium tabular-nums">
                 {summary.totalValueUsd > 0
                   ? `${(((cryptoTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
                   : '0%'}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card className="py-2">
-            <CardHeader className="py-2 px-4">
-              <p className="text-xs text-muted-foreground">
-                Positions
-                <HelpTooltip content="Number of assets you currently hold" />
               </p>
-              <CardTitle className="text-lg">{summary.positionCount}</CardTitle>
-            </CardHeader>
-          </Card>
+            </div>
+            <div className="px-4">
+              <div className="flex items-center gap-1">
+                <p className="text-muted-foreground text-sm">Positions</p>
+                <HelpTooltip content="Number of assets you currently hold" />
+              </div>
+              <p className="font-medium tabular-nums">{summary.positionCount}</p>
+            </div>
+            <div className="pl-4">
+              <div className="flex items-center gap-1">
+                <p className="text-muted-foreground text-sm">YTD P&L</p>
+                <HelpTooltip content="Unrealized profit or loss since the start of the year" />
+              </div>
+              <p className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}>
+                {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
+                <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Mobile: 2-col grid */}
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:hidden">
+            <div>
+              <div className="flex items-center gap-1">
+                <p className="text-muted-foreground text-sm">YTD Start</p>
+                <HelpTooltip content="Your total cost basis — how much you invested" />
+              </div>
+              <p className="font-medium tabular-nums">
+                {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
+              </p>
+            </div>
+            <div>
+              <div className="flex items-center gap-1">
+                <p className="text-muted-foreground text-sm">Exposure</p>
+                <HelpTooltip content="Percentage of portfolio in volatile crypto (excluding stablecoins)" />
+              </div>
+              <p className="font-medium tabular-nums">
+                {summary.totalValueUsd > 0
+                  ? `${(((cryptoTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
+                  : '0%'}
+              </p>
+            </div>
+            <div>
+              <div className="flex items-center gap-1">
+                <p className="text-muted-foreground text-sm">Positions</p>
+                <HelpTooltip content="Number of assets you currently hold" />
+              </div>
+              <p className="font-medium tabular-nums">{summary.positionCount}</p>
+            </div>
+            <div>
+              <div className="flex items-center gap-1">
+                <p className="text-muted-foreground text-sm">YTD P&L</p>
+                <HelpTooltip content="Unrealized profit or loss since the start of the year" />
+              </div>
+              <p className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}>
+                {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
+                <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -421,16 +450,18 @@ export default function Portfolio() {
                       </span>
                     </>
                   )}
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-muted-foreground hover:text-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePerpEdit();
                     }}
-                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
                   >
-                    <Pencil className="h-3 w-3" />
+                    <Pencil className="h-3 w-3 mr-1" />
                     {perpExposure > 0 ? 'Edit' : 'Add Perp'}
-                  </button>
+                  </Button>
                 </div>
               ) : undefined
             }

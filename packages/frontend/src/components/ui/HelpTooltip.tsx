@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -6,11 +7,24 @@ interface HelpTooltipProps {
 }
 
 export function HelpTooltip({ content }: HelpTooltipProps) {
+  const [open, setOpen] = useState(false);
+
   return (
     <TooltipProvider delayDuration={200}>
-      <Tooltip>
+      <Tooltip open={open} onOpenChange={setOpen}>
         <TooltipTrigger asChild>
-          <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help inline-block ml-1 align-middle" />
+          <button
+            type="button"
+            className="inline-flex items-center justify-center align-middle ml-1 touch-manipulation"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen((prev) => !prev);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help" />
+          </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">
           {content}
