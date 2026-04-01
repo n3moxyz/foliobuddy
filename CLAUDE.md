@@ -228,11 +228,15 @@ All pages follow iOS HIG-inspired responsive patterns:
 
 ### Trade Analytics Card
 
-`TradeStatsCard` displays analytics with derived metrics (expectancy, risk:reward ratio) calculated client-side from backend data. Uses `CollapsibleCard` — collapsed by default on the Trades page to save space. Metric labels use `MetricLabel` component with shadcn `Tooltip` for hover definitions — formulas use `×`, `÷`, `−` symbols where math is clearer than words. Trade form defaults entry date to 5 days ago and exit date to today (optimized for logging closed trades).
+`TradeStatsCard` displays analytics with derived metrics (expectancy, risk:reward ratio) calculated client-side from backend data. Uses `CollapsibleCard` — collapsed by default on the Trades page to save space. When collapsed, `headerRight` shows a compact summary: Total P&L (colored), Win Rate %, and trade count. Metric labels use `MetricLabel` component with shadcn `Tooltip` for hover definitions — formulas use `×`, `÷`, `−` symbols where math is clearer than words. Trade form defaults entry date to 5 days ago and exit date to today (optimized for logging closed trades).
 
 ### P&L by Ticker Card
 
 `TickerPnLCard` (`components/trades/TickerPnLCard.tsx`) shows aggregated P&L per ticker — one row per asset with columns: Ticker, Trades, Win Rate, Total P&L. Only includes closed trades (those with `realizedPnL`). Default sort: P&L descending. Uses `CollapsibleCard` — collapsed by default. Clicking a ticker row filters the main trade table below; a filter chip appears next to the tabs to clear the filter.
+
+### Portfolio Hero Summary
+
+Borderless hero section (matching Dashboard's Net Worth pattern). Total Value at `text-3xl sm:text-4xl font-bold tracking-tight tabular-nums` with inline YTD P&L trend arrow. Secondary stats in `divide-x` grid (YTD Start, Exposure, Positions, YTD P&L) — 4 columns on desktop, 2-column grid on mobile. All labels have `HelpTooltip`. Uses `pb-6 mb-2 border-b` wrapper.
 
 ### Portfolio Section Headers
 
@@ -293,7 +297,7 @@ Borderless layout (no Card wrapper) — plain `<div className="pb-4">` with `div
 
 ### Page Entrance Animations
 
-Dashboard, History, and Investors pages use staggered `animate-fade-in-up` entrance animations (CSS keyframe in `index.css`). 12px upward slide + opacity fade, 450ms with `cubic-bezier(0.16, 1, 0.3, 1)`. Each section has 60ms stagger delay. Respects `prefers-reduced-motion`.
+All pages use staggered `animate-fade-in-up` entrance animations (CSS keyframe in `index.css`). 12px upward slide + opacity fade, 450ms with `cubic-bezier(0.16, 1, 0.3, 1)`. Each section has 60ms stagger delay. Respects `prefers-reduced-motion`.
 
 ### Consistent Page Headers
 
@@ -303,13 +307,17 @@ All pages MUST use the same header pattern for visual consistency when switching
 - **Subtitle**: `text-sm text-muted-foreground` (no `sm:text-base`)
 - **Buttons**: `size="sm"` with `mr-1` icon spacing
 
+### Destructive Actions in Headers
+
+"Delete All" buttons MUST live inside the overflow `DropdownMenu` (⋮), never as standalone header buttons. This applies to Portfolio, Trades, and History. Only non-destructive actions (Copy All, Add/Log primary action) appear as visible header buttons. This prevents accidental destructive clicks and reduces visual noise.
+
 ### Design System & Visual Identity
 
 - **Color palette**: Indigo-tinted neutrals (not stock shadcn/ui grays) — `--primary: 234 89% 55%` (light), `234 89% 67%` (dark)
 - **Fonts**: Plus Jakarta Sans (body/headings) + JetBrains Mono (tabular numbers) — loaded via Google Fonts in `index.html`
 - **Profit/loss colors**: Emerald green (`text-profit`) and red (`text-loss`) — defined in `index.css`
 - **Skeleton loading**: CSS shimmer animation via `.skeleton` class — used on all pages and chart components
-- **HelpTooltip**: `?` icon tooltips on domain-specific finance terms (YTD Start, Exposure, CEX, Onchain, etc.)
+- **HelpTooltip**: `?` icon tooltips on domain-specific finance terms (YTD Start, Exposure, CEX, Onchain, etc.). Controlled open state with tap-to-toggle for touch devices. `stopPropagation` on pointer events prevents CollapsibleCard toggle when tapping help icons.
 - **Sidebar**: Linear-style active state — `bg-primary/10 text-primary font-semibold border-r-2 border-primary`
 - **Scrollbars**: Thin 6px with transparent track, rounded thumb
 - **Empty states**: Icon + heading + descriptive text + action CTA (Portfolio, Trades, History)

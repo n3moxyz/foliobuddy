@@ -1253,7 +1253,7 @@ Vercel provides:
 
 ### 1. ~~Start with a Design System~~ (Done!)
 
-Ran a full design critique using the impeccable toolkit (scored 25/40), then executed a 9-skill design overhaul. The project now has: custom indigo-tinted color palette, Plus Jakarta Sans + JetBrains Mono fonts, `.impeccable.md` design context file, skeleton loading states, HelpTooltip components, and a coherent visual identity inspired by Linear/Raycast and Dune Analytics. The lesson still stands: starting with this would have saved the retrofit.
+Ran a full design critique using the impeccable toolkit (scored 25/40), then executed a 9-skill design overhaul. The project now has: custom indigo-tinted color palette, Plus Jakarta Sans + JetBrains Mono fonts, `.impeccable.md` design context file, skeleton loading states, HelpTooltip components, and a coherent visual identity inspired by Linear/Raycast and Dune Analytics. Second critique pass (scored 29/40) focused on visual hierarchy: replaced Portfolio's 5-card summary grid with a hero Total Value layout matching Dashboard, moved destructive actions into overflow menus, surfaced key trade stats in collapsed headers, and added touch support for HelpTooltips. The lesson still stands: starting with a design system would have saved the retrofit.
 
 ### 2. ~~API Versioning~~ (Done!)
 
