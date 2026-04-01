@@ -162,9 +162,9 @@ export default function Portfolio() {
   const cryptoTotal = sections.find((s) => s.id === 'crypto')?.total ?? 0;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       {/* Page header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Portfolio</h1>
           <p className="text-sm text-muted-foreground">Manage your positions and holdings</p>
@@ -209,7 +209,12 @@ export default function Portfolio() {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="touch-manipulation">
+              <Button
+                variant="outline"
+                size="sm"
+                className="touch-manipulation"
+                aria-label="More options"
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -254,7 +259,10 @@ export default function Portfolio() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+        <div
+          className="animate-fade-in-up grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5"
+          style={{ animationDelay: '60ms' }}
+        >
           <Card className="py-2">
             <CardHeader className="py-2 px-4">
               <p className="text-xs text-muted-foreground">
@@ -320,7 +328,7 @@ export default function Portfolio() {
 
       {/* Loading State */}
       {positionsLoading && (
-        <div className="space-y-3">
+        <div className="animate-fade-in-up space-y-3" style={{ animationDelay: '120ms' }}>
           {/* Skeleton summary cards */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
             {Array.from({ length: 5 }).map((_, i) => (

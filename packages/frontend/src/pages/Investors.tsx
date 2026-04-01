@@ -21,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -30,8 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Crown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Crown, Users as UsersIcon } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
+import { HelpTooltip } from '@/components/ui/HelpTooltip';
 
 // Helper to format stake percentage with up to 5 decimal places (trimming trailing zeros)
 function formatStakePercentage(value: number): string {
@@ -92,41 +93,49 @@ export default function Investors() {
             Manage investor stakes and track their returns
           </p>
         </div>
-        <Button
-          size="sm"
-          className="touch-manipulation"
-          onClick={() => setShowAddForm(true)}
-        >
+        <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
           <Plus className="h-4 w-4 mr-1" />
           Add Investor
         </Button>
       </div>
 
       {/* Summary */}
-      <div className="animate-fade-in-up grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4" style={{ animationDelay: '60ms' }}>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Investors</CardDescription>
-            <CardTitle className="text-2xl">{investors?.length || 0}</CardTitle>
-          </CardHeader>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Allocated Stake</CardDescription>
-            <CardTitle className="text-2xl">{formatStakePercentage(totalStake)}%</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {formatStakePercentage(100 - totalStake)}% available
+      <div
+        className="animate-fade-in-up grid grid-cols-1 gap-2 sm:grid-cols-3"
+        style={{ animationDelay: '60ms' }}
+      >
+        <Card className="py-2">
+          <CardHeader className="py-2 px-4">
+            <p className="text-xs text-muted-foreground">
+              Total Investors
+              <HelpTooltip content="Number of investors with portfolio stakes" />
             </p>
-          </CardContent>
+            <CardTitle className="text-lg">{investors?.length || 0}</CardTitle>
+          </CardHeader>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Current Value</CardDescription>
-            <CardTitle className="text-2xl">
+        <Card className="py-2">
+          <CardHeader className="py-2 px-4">
+            <p className="text-xs text-muted-foreground">
+              Allocated Stake
+              <HelpTooltip content="Total percentage of portfolio allocated to investors" />
+            </p>
+            <CardTitle className="text-lg">
+              {formatStakePercentage(totalStake)}%
+              <span className="text-sm font-normal text-muted-foreground ml-1.5">
+                ({formatStakePercentage(100 - totalStake)}% available)
+              </span>
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        <Card className="py-2">
+          <CardHeader className="py-2 px-4">
+            <p className="text-xs text-muted-foreground">
+              Total Current Value
+              <HelpTooltip content="Combined current value of all investor stakes" />
+            </p>
+            <CardTitle className="text-lg">
               {formatCurrency(
                 investors?.reduce((sum, inv) => sum + (inv.currentValue || 0), 0) || 0,
                 'USD',
@@ -145,8 +154,15 @@ export default function Investors() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-pulse text-muted-foreground">Loading investors...</div>
+            <div className="space-y-3">
+              <div className="flex gap-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-4 w-20" />
+                ))}
+              </div>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
             </div>
           ) : investors && investors.length > 0 ? (
             <div className="rounded-md border overflow-x-auto">
@@ -205,7 +221,7 @@ export default function Investors() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 touch-manipulation"
                             onClick={() => setEditInvestor(investor)}
                             aria-label="Edit investor"
                           >
@@ -214,11 +230,11 @@ export default function Investors() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 text-destructive hover:text-destructive touch-manipulation"
                             onClick={() => setDeleteInvestor(investor)}
                             aria-label="Delete investor"
                           >
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </TableCell>
@@ -228,11 +244,17 @@ export default function Investors() {
               </Table>
             </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">No investors yet</p>
+            <div className="py-16 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <UsersIcon className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">No investors yet</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                Add investors to track their stakes, capital contributions, and YTD returns.
+              </p>
               <Button onClick={() => setShowAddForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add your first investor
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add Investor
               </Button>
             </div>
           )}
@@ -288,82 +310,85 @@ export default function Investors() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Investor</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to remove {deleteInvestor?.name} from the investor list? This
-              will not affect historical data.
-            </DialogDescription>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
           </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to remove{' '}
+              <span className="font-semibold text-foreground">{deleteInvestor?.name}</span> from the
+              investor list? Historical data will not be affected.
+            </p>
 
-          {/* Stake reassignment - only show if there are other investors */}
-          {deleteInvestor && investors && investors.length > 1 && (
-            <div className="space-y-2 py-4">
-              <Label>
-                Reassign {formatStakePercentage(deleteInvestor.stakePercentage)}% stake to:
-              </Label>
-              {investors.length === 2 ? (
-                // Only one other investor - auto-select and show info
-                <p className="text-sm text-muted-foreground">
-                  Stake will be reassigned to{' '}
-                  <span className="font-medium">
-                    {investors.find((inv) => inv.id !== deleteInvestor.id)?.name}
-                  </span>
-                </p>
-              ) : (
-                // Multiple other investors - show dropdown
-                <Select value={reassignToId} onValueChange={setReassignToId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an investor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {investors
-                      .filter((inv) => inv.id !== deleteInvestor.id)
-                      .map((inv) => (
-                        <SelectItem key={inv.id} value={inv.id}>
-                          {inv.name} ({formatStakePercentage(inv.stakePercentage)}%)
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          )}
+            {/* Stake reassignment - only show if there are other investors */}
+            {deleteInvestor && investors && investors.length > 1 && (
+              <div className="space-y-2">
+                <Label>
+                  Reassign {formatStakePercentage(deleteInvestor.stakePercentage)}% stake to:
+                </Label>
+                {investors.length === 2 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Stake will be reassigned to{' '}
+                    <span className="font-medium">
+                      {investors.find((inv) => inv.id !== deleteInvestor.id)?.name}
+                    </span>
+                  </p>
+                ) : (
+                  <Select value={reassignToId} onValueChange={setReassignToId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an investor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {investors
+                        .filter((inv) => inv.id !== deleteInvestor.id)
+                        .map((inv) => (
+                          <SelectItem key={inv.id} value={inv.id}>
+                            {inv.name} ({formatStakePercentage(inv.stakePercentage)}%)
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDeleteInvestor(null);
-                setReassignToId('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (!deleteInvestor) return;
-                // Determine reassignTo value
-                let reassignTo: string | undefined;
-                if (investors && investors.length > 1) {
-                  if (investors.length === 2) {
-                    // Auto-select the only other investor
-                    reassignTo = investors.find((inv) => inv.id !== deleteInvestor.id)?.id;
-                  } else {
-                    reassignTo = reassignToId || undefined;
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDeleteInvestor(null);
+                  setReassignToId('');
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (!deleteInvestor) return;
+                  let reassignTo: string | undefined;
+                  if (investors && investors.length > 1) {
+                    if (investors.length === 2) {
+                      reassignTo = investors.find((inv) => inv.id !== deleteInvestor.id)?.id;
+                    } else {
+                      reassignTo = reassignToId || undefined;
+                    }
                   }
+                  deleteMutation.mutate({ id: deleteInvestor.id, reassignTo });
+                }}
+                disabled={
+                  deleteMutation.isPending || (investors && investors.length > 2 && !reassignToId)
                 }
-                deleteMutation.mutate({ id: deleteInvestor.id, reassignTo });
-              }}
-              disabled={
-                deleteMutation.isPending || (investors && investors.length > 2 && !reassignToId)
-              }
-            >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-            </Button>
-          </DialogFooter>
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
