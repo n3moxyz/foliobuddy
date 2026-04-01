@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { SnapshotForm } from '@/components/history/SnapshotForm';
 import { SnapshotTable } from '@/components/history/SnapshotTable';
@@ -103,6 +102,7 @@ export default function History() {
       <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Snapshot History</h1>
+          <p className="text-sm text-muted-foreground">Track your portfolio value over time</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -194,23 +194,31 @@ export default function History() {
       </div>
 
       {/* Stats */}
-      <div className="animate-fade-in-up flex items-baseline gap-6 flex-wrap py-4 border-b" style={{ animationDelay: '60ms' }}>
+      <div
+        className="animate-fade-in-up flex items-baseline gap-6 flex-wrap py-4 border-b"
+        style={{ animationDelay: '60ms' }}
+      >
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Total</p>
+          <p className="text-sm text-muted-foreground mb-0.5">Total</p>
           <p className="text-lg font-semibold tabular-nums">{totalCount}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Automatic</p>
+          <p className="text-sm text-muted-foreground mb-0.5">Automatic</p>
           <p className="text-lg font-semibold tabular-nums">{automaticCount}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Manual</p>
+          <p className="text-sm text-muted-foreground mb-0.5">Manual</p>
           <p className="text-lg font-semibold tabular-nums">{manualCount}</p>
         </div>
       </div>
 
       {/* Snapshot Table with Tabs */}
-      <Tabs className="animate-fade-in-up" style={{ animationDelay: '120ms' }} defaultValue="all" onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
+      <Tabs
+        className="animate-fade-in-up"
+        style={{ animationDelay: '120ms' }}
+        defaultValue="all"
+        onValueChange={(v) => setSourceFilter(v as SourceFilter)}
+      >
         <TabsList className="sm:w-auto">
           <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
           <TabsTrigger value="AUTOMATIC">Automatic ({automaticCount})</TabsTrigger>
@@ -266,27 +274,38 @@ export default function History() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deletingSnapshot} onOpenChange={(open) => !open && setDeletingSnapshot(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Snapshot</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this snapshot from{' '}
-              {deletingSnapshot && formatDate(deletingSnapshot.timestamp)}? This action cannot be
-              undone.
-            </DialogDescription>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeletingSnapshot(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteSnapshot.isPending}
-            >
-              {deleteSnapshot.isPending ? 'Deleting...' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete this snapshot from{' '}
+              <span className="font-semibold text-foreground">
+                {deletingSnapshot && formatDate(deletingSnapshot.timestamp)}
+              </span>
+              ?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeletingSnapshot(null)}
+                disabled={deleteSnapshot.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                disabled={deleteSnapshot.isPending}
+              >
+                {deleteSnapshot.isPending ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

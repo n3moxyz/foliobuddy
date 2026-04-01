@@ -133,7 +133,7 @@ export default function Trades() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Trade Journal</h1>
           <p className="text-sm text-muted-foreground">
@@ -236,26 +236,30 @@ export default function Trades() {
 
       {/* Trade Statistics */}
       {analytics && (
-        <TradeStatsCard
-          analytics={analytics}
-          currency={currency}
-          fxRate={fxRate}
-          onTradeClick={handleNotableTradeClick}
-          isExpanded={statsExpanded}
-          onToggle={() => setStatsExpanded(!statsExpanded)}
-        />
+        <div className="animate-fade-in-up" style={{ animationDelay: '60ms' }}>
+          <TradeStatsCard
+            analytics={analytics}
+            currency={currency}
+            fxRate={fxRate}
+            onTradeClick={handleNotableTradeClick}
+            isExpanded={statsExpanded}
+            onToggle={() => setStatsExpanded(!statsExpanded)}
+          />
+        </div>
       )}
 
       {/* P&L by Ticker */}
       {trades && trades.length > 0 && (
-        <TickerPnLCard
-          trades={trades}
-          currency={currency}
-          fxRate={fxRate}
-          onTickerClick={handleTickerClick}
-          isExpanded={tickerPnlExpanded}
-          onToggle={() => setTickerPnlExpanded(!tickerPnlExpanded)}
-        />
+        <div className="animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+          <TickerPnLCard
+            trades={trades}
+            currency={currency}
+            fxRate={fxRate}
+            onTickerClick={handleTickerClick}
+            isExpanded={tickerPnlExpanded}
+            onToggle={() => setTickerPnlExpanded(!tickerPnlExpanded)}
+          />
+        </div>
       )}
 
       {/* Trade Tables */}
@@ -673,7 +677,7 @@ function TradeTable({
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`flex items-center gap-1 whitespace-nowrap ${trade.direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}
+                        className={`flex items-center gap-1 whitespace-nowrap ${trade.direction === 'LONG' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                       >
                         {trade.direction === 'LONG' ? (
                           <TrendingUp className="h-3.5 w-3.5" />
@@ -721,7 +725,7 @@ function TradeTable({
                         className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
                           trade.status === 'OPEN'
                             ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+                            : 'bg-muted text-muted-foreground'
                         }`}
                       >
                         {trade.status}

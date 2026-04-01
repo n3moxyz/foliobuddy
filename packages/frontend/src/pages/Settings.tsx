@@ -76,17 +76,15 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Configure your portfolio dashboard
-          </p>
+          <p className="text-sm text-muted-foreground">Configure your portfolio dashboard</p>
         </div>
       </div>
 
       {/* Display Settings */}
-      <Card>
+      <Card className="animate-fade-in-up" style={{ animationDelay: '60ms' }}>
         <CardHeader>
           <CardTitle>Display Settings</CardTitle>
           <CardDescription>Customize how data is displayed</CardDescription>
@@ -142,7 +140,7 @@ export default function Settings() {
       </Card>
 
       {/* Data Management */}
-      <Card>
+      <Card className="animate-fade-in-up" style={{ animationDelay: '120ms' }}>
         <CardHeader>
           <CardTitle>Data Management</CardTitle>
           <CardDescription>Refresh prices and manage snapshots</CardDescription>
@@ -207,7 +205,7 @@ export default function Settings() {
       </Card>
 
       {/* Export */}
-      <Card>
+      <Card className="animate-fade-in-up" style={{ animationDelay: '180ms' }}>
         <CardHeader>
           <CardTitle>Export Data</CardTitle>
           <CardDescription>Download your portfolio data</CardDescription>
@@ -265,7 +263,7 @@ export default function Settings() {
       </Card>
 
       {/* About */}
-      <Card>
+      <Card className="animate-fade-in-up" style={{ animationDelay: '240ms' }}>
         <CardHeader>
           <CardTitle>About</CardTitle>
         </CardHeader>
