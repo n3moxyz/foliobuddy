@@ -134,16 +134,6 @@ export default function History() {
             )}
             {copiedAll ? 'Copied!' : 'Copy All'}
           </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={() => setShowDeleteAllConfirm(true)}
-            disabled={!allSnapshots || allSnapshots.length === 0}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Delete All
-          </Button>
           <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Add Snapshot
@@ -153,7 +143,7 @@ export default function History() {
               <Button
                 variant="outline"
                 size="sm"
-                className="sm:hidden touch-manipulation"
+                className="touch-manipulation"
                 aria-label="More options"
               >
                 <MoreVertical className="h-4 w-4" />

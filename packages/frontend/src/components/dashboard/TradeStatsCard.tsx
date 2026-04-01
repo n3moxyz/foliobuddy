@@ -460,6 +460,17 @@ export function TradeStatsCard({
         title="Trade Analytics"
         isExpanded={isExpanded}
         onToggle={onToggle ?? (() => {})}
+        headerRight={
+          !isExpanded ? (
+            <div className="flex items-center gap-3 text-xs tabular-nums">
+              <span className={`font-medium ${getPnLColorClass(analytics.totalPnL)}`}>
+                {formatCurrency(convert(analytics.totalPnL), currency, 0)}
+              </span>
+              <span className="text-muted-foreground">{formatNumber(analytics.winRate)}% WR</span>
+              <span className="text-muted-foreground">{analytics.totalTrades} trades</span>
+            </div>
+          ) : undefined
+        }
       >
         <div className="space-y-5">
           <DndContext
