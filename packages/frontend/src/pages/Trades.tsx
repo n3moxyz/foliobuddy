@@ -7,7 +7,13 @@ import {
 } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
-import { formatCurrency, formatPercent, formatDate, getPnLColorClass } from '@/lib/utils';
+import {
+  formatCurrency,
+  formatPrice,
+  formatPercent,
+  formatDate,
+  getPnLColorClass,
+} from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -690,11 +696,11 @@ function TradeTable({
                       )}
                     </TableCell>
                     <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
-                      {formatCurrency(trade.entryPrice, 'USD', 0)}
+                      {formatPrice(trade.entryPrice)}
                     </TableCell>
                     <TableCell className={`${HIDDEN_MD} text-right font-mono whitespace-nowrap`}>
                       {trade.exitPrice ? (
-                        formatCurrency(trade.exitPrice, 'USD', 0)
+                        formatPrice(trade.exitPrice)
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
