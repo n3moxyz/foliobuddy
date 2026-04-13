@@ -34,6 +34,22 @@ export function formatCurrency(
   return formatted;
 }
 
+/** Smart decimals for prices: more decimals for smaller values */
+export function formatPrice(
+  value: number | null | undefined,
+  currency: 'USD' | 'SGD' = 'USD'
+): string {
+  if (value === null || value === undefined) return '-';
+  const abs = Math.abs(value);
+  let decimals: number;
+  if (abs < 0.01) decimals = 5;
+  else if (abs < 0.1) decimals = 4;
+  else if (abs < 10) decimals = 3;
+  else if (abs < 1000) decimals = 2;
+  else decimals = 0;
+  return formatCurrency(value, currency, decimals);
+}
+
 export function formatNumber(value: number | null | undefined, decimals: number = 2): string {
   if (value === null || value === undefined) return '-';
 
