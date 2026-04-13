@@ -226,6 +226,20 @@ All pages follow iOS HIG-inspired responsive patterns:
 - **Responsive headers**: Page headers stack vertically on mobile (`flex-col gap-3 sm:flex-row`). Secondary actions move to `DropdownMenu` overflow menus.
 - **Dialog safety**: Dialogs use `w-[calc(100%-2rem)]` for viewport margins and `max-h-[85vh] overflow-y-auto` for scroll.
 
+### Smart Price Formatting
+
+`formatPrice()` in `lib/utils.ts` — use instead of `formatCurrency(..., 0)` for per-unit prices (entry/exit, current price). Picks decimal places by magnitude:
+
+| Price Range | Decimals | Example |
+|---|---|---|
+| < $0.01 | 5 | $0.00842 |
+| < $0.10 | 4 | $0.0812 |
+| < $10 | 3 | $0.780, $1.480 |
+| < $1,000 | 2 | $32.15, $113.40 |
+| >= $1,000 | 0 | $67,200 |
+
+Use `formatCurrency` (with explicit decimals or compact mode) for totals, sizes, and P&L — those don't need magnitude-aware decimals.
+
 ### Trade Analytics Card
 
 `TradeStatsCard` displays analytics with derived metrics (expectancy, risk:reward ratio) calculated client-side from backend data. Uses `CollapsibleCard` — collapsed by default on the Trades page to save space. When collapsed, `headerRight` shows a compact summary: Total P&L (colored), Win Rate %, and trade count. Metric labels use `MetricLabel` component with shadcn `Tooltip` for hover definitions — formulas use `×`, `÷`, `−` symbols where math is clearer than words. Trade form defaults entry date to 5 days ago and exit date to today (optimized for logging closed trades).
