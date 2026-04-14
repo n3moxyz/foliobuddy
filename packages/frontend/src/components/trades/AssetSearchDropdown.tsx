@@ -173,11 +173,16 @@ export function AssetSearchDropdown({
         onFocus={() => setShowDropdown(true)}
         onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
         onKeyDown={handleSearchKeyDown}
+        role="combobox"
+        aria-expanded={showDropdown && combinedResults.length > 0}
+        aria-haspopup="listbox"
+        aria-autocomplete="list"
       />
 
       {showDropdown && (
         <div
           ref={dropdownRef}
+          role="listbox"
           className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
         >
           {searchLoading && searchQuery.length >= 1 ? (
@@ -187,6 +192,7 @@ export function AssetSearchDropdown({
               <button
                 key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
                 type="button"
+                role="option"
                 className={`w-full px-3 py-2 text-left flex items-center justify-between ${
                   index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
                 }`}

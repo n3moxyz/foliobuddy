@@ -99,6 +99,7 @@ function SortableSegment({
       <div className="flex items-start gap-1">
         <button
           type="button"
+          aria-label="Reorder section"
           className="mt-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0 touch-manipulation"
           {...attributes}
           {...listeners}
@@ -191,15 +192,12 @@ function WinRateSegment({ analytics }: { analytics: TradeAnalytics }) {
         <MetricLabel label="Win Rate" tip={<>winning trades &divide; total trades</>} />
         <p className="text-xl font-bold tabular-nums">{formatNumber(analytics.winRate)}%</p>
       </div>
-      <div className="flex h-2.5 rounded-full overflow-hidden bg-muted">
+      <div className="relative h-2.5 rounded-full overflow-hidden bg-muted">
         {analytics.totalTrades > 0 && (
-          <>
-            <div className="bg-profit transition-all" style={{ width: `${analytics.winRate}%` }} />
-            <div
-              className="bg-loss transition-all"
-              style={{ width: `${100 - analytics.winRate}%` }}
-            />
-          </>
+          <div
+            className="absolute inset-y-0 left-0 bg-profit transition-transform origin-left"
+            style={{ width: '100%', transform: `scaleX(${analytics.winRate / 100})` }}
+          />
         )}
       </div>
       <div className="flex items-center justify-between text-xs tabular-nums">
@@ -271,7 +269,7 @@ function ByDirectionSegment({
       <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
         <div className="space-y-1 rounded-md bg-muted/50 p-3">
           <div className="flex items-center gap-1.5">
-            <span className="text-green-600 font-medium">LONG</span>
+            <span className="text-profit font-medium">LONG</span>
             <span className="text-xs text-muted-foreground">
               ({analytics.breakdown.long.count})
             </span>
@@ -287,7 +285,7 @@ function ByDirectionSegment({
         </div>
         <div className="space-y-1 rounded-md bg-muted/50 p-3">
           <div className="flex items-center gap-1.5">
-            <span className="text-red-600 font-medium">SHORT</span>
+            <span className="text-loss font-medium">SHORT</span>
             <span className="text-xs text-muted-foreground">
               ({analytics.breakdown.short.count})
             </span>

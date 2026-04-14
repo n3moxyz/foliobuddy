@@ -2,14 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import type { CategoryAllocation } from '@/lib/types';
+import { ASSET_COLORS } from '@/lib/chartColors';
 
 interface AllocationChartProps {
   data: CategoryAllocation[];
   title: string;
   isLoading?: boolean;
 }
-
-const COLORS = ['#BE185D', '#1D4ED8', '#059669', '#A21CAF', '#0891B2', '#854D0E'];
 
 const CATEGORY_LABELS: Record<string, string> = {
   LIQUID_CRYPTO: 'Crypto',
@@ -73,7 +72,7 @@ export function AllocationChart({ data, title, isLoading }: AllocationChartProps
               labelLine={false}
             >
               {chartData.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <Cell key={`cell-${index}`} fill={ASSET_COLORS[index % ASSET_COLORS.length]} />
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip />} />
@@ -86,7 +85,7 @@ export function AllocationChart({ data, title, isLoading }: AllocationChartProps
             <div key={item.name} className="flex items-center gap-2">
               <div
                 className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                style={{ backgroundColor: ASSET_COLORS[index % ASSET_COLORS.length] }}
               />
               <span className="text-sm">{item.name}</span>
             </div>

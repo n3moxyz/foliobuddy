@@ -29,7 +29,7 @@ export function PaginationControls({ pagination, onPageChange }: PaginationContr
           <ChevronLeft className="h-4 w-4" />
           Prev
         </Button>
-        <span className="text-sm text-muted-foreground">
+        <span aria-current="page" className="text-sm text-muted-foreground">
           Page {page} of {totalPages}
         </span>
         <Button

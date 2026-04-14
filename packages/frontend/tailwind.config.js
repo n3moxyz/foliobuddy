@@ -51,8 +51,10 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        profit: 'hsl(160, 84%, 39%)',
-        loss: 'hsl(0, 72%, 51%)',
+        profit: 'hsl(var(--profit))',
+        loss: 'hsl(var(--loss))',
+        warning: 'hsl(var(--warning))',
+        info: 'hsl(var(--info))',
       },
       borderRadius: {
         lg: 'var(--radius)',

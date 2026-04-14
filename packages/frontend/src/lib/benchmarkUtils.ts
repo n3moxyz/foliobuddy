@@ -1,4 +1,5 @@
 import type { PerformancePoint, BenchmarkHistoricalData } from './api';
+import { BRAND_COLORS, ADDITIONAL_BENCHMARK_COLORS } from './chartColors';
 
 export interface NormalizedDataPoint {
   timestamp: string;
@@ -18,11 +19,11 @@ export interface BenchmarkConfig {
 }
 
 export const DEFAULT_BENCHMARKS: BenchmarkConfig[] = [
-  { id: 'btc', coingeckoId: 'bitcoin', symbol: 'BTC', color: '#F7931A', enabled: true },
-  { id: 'eth', coingeckoId: 'ethereum', symbol: 'ETH', color: '#627EEA', enabled: true },
+  { id: 'btc', coingeckoId: 'bitcoin', symbol: 'BTC', color: BRAND_COLORS.btc, enabled: true },
+  { id: 'eth', coingeckoId: 'ethereum', symbol: 'ETH', color: BRAND_COLORS.eth, enabled: true },
 ];
 
-export const ADDITIONAL_COLORS = ['#14B8A6', '#EF4444', '#8B5CF6', '#F59E0B'];
+export const ADDITIONAL_COLORS = [...ADDITIONAL_BENCHMARK_COLORS];
 
 /**
  * Normalize a series of values to percentage change from the first value

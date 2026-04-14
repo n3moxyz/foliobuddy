@@ -68,7 +68,7 @@ export function CustodyCheckbox({
               }
             }}
           >
-            <SelectTrigger className="mt-1">
+            <SelectTrigger className="mt-1" aria-label="Custody person">
               <SelectValue placeholder="Who is this for?" />
             </SelectTrigger>
             <SelectContent>
@@ -96,6 +96,7 @@ export function CustodyCheckbox({
                 }
               }}
               placeholder="Enter name..."
+              aria-label="Custody person name"
               autoFocus
             />
             <Button type="button" size="sm" onClick={onAddNewName} disabled={!newNameInput.trim()}>

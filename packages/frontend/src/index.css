@@ -24,6 +24,12 @@
     --input: 230 20% 88%;
     --ring: 234 89% 55%;
     --radius: 0.375rem;
+    --profit: 160 84% 39%;
+    --loss: 0 72% 51%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 30%;
+    --info: 217 91% 60%;
+    --info-foreground: 217 91% 35%;
   }
 
   .dark {
@@ -46,6 +52,12 @@
     --border: 234 18% 18%;
     --input: 234 18% 20%;
     --ring: 234 89% 67%;
+    --profit: 160 84% 55%;
+    --loss: 0 72% 65%;
+    --warning: 38 92% 60%;
+    --warning-foreground: 38 92% 80%;
+    --info: 217 91% 70%;
+    --info-foreground: 217 91% 80%;
   }
 }
 
@@ -153,5 +165,9 @@
     animation: none;
     opacity: 1;
     transform: none;
+  }
+  .animate-highlight-flash,
+  .animate-ping {
+    animation: none !important;
   }
 }

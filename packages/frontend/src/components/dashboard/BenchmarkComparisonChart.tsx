@@ -25,6 +25,7 @@ import {
   type BenchmarkConfig,
   type NormalizedDataPoint,
 } from '@/lib/benchmarkUtils';
+import { PORTFOLIO_LINE_COLOR, BRAND_COLORS } from '@/lib/chartColors';
 import { Plus, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -255,7 +256,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
 
   // Get all active benchmarks for legend
   const allBenchmarks = [
-    { id: 'portfolio', symbol: 'Portfolio', color: '#64748B', enabled: true },
+    { id: 'portfolio', symbol: 'Portfolio', color: PORTFOLIO_LINE_COLOR, enabled: true },
     ...benchmarks,
     ...additionalBenchmarks,
   ];
@@ -297,7 +298,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
               style={{
                 backgroundColor: benchmark.enabled ? benchmark.color : undefined,
                 borderColor: benchmark.color,
-                color: benchmark.enabled ? 'white' : benchmark.color,
+                color: benchmark.enabled ? 'hsl(var(--primary-foreground))' : benchmark.color,
               }}
               onClick={() => toggleBenchmark(benchmark.id)}
             >
@@ -323,7 +324,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                 style={{
                   backgroundColor: benchmark.enabled ? benchmark.color : undefined,
                   borderColor: benchmark.color,
-                  color: benchmark.enabled ? 'white' : benchmark.color,
+                  color: benchmark.enabled ? 'hsl(var(--primary-foreground))' : benchmark.color,
                 }}
                 onClick={() => toggleAdditionalBenchmark(benchmark.id)}
               >
@@ -392,15 +393,14 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
           {/* Portfolio Legend Item */}
           <div className="w-full text-sm sm:ml-auto sm:w-auto flex items-center gap-1.5">
             <div
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: '#64748B' }}
+              className="w-2 h-2 rounded-full flex-shrink-0 bg-muted-foreground"
             />
-            <span className="font-medium" style={{ color: '#64748B' }}>
+            <span className="font-medium text-muted-foreground">
               Portfolio
             </span>
             {chartData.length > 0 && (
               <span
-                className={`ml-0.5 ${(getCurrentChange(chartData, 'portfolio') ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                className={`ml-0.5 ${(getCurrentChange(chartData, 'portfolio') ?? 0) >= 0 ? 'text-profit' : 'text-loss'}`}
               >
                 {(() => {
                   const change = getCurrentChange(chartData, 'portfolio');
@@ -480,7 +480,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                                   style={{ backgroundColor: benchmark.color }}
                                 />
                                 <span>{benchmark.symbol}:</span>
-                                <span className={value >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                <span className={value >= 0 ? 'text-profit' : 'text-loss'}>
                                   {value >= 0 ? '+' : ''}
                                   {value.toFixed(2)}%
                                 </span>
@@ -501,7 +501,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                 <Line
                   type="monotone"
                   dataKey="portfolio"
-                  stroke="#64748B"
+                  stroke={PORTFOLIO_LINE_COLOR}
                   strokeWidth={2}
                   dot={(props: Record<string, unknown>) => {
                     const { cx, cy, index, value } = props as {
@@ -514,7 +514,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                       return <g key={`p-${index}`} />;
                     return (
                       <g key={`p-${index}`}>
-                        <circle cx={cx} cy={cy} r={3} fill="#64748B" />
+                        <circle cx={cx} cy={cy} r={3} fill={PORTFOLIO_LINE_COLOR} />
                         <text
                           x={cx + 8}
                           y={cy}
@@ -537,7 +537,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   <Line
                     type="monotone"
                     dataKey="btc"
-                    stroke="#F7931A"
+                    stroke={BRAND_COLORS.btc}
                     strokeWidth={2}
                     dot={(props: Record<string, unknown>) => {
                       const { cx, cy, index, value } = props as {
@@ -550,14 +550,14 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                         return <g key={`btc-${index}`} />;
                       return (
                         <g key={`btc-${index}`}>
-                          <circle cx={cx} cy={cy} r={3} fill="#F7931A" />
+                          <circle cx={cx} cy={cy} r={3} fill={BRAND_COLORS.btc} />
                           <text
                             x={cx + 8}
                             y={cy}
                             fontSize={11}
                             dominantBaseline="middle"
                             fontWeight={500}
-                            fill="#F7931A"
+                            fill={BRAND_COLORS.btc}
                           >
                             {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
                           </text>
@@ -573,7 +573,7 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   <Line
                     type="monotone"
                     dataKey="eth"
-                    stroke="#627EEA"
+                    stroke={BRAND_COLORS.eth}
                     strokeWidth={2}
                     dot={(props: Record<string, unknown>) => {
                       const { cx, cy, index, value } = props as {
@@ -586,14 +586,14 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                         return <g key={`eth-${index}`} />;
                       return (
                         <g key={`eth-${index}`}>
-                          <circle cx={cx} cy={cy} r={3} fill="#627EEA" />
+                          <circle cx={cx} cy={cy} r={3} fill={BRAND_COLORS.eth} />
                           <text
                             x={cx + 8}
                             y={cy}
                             fontSize={11}
                             dominantBaseline="middle"
                             fontWeight={500}
-                            fill="#627EEA"
+                            fill={BRAND_COLORS.eth}
                           >
                             {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
                           </text>

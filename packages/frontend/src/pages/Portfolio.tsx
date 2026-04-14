@@ -168,7 +168,7 @@ export default function Portfolio() {
       <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Portfolio</h1>
-          <p className="text-sm text-muted-foreground">Manage your positions and holdings</p>
+          <p className="text-sm text-muted-foreground">{positions?.length ?? 0} positions</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Secondary actions hidden on mobile, in dropdown */}
@@ -250,7 +250,7 @@ export default function Portfolio() {
 
       {/* Portfolio Hero */}
       {summary && (
-        <div className="animate-fade-in-up pb-6 mb-2 border-b" style={{ animationDelay: '60ms' }}>
+        <div className="pb-6 mb-2 border-b">
           {/* Hero: Total Value */}
           <div className="flex items-baseline gap-3 flex-wrap">
             <p className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums">
@@ -357,7 +357,7 @@ export default function Portfolio() {
 
       {/* Loading State */}
       {positionsLoading && (
-        <div className="animate-fade-in-up space-y-3" style={{ animationDelay: '120ms' }}>
+        <div className="space-y-3">
           {/* Skeleton summary cards */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -390,9 +390,7 @@ export default function Portfolio() {
       {/* Empty State */}
       {!positionsLoading && (!positions || positions.length === 0) && (
         <div className="py-16 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Wallet className="h-6 w-6 text-primary" />
-          </div>
+          <Wallet className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <h3 className="text-lg font-semibold mb-1">No positions yet</h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
             Add your first crypto or stablecoin position to start tracking your portfolio value and
@@ -453,7 +451,7 @@ export default function Portfolio() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-xs text-muted-foreground hover:text-foreground"
+                    className="h-8 text-xs text-muted-foreground hover:text-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePerpEdit();

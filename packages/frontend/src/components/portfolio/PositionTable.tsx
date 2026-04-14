@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -111,14 +111,14 @@ export function PositionTable({
   const [showAllColumns, setShowAllColumns] = useState(false);
   const deletePositionMutation = useDeletePosition();
 
-  const handleCopy = async (position: Position, e: React.MouseEvent) => {
+  const handleCopy = useCallback(async (position: Position, e: React.MouseEvent) => {
     e.stopPropagation();
     const success = await copyPositionsToClipboard(position);
     if (success) {
       setCopiedId(position.id);
       setTimeout(() => setCopiedId(null), 2000);
     }
-  };
+  }, []);
 
   // Helper to convert USD values to selected currency
   const convert = (usdValue: number | null | undefined) => {
@@ -182,13 +182,13 @@ export function PositionTable({
   const cexId = sectionPrefix ? `${sectionPrefix}-cex` : 'cex';
   const onchainId = sectionPrefix ? `${sectionPrefix}-onchain` : 'onchain';
 
-  const handleDeleteClick = (position: Position) => {
+  const handleDeleteClick = useCallback((position: Position) => {
     if (skipConfirm) {
       deletePositionMutation.mutate(position.id);
     } else {
       setDeletePosition(position);
     }
-  };
+  }, [skipConfirm, deletePositionMutation]);
 
   const handleDelete = async () => {
     if (!deletePosition) return;
@@ -203,6 +203,9 @@ export function PositionTable({
     setDontAskAgain(false);
   };
 
+  const handleView = useCallback((position: Position) => setViewPosition(position), []);
+  const handleEdit = useCallback((position: Position) => setEditPosition(position), []);
+
   // Render a position row
   const renderPositionRow = (position: Position) => {
     return (
@@ -213,8 +216,8 @@ export function PositionTable({
         fxRate={fxRate}
         copiedId={copiedId}
         showAllColumns={showAllColumns}
-        onView={setViewPosition}
-        onEdit={setEditPosition}
+        onView={handleView}
+        onEdit={handleEdit}
         onDelete={handleDeleteClick}
         onCopy={handleCopy}
       />
@@ -240,10 +243,10 @@ export function PositionTable({
           onSort={sortState.onSort}
           style={{ width: '9%' }}
         />
-        <TableHead style={{ width: '12%' }} className={`text-right ${HIDDEN_MOBILE}`}>
+        <TableHead scope="col" style={{ width: '12%' }} className={`text-right ${HIDDEN_MOBILE}`}>
           Quantity
         </TableHead>
-        <TableHead style={{ width: '10%' }} className={`text-right ${HIDDEN_MOBILE}`}>
+        <TableHead scope="col" style={{ width: '10%' }} className={`text-right ${HIDDEN_MOBILE}`}>
           Avg Cost
         </TableHead>
         <SortableHeader
@@ -256,7 +259,7 @@ export function PositionTable({
           style={{ width: '12%' }}
           className={HIDDEN_MOBILE}
         />
-        <TableHead style={{ width: '10%' }} className={`text-right ${HIDDEN_MOBILE}`}>
+        <TableHead scope="col" style={{ width: '10%' }} className={`text-right ${HIDDEN_MOBILE}`}>
           Price
         </TableHead>
         <SortableHeader
@@ -287,7 +290,7 @@ export function PositionTable({
           style={{ width: '9%' }}
           className={HIDDEN_MOBILE}
         />
-        <TableHead style={{ width: '15%' }} className="text-center">
+        <TableHead scope="col" style={{ width: '15%' }} className="text-center">
           Actions
         </TableHead>
       </TableRow>
@@ -326,7 +329,7 @@ export function PositionTable({
         {cexPositions.length > 0 && (
           <Collapsible open={isExpanded(cexId)} onOpenChange={() => toggle(cexId)}>
             <CollapsibleTrigger asChild>
-              <div className="flex items-center gap-2 cursor-pointer select-none group mb-2">
+              <button type="button" className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2">
                 <ChevronRight
                   className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
                     isExpanded(cexId) ? 'rotate-90' : ''
@@ -342,7 +345,7 @@ export function PositionTable({
                     {formatCurrency(convertSub(cexTotal), currency, 0)}
                   </span>
                 )}
-              </div>
+              </button>
             </CollapsibleTrigger>
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-x-auto">
@@ -359,7 +362,7 @@ export function PositionTable({
         {onchainPositions.length > 0 && (
           <Collapsible open={isExpanded(onchainId)} onOpenChange={() => toggle(onchainId)}>
             <CollapsibleTrigger asChild>
-              <div className="flex items-center gap-2 cursor-pointer select-none group mb-2">
+              <button type="button" className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2">
                 <ChevronRight
                   className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
                     isExpanded(onchainId) ? 'rotate-90' : ''
@@ -375,7 +378,7 @@ export function PositionTable({
                     {formatCurrency(convertSub(onchainTotal), currency, 0)}
                   </span>
                 )}
-              </div>
+              </button>
             </CollapsibleTrigger>
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-x-auto">
@@ -407,7 +410,7 @@ export function PositionTable({
 
       {/* Edit Dialog */}
       <Dialog open={!!editPosition} onOpenChange={() => setEditPosition(null)}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Position</DialogTitle>
           </DialogHeader>
@@ -425,7 +428,7 @@ export function PositionTable({
           setDontAskAgain(false);
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Delete Position</DialogTitle>
             <DialogDescription>
@@ -468,7 +471,7 @@ export function PositionTable({
 
       {/* Position Detail Dialog */}
       <Dialog open={!!viewPosition} onOpenChange={() => setViewPosition(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span>{viewPosition?.asset.symbol}</span>
@@ -490,7 +493,7 @@ export function PositionTable({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Current Price</p>
-                  <p className="font-mono font-medium text-slate-500 dark:text-slate-400">
+                  <p className="font-mono font-medium text-muted-foreground">
                     {formatCurrency(
                       convert(viewPosition.asset.currentPriceUsd),
                       currency,

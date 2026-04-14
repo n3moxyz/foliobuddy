@@ -121,7 +121,7 @@ export function ImportPositionsDialog({ open, onOpenChange }: ImportPositionsDia
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Positions</DialogTitle>
           <DialogDescription>

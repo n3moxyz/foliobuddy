@@ -662,9 +662,11 @@ export function PositionForm({
 
       {/* Mode Selection (Add New vs Import) */}
       {!isEditing && (
-        <div className="flex border-b mb-2">
+        <div className="flex border-b mb-2" role="tablist">
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'add'}
             onClick={() => setMode('add')}
             className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'add'
@@ -676,6 +678,8 @@ export function PositionForm({
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'import'}
             onClick={() => setMode('import')}
             className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'import'
@@ -711,9 +715,11 @@ export function PositionForm({
         /* Add New Mode */
         <form onSubmit={handleSubmit} className="space-y-3">
           {isEditing && (
-            <div className="flex border-b mb-2">
+            <div className="flex border-b mb-2" role="tablist">
               <button
                 type="button"
+                role="tab"
+                aria-selected={editMode === 'edit'}
                 onClick={() => setEditMode('edit')}
                 className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
                   editMode === 'edit'
@@ -725,6 +731,8 @@ export function PositionForm({
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={editMode === 'delta'}
                 onClick={() => setEditMode('delta')}
                 className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
                   editMode === 'delta'
@@ -896,9 +904,9 @@ export function PositionForm({
               {/* Category Selection */}
               {!isEditing && (
                 <div className="space-y-1">
-                  <Label className="text-sm">Category</Label>
+                  <Label htmlFor="pos-category" className="text-sm">Category</Label>
                   <Select value={category} onValueChange={(v) => setCategory(v as CategoryType)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="pos-category">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -912,7 +920,7 @@ export function PositionForm({
               {/* Asset Selection - Different UI for Crypto vs Cash */}
               {category === 'crypto' ? (
                 <div className="space-y-1">
-                  <Label className="text-sm">Asset</Label>
+                  <Label htmlFor="pos-asset" className="text-sm">Asset</Label>
                   <AssetSearchDropdown
                     selectedAsset={selectedAsset}
                     searchQuery={searchQuery}
@@ -943,7 +951,7 @@ export function PositionForm({
               ) : (
                 /* Cash / Stablecoin Selection */
                 <div className="space-y-1">
-                  <Label className="text-sm">Stablecoin</Label>
+                  <Label htmlFor="pos-stablecoin" className="text-sm">Stablecoin</Label>
                   {isEditing ? (
                     <Input
                       value={`${position.asset.symbol} - ${position.asset.name}`}
@@ -956,7 +964,7 @@ export function PositionForm({
                       onValueChange={handleSelectStablecoin}
                       disabled={createAssetFromCoinGecko.isPending}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="pos-stablecoin">
                         <SelectValue
                           placeholder={
                             createAssetFromCoinGecko.isPending
@@ -1073,14 +1081,14 @@ export function PositionForm({
 
               {/* Storage Type */}
               <div className="space-y-1">
-                <Label className="text-sm">Storage Type</Label>
+                <Label htmlFor="pos-storage-type" className="text-sm">Storage Type</Label>
                 <Select
                   value={storageType}
                   onValueChange={(value) =>
                     setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK')
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="pos-storage-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1095,7 +1103,7 @@ export function PositionForm({
 
               {/* Storage Location */}
               <div className="space-y-1">
-                <Label className="text-sm">Storage Location (Optional)</Label>
+                <Label htmlFor="pos-storage-location" className="text-sm">Storage Location (Optional)</Label>
                 <Select
                   value={storageLocation}
                   onValueChange={(v) => {
@@ -1105,7 +1113,7 @@ export function PositionForm({
                     }
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="pos-storage-location">
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>

@@ -173,7 +173,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
             {parsedTrades.map((t, i) => (
               <div key={i} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
                 <span
-                  className={`font-medium ${t.direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}
+                  className={`font-medium ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}
                 >
                   {t.direction}
                 </span>
