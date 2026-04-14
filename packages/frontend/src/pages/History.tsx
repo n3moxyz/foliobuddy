@@ -184,10 +184,7 @@ export default function History() {
       </div>
 
       {/* Stats */}
-      <div
-        className="animate-fade-in-up flex items-baseline gap-6 flex-wrap py-4 border-b"
-        style={{ animationDelay: '60ms' }}
-      >
+      <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
         <div>
           <p className="text-sm text-muted-foreground mb-0.5">Total</p>
           <p className="text-lg font-semibold tabular-nums">{totalCount}</p>
@@ -204,8 +201,6 @@ export default function History() {
 
       {/* Snapshot Table with Tabs */}
       <Tabs
-        className="animate-fade-in-up"
-        style={{ animationDelay: '120ms' }}
         defaultValue="all"
         onValueChange={(v) => setSourceFilter(v as SourceFilter)}
       >

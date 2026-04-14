@@ -6,7 +6,7 @@ import { useAuthSetup } from './hooks/useAuthSetup';
 import { useThemeEffect } from './hooks/useThemeEffect';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
-import Dashboard from './pages/Dashboard';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 // Lazy-loaded pages — reduces initial bundle size
 const Portfolio = lazy(() => import('./pages/Portfolio'));

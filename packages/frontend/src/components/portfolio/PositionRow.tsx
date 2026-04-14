@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { formatCurrency, formatNumber, formatPercent, getPnLColorClass } from '@/lib/utils';
@@ -23,7 +24,7 @@ interface PositionRowProps {
   onCopy: (position: Position, e: React.MouseEvent) => void;
 }
 
-export function PositionRow({
+export const PositionRow = React.memo(function PositionRow({
   position,
   currency,
   fxRate,
@@ -54,7 +55,18 @@ export function PositionRow({
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
 
   return (
-    <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => onView(position)}>
+    <TableRow
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={() => onView(position)}
+      tabIndex={0}
+      role="button"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onView(position);
+        }
+      }}
+    >
       <TableCell>
         <div className="truncate">
           <p className="font-medium text-sm">{position.asset.symbol}</p>
@@ -75,7 +87,7 @@ export function PositionRow({
         {formatCurrency(convert(totalCost), currency, 0)}
       </TableCell>
       <TableCell
-        className={`text-right font-mono text-sm text-slate-500 dark:text-slate-400 ${HIDDEN_MOBILE}`}
+        className={`text-right font-mono text-sm text-muted-foreground ${HIDDEN_MOBILE}`}
       >
         {formatCurrency(
           convert(position.asset.currentPriceUsd),
@@ -144,4 +156,4 @@ export function PositionRow({
       </TableCell>
     </TableRow>
   );
-}
+});

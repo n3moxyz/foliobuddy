@@ -4,7 +4,6 @@ import { api } from '@/lib/api';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { formatDateTime } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -84,19 +83,20 @@ export default function Settings() {
       </div>
 
       {/* Display Settings */}
-      <Card className="animate-fade-in-up" style={{ animationDelay: '60ms' }}>
-        <CardHeader>
-          <CardTitle>Display Settings</CardTitle>
-          <CardDescription>Customize how data is displayed</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold mb-1">Display Settings</h2>
+        <p className="text-sm text-muted-foreground mb-4">Customize how data is displayed</p>
+        <div className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <Label>Default Currency</Label>
+              <Label htmlFor="currency-select">Default Currency</Label>
               <p className="text-sm text-muted-foreground">Display values in USD or SGD</p>
             </div>
-            <Select value={currency} onValueChange={(v) => setCurrency(v as 'USD' | 'SGD')}>
-              <SelectTrigger className="w-full sm:w-[120px]">
+            <Select
+              value={currency}
+              onValueChange={(v) => setCurrency(v as 'USD' | 'SGD')}
+            >
+              <SelectTrigger id="currency-select" className="w-full sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -122,11 +122,11 @@ export default function Settings() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <Label>Appearance</Label>
+              <Label htmlFor="theme-select">Appearance</Label>
               <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
             </div>
             <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
-              <SelectTrigger className="w-full sm:w-[120px]">
+              <SelectTrigger id="theme-select" className="w-full sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -136,16 +136,16 @@ export default function Settings() {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      <Separator />
 
       {/* Data Management */}
-      <Card className="animate-fade-in-up" style={{ animationDelay: '120ms' }}>
-        <CardHeader>
-          <CardTitle>Data Management</CardTitle>
-          <CardDescription>Refresh prices and manage snapshots</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold mb-1">Data Management</h2>
+        <p className="text-sm text-muted-foreground mb-4">Refresh prices and manage snapshots</p>
+        <div className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Refresh Prices</Label>
@@ -201,16 +201,16 @@ export default function Settings() {
               {creatingSnapshot ? 'Creating...' : 'Create Snapshot'}
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      <Separator />
 
       {/* Export */}
-      <Card className="animate-fade-in-up" style={{ animationDelay: '180ms' }}>
-        <CardHeader>
-          <CardTitle>Export Data</CardTitle>
-          <CardDescription>Download your portfolio data</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold mb-1">Export Data</h2>
+        <p className="text-sm text-muted-foreground mb-4">Download your portfolio data</p>
+        <div className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Full Portfolio Export</Label>
@@ -259,33 +259,31 @@ export default function Settings() {
               Export CSV
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      <Separator />
 
       {/* About */}
-      <Card className="animate-fade-in-up" style={{ animationDelay: '240ms' }}>
-        <CardHeader>
-          <CardTitle>About</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <p>
-              <strong>FolioBuddy</strong> v1.0.0
-            </p>
-            <p className="text-muted-foreground">
-              A portfolio tracking application for managing crypto investments, trade journaling,
-              and multi-investor support.
-            </p>
-            <div className="pt-4">
-              <p className="text-muted-foreground">Data Sources:</p>
-              <ul className="list-disc list-inside text-muted-foreground">
-                <li>Prices: CoinGecko API</li>
-                <li>FX Rates: CoinGecko API</li>
-              </ul>
-            </div>
+      <div>
+        <h2 className="text-base font-semibold mb-4">About</h2>
+        <div className="space-y-2 text-sm">
+          <p>
+            <strong>FolioBuddy</strong> v1.0.0
+          </p>
+          <p className="text-muted-foreground">
+            A portfolio tracking application for managing crypto investments, trade journaling,
+            and multi-investor support.
+          </p>
+          <div className="pt-4">
+            <p className="text-muted-foreground">Data Sources:</p>
+            <ul className="list-disc list-inside text-muted-foreground">
+              <li>Prices: CoinGecko API</li>
+              <li>FX Rates: CoinGecko API</li>
+            </ul>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,9 @@ export function useAnimatedNumber(target: number | null | undefined, durationMs 
   const [display, setDisplay] = useState(target ?? 0);
   const prevTarget = useRef(target ?? 0);
   const rafId = useRef(0);
+  const prefersReducedMotion = useRef(
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
 
   useEffect(() => {
     const value = target ?? 0;
@@ -17,7 +20,7 @@ export function useAnimatedNumber(target: number | null | undefined, durationMs 
     prevTarget.current = value;
 
     // Skip animation if reduced motion preferred
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (prefersReducedMotion.current) {
       setDisplay(value);
       return;
     }

@@ -169,9 +169,7 @@ export function SnapshotTable({
   if (snapshots.length === 0 && !showLiveRow) {
     return (
       <div className="py-16 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <Clock className="h-6 w-6 text-primary" />
-        </div>
+        <Clock className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
         <h3 className="text-lg font-semibold mb-1">No snapshots yet</h3>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           Snapshots capture your portfolio value at points in time. They're created automatically
@@ -184,16 +182,18 @@ export function SnapshotTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[5%]"></TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-                <TableHead className="hidden sm:table-cell">Source</TableHead>
-                <TableHead className="hidden md:table-cell">Notes</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
+                <TableHead className="w-[5%]" scope="col">
+                  <span className="sr-only">Expand details</span>
+                </TableHead>
+                <TableHead scope="col">Date</TableHead>
+                <TableHead className="text-right" scope="col">Value</TableHead>
+                <TableHead className="hidden sm:table-cell" scope="col">Source</TableHead>
+                <TableHead className="hidden md:table-cell" scope="col">Notes</TableHead>
+                <TableHead className="text-center" scope="col">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -243,6 +243,19 @@ export function SnapshotTable({
                       onClick={
                         snapshot.source === 'AUTOMATIC'
                           ? () => toggleExpand(snapshot.id)
+                          : undefined
+                      }
+                      tabIndex={snapshot.source === 'AUTOMATIC' ? 0 : undefined}
+                      role={snapshot.source === 'AUTOMATIC' ? 'button' : undefined}
+                      aria-expanded={snapshot.source === 'AUTOMATIC' ? expandedSnapshots.has(snapshot.id) : undefined}
+                      onKeyDown={
+                        snapshot.source === 'AUTOMATIC'
+                          ? (e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                toggleExpand(snapshot.id);
+                              }
+                            }
                           : undefined
                       }
                     >
@@ -380,15 +393,15 @@ export function SnapshotTable({
                                       : 'Copy Positions'}
                                   </Button>
                                 </div>
-                                <div className="rounded border bg-background">
-                                  <Table>
+                                <div className="rounded border bg-background overflow-x-auto">
+                                  <Table aria-label="Positions for this snapshot">
                                     <TableHeader>
                                       <TableRow>
-                                        <TableHead>Asset</TableHead>
-                                        <TableHead className="text-right">Quantity</TableHead>
-                                        <TableHead className="text-right">Price</TableHead>
-                                        <TableHead className="text-right">Value</TableHead>
-                                        <TableHead className="text-right">Allocation</TableHead>
+                                        <TableHead scope="col">Asset</TableHead>
+                                        <TableHead className="text-right" scope="col">Quantity</TableHead>
+                                        <TableHead className="text-right" scope="col">Price</TableHead>
+                                        <TableHead className="text-right" scope="col">Value</TableHead>
+                                        <TableHead className="text-right" scope="col">Allocation</TableHead>
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>

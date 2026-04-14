@@ -86,13 +86,14 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-foreground/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
+        aria-label="Main navigation"
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-card border-r transition-transform lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -103,6 +104,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
           <Link to={buildPath('/')} className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <svg
+                aria-hidden="true"
                 className="h-5 w-5 text-primary-foreground"
                 viewBox="0 0 20 20"
                 fill="none"
@@ -127,7 +129,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav aria-label="Main" className="flex-1 p-4 space-y-1">
           {navigation.map((item) => {
             const targetHref = buildPath(item.href);
             const isActive = location.pathname === targetHref;

@@ -6,6 +6,18 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          recharts: ['recharts'],
+          'socket-io': ['socket.io-client'],
+          sentry: ['@sentry/react'],
+          clerk: ['@clerk/clerk-react'],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

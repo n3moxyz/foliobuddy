@@ -29,14 +29,14 @@ export function PerformersCard({
   if (performers.length === 0) {
     return (
       <div className="pb-4">
-        <p className="flex items-center gap-2 font-medium mb-3">
+        <h2 className="flex items-center gap-2 font-medium mb-3">
           {type === 'top' ? (
             <TrendingUp className="h-4 w-4 text-profit opacity-70" />
           ) : (
             <TrendingDown className="h-4 w-4 text-loss opacity-70" />
           )}
           {title}
-        </p>
+        </h2>
         <p className="text-muted-foreground text-sm">No positions yet</p>
       </div>
     );
@@ -44,14 +44,14 @@ export function PerformersCard({
 
   return (
     <div className="pb-4">
-      <p className="flex items-center gap-2 font-medium mb-3">
+      <h2 className="flex items-center gap-2 font-medium mb-3">
         {type === 'top' ? (
           <TrendingUp className="h-4 w-4 text-profit opacity-70" />
         ) : (
           <TrendingDown className="h-4 w-4 text-loss opacity-70" />
         )}
         {title}
-      </p>
+      </h2>
       <div className="divide-y">
         {performers.map((performer, index) => (
           <div
@@ -62,7 +62,7 @@ export function PerformersCard({
               <span className="text-muted-foreground text-xs tabular-nums w-4">{index + 1}</span>
               <div>
                 <p className="font-medium text-sm">{performer.symbol}</p>
-                <p className="text-xs text-muted-foreground truncate max-w-[120px]">
+                <p className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">
                   {performer.name}
                 </p>
               </div>

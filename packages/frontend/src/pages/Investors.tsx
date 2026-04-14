@@ -100,54 +100,43 @@ export default function Investors() {
       </div>
 
       {/* Summary */}
-      <div
-        className="animate-fade-in-up grid grid-cols-1 gap-2 sm:grid-cols-3"
-        style={{ animationDelay: '60ms' }}
-      >
-        <Card className="py-2">
-          <CardHeader className="py-2 px-4">
-            <p className="text-xs text-muted-foreground">
-              Total Investors
-              <HelpTooltip content="Number of investors with portfolio stakes" />
-            </p>
-            <CardTitle className="text-lg">{investors?.length || 0}</CardTitle>
-          </CardHeader>
-        </Card>
-
-        <Card className="py-2">
-          <CardHeader className="py-2 px-4">
-            <p className="text-xs text-muted-foreground">
-              Allocated Stake
-              <HelpTooltip content="Total percentage of portfolio allocated to investors" />
-            </p>
-            <CardTitle className="text-lg">
-              {formatStakePercentage(totalStake)}%
-              <span className="text-sm font-normal text-muted-foreground ml-1.5">
-                ({formatStakePercentage(100 - totalStake)}% available)
-              </span>
-            </CardTitle>
-          </CardHeader>
-        </Card>
-
-        <Card className="py-2">
-          <CardHeader className="py-2 px-4">
-            <p className="text-xs text-muted-foreground">
-              Total Current Value
-              <HelpTooltip content="Combined current value of all investor stakes" />
-            </p>
-            <CardTitle className="text-lg">
-              {formatCurrency(
-                investors?.reduce((sum, inv) => sum + (inv.currentValue || 0), 0) || 0,
-                'USD',
-                0
-              )}
-            </CardTitle>
-          </CardHeader>
-        </Card>
+      <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
+        <div>
+          <p className="text-sm text-muted-foreground mb-0.5">
+            Total Investors
+            <HelpTooltip content="Number of investors with portfolio stakes" />
+          </p>
+          <p className="text-lg font-semibold tabular-nums">{investors?.length || 0}</p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground mb-0.5">
+            Allocated Stake
+            <HelpTooltip content="Total percentage of portfolio allocated to investors" />
+          </p>
+          <p className="text-lg font-semibold tabular-nums">
+            {formatStakePercentage(totalStake)}%
+            <span className="text-sm font-normal text-muted-foreground ml-1.5">
+              ({formatStakePercentage(100 - totalStake)}% available)
+            </span>
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground mb-0.5">
+            Total Current Value
+            <HelpTooltip content="Combined current value of all investor stakes" />
+          </p>
+          <p className="text-lg font-semibold tabular-nums">
+            {formatCurrency(
+              investors?.reduce((sum, inv) => sum + (inv.currentValue || 0), 0) || 0,
+              'USD',
+              0
+            )}
+          </p>
+        </div>
       </div>
 
       {/* Investors Table */}
-      <Card className="animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+      <Card>
         <CardHeader>
           <CardTitle>Investor List</CardTitle>
           <CardDescription>All investors and their current values</CardDescription>
@@ -186,7 +175,7 @@ export default function Investors() {
                         <div className="flex items-center gap-2">
                           {investor.name}
                           {investor.isOwner && (
-                            <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950 px-1.5 py-0.5 rounded">
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 px-1.5 py-0.5 rounded">
                               <Crown className="h-3 w-3" />
                               Owner
                             </span>
@@ -245,9 +234,7 @@ export default function Investors() {
             </div>
           ) : (
             <div className="py-16 text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <UsersIcon className="h-6 w-6 text-primary" />
-              </div>
+              <UsersIcon className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-1">No investors yet</h3>
               <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
                 Add investors to track their stakes, capital contributions, and YTD returns.
@@ -496,7 +483,7 @@ function InvestorForm({
               </p>
             )}
             {exceedsTotal && (
-              <p className="text-xs text-amber-600">
+              <p className="text-xs text-amber-600 dark:text-amber-400">
                 Total will be {formatStakePercentage(projectedTotal)}% - rebalancing needed
               </p>
             )}

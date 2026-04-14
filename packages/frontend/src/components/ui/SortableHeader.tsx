@@ -33,17 +33,19 @@ export function SortableHeader({
 
   return (
     <TableHead
+      scope="col"
       style={style}
       className={cn(
-        'cursor-pointer select-none hover:text-foreground transition-colors',
+        'select-none',
         align === 'right' && 'text-right',
         className
       )}
-      onClick={() => onSort(sortKey)}
       aria-sort={ariaSort}
     >
-      <div
-        className={`inline-flex items-center gap-1 ${align === 'right' ? 'justify-end w-full' : ''}`}
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors w-full ${align === 'right' ? 'justify-end' : ''}`}
       >
         <span>{label}</span>
         {isActive ? (
@@ -55,7 +57,7 @@ export function SortableHeader({
         ) : (
           <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
         )}
-      </div>
+      </button>
     </TableHead>
   );
 }

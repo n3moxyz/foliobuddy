@@ -15,6 +15,7 @@ export function HelpTooltip({ content }: HelpTooltipProps) {
         <TooltipTrigger asChild>
           <button
             type="button"
+            aria-label="Help"
             className="inline-flex items-center justify-center align-middle ml-1 touch-manipulation"
             onClick={(e) => {
               e.preventDefault();

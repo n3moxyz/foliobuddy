@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
 import { formatCurrency } from '@/lib/utils';
+import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 
 // CoinGecko-style time periods
 type TimePeriod = '7D' | '1M' | '3M' | '1Y' | 'YTD' | 'Max';
@@ -265,8 +266,8 @@ export function PortfolioChart({
               <AreaChart data={chartData} margin={{ top: 5, right: 56, left: 0, bottom: 5 }}>
                 <defs>
                   <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#64748B" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#64748B" stopOpacity={0} />
+                    <stop offset="0%" stopColor={PORTFOLIO_LINE_COLOR} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={PORTFOLIO_LINE_COLOR} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -294,7 +295,7 @@ export function PortfolioChart({
                       <div className="rounded-lg border bg-background p-3 shadow-md">
                         <p className="text-xs text-muted-foreground mb-1">
                           {data.tooltipDate}
-                          {data.isLive && <span className="ml-1 text-green-600">(Live)</span>}
+                          {data.isLive && <span className="ml-1 text-profit">(Live)</span>}
                         </p>
                         <p className="font-mono font-medium">
                           {formatCurrency(data.value, currency, 0)}
@@ -319,7 +320,7 @@ export function PortfolioChart({
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#64748B"
+                  stroke={PORTFOLIO_LINE_COLOR}
                   strokeWidth={2}
                   fill="url(#portfolioGradient)"
                   dot={(props: Record<string, unknown>) => {
@@ -327,7 +328,7 @@ export function PortfolioChart({
                     if (index !== chartData.length - 1) return <g key={`dot-${index}`} />;
                     return (
                       <g key={`dot-${index}`}>
-                        <circle cx={cx} cy={cy} r={3} fill="#64748B" />
+                        <circle cx={cx} cy={cy} r={3} fill={PORTFOLIO_LINE_COLOR} />
                         <text
                           x={cx + 8}
                           y={cy}

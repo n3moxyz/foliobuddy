@@ -121,6 +121,14 @@ export function TickerPnLCard({
                 key={stat.symbol}
                 className="cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => onTickerClick?.(stat.symbol)}
+                tabIndex={0}
+                role="button"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onTickerClick?.(stat.symbol);
+                  }
+                }}
               >
                 <TableCell className="font-medium py-2">{stat.symbol}</TableCell>
                 <TableCell className="text-right tabular-nums py-2">{stat.trades}</TableCell>

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber } from '@/lib/utils';
+import { ASSET_COLORS, STORAGE_COLORS, STABLES_COLORS } from '@/lib/chartColors';
 
 /** Compact dollar format: $1.2K, $3.4M, $1.2B — keeps hover info short */
 function compactUsd(value: number): string {
@@ -19,23 +20,6 @@ interface AllocationChartsProps {
   positions: Position[];
   isLoading?: boolean;
 }
-
-// Color palettes — maximally distinct hues per chart,
-// avoiding benchmark line colors (orange #F7931A, blue-purple #627EEA, teal #14B8A6, red #EF4444, purple #8B5CF6, amber #F59E0B)
-const ASSET_COLORS = [
-  '#BE185D',
-  '#1D4ED8',
-  '#059669',
-  '#A21CAF',
-  '#0891B2',
-  '#854D0E',
-  '#475569',
-  '#B91C1C',
-  '#4F46E5',
-  '#65A30D',
-];
-const STORAGE_COLORS = ['#16A34A', '#0284C7', '#64748B'];
-const STABLES_COLORS = ['#0369A1', '#16A34A', '#BE185D', '#854D0E', '#64748B'];
 
 interface ChartData {
   name: string;
@@ -283,6 +267,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                     className={`flex items-center gap-2 text-xs transition-colors cursor-pointer ${
                       isHidden ? 'opacity-40 line-through text-muted-foreground' : ''
                     }`}
+                    aria-pressed={!hidden.has(item.name)}
                     onClick={() => toggleLegendItem(item.name, hidden, setHidden)}
                   >
                     <div

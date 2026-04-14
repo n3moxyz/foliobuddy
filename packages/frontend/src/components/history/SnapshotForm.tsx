@@ -181,9 +181,12 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
   return (
     <div className="space-y-4">
       {/* Mode Toggle - Tab style to match PositionForm */}
-      <div className="flex border-b mb-2">
+      <div role="tablist" className="flex border-b mb-2">
         <button
           type="button"
+          role="tab"
+          aria-selected={mode === 'add'}
+          aria-controls="snapshot-panel-add"
           onClick={() => setMode('add')}
           className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
             mode === 'add'
@@ -195,6 +198,9 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={mode === 'import'}
+          aria-controls="snapshot-panel-import"
           onClick={() => setMode('import')}
           className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
             mode === 'import'
@@ -207,10 +213,12 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
       </div>
 
       {mode === 'import' ? (
-        <SnapshotImportTab onSuccess={onSuccess} />
+        <div id="snapshot-panel-import" role="tabpanel">
+          <SnapshotImportTab onSuccess={onSuccess} />
+        </div>
       ) : (
         /* Add New Mode */
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="snapshot-panel-add" role="tabpanel" onSubmit={handleSubmit} className="space-y-4">
           {/* Date */}
           <div className="space-y-2">
             <Label htmlFor="timestamp">Date</Label>

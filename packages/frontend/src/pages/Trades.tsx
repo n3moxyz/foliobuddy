@@ -142,9 +142,11 @@ export default function Trades() {
       <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Trade Journal</h1>
-          <p className="text-sm text-muted-foreground">
-            Track and analyze your trading performance
-          </p>
+          {analytics && (
+            <p className="text-sm text-muted-foreground">
+              {analytics.totalTrades} trades · {analytics.winRate?.toFixed(0) ?? 0}% win rate
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -232,7 +234,7 @@ export default function Trades() {
 
       {/* Trade Statistics */}
       {analytics && (
-        <div className="animate-fade-in-up" style={{ animationDelay: '60ms' }}>
+        <div>
           <TradeStatsCard
             analytics={analytics}
             currency={currency}
@@ -246,7 +248,7 @@ export default function Trades() {
 
       {/* P&L by Ticker */}
       {trades && trades.length > 0 && (
-        <div className="animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+        <div>
           <TickerPnLCard
             trades={trades}
             currency={currency}
@@ -270,7 +272,7 @@ export default function Trades() {
             <Button
               variant="secondary"
               size="sm"
-              className="h-6 rounded-full text-xs gap-1"
+              className="h-8 rounded-full text-xs gap-1"
               onClick={() => setTickerFilter(null)}
             >
               {tickerFilter}
@@ -547,9 +549,7 @@ function TradeTable({
   if (trades.length === 0) {
     return (
       <div className="py-16 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <TrendingUp className="h-6 w-6 text-primary" />
-        </div>
+        <TrendingUp className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
         <h3 className="text-lg font-semibold mb-1">No trades logged</h3>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           Start logging your trades to track performance, win rate, and P&L analytics.
@@ -567,7 +567,7 @@ function TradeTable({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-xs text-muted-foreground touch-manipulation"
+          className="h-8 text-xs text-muted-foreground touch-manipulation"
           onClick={() => setShowAllColumns(!showAllColumns)}
         >
           {showAllColumns ? (
@@ -675,7 +675,7 @@ function TradeTable({
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`flex items-center gap-1 whitespace-nowrap ${trade.direction === 'LONG' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                        className={`flex items-center gap-1 whitespace-nowrap ${trade.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}
                       >
                         {trade.direction === 'LONG' ? (
                           <TrendingUp className="h-3.5 w-3.5" />

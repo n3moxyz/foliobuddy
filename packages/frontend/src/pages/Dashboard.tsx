@@ -145,7 +145,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <DbStatusBanner />
@@ -168,7 +168,7 @@ export default function Dashboard() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-xs"
+                    className="h-8 text-xs"
                     onClick={handleSelectAll}
                   >
                     {selectedInvestors.length === investors.length ? 'Clear' : 'All'}
@@ -208,7 +208,7 @@ export default function Dashboard() {
 
       {/* Net Worth Card */}
       {summary && (
-        <div className="animate-fade-in-up" style={{ animationDelay: '60ms' }}>
+        <div>
           <NetWorthCard
             summary={summary}
             currency={currency}
@@ -223,7 +223,7 @@ export default function Dashboard() {
       )}
 
       {/* Portfolio Value Chart */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+      <div>
         <PortfolioChart
           currency={currency}
           fxRate={fxRate}
@@ -233,22 +233,19 @@ export default function Dashboard() {
       </div>
 
       {/* Benchmark Comparison Chart */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '180ms' }}>
+      <div>
         <BenchmarkComparisonChart />
       </div>
 
       {/* Allocation Charts */}
       {positions && (
-        <div className="animate-fade-in-up" style={{ animationDelay: '240ms' }}>
+        <div>
           <AllocationCharts positions={positions} isLoading={positionsLoading} />
         </div>
       )}
 
       {/* Performers */}
-      <div
-        className="animate-fade-in-up grid gap-4 sm:gap-6 md:grid-cols-2"
-        style={{ animationDelay: '300ms' }}
-      >
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {topPerformers && (
           <PerformersCard
             title="Top Performers"
@@ -272,10 +269,7 @@ export default function Dashboard() {
       </div>
 
       {/* Last Updated */}
-      <div
-        className="animate-fade-in-up text-center text-sm text-muted-foreground"
-        style={{ animationDelay: '360ms' }}
-      >
+      <div className="text-center text-sm text-muted-foreground">
         Last updated: {formatDateTime(summary?.lastUpdated)}
       </div>
     </div>

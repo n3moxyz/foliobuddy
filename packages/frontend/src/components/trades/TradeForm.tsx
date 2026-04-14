@@ -85,9 +85,11 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
     <div className="space-y-3">
       {/* Mode Selection (Add New vs Import) - only show when not editing */}
       {!isEditing && (
-        <div className="flex border-b mb-2">
+        <div className="flex border-b mb-2" role="tablist">
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'add'}
             onClick={() => setMode('add')}
             className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'add'
@@ -99,6 +101,8 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'import'}
             onClick={() => setMode('import')}
             className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'import'
@@ -119,7 +123,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Asset */}
           <div className="space-y-2">
-            <Label>Asset</Label>
+            <Label htmlFor="trade-asset">Asset</Label>
             <AssetSearchDropdown
               selectedAsset={selectedAsset}
               onSelectAsset={handleSelectAsset}
@@ -129,28 +133,28 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
 
           {/* Direction */}
           <div className="space-y-2">
-            <Label>Direction</Label>
+            <Label htmlFor="trade-direction">Direction</Label>
             <Select value={direction} onValueChange={(v) => setDirection(v as 'LONG' | 'SHORT')}>
-              <SelectTrigger>
+              <SelectTrigger id="trade-direction">
                 <span
-                  className={`font-medium ${direction === 'LONG' ? 'text-green-600' : 'text-red-600'}`}
+                  className={`font-medium ${direction === 'LONG' ? 'text-profit' : 'text-loss'}`}
                 >
                   {direction}
                 </span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="LONG">
-                  <span className="text-green-600 font-medium">LONG</span>
+                  <span className="text-profit font-medium">LONG</span>
                 </SelectItem>
                 <SelectItem value="SHORT">
-                  <span className="text-red-600 font-medium">SHORT</span>
+                  <span className="text-loss font-medium">SHORT</span>
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Entry */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="entryPrice">Entry Price</Label>
               <Input
@@ -176,7 +180,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
           </div>
 
           {/* Exit (Optional) */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="exitPrice">Exit Price (Optional)</Label>
               <Input
