@@ -1077,6 +1077,14 @@ Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGec
 
 **Key lesson:** When debugging "wrong URL" or "DB Down" errors in Vite, always check `.env.local` first — it overrides `.env` with no warning. The priority order is: `.env.local` > `.env.[mode]` > `.env`.
 
+### Lesson 23: Hardcoded Colors and `as const` in Chart Color Arrays
+
+**The bug:** After centralizing chart colors into `chartColors.ts`, TypeScript refused to compile — `readonly` tuple not assignable to `string[]`.
+
+**The root cause:** Using `as const` on color arrays makes them `readonly` tuples, but Recharts and utility functions expect mutable `string[]`. The fix: type the exports as `string[]` instead of using `as const` for arrays (keep `as const` only for objects like `BRAND_COLORS`).
+
+**The pattern:** When centralizing constants that will be passed to third-party libraries, use explicit type annotations instead of `as const` inference. SVG/Recharts attributes also require JSX curly braces for variable references (`stopColor={COLOR}` not `stopColor=COLOR`) — easy to miss during search-and-replace.
+
 ---
 
 ## Best Practices That Paid Off
@@ -1253,7 +1261,9 @@ Vercel provides:
 
 ### 1. ~~Start with a Design System~~ (Done!)
 
-Ran a full design critique using the impeccable toolkit (scored 25/40), then executed a 9-skill design overhaul. The project now has: custom indigo-tinted color palette, Plus Jakarta Sans + JetBrains Mono fonts, `.impeccable.md` design context file, skeleton loading states, HelpTooltip components, and a coherent visual identity inspired by Linear/Raycast and Dune Analytics. Second critique pass (scored 29/40) focused on visual hierarchy: replaced Portfolio's 5-card summary grid with a hero Total Value layout matching Dashboard, moved destructive actions into overflow menus, surfaced key trade stats in collapsed headers, and added touch support for HelpTooltips. The lesson still stands: starting with a design system would have saved the retrofit.
+Ran a full design critique using the impeccable toolkit (scored 25/40), then executed a 9-skill design overhaul. The project now has: custom indigo-tinted color palette, Plus Jakarta Sans + JetBrains Mono fonts, `.impeccable.md` design context file, skeleton loading states, HelpTooltip components, and a coherent visual identity inspired by Linear/Raycast and Dune Analytics. Second critique pass (scored 29/40) focused on visual hierarchy: replaced Portfolio's 5-card summary grid with a hero Total Value layout matching Dashboard, moved destructive actions into overflow menus, surfaced key trade stats in collapsed headers, and added touch support for HelpTooltips.
+
+Then a technical audit (scored 11/20) drove a comprehensive hardening pass across 43 files: ARIA combobox patterns on search dropdowns, keyboard-navigable tables and collapsible sections, CSS custom properties for profit/loss/warning/info tokens, centralized chart colors in `chartColors.ts`, Vite vendor chunk splitting (recharts/clerk/sentry/socket.io as separate chunks), lazy-loaded Dashboard, removed global refetchInterval polling, React.memo on PositionRow, flattened Settings/Investors page layouts, and safe dialog sizing for mobile. The lesson still stands: starting with a design system would have saved the retrofit.
 
 ### 2. ~~API Versioning~~ (Done!)
 
