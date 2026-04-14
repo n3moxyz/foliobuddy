@@ -74,6 +74,7 @@
 - `src/stores/` - Zustand stores
 - `src/components/ui/skeleton.tsx` - Shimmer skeleton loading component (CSS-based animation)
 - `src/components/ui/HelpTooltip.tsx` - Contextual ? icon tooltip for domain-specific terms
+- `src/lib/chartColors.ts` - Centralized chart color constants (brand, portfolio line, allocation palettes)
 
 ### Shared
 
@@ -177,7 +178,7 @@ Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. 
 
 ### React Query + Zustand Split
 
-- React Query: Server state (positions, trades, snapshots)
+- React Query: Server state (positions, trades, snapshots). No global `refetchInterval` — data refreshes on mount and manual invalidation only. `refetchOnWindowFocus: false` to avoid surprise refetches
 - Zustand: Client state (currency preference)
 
 ### Structured Logging
@@ -194,7 +195,7 @@ Trades and snapshots routes support optional pagination via `?page=1&limit=50`. 
 
 ### Lazy-Loaded Routes
 
-All pages except Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. Reduces initial bundle size.
+All pages including Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. Vite `manualChunks` splits heavy vendors (recharts, socket.io-client, @sentry/react, @clerk/clerk-react) into separate chunks for parallel loading.
 
 ### Dev Demo Route
 
@@ -311,7 +312,15 @@ Borderless layout (no Card wrapper) — plain `<div className="pb-4">` with `div
 
 ### Page Entrance Animations
 
-All pages use staggered `animate-fade-in-up` entrance animations (CSS keyframe in `index.css`). 12px upward slide + opacity fade, 450ms with `cubic-bezier(0.16, 1, 0.3, 1)`. Each section has 60ms stagger delay. Respects `prefers-reduced-motion`.
+`animate-fade-in-up` (CSS keyframe in `index.css`) used sparingly — only on page headers. Dashboard and utility pages (Settings, Investors) have no staggered section animations. 12px upward slide + opacity fade, 450ms with `cubic-bezier(0.16, 1, 0.3, 1)`. Respects `prefers-reduced-motion`.
+
+### Settings Page Layout
+
+Flat layout with `<h2>` headings + `<Separator>` between sections — no Card wrappers. This keeps utility pages visually lighter than data pages.
+
+### Investors Page Layout
+
+Summary stats use a flat inline row (`flex items-baseline gap-6 flex-wrap py-4 border-b`) instead of individual Cards. Matches the History page's stat pattern.
 
 ### Consistent Page Headers
 
@@ -329,7 +338,8 @@ All pages MUST use the same header pattern for visual consistency when switching
 
 - **Color palette**: Indigo-tinted neutrals (not stock shadcn/ui grays) — `--primary: 234 89% 55%` (light), `234 89% 67%` (dark)
 - **Fonts**: Plus Jakarta Sans (body/headings) + JetBrains Mono (tabular numbers) — loaded via Google Fonts in `index.html`
-- **Profit/loss colors**: Emerald green (`text-profit`) and red (`text-loss`) — defined in `index.css`
+- **Profit/loss colors**: Emerald green (`text-profit`) and red (`text-loss`) — backed by CSS custom properties `--profit`/`--loss` in `index.css` (both `:root` and `.dark`). Also `--warning` and `--info` tokens available
+- **Chart colors**: Centralized in `src/lib/chartColors.ts` — `BRAND_COLORS` (BTC/ETH), `PORTFOLIO_LINE_COLOR`, `ASSET_COLORS`, `STORAGE_COLORS`, `STABLES_COLORS`. Always use these constants instead of inline hex in chart components
 - **Skeleton loading**: CSS shimmer animation via `.skeleton` class — used on all pages and chart components
 - **HelpTooltip**: `?` icon tooltips on domain-specific finance terms (YTD Start, Exposure, CEX, Onchain, etc.). Controlled open state with tap-to-toggle for touch devices. `stopPropagation` on pointer events prevents CollapsibleCard toggle when tapping help icons.
 - **Sidebar**: Linear-style active state — `bg-primary/10 text-primary font-semibold border-r-2 border-primary`
