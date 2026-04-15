@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -236,9 +236,8 @@ export function SnapshotTable({
                 const isCopied = copiedSnapshotId === snapshot.id;
 
                 return (
-                  <>
+                  <Fragment key={snapshot.id}>
                     <TableRow
-                      key={snapshot.id}
                       className={snapshot.source === 'AUTOMATIC' ? 'cursor-pointer' : ''}
                       onClick={
                         snapshot.source === 'AUTOMATIC'
@@ -365,7 +364,7 @@ export function SnapshotTable({
                     </TableRow>
                     {/* Expanded positions row */}
                     {isExpanded && (
-                      <TableRow key={`${snapshot.id}-positions`}>
+                      <TableRow>
                         <TableCell colSpan={6} className="bg-muted/30 p-0">
                           <div className="p-4">
                             {isLoadingPos ? (
@@ -447,7 +446,7 @@ export function SnapshotTable({
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </TableBody>
