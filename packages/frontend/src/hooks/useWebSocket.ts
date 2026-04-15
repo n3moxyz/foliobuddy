@@ -59,7 +59,6 @@ export function useWebSocket(): UseWebSocketReturn {
       socket.on('reconnecting', () => setStatus('connecting'));
       socket.on('reconnect', () => setStatus('connected'));
 
-      // Handle price updates - invalidate all price-related queries
       socket.on('prices:updated', (data: PriceUpdate) => {
         setLastUpdate(new Date(data.timestamp));
         queryClient.invalidateQueries({ queryKey: ['portfolio'] });
@@ -68,7 +67,6 @@ export function useWebSocket(): UseWebSocketReturn {
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       });
 
-      // Handle portfolio updates - user-specific data
       socket.on('portfolio:updated', (data: PortfolioUpdate) => {
         setLastUpdate(new Date(data.timestamp));
         queryClient.invalidateQueries({ queryKey: ['portfolio'] });
@@ -77,8 +75,7 @@ export function useWebSocket(): UseWebSocketReturn {
       });
 
       socketRef.current = socket;
-    } catch (error) {
-      console.error('[WebSocket] Setup error:', error);
+    } catch {
       setStatus('disconnected');
     }
   }, [isSignedIn, getToken, queryClient]);

@@ -39,7 +39,7 @@ const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
 
 // Format position(s) for clipboard - includes asset info for recreating
-export function formatPositionsForClipboard(positions: Position | Position[]) {
+function formatPositionsForClipboard(positions: Position | Position[]) {
   const posArray = Array.isArray(positions) ? positions : [positions];
 
   const formatted = posArray.map((p) => ({

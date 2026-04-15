@@ -9,32 +9,10 @@ export function usePositions() {
   });
 }
 
-export function usePosition(id: string) {
-  return useQuery({
-    queryKey: ['positions', id],
-    queryFn: () => api.getPosition(id),
-    enabled: !!id,
-  });
-}
-
 export function usePortfolioSummary() {
   return useQuery({
     queryKey: ['portfolio', 'summary'],
     queryFn: api.getPositionSummary,
-  });
-}
-
-export function useAllocationByCategory() {
-  return useQuery({
-    queryKey: ['portfolio', 'allocation', 'category'],
-    queryFn: api.getAllocationByCategory,
-  });
-}
-
-export function useAllocationByStorage() {
-  return useQuery({
-    queryKey: ['portfolio', 'allocation', 'storage'],
-    queryFn: api.getAllocationByStorage,
   });
 }
 

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import ExcelJS from 'exceljs';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
 
@@ -59,13 +60,18 @@ router.get('/csv/trades', async (req, res, next) => {
   try {
     const { status, from, to } = req.query;
 
-    const where: any = { userId: req.userId! };
-    if (status) where.status = status;
-    if (from || to) {
-      where.entryDate = {};
-      if (from) where.entryDate.gte = new Date(from as string);
-      if (to) where.entryDate.lte = new Date(to as string);
-    }
+    const where: Prisma.TradeWhereInput = {
+      userId: req.userId!,
+      ...(status ? { status: status as string } : {}),
+      ...(from || to
+        ? {
+            entryDate: {
+              ...(from ? { gte: new Date(from as string) } : {}),
+              ...(to ? { lte: new Date(to as string) } : {}),
+            },
+          }
+        : {}),
+    };
 
     const trades = await prisma.trade.findMany({
       where,

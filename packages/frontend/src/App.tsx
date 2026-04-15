@@ -8,7 +8,6 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 
-// Lazy-loaded pages — reduces initial bundle size
 const Portfolio = lazy(() => import('./pages/Portfolio'));
 const Trades = lazy(() => import('./pages/Trades'));
 const History = lazy(() => import('./pages/History'));
@@ -18,7 +17,6 @@ const DemoModeApp = import.meta.env.DEV
   ? lazy(() => import('./dev/demoMode').then((module) => ({ default: module.DemoModeApp })))
   : null;
 
-// Component to set up auth and render children
 function AuthenticatedApp() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
@@ -76,7 +74,6 @@ function App() {
         path="/*"
         element={
           <>
-            {/* Show sign-in when not authenticated */}
             <SignedOut>
               <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="text-center space-y-6">
@@ -96,7 +93,6 @@ function App() {
               </div>
             </SignedOut>
 
-            {/* Show app when authenticated */}
             <SignedIn>
               <AuthenticatedApp />
             </SignedIn>

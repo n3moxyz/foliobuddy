@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { portfolioService } from './portfolioService.js';
 import { priceService } from './priceService.js';
@@ -207,13 +208,17 @@ class SnapshotService {
    * Get historical performance data for charts (by date range)
    */
   async getPerformanceHistoryByRange(userId: string, fromDate?: Date, toDate?: Date) {
-    const where: any = { userId };
-
-    if (fromDate || toDate) {
-      where.timestamp = {};
-      if (fromDate) where.timestamp.gte = fromDate;
-      if (toDate) where.timestamp.lte = toDate;
-    }
+    const where: Prisma.SnapshotWhereInput = {
+      userId,
+      ...(fromDate || toDate
+        ? {
+            timestamp: {
+              ...(fromDate ? { gte: fromDate } : {}),
+              ...(toDate ? { lte: toDate } : {}),
+            },
+          }
+        : {}),
+    };
 
     const snapshots = await prisma.snapshot.findMany({
       where,

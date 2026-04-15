@@ -1,20 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { CreateAssetData } from '@/lib/types';
 
 export function useAssets(params?: { category?: string; search?: string }) {
   return useQuery({
     queryKey: ['assets', params],
     queryFn: () => api.getAssets(params),
-  });
-}
-
-export function useAsset(id: string) {
-  return useQuery({
-    queryKey: ['assets', id],
-    queryFn: () => api.getAsset(id),
-    enabled: !!id,
   });
 }
 
@@ -46,17 +37,6 @@ export function useSearchCoins(query: string) {
     ...result,
     isLoading: result.isFetching && debouncedQuery.length >= 1,
   };
-}
-
-export function useCreateAsset() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreateAssetData) => api.createAsset(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
-    },
-  });
 }
 
 export function useCreateAssetFromCoinGecko() {

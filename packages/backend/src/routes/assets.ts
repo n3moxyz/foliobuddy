@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { priceService } from '../services/priceService.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -21,18 +22,17 @@ router.get('/', async (req, res, next) => {
   try {
     const { category, search } = req.query;
 
-    const where: any = {};
-
-    if (category) {
-      where.category = category;
-    }
-
-    if (search) {
-      where.OR = [
-        { symbol: { contains: search as string } },
-        { name: { contains: search as string } },
-      ];
-    }
+    const where: Prisma.AssetWhereInput = {
+      ...(category ? { category: category as string } : {}),
+      ...(search
+        ? {
+            OR: [
+              { symbol: { contains: search as string } },
+              { name: { contains: search as string } },
+            ],
+          }
+        : {}),
+    };
 
     const assets = await prisma.asset.findMany({
       where,

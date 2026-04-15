@@ -28,7 +28,7 @@ export const ADDITIONAL_COLORS = ADDITIONAL_BENCHMARK_COLORS;
 /**
  * Normalize a series of values to percentage change from the first value
  */
-export function normalizeToPercentChange(values: number[]): number[] {
+function normalizeToPercentChange(values: number[]): number[] {
   if (values.length === 0) return [];
   const firstValue = values[0];
   if (firstValue === 0) return values.map(() => 0);

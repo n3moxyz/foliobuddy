@@ -15,20 +15,6 @@ export function useSnapshots(params?: {
   });
 }
 
-export function useSnapshotsPaginated(params?: {
-  type?: string;
-  source?: string;
-  from?: string;
-  to?: string;
-  page?: number;
-  limit?: number;
-}) {
-  return useQuery({
-    queryKey: ['snapshots', 'paginated', params],
-    queryFn: () => api.getSnapshotsPaginated(params),
-  });
-}
-
 export function useCreateManualSnapshot() {
   const queryClient = useQueryClient();
 

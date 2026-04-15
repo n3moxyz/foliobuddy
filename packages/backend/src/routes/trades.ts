@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { parsePagination, paginatedResponse } from '../lib/pagination.js';
@@ -60,25 +61,20 @@ router.get('/', async (req, res, next) => {
   try {
     const { status, assetId, direction, from, to } = req.query;
 
-    const where: any = { userId: req.userId! };
-
-    if (status) {
-      where.status = status;
-    }
-
-    if (assetId) {
-      where.assetId = assetId;
-    }
-
-    if (direction) {
-      where.direction = direction;
-    }
-
-    if (from || to) {
-      where.entryDate = {};
-      if (from) where.entryDate.gte = new Date(from as string);
-      if (to) where.entryDate.lte = new Date(to as string);
-    }
+    const where: Prisma.TradeWhereInput = {
+      userId: req.userId!,
+      ...(status ? { status: status as string } : {}),
+      ...(assetId ? { assetId: assetId as string } : {}),
+      ...(direction ? { direction: direction as string } : {}),
+      ...(from || to
+        ? {
+            entryDate: {
+              ...(from ? { gte: new Date(from as string) } : {}),
+              ...(to ? { lte: new Date(to as string) } : {}),
+            },
+          }
+        : {}),
+    };
 
     const pagination = parsePagination(req);
 
@@ -116,16 +112,18 @@ router.get('/analytics', async (req, res, next) => {
   try {
     const { from, to } = req.query;
 
-    const where: any = {
+    const where: Prisma.TradeWhereInput = {
       userId: req.userId!,
       status: 'CLOSED',
+      ...(from || to
+        ? {
+            exitDate: {
+              ...(from ? { gte: new Date(from as string) } : {}),
+              ...(to ? { lte: new Date(to as string) } : {}),
+            },
+          }
+        : {}),
     };
-
-    if (from || to) {
-      where.exitDate = {};
-      if (from) where.exitDate.gte = new Date(from as string);
-      if (to) where.exitDate.lte = new Date(to as string);
-    }
 
     const trades = await prisma.trade.findMany({
       where,

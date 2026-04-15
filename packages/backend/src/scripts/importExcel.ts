@@ -164,7 +164,7 @@ function parseCategory(value: string): AssetCategory {
   return 'LIQUID_CRYPTO';
 }
 
-function getCellValue(row: ExcelJS.Row, colIndex: number): any {
+function getCellValue(row: ExcelJS.Row, colIndex: number): string | number | boolean | Date | null {
   const cell = row.getCell(colIndex);
   if (cell.value === null || cell.value === undefined) return null;
 
@@ -175,13 +175,30 @@ function getCellValue(row: ExcelJS.Row, colIndex: number): any {
 
   // Handle formula results
   if (typeof cell.value === 'object' && 'result' in cell.value) {
-    return (cell.value as ExcelJS.CellFormulaValue).result;
+    const result = (cell.value as ExcelJS.CellFormulaValue).result;
+    if (result instanceof Error || (typeof result === 'object' && result !== null && !(result instanceof Date))) return null;
+    return result ?? null;
   }
 
-  return cell.value;
+  return cell.value as string | number | boolean | Date;
 }
 
-function parseDate(value: any): Date | null {
+/** Parse a cell value as a float, returning 0 for non-numeric or null values */
+function cellToFloat(value: string | number | boolean | Date | null): number {
+  if (value === null || typeof value === 'boolean' || value instanceof Date) return 0;
+  return parseFloat(String(value)) || 0;
+}
+
+/** Parse a cell value as a nullable float */
+function cellToNullableFloat(value: string | number | boolean | Date | null): number | null {
+  if (!value) return null;
+  if (typeof value === 'boolean' || value instanceof Date) return null;
+  const n = parseFloat(String(value));
+  return isNaN(n) ? null : n;
+}
+
+function parseDate(value: string | number | boolean | Date | null | undefined): Date | null {
+  if (typeof value === 'boolean') return null;
   if (!value) return null;
 
   // ExcelJS automatically converts Excel dates to JavaScript Date objects
@@ -231,8 +248,8 @@ async function importPositions(
       if (!symbol) continue;
 
       const name = String(getCellValue(row, 2) || symbol);
-      const quantity = parseFloat(getCellValue(row, 3)) || 0;
-      const avgCost = parseFloat(getCellValue(row, 4)) || 0;
+      const quantity = cellToFloat(getCellValue(row, 3));
+      const avgCost = cellToFloat(getCellValue(row, 4));
       const storageTypeStr = String(getCellValue(row, 5) || 'WALLET');
       const storageLocation = getCellValue(row, 6) ? String(getCellValue(row, 6)) : null;
       const categoryStr = String(getCellValue(row, 7) || 'LIQUID_CRYPTO');
@@ -294,9 +311,9 @@ async function importTrades(
         : 'LONG';
       const entryDateRaw = getCellValue(row, 3);
       const exitDateRaw = getCellValue(row, 4);
-      const entryPrice = parseFloat(getCellValue(row, 5)) || 0;
-      const exitPrice = getCellValue(row, 6) ? parseFloat(getCellValue(row, 6)) : null;
-      const quantity = parseFloat(getCellValue(row, 7)) || 0;
+      const entryPrice = cellToFloat(getCellValue(row, 5));
+      const exitPrice = cellToNullableFloat(getCellValue(row, 6));
+      const quantity = cellToFloat(getCellValue(row, 7));
       const notes = getCellValue(row, 8) ? String(getCellValue(row, 8)) : null;
 
       if (!entryPrice || !quantity) continue;
@@ -374,12 +391,12 @@ async function importSnapshots(
     try {
       // Assuming columns: Date, Total USD, Total SGD, Monthly Return, YTD Return, BTC Outperform, ETH Outperform
       const dateRaw = firstCell;
-      const totalUsd = parseFloat(getCellValue(row, 2)) || 0;
-      const totalSgd = getCellValue(row, 3) ? parseFloat(getCellValue(row, 3)) : null;
-      const monthlyReturn = getCellValue(row, 4) ? parseFloat(getCellValue(row, 4)) : null;
-      const ytdReturn = getCellValue(row, 5) ? parseFloat(getCellValue(row, 5)) : null;
-      const btcOutperform = getCellValue(row, 6) ? parseFloat(getCellValue(row, 6)) : null;
-      const ethOutperform = getCellValue(row, 7) ? parseFloat(getCellValue(row, 7)) : null;
+      const totalUsd = cellToFloat(getCellValue(row, 2));
+      const totalSgd = cellToNullableFloat(getCellValue(row, 3));
+      const monthlyReturn = cellToNullableFloat(getCellValue(row, 4));
+      const ytdReturn = cellToNullableFloat(getCellValue(row, 5));
+      const btcOutperform = cellToNullableFloat(getCellValue(row, 6));
+      const ethOutperform = cellToNullableFloat(getCellValue(row, 7));
 
       if (!totalUsd) continue;
 
@@ -433,8 +450,8 @@ async function importInvestors(
       const name = String(firstCell).trim();
       if (!name) continue;
 
-      const stakePercentage = parseFloat(getCellValue(row, 2)) || 0;
-      const initialCapital = parseFloat(getCellValue(row, 3)) || 0;
+      const stakePercentage = cellToFloat(getCellValue(row, 2));
+      const initialCapital = cellToFloat(getCellValue(row, 3));
 
       await prisma.investor.create({
         data: {

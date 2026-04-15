@@ -14,28 +14,6 @@ export function useTrades(params?: {
   });
 }
 
-export function useTradesPaginated(params?: {
-  status?: string;
-  assetId?: string;
-  from?: string;
-  to?: string;
-  page?: number;
-  limit?: number;
-}) {
-  return useQuery({
-    queryKey: ['trades', 'paginated', params],
-    queryFn: () => api.getTradesPaginated(params),
-  });
-}
-
-export function useTrade(id: string) {
-  return useQuery({
-    queryKey: ['trades', id],
-    queryFn: () => api.getTrade(id),
-    enabled: !!id,
-  });
-}
-
 export function useTradeAnalytics(params?: { from?: string; to?: string }) {
   return useQuery({
     queryKey: ['trades', 'analytics', params],
@@ -60,24 +38,6 @@ export function useUpdateTrade() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateTradeData> }) =>
       api.updateTrade(id, data),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ['trades'] });
-      queryClient.invalidateQueries({ queryKey: ['trades', id] });
-    },
-  });
-}
-
-export function useCloseTrade() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: { exitPrice: number; exitDate?: string; notes?: string };
-    }) => api.closeTrade(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
       queryClient.invalidateQueries({ queryKey: ['trades', id] });

@@ -261,7 +261,7 @@ export default function Trades() {
       )}
 
       {/* Trade Tables */}
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'OPEN' | 'CLOSED')}>
         <div className="flex items-center gap-2 flex-wrap">
           <TabsList className="sm:w-auto">
             <TabsTrigger value="all">All Trades ({filteredTrades.length})</TabsTrigger>

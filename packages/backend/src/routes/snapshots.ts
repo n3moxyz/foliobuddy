@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { snapshotService } from '../services/snapshotService.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -38,21 +39,19 @@ router.get('/', async (req, res, next) => {
   try {
     const { type, source, from, to, limit } = req.query;
 
-    const where: any = { userId: req.userId! };
-
-    if (type) {
-      where.snapshotType = type;
-    }
-
-    if (source) {
-      where.source = source;
-    }
-
-    if (from || to) {
-      where.timestamp = {};
-      if (from) where.timestamp.gte = new Date(from as string);
-      if (to) where.timestamp.lte = new Date(to as string);
-    }
+    const where: Prisma.SnapshotWhereInput = {
+      userId: req.userId!,
+      ...(type ? { snapshotType: type as string } : {}),
+      ...(source ? { source: source as string } : {}),
+      ...(from || to
+        ? {
+            timestamp: {
+              ...(from ? { gte: new Date(from as string) } : {}),
+              ...(to ? { lte: new Date(to as string) } : {}),
+            },
+          }
+        : {}),
+    };
 
     const pagination = parsePagination(req);
 

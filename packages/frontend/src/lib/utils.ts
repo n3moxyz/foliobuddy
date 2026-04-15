@@ -66,15 +66,6 @@ export function formatPercent(value: number | null | undefined): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
-export function formatCompactNumber(value: number): string {
-  const formatter = new Intl.NumberFormat('en-US', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  });
-
-  return formatter.format(value);
-}
-
 export function formatDate(date: Date | string | null | undefined): string {
   if (!date) return '-';
 
@@ -104,9 +95,4 @@ export function formatDateTime(date: Date | string | null | undefined): string {
 export function getPnLColorClass(value: number | null | undefined): string {
   if (value === null || value === undefined) return '';
   return value >= 0 ? 'text-profit' : 'text-loss';
-}
-
-export function getPnLBgClass(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '';
-  return value >= 0 ? 'bg-profit' : 'bg-loss';
 }
