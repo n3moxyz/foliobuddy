@@ -23,7 +23,7 @@ export const DEFAULT_BENCHMARKS: BenchmarkConfig[] = [
   { id: 'eth', coingeckoId: 'ethereum', symbol: 'ETH', color: BRAND_COLORS.eth, enabled: true },
 ];
 
-export const ADDITIONAL_COLORS = [...ADDITIONAL_BENCHMARK_COLORS];
+export const ADDITIONAL_COLORS = ADDITIONAL_BENCHMARK_COLORS;
 
 /**
  * Normalize a series of values to percentage change from the first value

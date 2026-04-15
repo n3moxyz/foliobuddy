@@ -122,7 +122,7 @@ export function TickerPnLCard({
                 className="cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => onTickerClick?.(stat.symbol)}
                 tabIndex={0}
-                role="button"
+                aria-label={`Filter by ${stat.symbol}`}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();

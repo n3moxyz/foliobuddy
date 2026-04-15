@@ -180,7 +180,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
 
   return (
     <div className="space-y-4">
-      {/* Mode Toggle - Tab style to match PositionForm */}
+      {/* Mode Toggle */}
       <div role="tablist" className="flex border-b mb-2">
         <button
           type="button"

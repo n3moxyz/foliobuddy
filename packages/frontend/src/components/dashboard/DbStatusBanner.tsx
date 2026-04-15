@@ -23,7 +23,7 @@ export function DbStatusBanner() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" tabIndex={0} className="flex items-center gap-1.5 px-2 py-1 rounded-md cursor-default hover:bg-muted/50 transition-colors">
+        <button type="button" className="flex items-center gap-1.5 px-2 py-1 rounded-md cursor-default hover:bg-muted/50 transition-colors">
           <span className="relative flex h-2 w-2">
             {isHealthy && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
