@@ -11,7 +11,7 @@ export const DEFAULT_SNAPSHOT_LIMIT = 100;
 export const MAX_HISTORICAL_DAYS = 365;
 
 /** Express JSON payload size limit */
-export const MAX_PAYLOAD_SIZE = '10mb';
+export const MAX_PAYLOAD_SIZE = '1mb';
 
 /** Rate limiting: requests per window (override with RATE_LIMIT_MAX env var) */
 export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
