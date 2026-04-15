@@ -21,10 +21,18 @@ import { CustodyCheckbox } from './CustodyCheckbox';
 import { formatNumber } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
-const CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
+const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
+const LEGACY_CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
 
 function getCustodyNames(): string[] {
   try {
+    // Migrate from legacy key
+    const legacy = localStorage.getItem(LEGACY_CUSTODY_NAMES_KEY);
+    if (legacy !== null) {
+      localStorage.setItem(CUSTODY_NAMES_KEY, legacy);
+      localStorage.removeItem(LEGACY_CUSTODY_NAMES_KEY);
+      return JSON.parse(legacy);
+    }
     const stored = localStorage.getItem(CUSTODY_NAMES_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch {

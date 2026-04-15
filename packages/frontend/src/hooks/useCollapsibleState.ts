@@ -1,11 +1,19 @@
 import { useState, useCallback } from 'react';
 
-const STORAGE_KEY = 'pa-portfolio-collapse-state';
+const STORAGE_KEY = 'foliobuddy-collapse-state';
+const LEGACY_KEY = 'pa-portfolio-collapse-state';
 
 type CollapseState = Record<string, boolean>;
 
 function loadState(): CollapseState {
   try {
+    // Migrate from legacy key on first load
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      localStorage.setItem(STORAGE_KEY, legacy);
+      localStorage.removeItem(LEGACY_KEY);
+      return JSON.parse(legacy);
+    }
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {

@@ -42,7 +42,8 @@ import type { Position } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 
-const PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
+const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
+const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
 
 interface SectionConfig {
   id: string;
@@ -81,8 +82,14 @@ export default function Portfolio() {
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  // Perp exposure state
+  // Perp exposure state (migrates from legacy key on first load)
   const [perpExposure, setPerpExposure] = useState(() => {
+    const legacy = localStorage.getItem(LEGACY_PERP_EXPOSURE_KEY);
+    if (legacy !== null) {
+      localStorage.setItem(PERP_EXPOSURE_KEY, legacy);
+      localStorage.removeItem(LEGACY_PERP_EXPOSURE_KEY);
+      return parseFloat(legacy) || 0;
+    }
     const saved = localStorage.getItem(PERP_EXPOSURE_KEY);
     return saved ? parseFloat(saved) : 0;
   });

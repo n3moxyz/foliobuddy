@@ -128,16 +128,6 @@ v1Router.use('/agent', agentAuth, agentRouter);
 // Mount v1 router at /api/v1
 app.use('/api/v1', v1Router);
 
-// Legacy routes for backward compatibility (same as v1)
-app.use('/api/positions', ensureUser, positionsRouter);
-app.use('/api/assets', assetsRouter);
-app.use('/api/trades', ensureUser, tradesRouter);
-app.use('/api/investors', ensureUser, investorsRouter);
-app.use('/api/snapshots', ensureUser, snapshotsRouter);
-app.use('/api/prices', pricesRouter);
-app.use('/api/fx', fxRouter);
-app.use('/api/export', ensureUser, exportRouter);
-
 // Error handling middleware
 app.use(errorHandler);
 
@@ -166,7 +156,7 @@ async function startServer() {
 
   server.listen(port, async () => {
     logger.info(`Server running on http://localhost:${port}`);
-    logger.info(`API available at http://localhost:${port}/api`);
+    logger.info(`API available at http://localhost:${port}/api/v1`);
     logger.info('WebSocket server ready');
 
     // Start scheduled jobs only in production

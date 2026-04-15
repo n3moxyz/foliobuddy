@@ -273,7 +273,7 @@ Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `cus
 - Custody section reuses `PositionTable` for identical columns/sorting as Crypto and Stables
 - `PositionForm.tsx` uses `CustodyCheckbox` component above the mode tabs (applies to Add, Import, and Edit). When checked, shows a `<Select>` dropdown with existing names + "Add new person" option. Edit mode sends empty string (not undefined) when unchecking custody to properly clear the field
 - `CustodyCheckbox.tsx` — extracted shared UI component for custody toggle with name selection, used by both create and edit modes. Takes `showDescription` prop (true for create, false for edit)
-- Custody names persisted to `localStorage` (`pa-portfolio-custody-names`) and merged with names from existing positions. Memo recomputes via version counter after saving new names
+- Custody names persisted to `localStorage` (`foliobuddy-custody-names`) and merged with names from existing positions. Memo recomputes via version counter after saving new names
 - `PositionImportTab.tsx` shows a purple banner when importing as custody; all imported positions get `custodyOf` stamped
 - `PositionTable.tsx` includes `custodyOf` in clipboard JSON format when set
 
@@ -364,7 +364,7 @@ SENTRY_DSN=                # Optional — error tracking (skipped if empty)
 ### Frontend (`.env`)
 
 ```
-VITE_API_URL=http://localhost:4001/api    # Backend API URL (or prod URL for frontend-only dev)
+VITE_API_URL=http://localhost:4001/api/v1    # Backend API URL (or prod URL for frontend-only dev)
 VITE_WS_BACKEND_URL=http://localhost:4001 # WebSocket URL
 VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 ```
@@ -374,10 +374,10 @@ VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 For testing frontend changes without running Docker or the local backend, point `VITE_API_URL` at the production Coolify backend:
 
 ```
-VITE_API_URL=https://api.foliobuddy.xyz/api
+VITE_API_URL=https://api.foliobuddy.xyz/api/v1
 ```
 
-`http://localhost:4000` is already in Coolify's `ALLOWED_ORIGINS`, so CORS works. Remember to switch back to `http://localhost:4001/api` when doing backend work.
+`http://localhost:4000` is already in Coolify's `ALLOWED_ORIGINS`, so CORS works. Remember to switch back to `http://localhost:4001/api/v1` when doing backend work.
 
 ### Local Authenticated UI Testing
 

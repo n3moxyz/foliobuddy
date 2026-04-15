@@ -23,7 +23,8 @@ import { BenchmarkComparisonChart } from '@/components/dashboard/BenchmarkCompar
 import { ChevronDown, Users } from 'lucide-react';
 import { DbStatusBanner } from '@/components/dashboard/DbStatusBanner';
 
-const PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
+const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
+const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
 
 export default function Dashboard() {
   const { currency } = useCurrencyStore();
@@ -72,6 +73,13 @@ export default function Dashboard() {
   }, [selectedInvestors, investors]);
 
   const perpExposure = useMemo(() => {
+    // Migrate from legacy key
+    const legacy = localStorage.getItem(LEGACY_PERP_EXPOSURE_KEY);
+    if (legacy !== null) {
+      localStorage.setItem(PERP_EXPOSURE_KEY, legacy);
+      localStorage.removeItem(LEGACY_PERP_EXPOSURE_KEY);
+      return parseFloat(legacy) || 0;
+    }
     const saved = localStorage.getItem(PERP_EXPOSURE_KEY);
     return saved ? parseFloat(saved) : 0;
   }, []);

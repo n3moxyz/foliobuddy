@@ -35,7 +35,8 @@ import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
 import type { Position } from '@/lib/types';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 
-const SKIP_DELETE_CONFIRM_KEY = 'pa-portfolio-skip-delete-confirm';
+const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
+const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
 
 // Format position(s) for clipboard - includes asset info for recreating
 export function formatPositionsForClipboard(positions: Position | Position[]) {
@@ -105,6 +106,13 @@ export function PositionTable({
   const [deletePosition, setDeletePosition] = useState<Position | null>(null);
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const [skipConfirm, setSkipConfirm] = useState(() => {
+    // Migrate from legacy key
+    const legacy = localStorage.getItem(LEGACY_SKIP_DELETE_KEY);
+    if (legacy !== null) {
+      localStorage.setItem(SKIP_DELETE_CONFIRM_KEY, legacy);
+      localStorage.removeItem(LEGACY_SKIP_DELETE_KEY);
+      return legacy === 'true';
+    }
     return localStorage.getItem(SKIP_DELETE_CONFIRM_KEY) === 'true';
   });
   const [copiedId, setCopiedId] = useState<string | null>(null);
