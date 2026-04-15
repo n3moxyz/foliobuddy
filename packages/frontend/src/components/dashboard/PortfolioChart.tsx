@@ -14,9 +14,7 @@ import { Button } from '@/components/ui/button';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
 import { formatCurrency } from '@/lib/utils';
 import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
-
-// CoinGecko-style time periods
-type TimePeriod = '7D' | '1M' | '3M' | '1Y' | 'YTD' | 'Max';
+import type { TimePeriod } from '@/lib/types';
 
 interface PortfolioChartProps {
   currency?: 'USD' | 'SGD';

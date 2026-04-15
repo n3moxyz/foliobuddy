@@ -1,11 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import type { BulkImportResult } from '@/lib/types';
 
-interface ImportResult {
-  success: boolean;
-  symbol: string;
-  error?: string;
-}
+type ImportResult = BulkImportResult['results'][number];
 
 interface ImportResultsProps {
   results: ImportResult[];

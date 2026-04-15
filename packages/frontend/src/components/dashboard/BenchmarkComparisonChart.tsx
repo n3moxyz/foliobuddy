@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useQueries } from '@tanstack/react-query';
 import { usePerformanceHistory, useBenchmarkHistory } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
-import type { CoinSearchResult } from '@/lib/types';
+import type { CoinSearchResult, TimePeriod } from '@/lib/types';
 import { useSearchCoins } from '@/hooks/useAssets';
 import {
   normalizePerformanceHistory,
@@ -29,8 +29,6 @@ import { PORTFOLIO_LINE_COLOR, BRAND_COLORS } from '@/lib/chartColors';
 import { Plus, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-
-type TimePeriod = '7D' | '1M' | '3M' | '1Y' | 'YTD' | 'Max';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface BenchmarkComparisonChartProps {

@@ -1,10 +1,7 @@
 import ExcelJS from 'exceljs';
 import { PrismaClient } from '@prisma/client';
 import * as path from 'path';
-
-type AssetCategory = 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
-type StorageType = 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
-type SnapshotType = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+import type { AssetCategory, SnapshotType, StorageType } from '../lib/constants.js';
 
 const prisma = new PrismaClient();
 

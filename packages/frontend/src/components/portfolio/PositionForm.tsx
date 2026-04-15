@@ -12,7 +12,7 @@ import {
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
 import { useCreatePosition, useUpdatePosition } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
-import type { Asset, CoinSearchResult, Position } from '@/lib/types';
+import type { Asset, BulkImportPosition, BulkImportResult, CoinSearchResult, Position } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
@@ -61,25 +61,7 @@ interface PositionFormProps {
 type CategoryType = 'crypto' | 'cash';
 type FormMode = 'add' | 'import';
 
-interface ImportedPosition {
-  asset: {
-    coingeckoId: string | null;
-    symbol: string;
-    name: string;
-    category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
-  };
-  quantity: number;
-  avgCostUsd: number;
-  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
-  storageLocation: string | null;
-  notes: string | null;
-}
-
-interface ImportResult {
-  success: boolean;
-  symbol: string;
-  error?: string;
-}
+type ImportedPosition = BulkImportPosition;
 
 const STORAGE_TYPES = [
   { value: 'CEX', label: 'CEX' },
@@ -119,7 +101,7 @@ export function PositionForm({
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedPositions, setParsedPositions] = useState<ImportedPosition[] | null>(null);
   const [importing, setImporting] = useState(false);
-  const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
+  const [importResults, setImportResults] = useState<BulkImportResult['results'] | null>(null);
 
   // Category state
   const [category, setCategory] = useState<CategoryType>(() => {

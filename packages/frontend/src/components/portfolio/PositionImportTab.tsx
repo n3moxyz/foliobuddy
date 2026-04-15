@@ -1,25 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, AlertCircle, Loader2 } from 'lucide-react';
-
-interface ImportedPosition {
-  asset: {
-    coingeckoId: string | null;
-    symbol: string;
-    name: string;
-    category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
-  };
-  quantity: number;
-  avgCostUsd: number;
-  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
-  storageLocation: string | null;
-  notes: string | null;
-}
+import type { BulkImportPosition } from '@/lib/types';
 
 interface PositionImportTabProps {
   jsonInput: string;
   parseError: string | null;
-  parsedPositions: ImportedPosition[] | null;
+  parsedPositions: BulkImportPosition[] | null;
   importing: boolean;
   isCustody?: boolean;
   custodyOf?: string;

@@ -10,22 +10,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
+import type { BulkImportPosition } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
-interface ImportedPosition {
-  asset: {
-    coingeckoId: string | null;
-    symbol: string;
-    name: string;
-    category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
-  };
-  quantity: number;
-  avgCostUsd: number;
-  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
-  storageLocation: string | null;
-  notes: string | null;
-}
+type ImportedPosition = BulkImportPosition;
 
 interface ImportResult {
   success: boolean;
