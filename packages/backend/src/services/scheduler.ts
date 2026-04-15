@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { priceService } from './priceService.js';
 import { snapshotService } from './snapshotService.js';
 import { socketService } from './socketService.js';
-import { prisma } from '../index.js';
+import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
 
 /**

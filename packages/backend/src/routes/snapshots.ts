@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../index.js';
+import { prisma } from '../lib/prisma.js';
 import { snapshotService } from '../services/snapshotService.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../lib/logger.js';

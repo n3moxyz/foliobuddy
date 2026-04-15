@@ -1,6 +1,6 @@
 import { clerkMiddleware, getAuth, requireAuth } from '@clerk/express';
 import { Request, Response, NextFunction } from 'express';
-import { prisma } from '../index.js';
+import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
 
 // Extend Express Request to include auth

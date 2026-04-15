@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import ExcelJS from 'exceljs';
-import { prisma } from '../index.js';
+import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
 
 const router = Router();

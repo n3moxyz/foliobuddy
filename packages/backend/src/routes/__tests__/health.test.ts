@@ -7,7 +7,7 @@ const { mockQueryRawUnsafe } = vi.hoisted(() => ({
   mockQueryRawUnsafe: vi.fn(),
 }));
 
-vi.mock('../../index.js', () => ({
+vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     $queryRawUnsafe: mockQueryRawUnsafe,
   },

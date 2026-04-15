@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { prisma } from '../index.js';
+import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
 import { logger } from '../lib/logger.js';
 

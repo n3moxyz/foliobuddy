@@ -1,4 +1,4 @@
-import { prisma } from '../index.js';
+import { prisma } from '../lib/prisma.js';
 import { USD_SGD_FALLBACK_RATE } from '../lib/constants.js';
 
 interface PortfolioSummary {

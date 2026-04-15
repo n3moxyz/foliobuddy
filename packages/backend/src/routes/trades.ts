@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../index.js';
+import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { parsePagination, paginatedResponse } from '../lib/pagination.js';
 import { calculateTradePnL } from '../lib/tradePnL.js';

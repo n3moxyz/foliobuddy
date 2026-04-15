@@ -15,7 +15,7 @@ const mockPrisma = {
   },
 };
 
-vi.mock('../../index.js', () => ({ prisma: mockPrisma }));
+vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }));
 vi.mock('../../lib/sentry.js', () => ({
   Sentry: { captureException: vi.fn() },
   initSentry: vi.fn(),
