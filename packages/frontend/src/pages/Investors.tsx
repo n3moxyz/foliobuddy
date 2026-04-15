@@ -82,6 +82,7 @@ export default function Investors() {
   });
 
   const totalStake = investors?.reduce((sum, inv) => sum + inv.stakePercentage, 0) || 0;
+  const totalCurrentValue = investors?.reduce((sum, inv) => sum + (inv.currentValue || 0), 0) || 0;
 
   return (
     <div className="space-y-6">
@@ -126,11 +127,7 @@ export default function Investors() {
             <HelpTooltip content="Combined current value of all investor stakes" />
           </p>
           <p className="text-lg font-semibold tabular-nums">
-            {formatCurrency(
-              investors?.reduce((sum, inv) => sum + (inv.currentValue || 0), 0) || 0,
-              'USD',
-              0
-            )}
+            {formatCurrency(totalCurrentValue, 'USD', 0)}
           </p>
         </div>
       </div>

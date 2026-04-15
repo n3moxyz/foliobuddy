@@ -59,7 +59,7 @@ export const PositionRow = React.memo(function PositionRow({
       className="cursor-pointer hover:bg-muted/50"
       onClick={() => onView(position)}
       tabIndex={0}
-      role="button"
+      aria-label={`View ${position.asset.symbol} position`}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();

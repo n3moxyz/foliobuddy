@@ -393,7 +393,8 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
           {/* Portfolio Legend Item */}
           <div className="w-full text-sm sm:ml-auto sm:w-auto flex items-center gap-1.5">
             <div
-              className="w-2 h-2 rounded-full flex-shrink-0 bg-muted-foreground"
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: PORTFOLIO_LINE_COLOR }}
             />
             <span className="font-medium text-muted-foreground">
               Portfolio

@@ -246,7 +246,7 @@ export function SnapshotTable({
                           : undefined
                       }
                       tabIndex={snapshot.source === 'AUTOMATIC' ? 0 : undefined}
-                      role={snapshot.source === 'AUTOMATIC' ? 'button' : undefined}
+                      aria-label={snapshot.source === 'AUTOMATIC' ? `Expand ${snapshot.snapshotType.toLowerCase()} snapshot` : undefined}
                       aria-expanded={snapshot.source === 'AUTOMATIC' ? expandedSnapshots.has(snapshot.id) : undefined}
                       onKeyDown={
                         snapshot.source === 'AUTOMATIC'

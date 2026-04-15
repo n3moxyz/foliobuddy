@@ -2,18 +2,8 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatCurrency } from '@/lib/utils';
 import { ASSET_COLORS, STORAGE_COLORS, STABLES_COLORS } from '@/lib/chartColors';
-
-/** Compact dollar format: $1.2K, $3.4M, $1.2B — keeps hover info short */
-function compactUsd(value: number): string {
-  const abs = Math.abs(value);
-  const sign = value < 0 ? '-' : '';
-  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(1)}B`;
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
-  return `${sign}$${abs.toFixed(0)}`;
-}
 import type { Position } from '@/lib/types';
 
 interface AllocationChartsProps {
@@ -196,7 +186,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
               const hovered = visibleData[hIdx];
               return (
                 <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap truncate">
-                  {hovered.name} &middot; {compactUsd(hovered.value)} &middot;{' '}
+                  {hovered.name} &middot; {formatCurrency(hovered.value, 'USD', true)} &middot;{' '}
                   {formatNumber(hovered.displayPercentage, 1)}%
                 </span>
               );
