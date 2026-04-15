@@ -37,6 +37,19 @@ export * from './types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
+function buildQuery(
+  params: Record<string, string | number | boolean | undefined | null>
+): string {
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) {
+      sp.set(key, String(value));
+    }
+  }
+  const qs = sp.toString();
+  return qs ? `?${qs}` : '';
+}
+
 // Token getter - will be set by the auth provider
 let getToken: (() => Promise<string | null>) | null = null;
 
@@ -101,13 +114,8 @@ export const api = {
     }),
 
   // Assets
-  getAssets: (params?: { category?: string; search?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.category) searchParams.set('category', params.category);
-    if (params?.search) searchParams.set('search', params.search);
-    const query = searchParams.toString();
-    return request<Asset[]>(`/assets${query ? `?${query}` : ''}`);
-  },
+  getAssets: (params?: { category?: string; search?: string }) =>
+    request<Asset[]>(`/assets${buildQuery({ category: params?.category, search: params?.search })}`),
   searchCoins: (query: string) =>
     request<CoinSearchResult[]>(`/assets/search?q=${encodeURIComponent(query)}`),
   getAsset: (id: string) => request<Asset>(`/assets/${id}`),
@@ -129,15 +137,10 @@ export const api = {
     }),
 
   // Trades
-  getTrades: (params?: { status?: string; assetId?: string; from?: string; to?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.status) searchParams.set('status', params.status);
-    if (params?.assetId) searchParams.set('assetId', params.assetId);
-    if (params?.from) searchParams.set('from', params.from);
-    if (params?.to) searchParams.set('to', params.to);
-    const query = searchParams.toString();
-    return request<Trade[]>(`/trades${query ? `?${query}` : ''}`);
-  },
+  getTrades: (params?: { status?: string; assetId?: string; from?: string; to?: string }) =>
+    request<Trade[]>(
+      `/trades${buildQuery({ status: params?.status, assetId: params?.assetId, from: params?.from, to: params?.to })}`
+    ),
   getTradesPaginated: (params?: {
     status?: string;
     assetId?: string;
@@ -145,24 +148,14 @@ export const api = {
     to?: string;
     page?: number;
     limit?: number;
-  }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.status) searchParams.set('status', params.status);
-    if (params?.assetId) searchParams.set('assetId', params.assetId);
-    if (params?.from) searchParams.set('from', params.from);
-    if (params?.to) searchParams.set('to', params.to);
-    if (params?.page) searchParams.set('page', String(params.page));
-    if (params?.limit) searchParams.set('limit', String(params.limit));
-    const query = searchParams.toString();
-    return request<PaginatedResponse<Trade>>(`/trades${query ? `?${query}` : ''}`);
-  },
-  getTradeAnalytics: (params?: { from?: string; to?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.from) searchParams.set('from', params.from);
-    if (params?.to) searchParams.set('to', params.to);
-    const query = searchParams.toString();
-    return request<TradeAnalytics>(`/trades/analytics${query ? `?${query}` : ''}`);
-  },
+  }) =>
+    request<PaginatedResponse<Trade>>(
+      `/trades${buildQuery({ status: params?.status, assetId: params?.assetId, from: params?.from, to: params?.to, page: params?.page, limit: params?.limit })}`
+    ),
+  getTradeAnalytics: (params?: { from?: string; to?: string }) =>
+    request<TradeAnalytics>(
+      `/trades/analytics${buildQuery({ from: params?.from, to: params?.to })}`
+    ),
   getTrade: (id: string) => request<Trade>(`/trades/${id}`),
   createTrade: (data: CreateTradeData) =>
     request<Trade>('/trades', {
@@ -213,16 +206,10 @@ export const api = {
     from?: string;
     to?: string;
     limit?: number;
-  }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.type) searchParams.set('type', params.type);
-    if (params?.source) searchParams.set('source', params.source);
-    if (params?.from) searchParams.set('from', params.from);
-    if (params?.to) searchParams.set('to', params.to);
-    if (params?.limit) searchParams.set('limit', params.limit.toString());
-    const query = searchParams.toString();
-    return request<Snapshot[]>(`/snapshots${query ? `?${query}` : ''}`);
-  },
+  }) =>
+    request<Snapshot[]>(
+      `/snapshots${buildQuery({ type: params?.type, source: params?.source, from: params?.from, to: params?.to, limit: params?.limit })}`
+    ),
   getSnapshotsPaginated: (params?: {
     type?: string;
     source?: string;
@@ -230,25 +217,14 @@ export const api = {
     to?: string;
     page?: number;
     limit?: number;
-  }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.type) searchParams.set('type', params.type);
-    if (params?.source) searchParams.set('source', params.source);
-    if (params?.from) searchParams.set('from', params.from);
-    if (params?.to) searchParams.set('to', params.to);
-    if (params?.page) searchParams.set('page', String(params.page));
-    if (params?.limit) searchParams.set('limit', String(params.limit));
-    const query = searchParams.toString();
-    return request<PaginatedResponse<Snapshot>>(`/snapshots${query ? `?${query}` : ''}`);
-  },
-  getPerformanceHistory: (params?: { days?: number; from?: string; to?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.days) searchParams.set('days', params.days.toString());
-    if (params?.from) searchParams.set('from', params.from);
-    if (params?.to) searchParams.set('to', params.to);
-    const query = searchParams.toString();
-    return request<PerformancePoint[]>(`/snapshots/performance${query ? `?${query}` : ''}`);
-  },
+  }) =>
+    request<PaginatedResponse<Snapshot>>(
+      `/snapshots${buildQuery({ type: params?.type, source: params?.source, from: params?.from, to: params?.to, page: params?.page, limit: params?.limit })}`
+    ),
+  getPerformanceHistory: (params?: { days?: number; from?: string; to?: string }) =>
+    request<PerformancePoint[]>(
+      `/snapshots/performance${buildQuery({ days: params?.days, from: params?.from, to: params?.to })}`
+    ),
   getMonthlyReturns: (year?: number) =>
     request<MonthlyReturn[]>(`/snapshots/monthly${year ? `?year=${year}` : ''}`),
   createSnapshot: (type?: string) =>
@@ -290,14 +266,8 @@ export const api = {
 
   // Export
   exportPositionsCsv: () => `${API_BASE}/export/csv/positions`,
-  exportTradesCsv: (params?: { status?: string; from?: string; to?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.status) searchParams.set('status', params.status);
-    if (params?.from) searchParams.set('from', params.from);
-    if (params?.to) searchParams.set('to', params.to);
-    const query = searchParams.toString();
-    return `${API_BASE}/export/csv/trades${query ? `?${query}` : ''}`;
-  },
+  exportTradesCsv: (params?: { status?: string; from?: string; to?: string }) =>
+    `${API_BASE}/export/csv/trades${buildQuery({ status: params?.status, from: params?.from, to: params?.to })}`,
   exportExcel: () => `${API_BASE}/export/excel`,
 
   // Health

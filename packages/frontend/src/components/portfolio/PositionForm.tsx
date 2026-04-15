@@ -12,13 +12,13 @@ import {
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
 import { useCreatePosition, useUpdatePosition } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
-import type { Asset, BulkImportPosition, BulkImportResult, CoinSearchResult, Position } from '@/lib/types';
+import type { Asset, BulkImportPosition, CoinSearchResult, Position } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
-import { ImportResults } from './ImportResults';
+import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 import { CustodyCheckbox } from './CustodyCheckbox';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, isStablecoinCategory } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
 const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
@@ -96,16 +96,15 @@ export function PositionForm({
   const [deltaMode, setDeltaMode] = useState<'add' | 'reduce'>('add');
   const queryClient = useQueryClient();
 
-  // Import state
   const [jsonInput, setJsonInput] = useState('');
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedPositions, setParsedPositions] = useState<ImportedPosition[] | null>(null);
   const [importing, setImporting] = useState(false);
-  const [importResults, setImportResults] = useState<BulkImportResult['results'] | null>(null);
+  const [importResults, setImportResults] = useState<ImportResultItem[] | null>(null);
 
   // Category state
   const [category, setCategory] = useState<CategoryType>(() => {
-    if (position?.asset.category === 'STABLECOIN' || position?.asset.category === 'CASH') {
+    if (isStablecoinCategory(position?.asset.category)) {
       return 'cash';
     }
     return 'crypto';
@@ -190,7 +189,6 @@ export function PositionForm({
     return true;
   }, [assetId, quantity]);
 
-  // Import functions
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -245,7 +243,7 @@ export function PositionForm({
 
     try {
       const response = await api.bulkImportPositions(positionsToImport);
-      setImportResults(response.results);
+      setImportResults(response.results.map((r) => ({ ...r, label: r.symbol })));
     } catch (e) {
       setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
     } finally {
@@ -324,7 +322,7 @@ export function PositionForm({
 
     // Filter by category - exclude stablecoins for crypto
     if (category === 'crypto') {
-      filtered = filtered.filter((a) => a.category !== 'STABLECOIN' && a.category !== 'CASH');
+      filtered = filtered.filter((a) => !isStablecoinCategory(a.category));
     }
 
     // Filter by search query
@@ -365,7 +363,6 @@ export function PositionForm({
     return results;
   }, [filteredAssets, searchResults, searchQuery, category, assets]);
 
-  // Handle selecting an existing asset
   const handleSelectExistingAsset = (asset: Asset) => {
     setAssetId(asset.id);
     setSelectedAsset(asset);
@@ -373,7 +370,6 @@ export function PositionForm({
     setShowDropdown(false);
   };
 
-  // Handle selecting a coin from search (create new asset)
   const handleSelectCoin = async (coin: CoinSearchResult) => {
     const asset = await createAssetFromCoinGecko.mutateAsync({
       coingeckoId: coin.id,
@@ -429,7 +425,6 @@ export function PositionForm({
     position?.asset.coingeckoId || ''
   );
 
-  // Handle selecting a stablecoin (for cash category)
   const handleSelectStablecoin = async (coinId: string) => {
     setSelectedStablecoinId(coinId);
     setError(null);
@@ -437,7 +432,6 @@ export function PositionForm({
     const stablecoin = TOP_STABLECOINS.find((s) => s.id === coinId);
     if (!stablecoin) return;
 
-    // Check if asset already exists in our database
     const existingAsset = assets?.find((a) => a.coingeckoId === coinId);
     if (existingAsset) {
       setAssetId(existingAsset.id);
@@ -445,7 +439,6 @@ export function PositionForm({
       return;
     }
 
-    // Create new asset from CoinGecko
     try {
       const asset = await createAssetFromCoinGecko.mutateAsync({
         coingeckoId: stablecoin.id,
@@ -490,10 +483,8 @@ export function PositionForm({
     }
   }, [storageType, isEditing]);
 
-  // Get location options based on storage type
   const locationOptions = storageType === 'CEX' ? CEX_LOCATIONS : ONCHAIN_LOCATIONS;
 
-  // Save custody name on successful submit
   const handleCustodySave = () => {
     if (isCustody && custodyOf.trim()) {
       saveCustodyName(custodyOf.trim());
@@ -625,7 +616,7 @@ export function PositionForm({
 
   // If showing import results, show the results UI
   if (mode === 'import' && importResults) {
-    return <ImportResults results={importResults} onDone={onSuccess} />;
+    return <ImportResultsList results={importResults} onDone={onSuccess} />;
   }
 
   return (
@@ -746,8 +737,7 @@ export function PositionForm({
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Current quantity</p>
                     <p className="font-mono text-sm">
-                      {position.asset.category === 'STABLECOIN' ||
-                      position.asset.category === 'CASH'
+                      {isStablecoinCategory(position.asset.category)
                         ? formatNumber(position.quantity, 0)
                         : formatNumber(position.quantity, 4)}
                     </p>
@@ -836,8 +826,7 @@ export function PositionForm({
                       Old
                     </div>
                     <div className="text-right font-mono text-muted-foreground">
-                      {position.asset.category === 'STABLECOIN' ||
-                      position.asset.category === 'CASH'
+                      {isStablecoinCategory(position.asset.category)
                         ? formatNumber(addPreview.currentQuantity, 0)
                         : formatNumber(addPreview.currentQuantity, 4)}
                     </div>
@@ -852,8 +841,7 @@ export function PositionForm({
                       New
                     </div>
                     <div className="text-right font-mono font-medium text-primary">
-                      {position.asset.category === 'STABLECOIN' ||
-                      position.asset.category === 'CASH'
+                      {isStablecoinCategory(position.asset.category)
                         ? formatNumber(addPreview.nextQuantity, 0)
                         : formatNumber(addPreview.nextQuantity, 4)}
                     </div>

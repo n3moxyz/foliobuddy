@@ -24,7 +24,6 @@ const updateInvestorSchema = createInvestorSchema.partial();
 // GET /api/investors - Get all investors
 router.get('/', async (req, res, next) => {
   try {
-    // Get current portfolio value
     const summary = await portfolioService.getSummary(req.userId!);
 
     const investors = await prisma.investor.findMany({
@@ -101,17 +100,14 @@ router.get('/:id/report', async (req, res, next) => {
       throw new AppError('Investor not found', 404);
     }
 
-    // Get current portfolio summary
     const summary = await portfolioService.getSummary(req.userId!);
     const currentValue = summary.totalValueUsd * (investor.stakePercentage / 100);
 
-    // Get historical stake values
     const stakeHistory = await prisma.investorStake.findMany({
       where: { investorId: investor.id },
       orderBy: { timestamp: 'asc' },
     });
 
-    // Get portfolio snapshots for performance tracking
     const snapshots = await prisma.snapshot.findMany({
       where: {
         userId: req.userId!,
@@ -175,7 +171,6 @@ router.post('/', async (req, res, next) => {
       });
     }
 
-    // Get existing investors to calculate available stake
     const existingInvestors = await prisma.investor.findMany({
       where: { userId: req.userId! },
     });
@@ -197,7 +192,6 @@ router.post('/', async (req, res, next) => {
       throw new AppError(`No stake available. Current total: ${currentTotalStake}%`, 400);
     }
 
-    // Get current portfolio value
     const summary = await portfolioService.getSummary(req.userId!);
     const currentValue = summary.totalValueUsd * (stakePercentage / 100);
 
@@ -219,7 +213,6 @@ router.post('/', async (req, res, next) => {
       },
     });
 
-    // Create initial stake record
     await prisma.investorStake.create({
       data: {
         investorId: investor.id,
@@ -337,7 +330,6 @@ router.delete('/:id', async (req, res, next) => {
         throw new AppError('Target investor for stake reassignment not found', 404);
       }
 
-      // Update the target investor's stake
       const newStake = targetInvestor.stakePercentage + investorToDelete.stakePercentage;
       await prisma.investor.update({
         where: { id: reassignToId },

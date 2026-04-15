@@ -495,7 +495,6 @@ function TradeTable({
   // Scroll to and flash-highlight the target trade row
   useEffect(() => {
     if (!highlightTradeId) return;
-    // Check if this table contains the trade
     const hasTrade = trades.some((t) => t.id === highlightTradeId);
     if (!hasTrade) return;
 

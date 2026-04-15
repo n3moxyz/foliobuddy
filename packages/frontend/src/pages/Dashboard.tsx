@@ -9,7 +9,7 @@ import {
 } from '@/hooks/usePortfolio';
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, isStablecoinCategory } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -89,7 +89,7 @@ export default function Dashboard() {
     const ownedCryptoTotal = positions
       .filter((position) => !position.custodyOf)
       .filter(
-        (position) => position.asset.category !== 'STABLECOIN' && position.asset.category !== 'CASH'
+        (position) => !isStablecoinCategory(position.asset.category)
       )
       .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
 

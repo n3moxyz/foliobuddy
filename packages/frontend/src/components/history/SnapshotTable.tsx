@@ -97,7 +97,6 @@ export function SnapshotTable({
       newExpanded.delete(snapshotId);
     } else {
       newExpanded.add(snapshotId);
-      // Load positions if not cached
       if (!positionsCache[snapshotId]) {
         setLoadingPositions((prev) => new Set(prev).add(snapshotId));
         try {

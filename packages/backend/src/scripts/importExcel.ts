@@ -77,7 +77,6 @@ async function ensureDefaultUser() {
         name: 'Default User',
       },
     });
-    console.log('Created default user');
   }
 }
 
@@ -88,7 +87,6 @@ async function getOrCreateAsset(
 ): Promise<string> {
   const upperSymbol = symbol.toUpperCase().trim();
 
-  // Check if exists
   let asset = await prisma.asset.findFirst({
     where: { symbol: upperSymbol },
   });
@@ -97,7 +95,6 @@ async function getOrCreateAsset(
     return asset.id;
   }
 
-  // Create new asset
   const coingeckoId = COINGECKO_MAPPINGS[upperSymbol] ?? null;
 
   asset = await prisma.asset.create({
@@ -109,7 +106,6 @@ async function getOrCreateAsset(
     },
   });
 
-  console.log(`Created asset: ${upperSymbol}`);
   return asset.id;
 }
 
@@ -168,12 +164,10 @@ function getCellValue(row: ExcelJS.Row, colIndex: number): string | number | boo
   const cell = row.getCell(colIndex);
   if (cell.value === null || cell.value === undefined) return null;
 
-  // Handle rich text
   if (typeof cell.value === 'object' && 'richText' in cell.value) {
     return (cell.value as ExcelJS.CellRichTextValue).richText.map((rt) => rt.text).join('');
   }
 
-  // Handle formula results
   if (typeof cell.value === 'object' && 'result' in cell.value) {
     const result = (cell.value as ExcelJS.CellFormulaValue).result;
     if (result instanceof Error || (typeof result === 'object' && result !== null && !(result instanceof Date))) return null;
@@ -206,7 +200,6 @@ function parseDate(value: string | number | boolean | Date | null | undefined): 
     return value;
   }
 
-  // Handle string dates
   if (typeof value === 'string') {
     const parsed = new Date(value);
     return isNaN(parsed.getTime()) ? null : parsed;
@@ -243,7 +236,6 @@ async function importPositions(
     if (!firstCell) continue;
 
     try {
-      // Assuming columns: Symbol, Name, Quantity, Avg Cost, Storage Type, Storage Location, Category
       const symbol = String(firstCell).trim();
       if (!symbol) continue;
 
@@ -260,7 +252,6 @@ async function importPositions(
       const assetId = await getOrCreateAsset(symbol, name, category);
       const storageType = parseStorageType(storageTypeStr);
 
-      // Create position (duplicates allowed)
       await prisma.position.create({
         data: {
           userId: DEFAULT_USER_ID,
@@ -300,7 +291,6 @@ async function importTrades(
     if (!firstCell) continue;
 
     try {
-      // Assuming columns: Asset, Direction, Entry Date, Exit Date, Entry Price, Exit Price, Quantity, Notes
       const symbol = String(firstCell).trim();
       if (!symbol) continue;
 
@@ -325,7 +315,6 @@ async function importTrades(
 
       const assetId = await getOrCreateAsset(symbol);
 
-      // Calculate P&L if closed
       let realizedPnL: number | null = null;
       let realizedPnLPct: number | null = null;
       let status: 'OPEN' | 'CLOSED' = 'OPEN';
@@ -389,7 +378,6 @@ async function importSnapshots(
     if (!firstCell) continue;
 
     try {
-      // Assuming columns: Date, Total USD, Total SGD, Monthly Return, YTD Return, BTC Outperform, ETH Outperform
       const dateRaw = firstCell;
       const totalUsd = cellToFloat(getCellValue(row, 2));
       const totalSgd = cellToNullableFloat(getCellValue(row, 3));
@@ -446,7 +434,6 @@ async function importInvestors(
     if (!firstCell) continue;
 
     try {
-      // Assuming columns: Name, Stake %, Initial Capital
       const name = String(firstCell).trim();
       if (!name) continue;
 
@@ -498,45 +485,37 @@ async function importFromExcel(filePath: string): Promise<ImportResult> {
 
   await ensureDefaultUser();
 
-  // Import positions from ET_25 sheet (rows 32-80)
-  // Adjust these based on actual Excel structure
   const positionsResult = await importPositions(workbook, 'ET_25', 32, 80);
   result.positions = positionsResult.count;
   result.errors.push(...positionsResult.errors);
   console.log(`Imported ${positionsResult.count} positions`);
 
-  // Import trades from Trading sheet (rows 18+)
   const tradesResult = await importTrades(workbook, 'Trading', 18);
   result.trades = tradesResult.count;
   result.errors.push(...tradesResult.errors);
   console.log(`Imported ${tradesResult.count} trades`);
 
-  // Import weekly snapshots from Static sheet (rows 44-56)
   const weeklyResult = await importSnapshots(workbook, 'Static', 44, 56, 'WEEKLY');
   result.snapshots += weeklyResult.count;
   result.errors.push(...weeklyResult.errors);
   console.log(`Imported ${weeklyResult.count} weekly snapshots`);
 
-  // Import monthly snapshots from Static sheet (rows 22-37)
   const monthlyResult = await importSnapshots(workbook, 'Static', 22, 37, 'MONTHLY');
   result.snapshots += monthlyResult.count;
   result.errors.push(...monthlyResult.errors);
   console.log(`Imported ${monthlyResult.count} monthly snapshots`);
 
-  // Import investors from Consol sheet (rows 6-14)
   const investorsResult = await importInvestors(workbook, 'Consol', 6, 14);
   result.investors = investorsResult.count;
   result.errors.push(...investorsResult.errors);
   console.log(`Imported ${investorsResult.count} investors`);
 
-  // Count created assets
   const assetCount = await prisma.asset.count();
   result.assets = assetCount;
 
   return result;
 }
 
-// Main execution
 const args = process.argv.slice(2);
 const filePath = args[0] || path.join(process.cwd(), 'data', 'Comb_portfolio_2025_dec.xlsx');
 

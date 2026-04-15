@@ -22,7 +22,6 @@ export async function createMissingSnapshots(): Promise<void> {
       return;
     }
 
-    // Get all users
     const users = await prisma.user.findMany({
       select: { id: true },
     });
@@ -32,7 +31,6 @@ export async function createMissingSnapshots(): Promise<void> {
       return;
     }
 
-    // Check today's date (start of day in UTC)
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -40,7 +38,6 @@ export async function createMissingSnapshots(): Promise<void> {
 
     for (const user of users) {
       try {
-        // Check if snapshot exists for today
         const existingSnapshot = await prisma.snapshot.findFirst({
           where: {
             userId: user.id,
@@ -87,11 +84,9 @@ export function startPriceRefreshJob(): void {
       // Broadcast price update to all connected clients
       socketService.broadcastPriceUpdate(result.updated);
 
-      // Update position market values
       await priceService.updatePositionValues(result.changedAssetIds);
       logger.info('[Price Refresh] Position values updated');
 
-      // Get all users with positions and send portfolio updates
       const usersWithPositions = await prisma.user.findMany({
         where: {
           positions: {
@@ -121,7 +116,6 @@ export function startSnapshotJob(): void {
     try {
       logger.info('[Snapshot] Creating daily snapshots...');
 
-      // Get all users
       const users = await prisma.user.findMany({
         select: { id: true },
       });

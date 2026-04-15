@@ -26,7 +26,6 @@ const createPositionSchema = z.object({
 
 const updatePositionSchema = createPositionSchema.partial();
 
-// GET /api/positions - Get all positions
 router.get('/', async (req, res, next) => {
   try {
     const userId = req.userId!;
@@ -46,7 +45,6 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/positions/summary - Get portfolio summary
 router.get('/summary', async (req, res, next) => {
   try {
     const summary = await portfolioService.getSummary(req.userId!);
@@ -56,7 +54,6 @@ router.get('/summary', async (req, res, next) => {
   }
 });
 
-// GET /api/positions/allocation/category - Get allocation by category
 router.get('/allocation/category', async (req, res, next) => {
   try {
     const allocation = await portfolioService.getAllocationByCategory(req.userId!);
@@ -66,7 +63,6 @@ router.get('/allocation/category', async (req, res, next) => {
   }
 });
 
-// GET /api/positions/allocation/storage - Get allocation by storage
 router.get('/allocation/storage', async (req, res, next) => {
   try {
     const allocation = await portfolioService.getAllocationByStorage(req.userId!);
@@ -76,7 +72,6 @@ router.get('/allocation/storage', async (req, res, next) => {
   }
 });
 
-// GET /api/positions/performers/top - Get top performers
 router.get('/performers/top', async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit as string) || 5;
@@ -87,7 +82,6 @@ router.get('/performers/top', async (req, res, next) => {
   }
 });
 
-// GET /api/positions/performers/worst - Get worst performers
 router.get('/performers/worst', async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit as string) || 5;
@@ -117,7 +111,6 @@ const bulkImportSchema = z.object({
   positions: z.array(bulkImportPositionSchema),
 });
 
-// POST /api/positions/bulk - Bulk import positions (must be before /:id routes)
 router.post('/bulk', async (req, res, next) => {
   try {
     logger.info(
@@ -129,22 +122,18 @@ router.post('/bulk', async (req, res, next) => {
 
     const results: Array<{ success: boolean; symbol: string; error?: string }> = [];
 
-    // Get all existing assets once
     const existingAssets = await prisma.asset.findMany();
     const assetMap = new Map(existingAssets.map((a) => [a.symbol.toUpperCase(), a]));
     const coingeckoMap = new Map(
       existingAssets.filter((a) => a.coingeckoId).map((a) => [a.coingeckoId!, a])
     );
 
-    // Process all positions
     for (const pos of positions) {
       try {
-        // Find existing asset by coingeckoId or symbol
         let asset =
           (pos.asset.coingeckoId && coingeckoMap.get(pos.asset.coingeckoId)) ||
           assetMap.get(pos.asset.symbol.toUpperCase());
 
-        // Create asset if it doesn't exist
         if (!asset) {
           asset = await prisma.asset.create({
             data: {
@@ -155,21 +144,18 @@ router.post('/bulk', async (req, res, next) => {
               currentPriceUsd: null,
             },
           });
-          // Add to maps for subsequent positions
           assetMap.set(asset.symbol.toUpperCase(), asset);
           if (asset.coingeckoId) {
             coingeckoMap.set(asset.coingeckoId, asset);
           }
         }
 
-        // Calculate market value if asset has price
         const marketValueUsd = asset.currentPriceUsd ? pos.quantity * asset.currentPriceUsd : null;
         const costBasis = pos.quantity * pos.avgCostUsd;
         const unrealizedPnL = marketValueUsd !== null ? marketValueUsd - costBasis : null;
         const unrealizedPnLPct =
           costBasis > 0 && unrealizedPnL !== null ? (unrealizedPnL / costBasis) * 100 : null;
 
-        // Create position
         await prisma.position.create({
           data: {
             userId,
@@ -203,7 +189,6 @@ router.post('/bulk', async (req, res, next) => {
   }
 });
 
-// GET /api/positions/:id - Get a single position
 router.get('/:id', async (req, res, next) => {
   try {
     const position = await prisma.position.findUnique({
@@ -255,17 +240,13 @@ router.post('/', async (req, res, next) => {
       );
     }
 
-    // Calculate market value if asset has price
     const marketValueUsd = asset.currentPriceUsd ? data.quantity * asset.currentPriceUsd : null;
     const costBasis = data.quantity * data.avgCostUsd;
     const unrealizedPnL = marketValueUsd !== null ? marketValueUsd - costBasis : null;
     const unrealizedPnLPct =
       costBasis > 0 && unrealizedPnL !== null ? (unrealizedPnL / costBasis) * 100 : null;
 
-    // Convert empty string to null for storageLocation
     const storageLocation = data.storageLocation?.trim() || null;
-
-    // Convert empty string to null for custodyOf
     const custodyOf = data.custodyOf?.trim() || null;
 
     const position = await prisma.position.create({
@@ -293,12 +274,10 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/positions/:id - Update a position
 router.put('/:id', async (req, res, next) => {
   try {
     const data = updatePositionSchema.parse(req.body);
 
-    // Get existing position
     const existing = await prisma.position.findFirst({
       where: {
         id: req.params.id,
@@ -311,7 +290,6 @@ router.put('/:id', async (req, res, next) => {
       throw new AppError('Position not found', 404);
     }
 
-    // Recalculate market values
     const quantity = data.quantity ?? existing.quantity;
     const avgCostUsd = data.avgCostUsd ?? existing.avgCostUsd;
     const price = existing.asset.currentPriceUsd;
@@ -322,7 +300,6 @@ router.put('/:id', async (req, res, next) => {
     const unrealizedPnLPct =
       costBasis > 0 && unrealizedPnL !== null ? (unrealizedPnL / costBasis) * 100 : null;
 
-    // Convert empty string to null for storageLocation and custodyOf
     const updateData = {
       ...data,
       storageLocation:
@@ -349,7 +326,6 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/positions/:id - Delete a position
 router.delete('/:id', async (req, res, next) => {
   try {
     const result = await prisma.position.deleteMany({
@@ -369,7 +345,6 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/positions - Delete all positions for the user
 router.delete('/', async (req, res, next) => {
   try {
     const userId = req.userId!;

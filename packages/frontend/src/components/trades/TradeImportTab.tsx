@@ -4,13 +4,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
 import type { BulkImportTrade } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
-import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-
-interface ImportResult {
-  success: boolean;
-  symbol: string;
-  error?: string;
-}
+import { Upload, AlertCircle, Loader2 } from 'lucide-react';
+import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 
 interface TradeImportTabProps {
   onSuccess: () => void;
@@ -23,7 +18,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedTrades, setParsedTrades] = useState<BulkImportTrade[] | null>(null);
   const [importing, setImporting] = useState(false);
-  const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
+  const [importResults, setImportResults] = useState<ImportResultItem[] | null>(null);
 
   const handlePaste = async () => {
     try {
@@ -78,7 +73,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
 
     try {
       const response = await api.bulkImportTrades(parsedTrades);
-      setImportResults(response.results);
+      setImportResults(response.results.map((r) => ({ ...r, label: r.symbol })));
     } catch (e) {
       setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
     } finally {
@@ -89,54 +84,11 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
     queryClient.invalidateQueries({ queryKey: ['trades'] });
   };
 
-  const successCount = importResults?.filter((r) => r.success).length ?? 0;
-  const failCount = importResults?.filter((r) => !r.success).length ?? 0;
-
   // If showing import results, show the results UI
   if (importResults) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center py-4">
-          {failCount === 0 ? (
-            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
-          ) : (
-            <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
-          )}
-          <p className="font-medium">
-            {successCount} imported successfully
-            {failCount > 0 && `, ${failCount} failed`}
-          </p>
-        </div>
-
-        <div className="max-h-60 overflow-y-auto space-y-1">
-          {importResults.map((result, i) => (
-            <div
-              key={i}
-              className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
-                result.success ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'
-              }`}
-            >
-              {result.success ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-              )}
-              <span className="font-medium">{result.symbol}</span>
-              {result.error && (
-                <span className="text-red-600 dark:text-red-400 text-xs">{result.error}</span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-end">
-          <Button onClick={onSuccess}>Done</Button>
-        </div>
-      </div>
-    );
+    return <ImportResultsList results={importResults} onDone={onSuccess} />;
   }
 
-  // Import mode UI
   return (
     <div className="space-y-4">
       <div className="flex gap-2">

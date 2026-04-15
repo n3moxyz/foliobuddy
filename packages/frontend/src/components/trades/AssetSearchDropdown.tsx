@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
+import { isStablecoinCategory } from '@/lib/utils';
 import type { Asset, CoinSearchResult } from '@/lib/types';
 
 interface AssetSearchDropdownProps {
@@ -28,7 +29,7 @@ export function AssetSearchDropdown({
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
 
-    let filtered = assets.filter((a) => a.category !== 'STABLECOIN' && a.category !== 'CASH');
+    let filtered = assets.filter((a) => !isStablecoinCategory(a.category));
 
     if (searchQuery.length > 0) {
       const query = searchQuery.toLowerCase();
@@ -65,14 +66,12 @@ export function AssetSearchDropdown({
     return results;
   }, [filteredAssets, searchResults, searchQuery, assets]);
 
-  // Handle selecting an existing asset
   const handleSelectExistingAsset = (asset: Asset) => {
     onSelectAsset(asset.id, asset);
     setSearchQuery('');
     setShowDropdown(false);
   };
 
-  // Handle selecting a coin from search (create new asset)
   const handleSelectCoin = async (coin: CoinSearchResult) => {
     const asset = await createAssetFromCoinGecko.mutateAsync({
       coingeckoId: coin.id,

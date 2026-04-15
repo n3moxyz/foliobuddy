@@ -34,7 +34,6 @@ const updateSnapshotSchema = z.object({
   notes: z.string().optional(),
 });
 
-// GET /api/snapshots - Get all snapshots
 router.get('/', async (req, res, next) => {
   try {
     const { type, source, from, to, limit } = req.query;
@@ -79,19 +78,16 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/snapshots/performance - Get performance chart data
 router.get('/performance', async (req, res, next) => {
   try {
     const { days, from, to } = req.query;
 
     let history;
     if (from || to) {
-      // Use date range if provided
       const fromDate = from ? new Date(from as string) : undefined;
       const toDate = to ? new Date(to as string) : undefined;
       history = await snapshotService.getPerformanceHistoryByRange(req.userId!, fromDate, toDate);
     } else {
-      // Fall back to days parameter
       const numDays = parseInt(days as string) || 30;
       history = await snapshotService.getPerformanceHistory(req.userId!, numDays);
     }
@@ -102,7 +98,6 @@ router.get('/performance', async (req, res, next) => {
   }
 });
 
-// GET /api/snapshots/monthly - Get monthly returns
 router.get('/monthly', async (req, res, next) => {
   try {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
@@ -113,7 +108,6 @@ router.get('/monthly', async (req, res, next) => {
   }
 });
 
-// Bulk import schema
 const bulkImportSnapshotSchema = z.object({
   timestamp: z.string(),
   snapshotType: z.enum(SNAPSHOT_TYPES).default(SnapshotType.DAILY),
@@ -126,7 +120,6 @@ const bulkImportSchema = z.object({
   snapshots: z.array(bulkImportSnapshotSchema),
 });
 
-// POST /api/snapshots/bulk - Bulk import snapshots (must be before /:id routes)
 router.post('/bulk', async (req, res, next) => {
   try {
     logger.info('Bulk import request received:', JSON.stringify(req.body).substring(0, 200));
@@ -139,7 +132,6 @@ router.post('/bulk', async (req, res, next) => {
       try {
         const timestamp = new Date(snap.timestamp);
 
-        // Check if snapshot already exists for this date
         const startOfDay = new Date(timestamp);
         startOfDay.setUTCHours(0, 0, 0, 0);
         const endOfDay = new Date(timestamp);
@@ -156,7 +148,6 @@ router.post('/bulk', async (req, res, next) => {
         });
 
         if (existing) {
-          // Update existing snapshot
           await prisma.snapshot.update({
             where: { id: existing.id },
             data: {
@@ -168,7 +159,6 @@ router.post('/bulk', async (req, res, next) => {
           });
           results.push({ success: true, timestamp: snap.timestamp });
         } else {
-          // Create new snapshot
           await prisma.snapshot.create({
             data: {
               userId,
@@ -198,7 +188,6 @@ router.post('/bulk', async (req, res, next) => {
   }
 });
 
-// GET /api/snapshots/:id - Get a single snapshot
 router.get('/:id', async (req, res, next) => {
   try {
     const snapshot = await prisma.snapshot.findUnique({
@@ -218,7 +207,6 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// GET /api/snapshots/:id/positions - Get snapshot positions with enriched asset data
 router.get('/:id/positions', async (req, res, next) => {
   try {
     const snapshot = await prisma.snapshot.findUnique({
@@ -232,10 +220,8 @@ router.get('/:id/positions', async (req, res, next) => {
       throw new AppError('Snapshot not found', 404);
     }
 
-    // Enrich positions with asset data for import compatibility
     const enrichedPositions = await Promise.all(
       snapshot.positions.map(async (pos) => {
-        // Try to find the asset by symbol
         const asset = await prisma.asset.findFirst({
           where: { symbol: pos.assetSymbol },
         });
@@ -265,13 +251,11 @@ router.get('/:id/positions', async (req, res, next) => {
   }
 });
 
-// POST /api/snapshots - Create a new snapshot
 router.post('/', async (req, res, next) => {
   try {
     const { manual } = req.body;
 
     if (manual) {
-      // Manual snapshot with user-provided data
       const parsed = createManualSnapshotSchema.parse(req.body);
 
       const snapshot = await prisma.snapshot.create({
@@ -288,7 +272,6 @@ router.post('/', async (req, res, next) => {
 
       res.status(201).json(snapshot);
     } else {
-      // Automatic snapshot from current portfolio state
       const { type } = req.body;
       const snapshotType = type || 'DAILY';
       const snapshotId = await snapshotService.createSnapshot(req.userId!, snapshotType);
@@ -305,12 +288,10 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/snapshots/:id - Update a snapshot
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Verify ownership
     const existing = await prisma.snapshot.findFirst({
       where: { id, userId: req.userId! },
     });
@@ -321,7 +302,6 @@ router.put('/:id', async (req, res, next) => {
 
     const parsed = updateSnapshotSchema.parse(req.body);
 
-    // Only allow timestamp changes for manual snapshots
     if (parsed.timestamp && existing.source === SnapshotSource.AUTOMATIC) {
       throw new AppError('Cannot change timestamp of automatic snapshots', 400);
     }
@@ -343,12 +323,10 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/snapshots/:id - Delete a snapshot
 router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Verify ownership
     const existing = await prisma.snapshot.findFirst({
       where: { id, userId: req.userId! },
     });
@@ -367,7 +345,6 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/snapshots - Delete all snapshots for the user
 router.delete('/', async (req, res, next) => {
   try {
     const userId = req.userId!;

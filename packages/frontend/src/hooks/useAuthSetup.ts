@@ -10,7 +10,6 @@ export function useAuthSetup() {
   const { getToken } = useAuth();
 
   useEffect(() => {
-    // Set the token getter for API requests
     setTokenGetter(getToken);
   }, [getToken]);
 }

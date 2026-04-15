@@ -6,7 +6,6 @@ import { portfolioService } from '../services/portfolioService.js';
 
 const router = Router();
 
-// GET /api/export/csv/positions - Export positions as CSV
 router.get('/csv/positions', async (req, res, next) => {
   try {
     const positions = await prisma.position.findMany({
@@ -55,7 +54,6 @@ router.get('/csv/positions', async (req, res, next) => {
   }
 });
 
-// GET /api/export/csv/trades - Export trades as CSV
 router.get('/csv/trades', async (req, res, next) => {
   try {
     const { status, from, to } = req.query;
@@ -121,10 +119,8 @@ router.get('/csv/trades', async (req, res, next) => {
   }
 });
 
-// GET /api/export/excel - Export full portfolio as Excel
 router.get('/excel', async (req, res, next) => {
   try {
-    // Gather all data
     const [positions, trades, investors, snapshots, summary] = await Promise.all([
       prisma.position.findMany({
         where: { userId: req.userId! },
@@ -147,12 +143,10 @@ router.get('/excel', async (req, res, next) => {
       portfolioService.getSummary(req.userId!),
     ]);
 
-    // Create workbook
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Portfolio Dashboard';
     workbook.created = new Date();
 
-    // Summary sheet
     const summarySheet = workbook.addWorksheet('Summary');
     summarySheet.addRow(['Portfolio Summary']);
     summarySheet.addRow([]);
@@ -164,7 +158,6 @@ router.get('/excel', async (req, res, next) => {
     summarySheet.addRow(['Position Count', summary.positionCount]);
     summarySheet.addRow(['Last Updated', summary.lastUpdated.toISOString()]);
 
-    // Positions sheet
     const positionsSheet = workbook.addWorksheet('Positions');
     positionsSheet.columns = [
       { header: 'Symbol', key: 'symbol', width: 10 },
@@ -195,7 +188,6 @@ router.get('/excel', async (req, res, next) => {
       });
     });
 
-    // Trades sheet
     const tradesSheet = workbook.addWorksheet('Trades');
     tradesSheet.columns = [
       { header: 'Asset', key: 'asset', width: 10 },
@@ -228,7 +220,6 @@ router.get('/excel', async (req, res, next) => {
       });
     });
 
-    // Investors sheet
     const investorsSheet = workbook.addWorksheet('Investors');
     investorsSheet.columns = [
       { header: 'Name', key: 'name', width: 20 },
@@ -251,7 +242,6 @@ router.get('/excel', async (req, res, next) => {
       });
     });
 
-    // Snapshots sheet
     const snapshotsSheet = workbook.addWorksheet('History');
     snapshotsSheet.columns = [
       { header: 'Date', key: 'date', width: 12 },
@@ -280,7 +270,6 @@ router.get('/excel', async (req, res, next) => {
       });
     });
 
-    // Write to buffer
     const buffer = await workbook.xlsx.writeBuffer();
 
     res.setHeader(

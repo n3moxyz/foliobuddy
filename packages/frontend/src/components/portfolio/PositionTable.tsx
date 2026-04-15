@@ -22,6 +22,7 @@ import {
   formatPercent,
   formatDateTime,
   getPnLColorClass,
+  isStablecoinCategory,
 } from '@/lib/utils';
 import { useDeletePosition } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
@@ -493,8 +494,7 @@ export function PositionTable({
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Quantity</p>
                   <p className="font-mono font-medium">
-                    {viewPosition.asset.category === 'STABLECOIN' ||
-                    viewPosition.asset.category === 'CASH'
+                    {isStablecoinCategory(viewPosition.asset.category)
                       ? formatNumber(viewPosition.quantity, 0)
                       : formatNumber(viewPosition.quantity, 4)}
                   </p>

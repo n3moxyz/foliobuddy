@@ -56,7 +56,6 @@ const closeTradeSchema = z.object({
   notes: z.string().optional(),
 });
 
-// GET /api/trades - Get all trades
 router.get('/', async (req, res, next) => {
   try {
     const { status, assetId, direction, from, to } = req.query;
@@ -107,7 +106,6 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/trades/analytics - Get trade analytics
 router.get('/analytics', async (req, res, next) => {
   try {
     const { from, to } = req.query;
@@ -130,7 +128,6 @@ router.get('/analytics', async (req, res, next) => {
       include: { asset: true },
     });
 
-    // Calculate analytics
     const totalTrades = trades.length;
     const winningTrades = trades.filter((t) => (t.realizedPnL ?? 0) > 0);
     const losingTrades = trades.filter((t) => (t.realizedPnL ?? 0) < 0);
@@ -148,7 +145,6 @@ router.get('/analytics', async (req, res, next) => {
     const avgWin = winningTrades.length > 0 ? totalWins / winningTrades.length : 0;
     const avgLoss = losingTrades.length > 0 ? totalLosses / losingTrades.length : 0;
 
-    // Breakdown by direction
     const longTrades = trades.filter((t) => t.direction === 'LONG');
     const shortTrades = trades.filter((t) => t.direction === 'SHORT');
 
@@ -165,12 +161,10 @@ router.get('/analytics', async (req, res, next) => {
     const longPnL = longTrades.reduce((sum, t) => sum + (t.realizedPnL ?? 0), 0);
     const shortPnL = shortTrades.reduce((sum, t) => sum + (t.realizedPnL ?? 0), 0);
 
-    // Best and worst trades
     const sortedByPnL = [...trades].sort((a, b) => (b.realizedPnL ?? 0) - (a.realizedPnL ?? 0));
     const bestTrade = sortedByPnL[0] ?? null;
     const worstTrade = sortedByPnL[sortedByPnL.length - 1] ?? null;
 
-    // Monthly breakdown
     const monthlyMap = new Map<string, { pnl: number; count: number; wins: number }>();
 
     for (const trade of trades) {
@@ -240,7 +234,6 @@ router.get('/analytics', async (req, res, next) => {
   }
 });
 
-// GET /api/trades/:id - Get a single trade
 router.get('/:id', async (req, res, next) => {
   try {
     const trade = await prisma.trade.findUnique({
@@ -260,12 +253,10 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/trades - Create a new trade
 router.post('/', async (req, res, next) => {
   try {
     const data = createTradeSchema.parse(req.body);
 
-    // Verify asset exists
     const asset = await prisma.asset.findUnique({
       where: { id: data.assetId },
     });
@@ -319,7 +310,6 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/trades/:id - Update a trade
 router.put('/:id', async (req, res, next) => {
   try {
     const data = updateTradeSchema.parse(req.body);
@@ -335,7 +325,6 @@ router.put('/:id', async (req, res, next) => {
       throw new AppError('Trade not found', 404);
     }
 
-    // Recalculate P&L if relevant fields changed
     const direction = data.direction ?? existing.direction;
     const entryPrice = data.entryPrice ?? existing.entryPrice;
     const exitPrice = data.exitPrice ?? existing.exitPrice;
@@ -380,7 +369,6 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// PATCH /api/trades/:id/close - Close a trade
 router.patch('/:id/close', async (req, res, next) => {
   try {
     const data = closeTradeSchema.parse(req.body);
@@ -428,7 +416,6 @@ router.patch('/:id/close', async (req, res, next) => {
   }
 });
 
-// DELETE /api/trades/:id - Delete a trade
 router.delete('/:id', async (req, res, next) => {
   try {
     const result = await prisma.trade.deleteMany({
@@ -473,7 +460,6 @@ router.post('/bulk-import', async (req, res, next) => {
 
     for (const tradeData of trades) {
       try {
-        // Find or create asset
         let asset = await prisma.asset.findFirst({
           where: tradeData.asset.coingeckoId
             ? { coingeckoId: tradeData.asset.coingeckoId }
@@ -547,7 +533,6 @@ router.post('/bulk-import', async (req, res, next) => {
   }
 });
 
-// DELETE /api/trades - Delete all trades for the user
 router.delete('/', async (req, res, next) => {
   try {
     const userId = req.userId!;

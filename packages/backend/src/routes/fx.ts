@@ -91,7 +91,6 @@ router.get('/convert', async (req, res, next) => {
       }
     }
 
-    // Fetch fresh rate if not found
     if (!rate && (fromUpper === 'USD' || toUpper === 'USD')) {
       const freshRates = await priceService.getExchangeRates();
 

@@ -30,9 +30,24 @@ import { Plus, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 
+interface RechartsLineDotProps {
+  cx: number;
+  cy: number;
+  index: number;
+  value: number | undefined;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface BenchmarkComparisonChartProps {
   // liveValueUsd could be used for live updates in the future
+}
+
+/** Recharts injects these at runtime into the dot render callback; the library types it as `any`. */
+interface RechartsLineDotProps {
+  cx: number;
+  cy: number;
+  index: number;
+  value: number | undefined;
 }
 
 function getDateRange(period: TimePeriod): { from?: string; to?: string; days?: number } {
@@ -124,7 +139,6 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
     isFetching: perfFetching,
   } = usePerformanceHistory(dateRange);
 
-  // Fetch BTC/ETH historical data from CoinGecko API (more reliable than snapshot data)
   const btcEnabled = benchmarks.find((b) => b.id === 'btc')?.enabled ?? false;
   const ethEnabled = benchmarks.find((b) => b.id === 'eth')?.enabled ?? false;
   const { data: btcData, isFetching: btcFetching } = useBenchmarkHistory(
@@ -140,7 +154,6 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
   const isBenchmarkFetching =
     perfFetching || (btcEnabled && btcFetching) || (ethEnabled && ethFetching);
 
-  // Fetch additional benchmark data using useQueries (safe for dynamic arrays)
   const additionalQueries = useQueries({
     queries: additionalBenchmarks.map((b) => ({
       queryKey: ['benchmark', 'history', b.coingeckoId, days],
@@ -252,7 +265,6 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
 
   const periods: TimePeriod[] = ['7D', '1M', '3M', '1Y', 'YTD', 'Max'];
 
-  // Get all active benchmarks for legend
   const allBenchmarks = [
     { id: 'portfolio', symbol: 'Portfolio', color: PORTFOLIO_LINE_COLOR, enabled: true },
     ...benchmarks,
@@ -388,7 +400,6 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
             </Popover>
           )}
 
-          {/* Portfolio Legend Item */}
           <div className="w-full text-sm sm:ml-auto sm:w-auto flex items-center gap-1.5">
             <div
               className="w-2 h-2 rounded-full flex-shrink-0"
@@ -502,13 +513,8 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   dataKey="portfolio"
                   stroke={PORTFOLIO_LINE_COLOR}
                   strokeWidth={2}
-                  dot={(props: Record<string, unknown>) => {
-                    const { cx, cy, index, value } = props as {
-                      cx: number;
-                      cy: number;
-                      index: number;
-                      value: number | undefined;
-                    };
+                  dot={(props: RechartsLineDotProps) => {
+                    const { cx, cy, index, value } = props;
                     if (index !== chartData.length - 1 || value == null)
                       return <g key={`p-${index}`} />;
                     return (
@@ -531,20 +537,14 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   connectNulls
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
-                {/* BTC line */}
                 {benchmarks.find((b) => b.id === 'btc')?.enabled && (
                   <Line
                     type="monotone"
                     dataKey="btc"
                     stroke={BRAND_COLORS.btc}
                     strokeWidth={2}
-                    dot={(props: Record<string, unknown>) => {
-                      const { cx, cy, index, value } = props as {
-                        cx: number;
-                        cy: number;
-                        index: number;
-                        value: number | undefined;
-                      };
+                    dot={(props: RechartsLineDotProps) => {
+                      const { cx, cy, index, value } = props;
                       if (index !== chartData.length - 1 || value == null)
                         return <g key={`btc-${index}`} />;
                       return (
@@ -567,20 +567,14 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                     activeDot={{ r: 4, strokeWidth: 0 }}
                   />
                 )}
-                {/* ETH line */}
                 {benchmarks.find((b) => b.id === 'eth')?.enabled && (
                   <Line
                     type="monotone"
                     dataKey="eth"
                     stroke={BRAND_COLORS.eth}
                     strokeWidth={2}
-                    dot={(props: Record<string, unknown>) => {
-                      const { cx, cy, index, value } = props as {
-                        cx: number;
-                        cy: number;
-                        index: number;
-                        value: number | undefined;
-                      };
+                    dot={(props: RechartsLineDotProps) => {
+                      const { cx, cy, index, value } = props;
                       if (index !== chartData.length - 1 || value == null)
                         return <g key={`eth-${index}`} />;
                       return (
@@ -603,7 +597,6 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                     activeDot={{ r: 4, strokeWidth: 0 }}
                   />
                 )}
-                {/* Additional benchmark lines */}
                 {additionalBenchmarks
                   .filter((b) => b.enabled)
                   .map((benchmark) => (
@@ -613,13 +606,8 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                       dataKey={benchmark.id}
                       stroke={benchmark.color}
                       strokeWidth={2}
-                      dot={(props: Record<string, unknown>) => {
-                        const { cx, cy, index, value } = props as {
-                          cx: number;
-                          cy: number;
-                          index: number;
-                          value: number | undefined;
-                        };
+                      dot={(props: RechartsLineDotProps) => {
+                        const { cx, cy, index, value } = props;
                         if (index !== chartData.length - 1 || value == null)
                           return <g key={`${benchmark.id}-${index}`} />;
                         return (

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { formatNumber, formatCurrency } from '@/lib/utils';
+import { formatNumber, formatCurrency, isStablecoinCategory } from '@/lib/utils';
 import { ASSET_COLORS, STORAGE_COLORS, STABLES_COLORS } from '@/lib/chartColors';
 import type { Position } from '@/lib/types';
 
@@ -37,7 +37,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
 
     positions.forEach((p) => {
       const value = p.marketValueUsd || 0;
-      if (p.asset.category === 'STABLECOIN' || p.asset.category === 'CASH') {
+      if (isStablecoinCategory(p.asset.category)) {
         stablesTotal += value;
       } else {
         const symbol = p.asset.symbol;
@@ -88,7 +88,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     const stablesMap = new Map<string, number>();
 
     positions.forEach((p) => {
-      if (p.asset.category === 'STABLECOIN' || p.asset.category === 'CASH') {
+      if (isStablecoinCategory(p.asset.category)) {
         const value = p.marketValueUsd || 0;
         const symbol = p.asset.symbol;
         stablesMap.set(symbol, (stablesMap.get(symbol) || 0) + value);

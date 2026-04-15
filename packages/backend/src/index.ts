@@ -36,19 +36,16 @@ import {
 
 import { initSentry } from './lib/sentry.js';
 
-// Load .env from packages/backend directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// Initialize Sentry before Express so it can auto-instrument
 initSentry();
 
 const app = express();
 const server = createServer(app);
 const port = process.env.PORT || 4001;
 
-// Database connection with retry logic
 async function connectWithRetry(maxRetries = 5, delayMs = 5000): Promise<boolean> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -69,17 +66,13 @@ async function connectWithRetry(maxRetries = 5, delayMs = 5000): Promise<boolean
   return false;
 }
 
-// CORS allowed origins
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
 
-// Middleware
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
-      // Use exact matching to prevent subdomain attacks (e.g., evil-example.com matching example.com)
-      // Only allow wildcard (*) as an explicit entry
+      // Exact matching prevents subdomain attacks (e.g., evil-example.com matching example.com)
       if (allowedOrigins.some((allowed) => origin === allowed || allowed === '*')) {
         return callback(null, true);
       }
@@ -90,7 +83,6 @@ app.use(
 );
 app.use(express.json({ limit: MAX_PAYLOAD_SIZE }));
 
-// Rate limiting
 const limiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
   max: RATE_LIMIT_MAX_REQUESTS,
@@ -100,10 +92,8 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Clerk authentication middleware
 app.use(clerkMiddleware());
 
-// Health check (public)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -111,7 +101,6 @@ app.get('/health', (req, res) => {
 // Database health check (public, no auth)
 app.use('/api/health', healthRouter);
 
-// Create v1 router for versioned API
 const v1Router = express.Router();
 
 v1Router.use('/health', healthRouter);
@@ -142,12 +131,10 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-// Initialize Socket.io
 socketService.initialize(server, allowedOrigins);
 
 // Start server with database connection retry
 async function startServer() {
-  // Connect to database with retry logic
   const connected = await connectWithRetry(10, 3000);
   if (!connected) {
     logger.error('Failed to connect to database after multiple attempts. Exiting...');

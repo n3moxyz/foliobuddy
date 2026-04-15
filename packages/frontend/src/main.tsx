@@ -9,10 +9,8 @@ import App from './App';
 import { ErrorFallback } from './components/ErrorFallback';
 import './index.css';
 
-// Initialize Sentry before rendering
 initSentry();
 
-// Get Clerk publishable key from environment
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!CLERK_PUBLISHABLE_KEY) {

@@ -20,27 +20,21 @@ class SnapshotService {
    * Create a new portfolio snapshot
    */
   async createSnapshot(userId: string, snapshotType: string = 'DAILY'): Promise<string> {
-    // Get current portfolio summary
     const summary = await portfolioService.getSummary(userId);
 
-    // Get FX rate
     const fxRates = await priceService.getExchangeRates();
     const usdSgdRate = fxRates?.usdSgd ?? USD_SGD_FALLBACK_RATE;
 
-    // Get BTC and ETH prices for benchmark comparison
     const btcPrice = await priceService.getPrice('bitcoin');
     const ethPrice = await priceService.getPrice('ethereum');
 
-    // Calculate performance metrics
     const metrics = await this.calculatePerformanceMetrics(userId, summary.totalValueUsd);
 
-    // Get all owned positions for the snapshot (exclude custody positions)
     const positions = await prisma.position.findMany({
       where: { userId, custodyOf: null },
       include: { asset: true },
     });
 
-    // Create snapshot
     const snapshot = await prisma.snapshot.create({
       data: {
         userId,
@@ -81,7 +75,6 @@ class SnapshotService {
   ): Promise<PerformanceMetrics> {
     const now = new Date();
 
-    // Get previous snapshots for comparison
     const [yesterday, lastWeek, lastMonth, startOfYear, ath] = await Promise.all([
       this.getSnapshotByDate(userId, new Date(now.getTime() - 24 * 60 * 60 * 1000)),
       this.getSnapshotByDate(userId, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
@@ -93,7 +86,6 @@ class SnapshotService {
       this.getAllTimeHigh(userId),
     ]);
 
-    // Calculate returns
     const dailyReturn = yesterday
       ? ((currentValue - yesterday.totalValueUsd) / yesterday.totalValueUsd) * 100
       : null;
@@ -110,7 +102,6 @@ class SnapshotService {
       ? ((currentValue - startOfYear.totalValueUsd) / startOfYear.totalValueUsd) * 100
       : null;
 
-    // Calculate benchmark outperformance (if we have BTC/ETH prices)
     let btcOutperform: number | null = null;
     let ethOutperform: number | null = null;
 
@@ -144,7 +135,6 @@ class SnapshotService {
    * Get snapshot closest to a specific date
    */
   private async getSnapshotByDate(userId: string, targetDate: Date) {
-    // Find snapshot within 1 day of target date
     const startRange = new Date(targetDate.getTime() - 12 * 60 * 60 * 1000);
     const endRange = new Date(targetDate.getTime() + 12 * 60 * 60 * 1000);
 

@@ -23,6 +23,13 @@ interface PortfolioChartProps {
   liveValueUsd?: number;
 }
 
+/** Recharts injects these at runtime into the dot render callback; the library types it as `any`. */
+interface RechartsAreaDotProps {
+  cx: number;
+  cy: number;
+  index: number;
+}
+
 function getDateRange(period: TimePeriod): { from?: string; to?: string; days?: number } {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -321,8 +328,8 @@ export function PortfolioChart({
                   stroke={PORTFOLIO_LINE_COLOR}
                   strokeWidth={2}
                   fill="url(#portfolioGradient)"
-                  dot={(props: Record<string, unknown>) => {
-                    const { cx, cy, index } = props as { cx: number; cy: number; index: number };
+                  dot={(props: RechartsAreaDotProps) => {
+                    const { cx, cy, index } = props;
                     if (index !== chartData.length - 1) return <g key={`dot-${index}`} />;
                     return (
                       <g key={`dot-${index}`}>

@@ -96,3 +96,8 @@ export function getPnLColorClass(value: number | null | undefined): string {
   if (value === null || value === undefined) return '';
   return value >= 0 ? 'text-profit' : 'text-loss';
 }
+
+/** Returns true if the asset category is a stablecoin or cash equivalent */
+export function isStablecoinCategory(category: string | undefined | null): boolean {
+  return category === 'STABLECOIN' || category === 'CASH';
+}

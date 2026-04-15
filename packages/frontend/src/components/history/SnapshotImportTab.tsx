@@ -4,13 +4,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
 import type { BulkImportSnapshot } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
-import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-
-interface ImportResult {
-  success: boolean;
-  timestamp: string;
-  error?: string;
-}
+import { Upload, AlertCircle, Loader2 } from 'lucide-react';
+import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 
 interface SnapshotImportTabProps {
   onSuccess: () => void;
@@ -22,9 +17,8 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedSnapshots, setParsedSnapshots] = useState<BulkImportSnapshot[] | null>(null);
   const [importing, setImporting] = useState(false);
-  const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
+  const [importResults, setImportResults] = useState<ImportResultItem[] | null>(null);
 
-  // Parse JSON input
   const handleJsonChange = (value: string) => {
     setJsonInput(value);
     setParseError(null);
@@ -60,7 +54,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
 
     try {
       const response = await api.bulkImportSnapshots(parsedSnapshots);
-      setImportResults(response.results);
+      setImportResults(response.results.map((r) => ({ ...r, label: r.timestamp })));
     } catch (e) {
       setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
     } finally {
@@ -72,7 +66,6 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
     queryClient.invalidateQueries({ queryKey: ['portfolio', 'performance'] });
   };
 
-  // Handle paste from clipboard
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -85,43 +78,10 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
 
   if (importResults) {
     return (
-      <div className="space-y-4">
-        <div className="text-center py-4">
-          {importResults.every((r) => r.success) ? (
-            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
-          ) : (
-            <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
-          )}
-          <p className="font-medium">
-            {importResults.filter((r) => r.success).length} imported successfully
-            {importResults.some((r) => !r.success) &&
-              `, ${importResults.filter((r) => !r.success).length} failed`}
-          </p>
-        </div>
-
-        <div className="max-h-60 overflow-y-auto space-y-1">
-          {importResults.map((r, i) => (
-            <div
-              key={i}
-              className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
-                r.success ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'
-              }`}
-            >
-              {r.success ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-              )}
-              <span className="font-medium">{r.timestamp}</span>
-              {r.error && <span className="text-red-600 dark:text-red-400 text-xs">{r.error}</span>}
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-end">
-          <Button onClick={onSuccess}>Done</Button>
-        </div>
-      </div>
+      <ImportResultsList
+        results={importResults}
+        onDone={onSuccess}
+      />
     );
   }
 

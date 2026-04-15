@@ -17,7 +17,6 @@ const createAssetSchema = z.object({
 
 const updateAssetSchema = createAssetSchema.partial();
 
-// GET /api/assets - Get all assets
 router.get('/', async (req, res, next) => {
   try {
     const { category, search } = req.query;
@@ -46,7 +45,6 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/assets/search - Search CoinGecko for coins
 router.get('/search', async (req, res, next) => {
   try {
     const { q } = req.query;
@@ -62,7 +60,6 @@ router.get('/search', async (req, res, next) => {
   }
 });
 
-// GET /api/assets/:id - Get a single asset
 router.get('/:id', async (req, res, next) => {
   try {
     const asset = await prisma.asset.findUnique({
@@ -71,7 +68,7 @@ router.get('/:id', async (req, res, next) => {
         positions: true,
         priceHistory: {
           orderBy: { timestamp: 'desc' },
-          take: 30, // Last 30 price points
+          take: 30,
         },
       },
     });
@@ -86,12 +83,10 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/assets - Create a new asset
 router.post('/', async (req, res, next) => {
   try {
     const data = createAssetSchema.parse(req.body);
 
-    // Check for duplicate symbol
     const existing = await prisma.asset.findFirst({
       where: { symbol: data.symbol.toUpperCase() },
     });
@@ -100,7 +95,6 @@ router.post('/', async (req, res, next) => {
       throw new AppError(`Asset with symbol ${data.symbol} already exists`, 409);
     }
 
-    // Fetch current price if CoinGecko ID provided (direct, bypasses queue)
     let currentPriceUsd: number | null = null;
     if (data.coingeckoId) {
       currentPriceUsd = await priceService.getDirectPrice(data.coingeckoId);
@@ -121,7 +115,6 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// POST /api/assets/from-coingecko - Create asset from CoinGecko search result
 router.post('/from-coingecko', async (req, res, next) => {
   try {
     const { coingeckoId, symbol, name, category, skipPriceFetch } = req.body;
@@ -130,7 +123,6 @@ router.post('/from-coingecko', async (req, res, next) => {
       throw new AppError('coingeckoId, symbol, and name are required', 400);
     }
 
-    // Check if already exists
     const existing = await prisma.asset.findFirst({
       where: {
         OR: [{ coingeckoId }, { symbol: symbol.toUpperCase() }],
@@ -138,13 +130,9 @@ router.post('/from-coingecko', async (req, res, next) => {
     });
 
     if (existing) {
-      // Return existing asset
       return res.json(existing);
     }
 
-    // Fetch current price unless skipPriceFetch is true (for bulk imports)
-    // Uses direct fetch (bypasses scheduler queue) so user requests are fast
-    // If it fails, scheduler will fill it in within 60s
     let currentPriceUsd = null;
     if (!skipPriceFetch) {
       currentPriceUsd = await priceService.getDirectPrice(coingeckoId);
@@ -167,7 +155,6 @@ router.post('/from-coingecko', async (req, res, next) => {
   }
 });
 
-// PUT /api/assets/:id - Update an asset
 router.put('/:id', async (req, res, next) => {
   try {
     const data = updateAssetSchema.parse(req.body);
@@ -186,10 +173,8 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/assets/:id - Delete an asset
 router.delete('/:id', async (req, res, next) => {
   try {
-    // Check if asset has positions
     const positions = await prisma.position.findMany({
       where: { assetId: req.params.id },
     });
@@ -208,7 +193,6 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/assets/:id/refresh-price - Manually refresh price for an asset
 router.post('/:id/refresh-price', async (req, res, next) => {
   try {
     const asset = await prisma.asset.findUnique({
@@ -237,7 +221,6 @@ router.post('/:id/refresh-price', async (req, res, next) => {
       },
     });
 
-    // Store in price history
     await prisma.priceHistory.create({
       data: {
         assetId: asset.id,

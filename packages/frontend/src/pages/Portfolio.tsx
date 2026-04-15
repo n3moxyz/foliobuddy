@@ -110,7 +110,6 @@ export default function Portfolio() {
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
   };
 
-  // Handle perp exposure edit
   const handlePerpEdit = () => {
     setPerpInput(perpExposure.toString());
     setEditingPerp(true);

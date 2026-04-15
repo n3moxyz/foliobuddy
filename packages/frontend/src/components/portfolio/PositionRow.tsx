@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { formatCurrency, formatNumber, formatPercent, getPnLColorClass } from '@/lib/utils';
+import { formatCurrency, formatNumber, formatPercent, getPnLColorClass, isStablecoinCategory } from '@/lib/utils';
 import { Pencil, Trash2, Copy, Check } from 'lucide-react';
 import type { Position } from '@/lib/types';
 
@@ -49,7 +49,7 @@ export const PositionRow = React.memo(function PositionRow({
   };
 
   const totalCost = position.quantity * position.avgCostUsd;
-  const isStable = position.asset.category === 'STABLECOIN' || position.asset.category === 'CASH';
+  const isStable = isStablecoinCategory(position.asset.category);
 
   // Match PositionTable: hidden on mobile unless toggle is on
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';

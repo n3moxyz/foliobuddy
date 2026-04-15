@@ -66,7 +66,6 @@ class SocketService {
       }
     });
 
-    // Handle connections
     this.io.on('connection', (socket: Socket) => {
       const userId = socket.data.userId;
       logger.info(`[WebSocket] Client connected: ${userId}`);

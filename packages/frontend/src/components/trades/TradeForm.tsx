@@ -52,7 +52,6 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
 
   const isLoading = createTrade.isPending || updateTrade.isPending;
 
-  // Handle asset selection
   const handleSelectAsset = (id: string, asset: Asset) => {
     setAssetId(id);
     setSelectedAsset(asset);

@@ -28,12 +28,10 @@ export async function ensureUser(req: Request, res: Response, next: NextFunction
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Check if user exists in our database
     let user = await prisma.user.findUnique({
       where: { id: auth.userId },
     });
 
-    // Create user if they don't exist
     if (!user) {
       user = await prisma.user.create({
         data: {

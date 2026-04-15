@@ -76,7 +76,6 @@ export default function History() {
   const automaticCount = automaticSnapshots.length;
   const manualCount = manualSnapshots.length;
 
-  // Get filtered snapshots based on current tab
   const filteredSnapshots =
     sourceFilter === 'all'
       ? allSnapshots || []
