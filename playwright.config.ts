@@ -13,10 +13,18 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev:frontend',
-    url: 'http://localhost:4000',
-    reuseExistingServer: true,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'npm run dev:backend',
+      url: 'http://localhost:4001/health',
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+    {
+      command: 'npm run dev:frontend',
+      url: 'http://localhost:4000',
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+  ],
 });
