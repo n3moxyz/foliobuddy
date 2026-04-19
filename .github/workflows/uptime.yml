@@ -1,0 +1,31 @@
+name: Uptime
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub may delay scheduled runs during heavy load;
+    # tighter than 10 min often gets skipped.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health:
+    name: Health check (full chain)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Hit health endpoint via Vercel rewrite
+        # Vercel edge → rewrite → backend → DB. If this is 200, the whole
+        # chain is live. If it's non-200, GitHub emails the repo owner
+        # automatically when the job fails.
+        run: |
+          URL="https://foliobuddy.xyz/api/v1/health/db"
+          response=$(curl -s -w "\n%{http_code}" --max-time 20 "$URL")
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+          echo "HTTP $http_code"
+          echo "Body: $body"
+          if [ "$http_code" -ne 200 ]; then
+            echo "::error::Health check failed — $URL returned $http_code"
+            exit 1
+          fi
