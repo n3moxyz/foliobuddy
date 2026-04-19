@@ -1103,6 +1103,71 @@ Express-default JSON limit is 100kb, but we'd bumped it to 10mb during early imp
 
 ---
 
+### Env Var Drift Is Silent Until the Backing Code Moves
+
+**The outage:** Prod dashboard suddenly showed "No data for YTD period". Backend `/health` was green, API docs were green, but `https://foliobuddy.xyz/api/v1/health/db` returned 404.
+
+**The root cause:** `VITE_API_URL` in Vercel had been set to `/api` months ago. This worked fine because the backend mounted routes at both `/api/*` and `/api/v1/*`. When commit `8e3d09c` removed the legacy `/api/*` mount, the frontend started calling `/api/positions` — which the rewrite forwarded to `api.foliobuddy.xyz/api/positions` — 404. The frontend had no way to surface the mismatch; it just saw empty arrays and rendered empty states.
+
+**The fix:** `vercel env rm VITE_API_URL && printf "/api/v1" | vercel env add`. Then `vercel deploy --prod`.
+
+**The pattern:** Any env var the code doesn't re-validate on boot becomes a silent landmine when the code it points to changes. Three takeaways:
+
+1. Don't leave partial paths in env vars (`/api`) — use the full resolved path the frontend will actually call (`/api/v1`). Ambiguity lets you silently point at a stale shape.
+2. `DEPLOYMENT.md` now documents every prod env var as a source of truth, so dashboard-vs-code drift is visible in git history. Update it in the same commit as the dashboard change.
+3. The post-deploy smoke check `curl https://foliobuddy.xyz/api/v1/health/db` exercises the full chain (Vercel edge → rewrite → backend → DB). Hitting `api.foliobuddy.xyz` direct would have hidden this — it was the rewrite pointing at the wrong path, not the backend.
+
+---
+
+### `echo` vs `printf` When Piping to `vercel env add`
+
+Three different env vars in Vercel had trailing `\n` characters because they were set with `echo "value" | vercel env add`. `echo` appends a newline. Vercel stores the whole string including the newline. The stored value is still truthy, which is what made this insidious — `if (VITE_WS_BACKEND_URL)` passes, URL construction returns `https://api.foliobuddy.xyz\n`, and fetch throws a network error that looks identical to "backend is down".
+
+**The fix:** Always use `printf` (no trailing newline):
+
+```bash
+printf "/api/v1" | vercel env add VITE_API_URL production
+```
+
+**The pattern:** When piping into any CLI that stores raw input, assume the newline matters. Works the same class for Coolify's UI if you paste values copied from a terminal that includes the trailing `\n`.
+
+---
+
+### Workspace Deps: Local Hoisting Masks Missing Declarations
+
+**The bug:** After renaming `@pa-portfolio/shared` to `@foliobuddy/shared`, Vercel builds failed with `Cannot find module '@foliobuddy/shared'` — but local `npm run build` in `packages/frontend` worked fine.
+
+**The root cause:** npm workspaces hoists workspace packages into the root `node_modules` by default, so TypeScript's module resolution finds `@foliobuddy/shared` via upward traversal even if the frontend's `package.json` doesn't declare it. Vercel's `npm ci` is stricter about workspace dependency graphs — if a consumer package imports a workspace dep that isn't declared, the build rejects it.
+
+**The fix:** Add the explicit dep in `packages/frontend/package.json`:
+
+```json
+"dependencies": {
+  "@foliobuddy/shared": "*"
+}
+```
+
+**The safety net:** A new CI step catches this class of bug before Vercel does:
+
+```yaml
+- name: Verify workspace deps are declared
+  run: npm ls --workspaces --depth=0
+```
+
+**The pattern:** "Works locally, fails on Vercel" is almost always about resolution assumptions. Local `npm install` and local `tsc` are *both* forgiving in ways production environments aren't. Anything that relies on root `node_modules` hoisting, dev-only type overrides, or un-cleaned build caches is a candidate. Lock them down with a CI check instead of discovering them at deploy time.
+
+---
+
+### Uptime as a Git-Committed Workflow
+
+Rather than sign up for UptimeRobot (free tier requires an email address and a third-party with a questionable breach history), a GitHub Actions cron is sufficient for a personal tool. `.github/workflows/uptime.yml` runs every 10 minutes, hits `https://foliobuddy.xyz/api/v1/health/db` (full chain — Vercel edge → rewrite → backend → DB), and fails the job on non-200. GitHub's default workflow-failure emails go to the repo owner.
+
+**The tradeoff:** GitHub may delay scheduled runs up to 15 min during heavy load, so real detection latency is closer to 10–25 min. Fine for a portfolio dashboard; not fine for sub-minute SLA monitoring. If a tighter interval ever matters, that's the point to graduate to a paid monitoring service — not before.
+
+**Bonus:** The workflow lives in git, so the monitor itself is version-controlled, code-reviewable, and survives the monitoring provider going out of business.
+
+---
+
 ## Best Practices That Paid Off
 
 ### 1. TypeScript Everywhere

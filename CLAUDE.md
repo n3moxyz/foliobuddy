@@ -399,6 +399,9 @@ For frontend-only layout verification without real auth, use the dev demo route 
 - **Database**: Self-hosted PostgreSQL on DigitalOcean via Coolify (203.0.113.10:5432)
 - **Auto-deploy**: Backend deploys via GitHub Actions on push to main (backend files). Frontend auto-deploys via Vercel.
 - **DB Backups**: Automated daily/weekly/monthly to DigitalOcean Spaces (`example-backup-bucket`). Retention: 7 daily, 4 weekly, 12 monthly.
+- **Uptime monitoring**: `.github/workflows/uptime.yml` runs every 10 min against `https://foliobuddy.xyz/api/v1/health/db`. Fails the job on non-200 and GitHub emails the repo owner — no third-party monitoring service.
+- **Source of truth for prod env vars**: `DEPLOYMENT.md` at repo root. Update it in the *same commit* as any Vercel/Coolify dashboard change; drift between file and dashboard is how prod breaks.
+- **Env var writes**: Always pipe values through `printf` (not `echo`) when running `vercel env add` — `echo` appends `\n` and the stored newline breaks URL construction while still being truthy enough to pass `if (value)` guards.
 
 ### Copy/Paste JSON Import Pattern
 
@@ -489,3 +492,5 @@ Three words: **Composed. Sharp. Trustworthy.**
 - Do not gate the dev demo route with extra env flags unless the frontend actually reads them at build time. `import.meta.env.DEV` is the safe default because it cannot be enabled in production accidentally.
 - `VITE_WS_BACKEND_URL` must be set in Vercel env vars for production WebSocket to work (warns + disables if missing)
 - When deploying: backend must deploy before frontend when API versioning paths change (frontend uses `/api/v1`)
+- Frontend imports from a workspace package (`@foliobuddy/shared`, etc.) MUST be declared in the consumer's `package.json`. Local npm install hoists into root `node_modules` and masks the missing dep — Vercel's `npm ci` rejects it. CI guards this via `npm ls --workspaces --depth=0` in `ci.yml`.
+- `VITE_API_URL` in Vercel must be the full resolved path (`/api/v1`), not just `/api`. A stale `/api` value silently broke prod when the backend removed legacy `/api/*` routes — the frontend still got 200s from the rewrite but hit the wrong paths. Always verify with `curl https://foliobuddy.xyz/api/v1/health/db` after any change.
