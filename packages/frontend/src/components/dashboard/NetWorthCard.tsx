@@ -27,7 +27,6 @@ export function NetWorthCard({
   closedTrades = 0,
   investorLabel,
 }: NetWorthCardProps) {
-  // Calculate FX rate from summary
   const fxRate = useMemo(() => {
     if (summary.totalValueUsd > 0 && summary.totalValueSgd > 0) {
       return summary.totalValueSgd / summary.totalValueUsd;
@@ -35,7 +34,6 @@ export function NetWorthCard({
     return 1.35;
   }, [summary]);
 
-  // Helper to convert values based on currency and apply stake multiplier
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
     const converted = currency === 'SGD' ? usdValue * fxRate : usdValue;
@@ -47,12 +45,10 @@ export function NetWorthCard({
   const costBasisValue = convert(summary.totalCostBasis);
   const isPositive = summary.unrealizedPnL >= 0;
 
-  // Animated numbers — smooth count on value changes
   const animatedValue = useAnimatedNumber(value);
   const animatedPnl = useAnimatedNumber(pnlValue);
   const animatedCostBasis = useAnimatedNumber(costBasisValue);
 
-  // 30-day period comparison
   const change30d = useMemo(() => {
     if (valueUsd30dAgo === undefined || valueUsd30dAgo === 0) return null;
     const currentUsd = summary.totalValueUsd * stakeMultiplier;
@@ -62,7 +58,6 @@ export function NetWorthCard({
     return { diff, pct };
   }, [summary.totalValueUsd, valueUsd30dAgo, stakeMultiplier]);
 
-  // Alternate currency value with stake multiplier
   const altValue =
     currency === 'USD'
       ? summary.totalValueSgd * stakeMultiplier
@@ -89,7 +84,6 @@ export function NetWorthCard({
         </div>
       </div>
 
-      {/* Desktop: equal-width grid with dividers */}
       <div className="mt-4 hidden sm:grid sm:grid-cols-6 divide-x divide-border">
         <div className="pr-4">
           <div className="flex items-center gap-1">
@@ -150,7 +144,6 @@ export function NetWorthCard({
         </Link>
       </div>
 
-      {/* Mobile: 2-column grid */}
       <div className="mt-4 sm:hidden grid grid-cols-2 gap-4">
         <div>
           <p className="text-muted-foreground text-sm">YTD P&L</p>

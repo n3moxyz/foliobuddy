@@ -74,7 +74,6 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Settings</h1>
@@ -82,7 +81,6 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Display Settings */}
       <div>
         <h2 className="text-base font-semibold mb-1">Display Settings</h2>
         <p className="text-sm text-muted-foreground mb-4">Customize how data is displayed</p>
@@ -141,7 +139,6 @@ export default function Settings() {
 
       <Separator />
 
-      {/* Data Management */}
       <div>
         <h2 className="text-base font-semibold mb-1">Data Management</h2>
         <p className="text-sm text-muted-foreground mb-4">Refresh prices and manage snapshots</p>
@@ -206,7 +203,6 @@ export default function Settings() {
 
       <Separator />
 
-      {/* Export */}
       <div>
         <h2 className="text-base font-semibold mb-1">Export Data</h2>
         <p className="text-sm text-muted-foreground mb-4">Download your portfolio data</p>
@@ -264,7 +260,6 @@ export default function Settings() {
 
       <Separator />
 
-      {/* About */}
       <div>
         <h2 className="text-base font-semibold mb-4">About</h2>
         <div className="space-y-2 text-sm">

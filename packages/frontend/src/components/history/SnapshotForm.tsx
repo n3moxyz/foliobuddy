@@ -75,7 +75,6 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
   if (isEditing) {
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Date */}
         <div className="space-y-2">
           <Label htmlFor="timestamp">Date</Label>
           <Input
@@ -93,7 +92,6 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
           )}
         </div>
 
-        {/* Total Value with Currency Toggle */}
         <div className="space-y-2">
           <Label htmlFor="totalValue">Total Value</Label>
           <div className="flex gap-2">
@@ -153,7 +151,6 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
           )}
         </div>
 
-        {/* Notes */}
         <div className="space-y-2">
           <Label htmlFor="notes">Notes (Optional)</Label>
           <Textarea
@@ -165,7 +162,6 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
           />
         </div>
 
-        {/* Actions */}
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
@@ -180,7 +176,6 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
 
   return (
     <div className="space-y-4">
-      {/* Mode Toggle */}
       <div role="tablist" className="flex border-b mb-2">
         <button
           type="button"
@@ -219,7 +214,6 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
       ) : (
         /* Add New Mode */
         <form id="snapshot-panel-add" role="tabpanel" onSubmit={handleSubmit} className="space-y-4">
-          {/* Date */}
           <div className="space-y-2">
             <Label htmlFor="timestamp">Date</Label>
             <Input
@@ -231,7 +225,6 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
             />
           </div>
 
-          {/* Total Value with Currency Toggle */}
           <div className="space-y-2">
             <Label htmlFor="totalValue">Total Value</Label>
             <div className="flex gap-2">
@@ -291,7 +284,6 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
             )}
           </div>
 
-          {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notes (Optional)</Label>
             <Textarea
@@ -303,7 +295,6 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
             />
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel

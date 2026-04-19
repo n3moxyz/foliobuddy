@@ -98,7 +98,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Database health check (public, no auth)
 app.use('/api/health', healthRouter);
 
 const v1Router = express.Router();
@@ -114,13 +113,10 @@ v1Router.use('/fx', fxRouter);
 v1Router.use('/export', ensureUser, exportRouter);
 v1Router.use('/agent', agentAuth, agentRouter);
 
-// Mount v1 router at /api/v1
 app.use('/api/v1', v1Router);
 
-// Error handling middleware
 app.use(errorHandler);
 
-// Graceful shutdown
 process.on('SIGINT', async () => {
   await basePrisma.$disconnect();
   process.exit(0);
@@ -133,7 +129,6 @@ process.on('SIGTERM', async () => {
 
 socketService.initialize(server, allowedOrigins);
 
-// Start server with database connection retry
 async function startServer() {
   const connected = await connectWithRetry(10, 3000);
   if (!connected) {
@@ -146,9 +141,8 @@ async function startServer() {
     logger.info(`API available at http://localhost:${port}/api/v1`);
     logger.info('WebSocket server ready');
 
-    // Start scheduled jobs only in production
-    // In dev, the production backend (Coolify) handles price refresh, snapshots, and crons
-    // against the shared DB — running them locally would duplicate work and risk race conditions
+    // Schedulers run only in production — in dev, the Coolify backend handles crons against
+    // the shared DB. Running them locally would duplicate work and risk race conditions.
     const isProd = process.env.NODE_ENV === 'production';
     if (isProd) {
       startPriceRefreshJob();
@@ -156,8 +150,7 @@ async function startServer() {
       startFxRateJob();
       startPriceHistoryCleanupJob();
 
-      // Create missing snapshots on startup (catch-up for days server wasn't running)
-      // Delay slightly to ensure database connection is ready
+      // Delay slightly to ensure DB connection is settled before catch-up runs
       setTimeout(() => {
         createMissingSnapshots();
       }, 2000);

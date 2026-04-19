@@ -82,7 +82,6 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
 
   return (
     <div className="space-y-3">
-      {/* Mode Selection (Add New vs Import) - only show when not editing */}
       {!isEditing && (
         <div className="flex border-b mb-2" role="tablist">
           <button
@@ -114,13 +113,11 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
         </div>
       )}
 
-      {/* Import Mode UI */}
       {mode === 'import' && !isEditing ? (
         <TradeImportTab onSuccess={onSuccess} />
       ) : (
         /* Add/Edit Mode - Form */
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Asset */}
           <div className="space-y-2">
             <Label htmlFor="trade-asset">Asset</Label>
             <AssetSearchDropdown
@@ -130,7 +127,6 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             />
           </div>
 
-          {/* Direction */}
           <div className="space-y-2">
             <Label htmlFor="trade-direction">Direction</Label>
             <Select value={direction} onValueChange={(v) => setDirection(v as 'LONG' | 'SHORT')}>
@@ -152,7 +148,6 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             </Select>
           </div>
 
-          {/* Entry */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="entryPrice">Entry Price</Label>
@@ -178,7 +173,6 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             </div>
           </div>
 
-          {/* Exit (Optional) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="exitPrice">Exit Price (Optional)</Label>
@@ -202,7 +196,6 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             </div>
           </div>
 
-          {/* Quantity */}
           <div className="space-y-2">
             <Label htmlFor="quantity">Quantity</Label>
             <Input
@@ -216,7 +209,6 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             />
           </div>
 
-          {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notes (Optional)</Label>
             <Input
@@ -227,7 +219,6 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             />
           </div>
 
-          {/* Submit */}
           <div className="flex justify-end gap-2 pt-4">
             <Button type="submit" disabled={isLoading || !assetId}>
               {isLoading ? 'Saving...' : isEditing ? 'Update Trade' : 'Log Trade'}

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { usePositions, usePortfolioSummary, useDeleteAllPositions } from '@/hooks/usePortfolio';
 import { useCurrencyStore } from '@/stores/currencyStore';
-import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
+import { formatCurrency, formatPercent, getPnLColorClass, isStablecoinCategory } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
@@ -58,14 +58,14 @@ const SECTION_CONFIG: SectionConfig[] = [
   {
     id: 'crypto',
     label: 'Crypto',
-    filter: (p) => p.asset.category !== 'STABLECOIN' && p.asset.category !== 'CASH',
+    filter: (p) => !isStablecoinCategory(p.asset.category),
     icon: <Coins className="h-4 w-4 text-blue-500" />,
     accentColor: 'border-l-blue-500',
   },
   {
     id: 'stables',
     label: 'Stables',
-    filter: (p) => p.asset.category === 'STABLECOIN' || p.asset.category === 'CASH',
+    filter: (p) => isStablecoinCategory(p.asset.category),
     icon: <Banknote className="h-4 w-4 text-green-500" />,
     accentColor: 'border-l-green-500',
   },
@@ -170,14 +170,12 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Portfolio</h1>
           <p className="text-sm text-muted-foreground">{positions?.length ?? 0} positions</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Secondary actions hidden on mobile, in dropdown */}
           <Button
             variant="outline"
             size="sm"
@@ -216,7 +214,6 @@ export default function Portfolio() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {/* Mobile-only actions */}
               <DropdownMenuItem
                 className="sm:hidden"
                 onClick={async () => {
@@ -254,10 +251,8 @@ export default function Portfolio() {
         </div>
       </div>
 
-      {/* Portfolio Hero */}
       {summary && (
         <div className="pb-6 mb-2 border-b">
-          {/* Hero: Total Value */}
           <div className="flex items-baseline gap-3 flex-wrap">
             <p className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums">
               {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
@@ -277,7 +272,6 @@ export default function Portfolio() {
             )}
           </div>
 
-          {/* Desktop: 4-col divide-x */}
           <div className="mt-4 hidden sm:grid sm:grid-cols-4 divide-x divide-border">
             <div className="pr-4">
               <div className="flex items-center gap-1">
@@ -318,7 +312,6 @@ export default function Portfolio() {
             </div>
           </div>
 
-          {/* Mobile: 2-col grid */}
           <div className="mt-4 grid grid-cols-2 gap-4 sm:hidden">
             <div>
               <div className="flex items-center gap-1">
@@ -361,10 +354,8 @@ export default function Portfolio() {
         </div>
       )}
 
-      {/* Loading State */}
       {positionsLoading && (
         <div className="space-y-3">
-          {/* Skeleton summary cards */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="py-3 px-4">
@@ -373,7 +364,6 @@ export default function Portfolio() {
               </div>
             ))}
           </div>
-          {/* Skeleton position sections */}
           {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="rounded-md border p-4 space-y-3">
               <div className="flex items-center gap-2">
@@ -393,7 +383,6 @@ export default function Portfolio() {
         </div>
       )}
 
-      {/* Empty State */}
       {!positionsLoading && (!positions || positions.length === 0) && (
         <div className="py-16 text-center">
           <Wallet className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
@@ -409,7 +398,6 @@ export default function Portfolio() {
         </div>
       )}
 
-      {/* Position Sections */}
       {!positionsLoading &&
         sections.map((section) => (
           <CollapsibleCard
@@ -479,7 +467,6 @@ export default function Portfolio() {
           </CollapsibleCard>
         ))}
 
-      {/* Custody: Held for Others */}
       {!positionsLoading && custodyPositions.length > 0 && (
         <CollapsibleCard
           title={
@@ -514,7 +501,6 @@ export default function Portfolio() {
         </CollapsibleCard>
       )}
 
-      {/* Add Position Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -529,7 +515,6 @@ export default function Portfolio() {
         </DialogContent>
       </Dialog>
 
-      {/* Perp Exposure Dialog */}
       <Dialog open={editingPerp} onOpenChange={setEditingPerp}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
@@ -563,7 +548,6 @@ export default function Portfolio() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete All Confirmation Dialog */}
       <Dialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>

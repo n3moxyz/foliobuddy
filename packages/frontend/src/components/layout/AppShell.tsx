@@ -83,7 +83,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-foreground/40 lg:hidden"
@@ -91,7 +90,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
         />
       )}
 
-      {/* Sidebar */}
       <aside
         aria-label="Main navigation"
         className={cn(
@@ -99,7 +97,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* Logo */}
         <div className="flex h-16 items-center justify-between px-6 border-b">
           <Link to={buildPath('/')} className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
@@ -128,7 +125,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
           </button>
         </div>
 
-        {/* Navigation */}
         <nav aria-label="Main" className="flex-1 p-4 space-y-1">
           {navigation.map((item) => {
             const targetHref = buildPath(item.href);
@@ -163,9 +159,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
         </nav>
       </aside>
 
-      {/* Main content */}
       <div className="lg:pl-64">
-        {/* Header */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur px-3 sm:h-16 sm:gap-4 sm:px-4 lg:px-6">
           <button
             className="lg:hidden p-2 -ml-2 touch-manipulation"
@@ -177,7 +171,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
 
           <div className="flex-1" />
 
-          {/* Currency toggle */}
           <Button
             variant="outline"
             size="sm"
@@ -187,7 +180,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             {currency}
           </Button>
 
-          {/* Theme toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -199,12 +191,10 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             <ThemeIcon className="h-4 w-4" />
           </Button>
 
-          {/* Connection status - hidden on mobile */}
           <div className="hidden sm:flex">
             <ConnectionStatus status={wsStatus} lastUpdate={lastUpdate} />
           </div>
 
-          {/* Desktop: show individual buttons */}
           <Separator orientation="vertical" className="h-6 hidden sm:block" />
 
           <Button
@@ -228,7 +218,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             <Download className="h-4 w-4" />
           </Button>
 
-          {/* Mobile: overflow menu for secondary actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -258,7 +247,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
 
           <Separator orientation="vertical" className="h-6" />
 
-          {/* User menu */}
           {demoMode ? (
             <div
               className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
@@ -279,7 +267,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
           )}
         </header>
 
-        {/* Page content */}
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>

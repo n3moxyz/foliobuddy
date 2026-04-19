@@ -9,7 +9,6 @@ export function useAssets(params?: { category?: string; search?: string }) {
   });
 }
 
-// Debounce hook for search input
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
@@ -22,17 +21,15 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function useSearchCoins(query: string) {
-  // Short debounce since backend now uses cached local filtering
   const debouncedQuery = useDebounce(query, 150);
 
   const result = useQuery({
     queryKey: ['coins', 'search', debouncedQuery],
     queryFn: () => api.searchCoins(debouncedQuery),
-    enabled: debouncedQuery.length >= 1, // Search with 1+ chars
-    staleTime: 30000, // 30 second cache (backend caches coin list for 24h)
+    enabled: debouncedQuery.length >= 1,
+    staleTime: 30000,
   });
 
-  // Return actual fetching state - true only when actively fetching
   return {
     ...result,
     isLoading: result.isFetching && debouncedQuery.length >= 1,

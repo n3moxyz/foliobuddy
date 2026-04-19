@@ -196,7 +196,6 @@ export function SnapshotTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Virtual "Today (Live)" row when no snapshot exists yet */}
               {showLiveRow && (
                 <TableRow className="bg-green-50 dark:bg-green-950/20">
                   <TableCell></TableCell>
@@ -361,7 +360,6 @@ export function SnapshotTable({
                         </div>
                       </TableCell>
                     </TableRow>
-                    {/* Expanded positions row */}
                     {isExpanded && (
                       <TableRow>
                         <TableCell colSpan={6} className="bg-muted/30 p-0">

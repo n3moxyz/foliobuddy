@@ -39,7 +39,6 @@ import { HelpTooltip } from '@/components/ui/HelpTooltip';
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
 
-// Format position(s) for clipboard - includes asset info for recreating
 function formatPositionsForClipboard(positions: Position | Position[]) {
   const posArray = Array.isArray(positions) ? positions : [positions];
 
@@ -107,7 +106,7 @@ export function PositionTable({
   const [deletePosition, setDeletePosition] = useState<Position | null>(null);
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const [skipConfirm, setSkipConfirm] = useState(() => {
-    // Migrate from legacy key
+    // Migrates users from the old pa-portfolio key to the new foliobuddy key on first render
     const legacy = localStorage.getItem(LEGACY_SKIP_DELETE_KEY);
     if (legacy !== null) {
       localStorage.setItem(SKIP_DELETE_CONFIRM_KEY, legacy);
@@ -129,13 +128,11 @@ export function PositionTable({
     }
   }, []);
 
-  // Helper to convert USD values to selected currency
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
   };
 
-  // Smart decimal formatting: 3 digits or less = 2dp, 4+ digits = 0dp
   const getSmartDecimals = (value: number | null | undefined): number => {
     if (value === null || value === undefined) return 2;
     const absValue = Math.abs(value);
@@ -144,7 +141,6 @@ export function PositionTable({
 
   const { isExpanded, toggle } = useCollapsibleState();
 
-  // Split positions into CEX and Onchain sub-groups
   const { defaultCex, defaultOnchain, cexTotal, onchainTotal } = useMemo(() => {
     const cex: Position[] = [];
     const onchain: Position[] = [];
@@ -157,10 +153,9 @@ export function PositionTable({
       }
     });
 
-    // Sort CEX by market value (largest first)
     cex.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
 
-    // Sort Onchain: Ledger first, then by market value
+    // Ledger positions sort to the top; ties break by market value
     onchain.sort((a, b) => {
       const aIsLedger = a.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
       const bIsLedger = b.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
@@ -176,18 +171,15 @@ export function PositionTable({
     };
   }, [positions]);
 
-  // Independent sort hooks for each sub-group
   const cexSort = useTableSort(defaultCex, POSITION_COLUMNS);
   const onchainSort = useTableSort(defaultOnchain, POSITION_COLUMNS);
   const cexPositions = cexSort.sortedItems;
   const onchainPositions = onchainSort.sortedItems;
 
-  // Helper to convert for sub-group headers
   const convertSub = (usdValue: number) => {
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
   };
 
-  // Collapsible IDs
   const cexId = sectionPrefix ? `${sectionPrefix}-cex` : 'cex';
   const onchainId = sectionPrefix ? `${sectionPrefix}-onchain` : 'onchain';
 
@@ -215,7 +207,6 @@ export function PositionTable({
   const handleView = useCallback((position: Position) => setViewPosition(position), []);
   const handleEdit = useCallback((position: Position) => setEditPosition(position), []);
 
-  // Render a position row
   const renderPositionRow = (position: Position) => {
     return (
       <PositionRow
@@ -233,8 +224,6 @@ export function PositionTable({
     );
   };
 
-  // Render table header with sort controls
-  // When compact: hide secondary columns on mobile. When expanded: show all + scroll.
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
 
   const renderTableHeader = (sortState: {
@@ -306,15 +295,11 @@ export function PositionTable({
     </TableHeader>
   );
 
-  // Table class: compact on mobile = fixed layout. Expanded = auto layout with scroll.
-  const tableClass = showAllColumns
-    ? 'w-full min-w-[700px]' // auto-sized columns, scrollable
-    : 'table-fixed w-full'; // fixed columns, fits viewport
+  const tableClass = showAllColumns ? 'w-full min-w-[700px]' : 'table-fixed w-full';
 
   return (
     <>
       <div className="space-y-4">
-        {/* Mobile column toggle */}
         <div className="flex justify-end md:hidden">
           <Button
             variant="ghost"
@@ -334,7 +319,6 @@ export function PositionTable({
           </Button>
         </div>
 
-        {/* CEX Sub-group */}
         {cexPositions.length > 0 && (
           <Collapsible open={isExpanded(cexId)} onOpenChange={() => toggle(cexId)}>
             <CollapsibleTrigger asChild>
@@ -367,7 +351,6 @@ export function PositionTable({
           </Collapsible>
         )}
 
-        {/* Onchain Sub-group */}
         {onchainPositions.length > 0 && (
           <Collapsible open={isExpanded(onchainId)} onOpenChange={() => toggle(onchainId)}>
             <CollapsibleTrigger asChild>
@@ -400,7 +383,6 @@ export function PositionTable({
           </Collapsible>
         )}
 
-        {/* Empty state */}
         {positions.length === 0 && (
           <div className="rounded-md border overflow-hidden">
             <Table className="table-fixed w-full">
@@ -417,7 +399,6 @@ export function PositionTable({
         )}
       </div>
 
-      {/* Edit Dialog */}
       <Dialog open={!!editPosition} onOpenChange={() => setEditPosition(null)}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -429,7 +410,6 @@ export function PositionTable({
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog
         open={!!deletePosition}
         onOpenChange={() => {
@@ -478,7 +458,6 @@ export function PositionTable({
         </DialogContent>
       </Dialog>
 
-      {/* Position Detail Dialog */}
       <Dialog open={!!viewPosition} onOpenChange={() => setViewPosition(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -489,7 +468,6 @@ export function PositionTable({
           </DialogHeader>
           {viewPosition && (
             <div className="space-y-4">
-              {/* Key Metrics */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Quantity</p>
@@ -548,7 +526,6 @@ export function PositionTable({
                 </div>
               </div>
 
-              {/* Storage Info */}
               <div className="border-t pt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -564,7 +541,6 @@ export function PositionTable({
                 </div>
               </div>
 
-              {/* Notes */}
               {viewPosition.notes && (
                 <div className="border-t pt-4">
                   <p className="text-xs text-muted-foreground mb-1">Notes</p>
@@ -574,13 +550,11 @@ export function PositionTable({
                 </div>
               )}
 
-              {/* Timestamps */}
               <div className="border-t pt-4 text-xs text-muted-foreground">
                 <p>Created: {formatDateTime(viewPosition.createdAt)}</p>
                 <p>Updated: {formatDateTime(viewPosition.updatedAt)}</p>
               </div>
 
-              {/* Actions */}
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   variant="outline"

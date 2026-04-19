@@ -138,7 +138,6 @@ export default function Trades() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Trade Journal</h1>
@@ -232,7 +231,6 @@ export default function Trades() {
         </div>
       </div>
 
-      {/* Trade Statistics */}
       {analytics && (
         <div>
           <TradeStatsCard
@@ -246,7 +244,6 @@ export default function Trades() {
         </div>
       )}
 
-      {/* P&L by Ticker */}
       {trades && trades.length > 0 && (
         <div>
           <TickerPnLCard
@@ -260,7 +257,6 @@ export default function Trades() {
         </div>
       )}
 
-      {/* Trade Tables */}
       <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'OPEN' | 'CLOSED')}>
         <div className="flex items-center gap-2 flex-wrap">
           <TabsList className="sm:w-auto">
@@ -315,7 +311,6 @@ export default function Trades() {
         </TabsContent>
       </Tabs>
 
-      {/* Add Trade Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -325,7 +320,6 @@ export default function Trades() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete All Confirmation Dialog */}
       <Dialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
@@ -366,7 +360,6 @@ export default function Trades() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Trade Dialog */}
       <Dialog open={!!editingTrade} onOpenChange={(open) => !open && setEditingTrade(null)}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -378,7 +371,6 @@ export default function Trades() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Trade Confirmation Dialog */}
       <Dialog open={!!deletingTrade} onOpenChange={(open) => !open && setDeletingTrade(null)}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
@@ -530,13 +522,11 @@ function TradeTable({
     return (
       <div className="rounded-md border">
         <div className="p-4 space-y-3">
-          {/* Header skeleton */}
           <div className="flex gap-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-4 w-20" />
             ))}
           </div>
-          {/* Row skeletons */}
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
@@ -561,7 +551,6 @@ function TradeTable({
 
   return (
     <>
-      {/* Mobile column toggle */}
       <div className="flex justify-end md:hidden mb-2">
         <Button
           variant="ghost"

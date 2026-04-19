@@ -133,7 +133,6 @@ export default function Dashboard() {
           <Skeleton className="h-9 w-full sm:w-32" />
         </div>
 
-        {/* Net worth loading skeleton */}
         <div className="pb-6 mb-2 border-b">
           <Skeleton className="h-4 w-20 mb-2" />
           <Skeleton className="h-12 w-48 mb-2" />
@@ -152,14 +151,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <DbStatusBanner />
         </div>
 
-        {/* Investor Filter */}
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="w-full justify-between sm:w-auto">
@@ -214,7 +211,6 @@ export default function Dashboard() {
         </Popover>
       </div>
 
-      {/* Net Worth Card */}
       {summary && (
         <div>
           <NetWorthCard
@@ -230,7 +226,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Portfolio Value Chart */}
       <div>
         <PortfolioChart
           currency={currency}
@@ -240,19 +235,16 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Benchmark Comparison Chart */}
       <div>
         <BenchmarkComparisonChart />
       </div>
 
-      {/* Allocation Charts */}
       {positions && (
         <div>
           <AllocationCharts positions={positions} isLoading={positionsLoading} />
         </div>
       )}
 
-      {/* Performers */}
       <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {topPerformers && (
           <PerformersCard
@@ -276,7 +268,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Last Updated */}
       <div className="text-center text-sm text-muted-foreground">
         Last updated: {formatDateTime(summary?.lastUpdated)}
       </div>

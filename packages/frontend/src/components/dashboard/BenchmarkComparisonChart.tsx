@@ -127,7 +127,6 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Use the same search hook as PositionForm
   const { data: rawSearchResults, isLoading: isSearching } = useSearchCoins(searchQuery);
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
@@ -277,7 +276,6 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <CardTitle>Portfolio % vs Benchmarks</CardTitle>
 
-          {/* Time Period Selector */}
           <div className="-mx-1 overflow-x-auto pb-1">
             <div className="flex w-max rounded-md border">
               {periods.map((p) => (
@@ -297,7 +295,6 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
           </div>
         </div>
 
-        {/* Benchmark Toggles */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {benchmarks.map((benchmark) => (
             <Button
@@ -507,7 +504,6 @@ export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) 
                   strokeOpacity={0.15}
                   strokeDasharray="4 4"
                 />
-                {/* Portfolio line */}
                 <Line
                   type="monotone"
                   dataKey="portfolio"

@@ -112,6 +112,6 @@ export function useBenchmarkHistory(coingeckoId: string, days: number, enabled =
     queryKey: ['benchmark', 'history', coingeckoId, days],
     queryFn: () => api.getBenchmarkHistory(coingeckoId, days),
     enabled: enabled && !!coingeckoId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }

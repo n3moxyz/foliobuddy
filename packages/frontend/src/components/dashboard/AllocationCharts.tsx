@@ -179,7 +179,6 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         <CardHeader className="pb-2">
           <div className="flex items-baseline justify-between gap-3 min-h-[24px]">
             <CardTitle className="text-base flex-shrink-0">{title}</CardTitle>
-            {/* Hover info — inline with title, no layout shift */}
             {(() => {
               const hIdx = hoveredSlice[title];
               if (hIdx == null || !visibleData[hIdx]) return null;
@@ -195,7 +194,6 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            {/* Donut Chart with Center Label */}
             <div className="mx-auto h-[140px] w-[140px] flex-shrink-0 relative sm:mx-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -223,7 +221,6 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              {/* Center label — always shows top visible item */}
               {visibleData.length > 0 &&
                 (() => {
                   const top = visibleData.reduce((a, b) => (a.value > b.value ? a : b));
@@ -242,7 +239,6 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                 })()}
             </div>
 
-            {/* Side Legend */}
             <div className="flex min-w-0 flex-col gap-1.5 flex-1">
               {data.map((item, index) => {
                 const isHidden = hidden.has(item.name);

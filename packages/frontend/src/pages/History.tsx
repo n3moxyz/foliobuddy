@@ -97,7 +97,6 @@ export default function History() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Snapshot History</h1>
@@ -182,7 +181,6 @@ export default function History() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
         <div>
           <p className="text-sm text-muted-foreground mb-0.5">Total</p>
@@ -198,7 +196,6 @@ export default function History() {
         </div>
       </div>
 
-      {/* Snapshot Table with Tabs */}
       <Tabs
         defaultValue="all"
         onValueChange={(v) => setSourceFilter(v as SourceFilter)}
@@ -221,7 +218,6 @@ export default function History() {
         </div>
       </Tabs>
 
-      {/* Add Snapshot Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -238,7 +234,6 @@ export default function History() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Snapshot Dialog */}
       <Dialog open={!!editingSnapshot} onOpenChange={(open) => !open && setEditingSnapshot(null)}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -256,7 +251,6 @@ export default function History() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={!!deletingSnapshot} onOpenChange={(open) => !open && setDeletingSnapshot(null)}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
@@ -293,7 +287,6 @@ export default function History() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete All Confirmation Dialog */}
       <Dialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>

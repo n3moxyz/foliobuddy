@@ -215,7 +215,6 @@ export function PortfolioChart({
               </div>
             )}
           </div>
-          {/* Time Period Selector - CoinGecko style */}
           <div className="-mx-1 overflow-x-auto pb-1">
             <div className="flex w-max rounded-md border">
               {periods.map((p) => (

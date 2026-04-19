@@ -673,7 +673,6 @@ export function PositionForm({
         </div>
       )}
 
-      {/* Import Mode UI */}
       {mode === 'import' && !isEditing ? (
         <PositionImportTab
           jsonInput={jsonInput}
@@ -1114,7 +1113,6 @@ export function PositionForm({
                 )}
               </div>
 
-              {/* Notes */}
               <div className="space-y-1">
                 <Label htmlFor="notes" className="text-sm">
                   Notes (Optional)
@@ -1152,7 +1150,6 @@ export function PositionForm({
                 </div>
               )}
 
-              {/* Submit */}
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   type="submit"

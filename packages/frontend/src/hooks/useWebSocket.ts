@@ -34,7 +34,6 @@ export function useWebSocket(): UseWebSocketReturn {
       const token = await getToken();
       if (!token) return;
 
-      // Vercel doesn't proxy WebSockets — connect directly to backend
       const wsBackendUrl = import.meta.env.VITE_WS_BACKEND_URL;
       if (!import.meta.env.DEV && !wsBackendUrl) {
         console.warn('[WebSocket] VITE_WS_BACKEND_URL not set — WebSocket disabled in production');

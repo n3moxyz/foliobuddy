@@ -12,13 +12,12 @@ export function formatCurrency(
 ): string {
   if (value === null || value === undefined) return '-';
 
-  // Handle compact = number (for decimals) or boolean
   const decimals = typeof compact === 'number' ? compact : 2;
   const useCompact = compact === true;
 
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD', // Always use USD formatting
+    currency: 'USD',
     notation: useCompact ? 'compact' : 'standard',
     minimumFractionDigits: useCompact ? 0 : decimals,
     maximumFractionDigits: useCompact ? 1 : decimals,
@@ -26,7 +25,6 @@ export function formatCurrency(
 
   const formatted = formatter.format(value);
 
-  // For SGD, replace $ with S$
   if (currency === 'SGD') {
     return formatted.replace('$', 'S$');
   }

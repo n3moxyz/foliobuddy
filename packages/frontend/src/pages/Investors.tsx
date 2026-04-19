@@ -86,7 +86,6 @@ export default function Investors() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Investors</h1>
@@ -100,7 +99,6 @@ export default function Investors() {
         </Button>
       </div>
 
-      {/* Summary */}
       <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
         <div>
           <p className="text-sm text-muted-foreground mb-0.5">
@@ -132,7 +130,6 @@ export default function Investors() {
         </div>
       </div>
 
-      {/* Investors Table */}
       <Card>
         <CardHeader>
           <CardTitle>Investor List</CardTitle>
@@ -245,7 +242,6 @@ export default function Investors() {
         </CardContent>
       </Card>
 
-      {/* Add Investor Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
@@ -266,7 +262,6 @@ export default function Investors() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Investor Dialog */}
       <Dialog open={!!editInvestor} onOpenChange={() => setEditInvestor(null)}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
@@ -284,7 +279,6 @@ export default function Investors() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog
         open={!!deleteInvestor}
         onOpenChange={(open) => {
@@ -306,7 +300,6 @@ export default function Investors() {
               investor list? Historical data will not be affected.
             </p>
 
-            {/* Stake reassignment - only show if there are other investors */}
             {deleteInvestor && investors && investors.length > 1 && (
               <div className="space-y-2">
                 <Label>
