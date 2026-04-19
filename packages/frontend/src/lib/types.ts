@@ -1,6 +1,4 @@
-// All shared API types live in @pa-portfolio/shared.
-// This module re-exports them for backwards-compatible imports throughout the frontend.
-export * from '@pa-portfolio/shared';
+export * from '@foliobuddy/shared';
 
 // -- Frontend-only types --
 

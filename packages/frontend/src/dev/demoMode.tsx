@@ -4,24 +4,24 @@ import { AppShell } from '@/components/layout/AppShell';
 import { ShortcutsHelpModal } from '@/components/layout/ShortcutsHelpModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useThemeEffect } from '@/hooks/useThemeEffect';
-import {
-  setTokenGetter,
-  type Asset,
-  type AssetPrice,
-  type BenchmarkHistoricalData,
-  type BulkImportPosition,
-  type CreatePositionData,
-  type DbHealth,
-  type FxRate,
-  type Investor,
-  type PerformancePoint,
-  type Position,
-  type PortfolioSummary,
-  type Snapshot,
-  type SnapshotPosition,
-  type Trade,
-  type TradeAnalytics,
-} from '@/lib/api';
+import { setTokenGetter } from '@/lib/api';
+import type {
+  Asset,
+  AssetPrice,
+  BenchmarkHistoricalData,
+  BulkImportPosition,
+  CreatePositionData,
+  DbHealth,
+  FxRate,
+  Investor,
+  PerformancePoint,
+  Position,
+  PortfolioSummary,
+  Snapshot,
+  SnapshotPosition,
+  Trade,
+  TradeAnalytics,
+} from '@/lib/types';
 
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Portfolio = lazy(() => import('@/pages/Portfolio'));
