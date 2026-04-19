@@ -189,6 +189,10 @@ All backend code uses `logger` from `src/lib/logger.ts` instead of `console.log`
 
 Express-rate-limit applied globally to `/api` routes. Default: 200 requests per 15 minutes. Override with `RATE_LIMIT_MAX` env var (local dev uses 10000). Constants in `src/lib/constants.ts`.
 
+### Request Payload Limit
+
+Express JSON payload cap is **1mb** (`MAX_PAYLOAD_SIZE` in `src/lib/constants.ts`). Chosen tight for security — bulk imports of positions/trades/snapshots are well under this. If a legitimate import ever 413s, bump the constant rather than widening globally.
+
 ### Pagination (Backend)
 
 Trades and snapshots routes support optional pagination via `?page=1&limit=50`. Backwards-compatible — returns full array when no `page` param. Uses `parsePagination()` and `paginatedResponse()` from `src/lib/pagination.ts`.

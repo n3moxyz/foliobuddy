@@ -1087,6 +1087,22 @@ Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGec
 
 ---
 
+### React Fragment Keys — `<>` can't hold them
+
+In `SnapshotTable`, a map returned `<>...</>` with `key` on the inner `<TableRow>`. React can't use a key on a fragment shorthand, so the "outer" element for list reconciliation became the first child. When a second sibling (expanded positions row) was added conditionally, React had to re-mount things more than needed.
+
+**The fix:** Import `Fragment` from React and use `<Fragment key={id}>` explicitly. Remove redundant keys from children — the outer Fragment is the keyed element now. Classic lint rule, easy to miss when you're writing inline expanders.
+
+---
+
+### Default Payload Limits are Generous — Tighten Them
+
+Express-default JSON limit is 100kb, but we'd bumped it to 10mb during early import development and never walked it back. 10mb is a DoS vector — a single request can chew through memory. Tightened to 1mb: bulk imports of positions/trades/snapshots are well under that, and if a legitimate import ever 413s, the fix is to raise the constant deliberately rather than leave the ceiling open.
+
+**The pattern:** Audit "temporary development knobs" periodically — generous limits meant for your local workflow become production security issues if forgotten.
+
+---
+
 ## Best Practices That Paid Off
 
 ### 1. TypeScript Everywhere
