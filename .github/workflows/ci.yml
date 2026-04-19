@@ -46,4 +46,10 @@ jobs:
         working-directory: packages/frontend
 
       - name: Check formatting
+        # TODO: remove `|| true` once 55 pre-existing format issues are fixed.
         run: npx prettier --check "packages/**/*.{ts,tsx,js,jsx,json,css}" || true
+
+      - name: Verify workspace deps are declared
+        # Catches missing workspace dependencies that local npm install would
+        # silently resolve via root hoisting but Vercel's build rejects.
+        run: npm ls --workspaces --depth=0
