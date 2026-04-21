@@ -97,6 +97,34 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// TEMP: debug endpoint to diagnose Yahoo blocking from droplet. Remove after fix.
+router.get('/_debug-yahoo', async (_req, res, next) => {
+  try {
+    const tests: Array<{ name: string; url: string }> = [
+      { name: 'v1-search-q1', url: 'https://query1.finance.yahoo.com/v1/finance/search?q=dbs&quotesCount=5&newsCount=0' },
+      { name: 'v1-search-q2', url: 'https://query2.finance.yahoo.com/v1/finance/search?q=dbs&quotesCount=5&newsCount=0' },
+      { name: 'v1-lookup-q2', url: 'https://query2.finance.yahoo.com/v1/finance/lookup?query=dbs&type=equity&count=5&lang=en-US&region=US' },
+      { name: 'v7-quote-q1', url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=D05.SI' },
+      { name: 'autoc', url: 'https://autoc.finance.yahoo.com/autoc?query=dbs&region=US&lang=en-US' },
+    ];
+    const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
+    const results = await Promise.all(
+      tests.map(async (t) => {
+        try {
+          const r = await fetch(t.url, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
+          const text = await r.text();
+          return { name: t.name, status: r.status, bodyPreview: text.slice(0, 200), len: text.length };
+        } catch (err) {
+          return { name: t.name, error: err instanceof Error ? err.message : String(err) };
+        }
+      })
+    );
+    res.json({ results });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/search', async (req, res, next) => {
   try {
     const { q, category, provider: providerParam } = req.query;
