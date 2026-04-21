@@ -18,6 +18,7 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
   CEX: 'CEX',
   DEFI: 'DeFi',
   BANK: 'Bank',
+  BROKERAGE: 'Brokerage',
 };
 
 interface PositionRowProps {
@@ -110,9 +111,7 @@ export const PositionRow = React.memo(function PositionRow({
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         {formatCurrency(convert(totalCost), currency, 0)}
       </TableCell>
-      <TableCell
-        className={`text-right font-mono text-sm text-muted-foreground ${HIDDEN_MOBILE}`}
-      >
+      <TableCell className={`text-right font-mono text-sm text-muted-foreground ${HIDDEN_MOBILE}`}>
         {formatCurrency(
           convert(position.asset.currentPriceUsd),
           currency,

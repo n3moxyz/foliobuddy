@@ -13,7 +13,10 @@ import {
 } from '../lib/constants.js';
 import type { ProviderName } from '../services/providers/types.js';
 
-async function navToUsd(navPrice: number, nativeCurrency: string): Promise<{ priceUsd: number; fxRateToUsd: number | null }> {
+async function navToUsd(
+  navPrice: number,
+  nativeCurrency: string
+): Promise<{ priceUsd: number; fxRateToUsd: number | null }> {
   const ccy = nativeCurrency.toUpperCase();
   if (ccy === 'USD') return { priceUsd: navPrice, fxRateToUsd: null };
   if (ccy === 'SGD') {
@@ -28,7 +31,10 @@ async function navToUsd(navPrice: number, nativeCurrency: string): Promise<{ pri
 
 function slugifyUtId(symbol: string, isin?: string | null): string {
   if (isin && isin.trim()) return isin.trim().toUpperCase();
-  return `ut-${symbol.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  return `ut-${symbol
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')}`;
 }
 
 const router = Router();
@@ -418,10 +424,7 @@ router.post('/unit-trust', async (req, res, next) => {
 
     const existing = await prisma.asset.findFirst({
       where: {
-        OR: [
-          { priceProvider: 'manual', providerAssetId },
-          { symbol: data.symbol.toUpperCase() },
-        ],
+        OR: [{ priceProvider: 'manual', providerAssetId }, { symbol: data.symbol.toUpperCase() }],
       },
     });
     if (existing) return res.json(existing);
@@ -498,33 +501,51 @@ router.patch('/:id/nav', async (req, res, next) => {
       throw new AppError('NAV updates only apply to manually-priced assets', 400);
     }
 
+    const position = await prisma.position.findFirst({
+      where: { userId: req.userId!, assetId: asset.id },
+      select: { id: true },
+    });
+    if (!position) throw new AppError('Asset not found', 404);
+
     const converted = await navToUsd(data.navPrice, asset.nativeCurrency);
     const timestamp = data.asOfDate ? new Date(data.asOfDate) : new Date();
 
-    try {
-      await prisma.priceHistory.create({
-        data: {
-          assetId: asset.id,
-          priceUsd: converted.priceUsd,
-          nativePrice: data.navPrice,
-          nativeCurrency: asset.nativeCurrency,
-          fxRateToUsd: converted.fxRateToUsd,
-          source: 'manual',
-          updatedBy: req.userId ?? null,
-          timestamp,
-        },
-      });
-    } catch (err) {
-      // Unique constraint on (assetId, timestamp) — a same-second re-post is a no-op
-      if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') {
-        throw err;
-      }
-    }
+    await prisma.priceHistory.upsert({
+      where: { assetId_timestamp: { assetId: asset.id, timestamp } },
+      update: {
+        priceUsd: converted.priceUsd,
+        nativePrice: data.navPrice,
+        nativeCurrency: asset.nativeCurrency,
+        fxRateToUsd: converted.fxRateToUsd,
+        source: 'manual',
+        updatedBy: req.userId ?? null,
+      },
+      create: {
+        assetId: asset.id,
+        priceUsd: converted.priceUsd,
+        nativePrice: data.navPrice,
+        nativeCurrency: asset.nativeCurrency,
+        fxRateToUsd: converted.fxRateToUsd,
+        source: 'manual',
+        updatedBy: req.userId ?? null,
+        timestamp,
+      },
+    });
+
+    const latestNav = await prisma.priceHistory.findFirst({
+      where: { assetId: asset.id, source: 'manual' },
+      orderBy: { timestamp: 'desc' },
+    });
 
     const updated = await prisma.asset.update({
       where: { id: asset.id },
-      data: { currentPriceUsd: converted.priceUsd, priceUpdatedAt: timestamp },
+      data: {
+        currentPriceUsd: latestNav?.priceUsd ?? converted.priceUsd,
+        priceUpdatedAt: latestNav?.timestamp ?? timestamp,
+      },
     });
+
+    await priceService.updatePositionValues([asset.id]);
 
     res.json(updated);
   } catch (error) {

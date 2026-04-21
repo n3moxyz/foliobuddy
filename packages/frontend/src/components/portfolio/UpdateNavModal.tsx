@@ -12,6 +12,7 @@ import {
 import { useUpdateAssetNav } from '@/hooks/useAssets';
 import { getPriceAgeInfo, priceAgeClass } from '@/lib/utils';
 import type { Asset } from '@/lib/types';
+import { ExternalLink } from 'lucide-react';
 
 interface UpdateNavModalProps {
   asset: Asset | null;
@@ -64,7 +65,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
         </DialogHeader>
         {asset && (
           <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Last NAV</span>
+            <span className="text-muted-foreground">Stored USD price</span>
             <span className="font-mono">
               {asset.currentPriceUsd !== null ? `$${asset.currentPriceUsd.toFixed(4)}` : '—'}{' '}
               <span className={priceAgeClass(getPriceAgeInfo(asset.priceUpdatedAt).severity)}>
@@ -75,9 +76,22 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
         )}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="nav-price" className="text-sm">
-              NAV ({asset?.nativeCurrency ?? 'USD'})
-            </Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="nav-price" className="text-sm">
+                NAV ({asset?.nativeCurrency ?? 'USD'})
+              </Label>
+              {asset?.factsheetUrl && (
+                <a
+                  href={asset.factsheetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  Open factsheet
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
             <Input
               id="nav-price"
               type="number"

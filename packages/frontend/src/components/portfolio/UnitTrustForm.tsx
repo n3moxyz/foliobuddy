@@ -25,6 +25,7 @@ export function UnitTrustForm({ onSuccess }: UnitTrustFormProps) {
   const [isin, setIsin] = useState('');
   const [factsheetUrl, setFactsheetUrl] = useState('');
   const [nav, setNav] = useState('');
+  const [navAsOfDate, setNavAsOfDate] = useState(new Date().toISOString().slice(0, 10));
   const [quantity, setQuantity] = useState('');
   const [totalCost, setTotalCost] = useState('');
   const [storageLocation, setStorageLocation] = useState('FSMOne');
@@ -69,6 +70,7 @@ export function UnitTrustForm({ onSuccess }: UnitTrustFormProps) {
         isin: isin.trim() || undefined,
         factsheetUrl: factsheetUrl.trim() || undefined,
         initialNav: navNum,
+        navAsOfDate: new Date(navAsOfDate).toISOString(),
       });
 
       const finalLocation = storageLocation === 'Others' ? customLocation.trim() : storageLocation;
@@ -157,7 +159,7 @@ export function UnitTrustForm({ onSuccess }: UnitTrustFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="space-y-1">
           <Label htmlFor="ut-nav" className="text-sm">
             NAV ({nativeCurrency})
@@ -169,6 +171,18 @@ export function UnitTrustForm({ onSuccess }: UnitTrustFormProps) {
             value={nav}
             onChange={(e) => setNav(e.target.value)}
             placeholder="1.234"
+            required
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="ut-nav-date" className="text-sm">
+            NAV Date
+          </Label>
+          <Input
+            id="ut-nav-date"
+            type="date"
+            value={navAsOfDate}
+            onChange={(e) => setNavAsOfDate(e.target.value)}
             required
           />
         </div>

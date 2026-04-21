@@ -83,6 +83,7 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
   CEX: 'CEX',
   DEFI: 'DeFi',
   BANK: 'Bank',
+  BROKERAGE: 'Brokerage',
 };
 
 const POSITION_COLUMNS: Record<string, ColumnConfig<Position>> = {
@@ -143,39 +144,48 @@ export function PositionTable({
 
   const { isExpanded, toggle } = useCollapsibleState();
 
-  const { defaultCex, defaultOnchain, cexTotal, onchainTotal } = useMemo(() => {
-    const cex: Position[] = [];
-    const onchain: Position[] = [];
+  const { defaultCex, defaultBrokerage, defaultOnchain, cexTotal, brokerageTotal, onchainTotal } =
+    useMemo(() => {
+      const cex: Position[] = [];
+      const brokerage: Position[] = [];
+      const onchain: Position[] = [];
 
-    positions.forEach((pos) => {
-      if (pos.storageType === 'CEX') {
-        cex.push(pos);
-      } else {
-        onchain.push(pos);
-      }
-    });
+      positions.forEach((pos) => {
+        if (pos.storageType === 'CEX') {
+          cex.push(pos);
+        } else if (pos.storageType === 'BROKERAGE') {
+          brokerage.push(pos);
+        } else {
+          onchain.push(pos);
+        }
+      });
 
-    cex.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
+      cex.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
+      brokerage.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
 
-    // Ledger positions sort to the top; ties break by market value
-    onchain.sort((a, b) => {
-      const aIsLedger = a.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
-      const bIsLedger = b.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
-      if (aIsLedger !== bIsLedger) return bIsLedger - aIsLedger;
-      return (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
-    });
+      // Ledger positions sort to the top; ties break by market value
+      onchain.sort((a, b) => {
+        const aIsLedger = a.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
+        const bIsLedger = b.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
+        if (aIsLedger !== bIsLedger) return bIsLedger - aIsLedger;
+        return (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
+      });
 
-    return {
-      defaultCex: cex,
-      defaultOnchain: onchain,
-      cexTotal: cex.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
-      onchainTotal: onchain.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
-    };
-  }, [positions]);
+      return {
+        defaultCex: cex,
+        defaultBrokerage: brokerage,
+        defaultOnchain: onchain,
+        cexTotal: cex.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+        brokerageTotal: brokerage.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+        onchainTotal: onchain.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+      };
+    }, [positions]);
 
   const cexSort = useTableSort(defaultCex, POSITION_COLUMNS);
+  const brokerageSort = useTableSort(defaultBrokerage, POSITION_COLUMNS);
   const onchainSort = useTableSort(defaultOnchain, POSITION_COLUMNS);
   const cexPositions = cexSort.sortedItems;
+  const brokeragePositions = brokerageSort.sortedItems;
   const onchainPositions = onchainSort.sortedItems;
 
   const convertSub = (usdValue: number) => {
@@ -183,15 +193,19 @@ export function PositionTable({
   };
 
   const cexId = sectionPrefix ? `${sectionPrefix}-cex` : 'cex';
+  const brokerageId = sectionPrefix ? `${sectionPrefix}-brokerage` : 'brokerage';
   const onchainId = sectionPrefix ? `${sectionPrefix}-onchain` : 'onchain';
 
-  const handleDeleteClick = useCallback((position: Position) => {
-    if (skipConfirm) {
-      deletePositionMutation.mutate(position.id);
-    } else {
-      setDeletePosition(position);
-    }
-  }, [skipConfirm, deletePositionMutation]);
+  const handleDeleteClick = useCallback(
+    (position: Position) => {
+      if (skipConfirm) {
+        deletePositionMutation.mutate(position.id);
+      } else {
+        setDeletePosition(position);
+      }
+    },
+    [skipConfirm, deletePositionMutation]
+  );
 
   const handleDelete = async () => {
     if (!deletePosition) return;
@@ -325,7 +339,10 @@ export function PositionTable({
         {cexPositions.length > 0 && (
           <Collapsible open={isExpanded(cexId)} onOpenChange={() => toggle(cexId)}>
             <CollapsibleTrigger asChild>
-              <button type="button" className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2">
+              <button
+                type="button"
+                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
+              >
                 <ChevronRight
                   className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
                     isExpanded(cexId) ? 'rotate-90' : ''
@@ -354,10 +371,48 @@ export function PositionTable({
           </Collapsible>
         )}
 
+        {brokeragePositions.length > 0 && (
+          <Collapsible open={isExpanded(brokerageId)} onOpenChange={() => toggle(brokerageId)}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
+              >
+                <ChevronRight
+                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
+                    isExpanded(brokerageId) ? 'rotate-90' : ''
+                  }`}
+                />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
+                  Brokerage
+                  <HelpTooltip content="Assets held on brokerage or fund platforms" />
+                </p>
+                <span className="text-xs text-muted-foreground">({brokeragePositions.length})</span>
+                {!isExpanded(brokerageId) && (
+                  <span className="text-xs font-mono text-muted-foreground ml-auto">
+                    {formatCurrency(convertSub(brokerageTotal), currency, 0)}
+                  </span>
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
+              <div className="rounded-md border overflow-x-auto">
+                <Table className={tableClass}>
+                  {renderTableHeader(brokerageSort)}
+                  <TableBody>{brokeragePositions.map(renderPositionRow)}</TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
         {onchainPositions.length > 0 && (
           <Collapsible open={isExpanded(onchainId)} onOpenChange={() => toggle(onchainId)}>
             <CollapsibleTrigger asChild>
-              <button type="button" className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2">
+              <button
+                type="button"
+                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
+              >
                 <ChevronRight
                   className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
                     isExpanded(onchainId) ? 'rotate-90' : ''

@@ -350,7 +350,10 @@ export function PositionForm({
 
     if (category === 'crypto') {
       filtered = filtered.filter(
-        (a) => !isStablecoinCategory(a.category) && a.category !== 'EQUITY'
+        (a) =>
+          !isStablecoinCategory(a.category) &&
+          a.category !== 'EQUITY' &&
+          a.category !== 'UNIT_TRUST'
       );
     } else if (category === 'equity') {
       filtered = filtered.filter((a) => a.category === 'EQUITY');
@@ -939,7 +942,9 @@ export function PositionForm({
               {/* Category Selection */}
               {!isEditing && (
                 <div className="space-y-1">
-                  <Label htmlFor="pos-category" className="text-sm">Category</Label>
+                  <Label htmlFor="pos-category" className="text-sm">
+                    Category
+                  </Label>
                   <Select value={category} onValueChange={(v) => setCategory(v as CategoryType)}>
                     <SelectTrigger id="pos-category">
                       <SelectValue />
@@ -956,7 +961,9 @@ export function PositionForm({
               {/* Asset Selection - Different UI for Crypto/Equity vs Cash */}
               {category !== 'cash' ? (
                 <div className="space-y-1">
-                  <Label htmlFor="pos-asset" className="text-sm">Asset</Label>
+                  <Label htmlFor="pos-asset" className="text-sm">
+                    Asset
+                  </Label>
                   <AssetSearchDropdown
                     selectedAsset={selectedAsset}
                     searchQuery={searchQuery}
@@ -966,7 +973,9 @@ export function PositionForm({
                     combinedResults={combinedResults}
                     isEditing={isEditing}
                     placeholder={
-                      category === 'equity' ? 'Search ticker (e.g. AAPL, D05.SI)' : 'Search for a coin...'
+                      category === 'equity'
+                        ? 'Search ticker (e.g. AAPL, D05.SI)'
+                        : 'Search for a coin...'
                     }
                     positionAssetSymbol={position?.asset.symbol}
                     positionAssetName={position?.asset.name}
@@ -990,7 +999,9 @@ export function PositionForm({
               ) : (
                 /* Cash / Stablecoin Selection */
                 <div className="space-y-1">
-                  <Label htmlFor="pos-stablecoin" className="text-sm">Stablecoin</Label>
+                  <Label htmlFor="pos-stablecoin" className="text-sm">
+                    Stablecoin
+                  </Label>
                   {isEditing ? (
                     <Input
                       value={`${position.asset.symbol} - ${position.asset.name}`}
@@ -1120,7 +1131,9 @@ export function PositionForm({
 
               {/* Storage Type */}
               <div className="space-y-1">
-                <Label htmlFor="pos-storage-type" className="text-sm">Storage Type</Label>
+                <Label htmlFor="pos-storage-type" className="text-sm">
+                  Storage Type
+                </Label>
                 <Select
                   value={storageType}
                   onValueChange={(value) =>
@@ -1142,7 +1155,9 @@ export function PositionForm({
 
               {/* Storage Location */}
               <div className="space-y-1">
-                <Label htmlFor="pos-storage-location" className="text-sm">Storage Location (Optional)</Label>
+                <Label htmlFor="pos-storage-location" className="text-sm">
+                  Storage Location (Optional)
+                </Label>
                 <Select
                   value={storageLocation}
                   onValueChange={(v) => {

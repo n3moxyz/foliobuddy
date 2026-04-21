@@ -105,11 +105,15 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     return row?.rate ?? USD_SGD_FALLBACK_RATE;
   }
 
-  private toUsd(nativePrice: number, currency: string, usdSgd: number): number {
+  private toUsd(nativePrice: number, currency: string, usdSgd: number): number | null {
     const ccy = currency.toUpperCase();
     if (ccy === 'USD') return nativePrice;
     if (ccy === 'SGD') return nativePrice / usdSgd;
-    return nativePrice;
+    return null;
+  }
+
+  private isSupportedCurrency(currency: string | null | undefined): boolean {
+    return currency === 'USD' || currency === 'SGD';
   }
 
   async getPrices(providerAssetIds: string[]): Promise<Map<string, ProviderPrice>> {
@@ -135,6 +139,10 @@ export class YahooFinanceProvider implements AssetPriceProvider {
         const currency = item.currency?.toUpperCase() ?? 'USD';
         const nativePrice = item.regularMarketPrice;
         const priceUsd = this.toUsd(nativePrice, currency, usdSgd);
+        if (priceUsd === null) {
+          logger.warn(`[Yahoo] Skipping ${item.symbol}: unsupported currency ${currency}`);
+          continue;
+        }
         const fxRateToUsd = currency === 'USD' ? 1 : priceUsd / nativePrice;
         const entry: ProviderPrice = {
           priceUsd,
@@ -158,9 +166,12 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     const data = await this.fetchJson<YahooSearchResponse>(url);
     if (!data?.quotes) return [];
 
-    const allowedTypes = new Set(['EQUITY', 'ETF', 'MUTUALFUND']);
+    const allowedTypes = new Set(['EQUITY']);
     const results: ProviderSearchResult[] = data.quotes
-      .filter((q) => q.quoteType && allowedTypes.has(q.quoteType))
+      .filter((q) => {
+        if (!q.quoteType || !allowedTypes.has(q.quoteType)) return false;
+        return this.isSupportedCurrency(this.inferCurrencyFromSymbol(q.symbol));
+      })
       .map((q) => ({
         providerAssetId: q.symbol,
         symbol: q.symbol,
@@ -201,6 +212,10 @@ export class YahooFinanceProvider implements AssetPriceProvider {
 
     const currency = result.meta.currency?.toUpperCase() ?? 'USD';
     const usdSgd = await this.getUsdSgdRate();
+    if (!this.isSupportedCurrency(currency)) {
+      logger.warn(`[Yahoo] No USD conversion support for ${providerAssetId} currency ${currency}`);
+      return [];
+    }
     const closes = result.indicators.quote[0].close;
     const timestamps = result.timestamp;
 
@@ -209,6 +224,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       const nativePrice = closes[i];
       if (nativePrice === null || nativePrice === undefined) continue;
       const priceUsd = this.toUsd(nativePrice, currency, usdSgd);
+      if (priceUsd === null) continue;
       points.push({ timestamp: timestamps[i] * 1000, priceUsd, nativePrice });
     }
 
