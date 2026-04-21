@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
@@ -12,6 +12,8 @@ import {
   categoryGroup,
 } from '../lib/constants.js';
 import type { ProviderName } from '../services/providers/types.js';
+import { parseUobKhStatement } from '../services/statementParsers/uobKayHian.js';
+import { logger } from '../lib/logger.js';
 
 async function navToUsd(
   navPrice: number,
@@ -246,8 +248,8 @@ router.post('/from-provider', async (req, res, next) => {
     // combinations early so we don't end up with a Yahoo-keyed row that the refresh
     // loop then fails to update.
     const group = categoryGroup(data.category);
-    if (data.provider === 'yahoo' && group !== 'equities') {
-      throw new AppError('Yahoo provider only supports EQUITY category', 400);
+    if (data.provider === 'yahoo' && group !== 'equities' && group !== 'unit_trusts') {
+      throw new AppError('Yahoo provider only supports EQUITY and UNIT_TRUST categories', 400);
     }
     if (data.provider === 'manual' && group !== 'unit_trusts') {
       throw new AppError('Manual provider only supports UNIT_TRUST category', 400);
@@ -415,22 +417,28 @@ const createUnitTrustSchema = z.object({
   isin: z.string().min(1).max(20).optional().nullable(),
   initialNav: z.number().positive().optional(),
   navAsOfDate: z.string().datetime().optional(),
+  yahooSymbol: z.string().min(1).max(40).optional().nullable(),
 });
 
 router.post('/unit-trust', async (req, res, next) => {
   try {
     const data = createUnitTrustSchema.parse(req.body);
-    const providerAssetId = slugifyUtId(data.symbol, data.isin);
+    const useYahoo = !!data.yahooSymbol;
+    const provider: ProviderName = useYahoo ? 'yahoo' : 'manual';
+    const providerAssetId = useYahoo
+      ? data.yahooSymbol!.toUpperCase()
+      : slugifyUtId(data.symbol, data.isin);
 
     const existing = await prisma.asset.findFirst({
       where: {
-        OR: [{ priceProvider: 'manual', providerAssetId }, { symbol: data.symbol.toUpperCase() }],
+        OR: [{ priceProvider: provider, providerAssetId }, { symbol: data.symbol.toUpperCase() }],
       },
     });
     if (existing) return res.json(existing);
 
     let currentPriceUsd: number | null = null;
-    let initialPriceHistory: {
+    let priceUpdatedAt: Date | null = null;
+    let statementPriceHistory: {
       priceUsd: number;
       nativePrice: number;
       fxRateToUsd: number | null;
@@ -439,18 +447,46 @@ router.post('/unit-trust', async (req, res, next) => {
 
     if (data.initialNav !== undefined) {
       const converted = await navToUsd(data.initialNav, data.nativeCurrency);
-      currentPriceUsd = converted.priceUsd;
-      initialPriceHistory = {
+      statementPriceHistory = {
         priceUsd: converted.priceUsd,
         nativePrice: data.initialNav,
         fxRateToUsd: converted.fxRateToUsd,
         timestamp: data.navAsOfDate ? new Date(data.navAsOfDate) : new Date(),
       };
+      if (!useYahoo) {
+        currentPriceUsd = converted.priceUsd;
+        priceUpdatedAt = statementPriceHistory.timestamp;
+      }
+    }
+
+    // For Yahoo-backed unit trusts, pull the live NAV now so currentPriceUsd is fresh
+    // instead of the statement-date NAV (which is preserved separately in PriceHistory).
+    let liveYahooPrice: {
+      priceUsd: number;
+      nativePrice: number;
+      fxRateToUsd: number | null;
+    } | null = null;
+    if (useYahoo) {
+      try {
+        const priceMap = await priceService.getProvider('yahoo').getPrices([providerAssetId]);
+        const priceData = priceMap.get(providerAssetId);
+        if (priceData) {
+          liveYahooPrice = {
+            priceUsd: priceData.priceUsd,
+            nativePrice: priceData.nativePrice ?? 0,
+            fxRateToUsd: priceData.fxRateToUsd ?? null,
+          };
+          currentPriceUsd = priceData.priceUsd;
+          priceUpdatedAt = new Date();
+        }
+      } catch (err) {
+        logger.warn(`[unit-trust] Yahoo price fetch failed for ${providerAssetId}:`, err);
+      }
     }
 
     const asset = await prisma.asset.create({
       data: {
-        priceProvider: 'manual',
+        priceProvider: provider,
         providerAssetId,
         coingeckoId: null,
         symbol: data.symbol.toUpperCase(),
@@ -460,21 +496,34 @@ router.post('/unit-trust', async (req, res, next) => {
         factsheetUrl: data.factsheetUrl ?? null,
         isin: data.isin ?? null,
         currentPriceUsd,
-        priceUpdatedAt: initialPriceHistory?.timestamp ?? null,
+        priceUpdatedAt,
       },
     });
 
-    if (initialPriceHistory) {
+    if (statementPriceHistory) {
       await prisma.priceHistory.create({
         data: {
           assetId: asset.id,
-          priceUsd: initialPriceHistory.priceUsd,
-          nativePrice: initialPriceHistory.nativePrice,
+          priceUsd: statementPriceHistory.priceUsd,
+          nativePrice: statementPriceHistory.nativePrice,
           nativeCurrency: asset.nativeCurrency,
-          fxRateToUsd: initialPriceHistory.fxRateToUsd,
+          fxRateToUsd: statementPriceHistory.fxRateToUsd,
           source: 'manual',
           updatedBy: req.userId ?? null,
-          timestamp: initialPriceHistory.timestamp,
+          timestamp: statementPriceHistory.timestamp,
+        },
+      });
+    }
+
+    if (liveYahooPrice) {
+      await prisma.priceHistory.create({
+        data: {
+          assetId: asset.id,
+          priceUsd: liveYahooPrice.priceUsd,
+          nativePrice: liveYahooPrice.nativePrice,
+          nativeCurrency: asset.nativeCurrency,
+          fxRateToUsd: liveYahooPrice.fxRateToUsd,
+          source: 'yahoo',
         },
       });
     }
@@ -552,5 +601,109 @@ router.patch('/:id/nav', async (req, res, next) => {
     next(error);
   }
 });
+
+router.post(
+  '/parse-unit-trust-statement',
+  express.raw({ type: () => true, limit: '5mb' }),
+  async (req, res, next) => {
+    try {
+      const body = req.body as unknown;
+      logger.info(
+        `[parse-ut-stmt] content-type=${req.headers['content-type']} bodyType=${body?.constructor?.name} isBuffer=${Buffer.isBuffer(body)} length=${Buffer.isBuffer(body) ? body.length : 'n/a'}`
+      );
+
+      if (!Buffer.isBuffer(body) || body.length === 0) {
+        throw new AppError('PDF body is required (received empty or invalid body)', 400);
+      }
+
+      const pdfBuffer = body;
+
+      const { PDFParse } = await import('pdf-parse');
+      let extractedText: string;
+      try {
+        const pdfParser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
+        const extracted = await pdfParser.getText();
+        extractedText = extracted?.text ?? '';
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'PDF read failed';
+        throw new AppError(`Failed to read PDF: ${msg}`, 422);
+      }
+
+      if (!extractedText.trim()) {
+        throw new AppError('PDF contains no extractable text (scanned image?)', 422);
+      }
+
+      let parsed;
+      try {
+        parsed = parseUobKhStatement(extractedText);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Parse failed';
+        throw new AppError(
+          `Could not recognise statement format. Supported: UOB Kay Hian Monthly Statement. (${msg})`,
+          422
+        );
+      }
+
+      if (parsed.holdings.length === 0) {
+        throw new AppError(
+          'No unit trust holdings found in the statement. Please enter details manually.',
+          422
+        );
+      }
+
+      const yahooProvider = priceService.getProvider('yahoo');
+      const enriched = await Promise.all(
+        parsed.holdings.map(async (h) => {
+          const { priceUsd, fxRateToUsd } = await navToUsd(h.navNative, h.nativeCurrency);
+          const usdPerNative = fxRateToUsd ?? 1;
+          const totalCostUsd = h.totalCostNative * usdPerNative;
+
+          let yahooSymbol: string | null = null;
+          if (h.isin) {
+            try {
+              const match =
+                'searchByIsin' in yahooProvider
+                  ? await (
+                      yahooProvider as { searchByIsin(isin: string): Promise<{ symbol: string } | null> }
+                    ).searchByIsin(h.isin)
+                  : null;
+              yahooSymbol = match?.symbol ?? null;
+            } catch (err) {
+              logger.warn(`[parse-ut-stmt] ISIN lookup failed for ${h.isin}:`, err);
+            }
+          }
+
+          return {
+            symbol: h.symbol,
+            name: h.name,
+            isin: h.isin,
+            nativeCurrency: h.nativeCurrency,
+            units: h.units,
+            avgCostNative: h.avgCostNative,
+            navNative: h.navNative,
+            navUsd: priceUsd,
+            currentValueNative: h.currentValueNative,
+            totalCostNative: h.totalCostNative,
+            totalCostUsd,
+            fxRateToUsd,
+            navAsOfDate: parsed.periodEnd,
+            yahooSymbol,
+          };
+        })
+      );
+
+      res.json({
+        broker: parsed.broker,
+        periodEnd: parsed.periodEnd,
+        holdings: enriched,
+      });
+    } catch (error) {
+      if (!(error instanceof AppError)) {
+        logger.warn('Statement parse failed:', error);
+      }
+      next(error);
+    }
+  }
+);
 
 export default router;

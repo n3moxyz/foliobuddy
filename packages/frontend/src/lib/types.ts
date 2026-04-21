@@ -18,3 +18,26 @@ export type SnapshotImportResultItem = {
   timestamp: string;
   error?: string;
 };
+
+export interface ParsedStatementHolding {
+  symbol: string;
+  name: string;
+  isin: string;
+  nativeCurrency: string;
+  units: number;
+  avgCostNative: number;
+  navNative: number;
+  navUsd: number;
+  currentValueNative: number;
+  totalCostNative: number;
+  totalCostUsd: number;
+  fxRateToUsd: number | null;
+  navAsOfDate: string | null;
+  yahooSymbol: string | null;
+}
+
+export interface ParsedStatementResponse {
+  broker: string;
+  periodEnd: string | null;
+  holdings: ParsedStatementHolding[];
+}

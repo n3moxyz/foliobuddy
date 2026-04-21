@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { PositionForm } from '@/components/portfolio/PositionForm';
-import { UnitTrustForm } from '@/components/portfolio/UnitTrustForm';
 import { UpdateNavModal } from '@/components/portfolio/UpdateNavModal';
 import {
   Dialog,
@@ -97,7 +96,6 @@ export default function Portfolio() {
   const { data: summary } = usePortfolioSummary();
   const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showAddUnitTrust, setShowAddUnitTrust] = useState(false);
   const [navAsset, setNavAsset] = useState<Position['asset'] | null>(null);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
@@ -234,10 +232,6 @@ export default function Portfolio() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setShowAddUnitTrust(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Unit Trust
-              </DropdownMenuItem>
               <DropdownMenuItem
                 className="sm:hidden"
                 onClick={async () => {
@@ -539,18 +533,6 @@ export default function Portfolio() {
             stablesCount={sections.find((s) => s.id === 'stables')?.positions.length ?? 0}
             existingCustodyNames={existingCustodyNames}
           />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showAddUnitTrust} onOpenChange={setShowAddUnitTrust}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add Unit Trust</DialogTitle>
-            <DialogDescription>
-              Manually track a unit trust. Log NAV updates from the position row once saved.
-            </DialogDescription>
-          </DialogHeader>
-          <UnitTrustForm onSuccess={() => setShowAddUnitTrust(false)} />
         </DialogContent>
       </Dialog>
 

@@ -938,6 +938,64 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   }
   if (path === '/api/snapshots' && method === 'POST')
     return json({ ...snapshots[0], id: 'snap-demo-created' });
+  if (path.endsWith('/assets/unit-trust') && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
+      symbol: string;
+      name: string;
+      nativeCurrency?: string;
+      isin?: string | null;
+      initialNav?: number;
+      navAsOfDate?: string;
+    };
+    const ccy = (body.nativeCurrency ?? 'SGD').toUpperCase();
+    const navUsd =
+      body.initialNav === undefined
+        ? null
+        : ccy === 'USD'
+          ? body.initialNav
+          : body.initialNav * 0.741;
+    const asset = createDemoAsset({
+      coingeckoId: `ut-${body.symbol.toLowerCase()}`,
+      symbol: body.symbol,
+      name: body.name,
+      category: 'UNIT_TRUST',
+    });
+    const priceUpdatedAt = body.navAsOfDate ?? new Date().toISOString();
+    const merged: Asset = {
+      ...asset,
+      priceProvider: 'manual',
+      nativeCurrency: ccy,
+      isin: body.isin ?? null,
+      currentPriceUsd: navUsd,
+      priceUpdatedAt,
+    };
+    demoAssets = demoAssets.map((a) => (a.id === merged.id ? merged : a));
+    return json(merged, 201);
+  }
+  if (path.endsWith('/assets/parse-unit-trust-statement') && method === 'POST') {
+    return json({
+      broker: 'UOB Kay Hian (demo)',
+      periodEnd: new Date().toISOString(),
+      holdings: [
+        {
+          symbol: 'LIONGLOB',
+          name: 'LionGlobal Singapore Dividend Equity SGD (Decumulation)',
+          isin: 'SGXZ58947870',
+          nativeCurrency: 'SGD',
+          units: 68153.43,
+          avgCostNative: 1.47474,
+          navNative: 1.421,
+          navUsd: 1.053,
+          currentValueNative: 96846.02,
+          totalCostNative: 100508.59,
+          totalCostUsd: 74450.06,
+          fxRateToUsd: 0.741,
+          navAsOfDate: new Date().toISOString(),
+          yahooSymbol: '0P0001OPAN.SI',
+        },
+      ],
+    });
+  }
   if (path.startsWith('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method))
     return json({ ok: true });
 

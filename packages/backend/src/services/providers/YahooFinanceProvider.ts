@@ -157,6 +157,38 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     return prices;
   }
 
+  async searchByIsin(isin: string): Promise<ProviderSearchResult | null> {
+    const trimmed = isin.trim();
+    if (!trimmed) return null;
+    const cacheKey = `isin:${trimmed.toUpperCase()}`;
+    const cached = this.searchCache.get(cacheKey);
+    if (cached && cached.length > 0) return cached[0];
+
+    const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(trimmed)}&quotesCount=5&newsCount=0`;
+    const data = await this.fetchJson<YahooSearchResponse>(url);
+    if (!data?.quotes || data.quotes.length === 0) return null;
+
+    const preferredTypes = new Set(['MUTUALFUND', 'ETF', 'EQUITY']);
+    const best = data.quotes.find(
+      (q) =>
+        q.quoteType &&
+        preferredTypes.has(q.quoteType) &&
+        this.isSupportedCurrency(this.inferCurrencyFromSymbol(q.symbol))
+    );
+    if (!best) return null;
+
+    const result: ProviderSearchResult = {
+      providerAssetId: best.symbol,
+      symbol: best.symbol,
+      name: best.longname || best.shortname || best.symbol,
+      exchange: best.exchDisp || best.exchange || null,
+      nativeCurrency: this.inferCurrencyFromSymbol(best.symbol),
+      rank: null,
+    };
+    this.searchCache.set(cacheKey, [result]);
+    return result;
+  }
+
   async search(query: string): Promise<ProviderSearchResult[]> {
     const cacheKey = query.toLowerCase();
     const cached = this.searchCache.get(cacheKey);

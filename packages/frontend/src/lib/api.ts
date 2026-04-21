@@ -22,6 +22,7 @@ import type {
   InvestorReport,
   MonthlyReturn,
   PaginatedResponse,
+  ParsedStatementResponse,
   PerformancePoint,
   Performer,
   PortfolioSummary,
@@ -155,11 +156,29 @@ export const api = {
     isin?: string | null;
     initialNav?: number;
     navAsOfDate?: string;
+    yahooSymbol?: string | null;
   }) =>
     request<Asset>('/assets/unit-trust', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  parseUnitTrustStatement: async (file: File): Promise<ParsedStatementResponse> => {
+    const token = getToken ? await getToken() : null;
+    const arrayBuffer = await file.arrayBuffer();
+    const response = await fetch(`${API_BASE}/assets/parse-unit-trust-statement`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/pdf',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: arrayBuffer,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Parse failed' }));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
+    return response.json();
+  },
   updateAssetNav: (id: string, data: { navPrice: number; asOfDate?: string; notes?: string }) =>
     request<Asset>(`/assets/${id}/nav`, {
       method: 'PATCH',

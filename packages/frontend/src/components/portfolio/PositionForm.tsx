@@ -15,6 +15,7 @@ import {
   useSearchAssets,
   useCreateAssetFromCoinGecko,
   useCreateAssetFromProvider,
+  useCreateUnitTrust,
 } from '@/hooks/useAssets';
 import { useCreatePosition, useUpdatePosition } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
@@ -31,7 +32,8 @@ import { PositionImportTab } from './PositionImportTab';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 import { CustodyCheckbox } from './CustodyCheckbox';
 import { formatNumber, isStablecoinCategory } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import { Check, Upload } from 'lucide-react';
+import type { ParsedStatementHolding } from '@/lib/types';
 
 const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
 const LEGACY_CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
@@ -70,7 +72,7 @@ interface PositionFormProps {
   existingCustodyNames?: string[];
 }
 
-type CategoryType = 'crypto' | 'cash' | 'equity';
+type CategoryType = 'crypto' | 'cash' | 'equity' | 'unit_trust';
 type FormMode = 'add' | 'import';
 
 type ImportedPosition = BulkImportPosition;
@@ -126,9 +128,29 @@ export function PositionForm({
   // Category state
   const [category, setCategory] = useState<CategoryType>(() => {
     if (position?.asset.category === 'EQUITY') return 'equity';
+    if (position?.asset.category === 'UNIT_TRUST') return 'unit_trust';
     if (isStablecoinCategory(position?.asset.category)) return 'cash';
     return 'crypto';
   });
+
+  // Unit Trust–specific form state (only used when category === 'unit_trust' and not editing)
+  const [utSymbol, setUtSymbol] = useState('');
+  const [utName, setUtName] = useState('');
+  const [utNativeCurrency, setUtNativeCurrency] = useState<'SGD' | 'USD'>('SGD');
+  const [utIsin, setUtIsin] = useState('');
+  const [utFactsheetUrl, setUtFactsheetUrl] = useState('');
+  const [utNav, setUtNav] = useState('');
+  const [utNavAsOfDate, setUtNavAsOfDate] = useState(new Date().toISOString().slice(0, 10));
+  const [utUploading, setUtUploading] = useState(false);
+  const [utUploadError, setUtUploadError] = useState<string | null>(null);
+  const [utPrefilledFrom, setUtPrefilledFrom] = useState<string | null>(null);
+  const [utMultipleHoldings, setUtMultipleHoldings] = useState<ParsedStatementHolding[] | null>(
+    null
+  );
+  // usdPerSgd: 1 SGD = x USD. Used to convert SGD cost input to USD on submit.
+  // Defaults to ~0.74 (≈ 1/1.35). Overwritten by the PDF parse response when available.
+  const [utUsdPerNative, setUtUsdPerNative] = useState<number>(1 / 1.35);
+  const [utYahooSymbol, setUtYahooSymbol] = useState<string | null>(null);
 
   // Error state
   const [error, setError] = useState<string | null>(null);
@@ -200,6 +222,7 @@ export function PositionForm({
   );
   const createAssetFromCoinGecko = useCreateAssetFromCoinGecko();
   const createAssetFromProvider = useCreateAssetFromProvider();
+  const createUnitTrust = useCreateUnitTrust();
   const createPosition = useCreatePosition();
   const updatePosition = useUpdatePosition();
 
@@ -208,14 +231,20 @@ export function PositionForm({
     createPosition.isPending ||
     updatePosition.isPending ||
     createAssetFromCoinGecko.isPending ||
-    createAssetFromProvider.isPending;
+    createAssetFromProvider.isPending ||
+    createUnitTrust.isPending;
 
   // Form validation
   const isFormValid = useMemo(() => {
-    if (!assetId) return false;
     if (!quantity || parseFloat(quantity) <= 0) return false;
+    if (category === 'unit_trust' && !isEditing) {
+      if (!utSymbol.trim() || !utName.trim()) return false;
+      if (!utNav || parseFloat(utNav) <= 0) return false;
+      return true;
+    }
+    if (!assetId) return false;
     return true;
-  }, [assetId, quantity]);
+  }, [assetId, quantity, category, isEditing, utSymbol, utName, utNav]);
 
   const handlePaste = async () => {
     try {
@@ -525,7 +554,9 @@ export function PositionForm({
       setQuantity('');
       setTotalCost('');
       setError(null);
-      setStorageType(category === 'equity' ? 'BROKERAGE' : 'CEX');
+      setStorageType(
+        category === 'equity' || category === 'unit_trust' ? 'BROKERAGE' : 'CEX'
+      );
     }
   }, [category, isEditing]);
 
@@ -569,6 +600,54 @@ export function PositionForm({
     if (!checked) {
       setCustodyOf('');
       setAddingNewName(false);
+    }
+  };
+
+  const applyParsedHolding = (h: ParsedStatementHolding, broker: string) => {
+    setUtSymbol(h.symbol);
+    setUtName(h.name);
+    setUtIsin(h.isin);
+    const ccy = h.nativeCurrency === 'USD' ? 'USD' : 'SGD';
+    setUtNativeCurrency(ccy);
+    setUtNav(h.navNative.toString());
+    if (h.navAsOfDate) {
+      setUtNavAsOfDate(new Date(h.navAsOfDate).toISOString().slice(0, 10));
+    }
+    setQuantity(h.units.toString());
+    setCostInputMode('total');
+    // Prefill total cost in native currency when non-USD; store fx rate for later conversion
+    const usdPerNative = h.fxRateToUsd ?? (ccy === 'USD' ? 1 : 1 / 1.35);
+    setUtUsdPerNative(usdPerNative);
+    setTotalCost(
+      ccy === 'USD' ? h.totalCostUsd.toFixed(2) : h.totalCostNative.toFixed(2)
+    );
+    setStorageLocation(broker.includes('UOB') ? 'UOB Kay Hian' : 'Others');
+    setUtPrefilledFrom(broker);
+    setUtMultipleHoldings(null);
+    setUtYahooSymbol(h.yahooSymbol ?? null);
+  };
+
+  const handleUploadStatement = async (file: File) => {
+    setUtUploadError(null);
+    setUtUploading(true);
+    try {
+      const result = await api.parseUnitTrustStatement(file);
+      if (!result || !Array.isArray(result.holdings)) {
+        throw new Error('Server returned an unexpected response');
+      }
+      if (result.holdings.length === 0) {
+        throw new Error('No holdings found in the statement');
+      }
+      if (result.holdings.length === 1) {
+        applyParsedHolding(result.holdings[0], result.broker);
+      } else {
+        setUtMultipleHoldings(result.holdings);
+        setUtPrefilledFrom(result.broker);
+      }
+    } catch (err) {
+      setUtUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUtUploading(false);
     }
   };
 
@@ -637,8 +716,8 @@ export function PositionForm({
       return;
     }
 
-    // Check position limit before submitting (crypto + stables only; equities unbounded)
-    if (!isEditing && category !== 'equity') {
+    // Check position limit before submitting (crypto + stables only; equities + unit trusts unbounded)
+    if (!isEditing && (category === 'crypto' || category === 'cash')) {
       const currentCount = category === 'crypto' ? cryptoCount : stablesCount;
       if (currentCount >= MAX_POSITIONS_PER_CATEGORY) {
         setError(
@@ -646,6 +725,64 @@ export function PositionForm({
         );
         return;
       }
+    }
+
+    // Unit Trust create path: create asset + initial NAV, then create position
+    if (!isEditing && category === 'unit_trust') {
+      const navNum = parseFloat(utNav);
+      const qtyNum = parseFloat(quantity);
+      const costNumInput = parseFloat(calculatedTotalCost);
+      if (!(navNum > 0)) {
+        setValidationError('NAV must be positive');
+        return;
+      }
+      if (!(qtyNum > 0)) {
+        setValidationError('Please enter a valid units quantity');
+        return;
+      }
+      if (!(costNumInput >= 0)) {
+        setValidationError('Total cost must be a non-negative number');
+        return;
+      }
+
+      // Inputs are in the native currency (SGD or USD). The backend stores USD.
+      const totalCostUsd =
+        utNativeCurrency === 'USD' ? costNumInput : costNumInput * utUsdPerNative;
+
+      const finalStorageLocation =
+        storageLocation === 'Others' ? customLocation : storageLocation;
+
+      try {
+        const newAsset = await createUnitTrust.mutateAsync({
+          symbol: utSymbol.trim().toUpperCase(),
+          name: utName.trim(),
+          nativeCurrency: utNativeCurrency,
+          isin: utIsin.trim() || undefined,
+          factsheetUrl: utFactsheetUrl.trim() || undefined,
+          initialNav: navNum,
+          navAsOfDate: new Date(utNavAsOfDate).toISOString(),
+          yahooSymbol: utYahooSymbol ?? undefined,
+        });
+
+        if (!newAsset?.id) {
+          throw new Error('Unit trust asset creation did not return an id');
+        }
+
+        await createPosition.mutateAsync({
+          assetId: newAsset.id,
+          quantity: qtyNum,
+          avgCostUsd: qtyNum > 0 ? totalCostUsd / qtyNum : 0,
+          storageType: 'BROKERAGE',
+          storageLocation: finalStorageLocation || undefined,
+          notes: notes.trim() || undefined,
+          custodyOf: isCustody ? custodyOf.trim() || 'Someone' : undefined,
+        });
+        handleCustodySave();
+        onSuccess();
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to create unit trust');
+      }
+      return;
     }
 
     // Determine final storage location value
@@ -953,13 +1090,184 @@ export function PositionForm({
                       <SelectItem value="crypto">Crypto</SelectItem>
                       <SelectItem value="cash">Stables</SelectItem>
                       <SelectItem value="equity">Equity</SelectItem>
+                      <SelectItem value="unit_trust">Unit Trust</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
 
-              {/* Asset Selection - Different UI for Crypto/Equity vs Cash */}
-              {category !== 'cash' ? (
+              {/* Asset Selection - Different UI for Crypto/Equity vs Cash vs Unit Trust */}
+              {category === 'unit_trust' && !isEditing ? (
+                <div className="space-y-3">
+                  <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Upload monthly statement (PDF)</p>
+                        <p className="text-xs text-muted-foreground">
+                          We&apos;ll auto-fill the details below. Supports UOB Kay Hian.
+                        </p>
+                      </div>
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          className="sr-only"
+                          disabled={utUploading}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleUploadStatement(file);
+                            e.target.value = '';
+                          }}
+                        />
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                          <Upload className="h-3.5 w-3.5" />
+                          {utUploading ? 'Parsing...' : 'Upload PDF'}
+                        </span>
+                      </label>
+                    </div>
+                    {utUploadError && (
+                      <p className="mt-2 text-xs text-destructive">{utUploadError}</p>
+                    )}
+                  </div>
+
+                  {utMultipleHoldings && (
+                    <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+                      <p className="text-sm font-medium">
+                        Multiple holdings found — pick one to auto-fill:
+                      </p>
+                      <div className="space-y-1">
+                        {utMultipleHoldings.map((h) => (
+                          <button
+                            key={h.isin}
+                            type="button"
+                            onClick={() => applyParsedHolding(h, utPrefilledFrom || '')}
+                            className="w-full rounded border bg-background p-2 text-left text-sm hover:bg-accent"
+                          >
+                            <div className="font-medium">{h.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatNumber(h.units, 2)} units · NAV {h.nativeCurrency}{' '}
+                              {h.navNative} · {h.isin}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {utPrefilledFrom && !utMultipleHoldings && (
+                    <div className="space-y-1">
+                      <div className="rounded-md border border-emerald-500/30 bg-emerald-50 p-2 text-xs text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+                        Pre-filled from {utPrefilledFrom} statement — please review before saving.
+                      </div>
+                      {utYahooSymbol && (
+                        <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-primary">
+                          Auto-refreshing via Yahoo Finance ({utYahooSymbol}). Future NAV updates
+                          will be pulled automatically.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="ut-symbol" className="text-sm">
+                        Symbol / Code
+                      </Label>
+                      <Input
+                        id="ut-symbol"
+                        value={utSymbol}
+                        onChange={(e) => setUtSymbol(e.target.value)}
+                        placeholder="e.g. AMOVA"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="ut-currency" className="text-sm">
+                        Currency
+                      </Label>
+                      <Select
+                        value={utNativeCurrency}
+                        onValueChange={(v) => setUtNativeCurrency(v as 'SGD' | 'USD')}
+                      >
+                        <SelectTrigger id="ut-currency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SGD">SGD</SelectItem>
+                          <SelectItem value="USD">USD</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="ut-name" className="text-sm">
+                      Fund Name
+                    </Label>
+                    <Input
+                      id="ut-name"
+                      value={utName}
+                      onChange={(e) => setUtName(e.target.value)}
+                      placeholder="e.g. AMOVA Singapore Equity"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="ut-isin" className="text-sm">
+                        ISIN (Optional)
+                      </Label>
+                      <Input
+                        id="ut-isin"
+                        value={utIsin}
+                        onChange={(e) => setUtIsin(e.target.value)}
+                        placeholder="SG9999000001"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="ut-factsheet" className="text-sm">
+                        Factsheet URL (Optional)
+                      </Label>
+                      <Input
+                        id="ut-factsheet"
+                        value={utFactsheetUrl}
+                        onChange={(e) => setUtFactsheetUrl(e.target.value)}
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="ut-nav" className="text-sm">
+                        NAV ({utNativeCurrency})
+                      </Label>
+                      <Input
+                        id="ut-nav"
+                        type="number"
+                        step="any"
+                        value={utNav}
+                        onChange={(e) => setUtNav(e.target.value)}
+                        placeholder="1.234"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="ut-nav-date" className="text-sm">
+                        NAV Date
+                      </Label>
+                      <Input
+                        id="ut-nav-date"
+                        type="date"
+                        value={utNavAsOfDate}
+                        onChange={(e) => setUtNavAsOfDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : category !== 'cash' ? (
                 <div className="space-y-1">
                   <Label htmlFor="pos-asset" className="text-sm">
                     Asset
@@ -1038,7 +1346,13 @@ export function PositionForm({
               {/* Quantity / Amount */}
               <div className="space-y-1">
                 <Label htmlFor="quantity" className="text-sm">
-                  {category === 'cash' ? 'Amount' : category === 'equity' ? 'Shares' : 'Quantity'}
+                  {category === 'cash'
+                    ? 'Amount'
+                    : category === 'equity'
+                      ? 'Shares'
+                      : category === 'unit_trust'
+                        ? 'Units'
+                        : 'Quantity'}
                 </Label>
                 <Input
                   id="quantity"
@@ -1097,7 +1411,7 @@ export function PositionForm({
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label htmlFor="totalCost" className="text-sm">
-                        Total Cost (USD)
+                        Total Cost ({category === 'unit_trust' ? utNativeCurrency : 'USD'})
                       </Label>
                       <Input
                         id="totalCost"
@@ -1112,7 +1426,7 @@ export function PositionForm({
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="avgCost" className="text-sm">
-                        Average Cost (USD)
+                        Average Cost ({category === 'unit_trust' ? utNativeCurrency : 'USD'})
                       </Label>
                       <Input
                         id="avgCost"
@@ -1126,6 +1440,12 @@ export function PositionForm({
                       />
                     </div>
                   </div>
+                  {category === 'unit_trust' && utNativeCurrency !== 'USD' && (
+                    <p className="text-xs text-muted-foreground">
+                      Stored internally as USD ({utUsdPerNative.toFixed(4)} USD per{' '}
+                      {utNativeCurrency}).
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1144,7 +1464,10 @@ export function PositionForm({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(category === 'equity' ? EQUITY_STORAGE_TYPES : STORAGE_TYPES).map((type) => (
+                    {(category === 'equity' || category === 'unit_trust'
+                      ? EQUITY_STORAGE_TYPES
+                      : STORAGE_TYPES
+                    ).map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
                       </SelectItem>
