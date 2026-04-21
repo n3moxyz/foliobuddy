@@ -8,8 +8,10 @@ import {
   MAX_POSITIONS_PER_CATEGORY,
   ASSET_CATEGORIES,
   STORAGE_TYPES,
-  STABLECOIN_CATEGORIES,
   StorageType,
+  categoryGroup,
+  CATEGORIES_IN_GROUP,
+  CategoryGroup,
 } from '../lib/constants.js';
 
 const router = Router();
@@ -222,20 +224,24 @@ router.post('/', async (req, res, next) => {
       throw new AppError('Asset not found', 404);
     }
 
-    const isStablecoin = (STABLECOIN_CATEGORIES as string[]).includes(asset.category);
+    const group = categoryGroup(asset.category);
     const categoryPositions = await prisma.position.findMany({
       where: {
         userId: req.userId!,
         custodyOf: null,
-        asset: {
-          category: isStablecoin ? { in: STABLECOIN_CATEGORIES } : { notIn: STABLECOIN_CATEGORIES },
-        },
+        asset: { category: { in: CATEGORIES_IN_GROUP[group] } },
       },
     });
 
     if (categoryPositions.length >= MAX_POSITIONS_PER_CATEGORY) {
+      const groupLabel: Record<CategoryGroup, string> = {
+        crypto: 'crypto',
+        stables: 'stables',
+        equities: 'equities',
+        unit_trusts: 'unit-trust',
+      };
       throw new AppError(
-        `Maximum ${MAX_POSITIONS_PER_CATEGORY} ${isStablecoin ? 'stables' : 'crypto'} positions allowed`,
+        `Maximum ${MAX_POSITIONS_PER_CATEGORY} ${groupLabel[group]} positions allowed`,
         400
       );
     }

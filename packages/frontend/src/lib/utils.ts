@@ -99,3 +99,18 @@ export function getPnLColorClass(value: number | null | undefined): string {
 export function isStablecoinCategory(category: string | undefined | null): boolean {
   return category === 'STABLECOIN' || category === 'CASH';
 }
+
+/** Category groups — keep in sync with backend `categoryGroup()` in constants.ts */
+export type CategoryGroup = 'crypto' | 'stables' | 'equities' | 'unit_trusts';
+
+export function categoryGroup(category: string | undefined | null): CategoryGroup {
+  if (category === 'STABLECOIN' || category === 'CASH') return 'stables';
+  if (category === 'EQUITY') return 'equities';
+  if (category === 'UNIT_TRUST') return 'unit_trusts';
+  return 'crypto';
+}
+
+/** True only for true crypto categories — excludes stables, equities, unit trusts */
+export function isCryptoCategory(category: string | undefined | null): boolean {
+  return categoryGroup(category) === 'crypto';
+}

@@ -104,7 +104,7 @@ const v1Router = express.Router();
 
 v1Router.use('/health', healthRouter);
 v1Router.use('/positions', ensureUser, positionsRouter);
-v1Router.use('/assets', assetsRouter);
+v1Router.use('/assets', ensureUser, assetsRouter);
 v1Router.use('/trades', ensureUser, tradesRouter);
 v1Router.use('/investors', ensureUser, investorsRouter);
 v1Router.use('/snapshots', ensureUser, snapshotsRouter);

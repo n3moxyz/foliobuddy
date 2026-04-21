@@ -84,6 +84,32 @@ export const STABLECOIN_CATEGORIES: AssetCategory[] = [
   AssetCategory.CASH,
 ];
 
+/** Category groups — single source of truth for position-limit and UI bucketing */
+export const CategoryGroup = {
+  CRYPTO: 'crypto',
+  STABLES: 'stables',
+  EQUITIES: 'equities',
+  UNIT_TRUSTS: 'unit_trusts',
+} as const;
+export type CategoryGroup = (typeof CategoryGroup)[keyof typeof CategoryGroup];
+
+export function categoryGroup(category: string): CategoryGroup {
+  if (category === AssetCategory.STABLECOIN || category === AssetCategory.CASH) {
+    return CategoryGroup.STABLES;
+  }
+  if (category === AssetCategory.EQUITY) return CategoryGroup.EQUITIES;
+  if (category === AssetCategory.UNIT_TRUST) return CategoryGroup.UNIT_TRUSTS;
+  return CategoryGroup.CRYPTO;
+}
+
+/** Asset categories that belong to each group — for Prisma `in` filters */
+export const CATEGORIES_IN_GROUP: Record<CategoryGroup, AssetCategory[]> = {
+  [CategoryGroup.STABLES]: [AssetCategory.STABLECOIN, AssetCategory.CASH],
+  [CategoryGroup.EQUITIES]: [AssetCategory.EQUITY],
+  [CategoryGroup.UNIT_TRUSTS]: [AssetCategory.UNIT_TRUST],
+  [CategoryGroup.CRYPTO]: [AssetCategory.LIQUID_CRYPTO, AssetCategory.NFT, AssetCategory.ANGEL],
+};
+
 /** Price provider identifier stored on Asset.priceProvider */
 export const PriceProvider = {
   COINGECKO: 'coingecko',

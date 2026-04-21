@@ -224,9 +224,9 @@ export function startPriceHistoryCleanupJob(): void {
 
       const result = await prisma.priceHistory.deleteMany({
         where: {
-          timestamp: {
-            lt: ninetyDaysAgo,
-          },
+          timestamp: { lt: ninetyDaysAgo },
+          // Keep manual NAV entries indefinitely — unit-trust history would otherwise go stale
+          source: { not: 'manual' },
         },
       });
 
