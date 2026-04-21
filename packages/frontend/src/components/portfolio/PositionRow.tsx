@@ -1,7 +1,15 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { formatCurrency, formatNumber, formatPercent, getPnLColorClass, isStablecoinCategory } from '@/lib/utils';
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercent,
+  getPnLColorClass,
+  getPriceAgeInfo,
+  isStablecoinCategory,
+  priceAgeClass,
+} from '@/lib/utils';
 import { Pencil, Trash2, Copy, Check, RefreshCw } from 'lucide-react';
 import type { Position } from '@/lib/types';
 
@@ -52,6 +60,8 @@ export const PositionRow = React.memo(function PositionRow({
 
   const totalCost = position.quantity * position.avgCostUsd;
   const isStable = isStablecoinCategory(position.asset.category);
+  const isManual = position.asset.priceProvider === 'manual';
+  const ageInfo = isManual ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
 
   // Match PositionTable: hidden on mobile unless toggle is on
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
@@ -73,6 +83,18 @@ export const PositionRow = React.memo(function PositionRow({
         <div className="truncate">
           <p className="font-medium text-sm">{position.asset.symbol}</p>
           <p className="text-xs text-muted-foreground truncate">{position.asset.name}</p>
+          {ageInfo && (
+            <p
+              className={`text-xs ${priceAgeClass(ageInfo.severity)} truncate`}
+              title={
+                position.asset.priceUpdatedAt
+                  ? `NAV updated ${new Date(position.asset.priceUpdatedAt).toLocaleString()}`
+                  : 'NAV never set'
+              }
+            >
+              NAV {ageInfo.label}
+            </p>
+          )}
         </div>
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>

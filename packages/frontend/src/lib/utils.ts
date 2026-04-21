@@ -114,3 +114,30 @@ export function categoryGroup(category: string | undefined | null): CategoryGrou
 export function isCryptoCategory(category: string | undefined | null): boolean {
   return categoryGroup(category) === 'crypto';
 }
+
+export type PriceAgeSeverity = 'fresh' | 'aging' | 'stale' | 'unknown';
+
+export interface PriceAgeInfo {
+  days: number | null;
+  label: string;
+  severity: PriceAgeSeverity;
+}
+
+export function getPriceAgeInfo(priceUpdatedAt: string | null | undefined): PriceAgeInfo {
+  if (!priceUpdatedAt) return { days: null, label: 'Never updated', severity: 'stale' };
+  const then = new Date(priceUpdatedAt).getTime();
+  if (Number.isNaN(then)) return { days: null, label: 'Unknown', severity: 'unknown' };
+  const days = Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
+  if (days <= 0) return { days: 0, label: 'Today', severity: 'fresh' };
+  if (days === 1) return { days, label: '1d ago', severity: 'fresh' };
+  if (days < 7) return { days, label: `${days}d ago`, severity: 'fresh' };
+  if (days < 30) return { days, label: `${days}d ago`, severity: 'aging' };
+  return { days, label: `${days}d ago`, severity: 'stale' };
+}
+
+export function priceAgeClass(severity: PriceAgeSeverity): string {
+  if (severity === 'fresh') return 'text-muted-foreground';
+  if (severity === 'aging') return 'text-amber-500';
+  if (severity === 'stale') return 'text-loss';
+  return 'text-muted-foreground';
+}

@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useUpdateAssetNav } from '@/hooks/useAssets';
+import { getPriceAgeInfo, priceAgeClass } from '@/lib/utils';
 import type { Asset } from '@/lib/types';
 
 interface UpdateNavModalProps {
@@ -61,6 +62,17 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
               : ''}
           </DialogDescription>
         </DialogHeader>
+        {asset && (
+          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Last NAV</span>
+            <span className="font-mono">
+              {asset.currentPriceUsd !== null ? `$${asset.currentPriceUsd.toFixed(4)}` : '—'}{' '}
+              <span className={priceAgeClass(getPriceAgeInfo(asset.priceUpdatedAt).severity)}>
+                ({getPriceAgeInfo(asset.priceUpdatedAt).label})
+              </span>
+            </span>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="nav-price" className="text-sm">
