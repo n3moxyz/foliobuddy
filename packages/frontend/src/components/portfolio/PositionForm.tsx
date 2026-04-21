@@ -9,10 +9,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
+import {
+  useAssets,
+  useSearchCoins,
+  useSearchAssets,
+  useCreateAssetFromCoinGecko,
+  useCreateAssetFromProvider,
+} from '@/hooks/useAssets';
 import { useCreatePosition, useUpdatePosition } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
-import type { Asset, BulkImportPosition, CoinSearchResult, Position } from '@/lib/types';
+import type {
+  Asset,
+  BulkImportPosition,
+  CoinSearchResult,
+  Position,
+  ProviderSearchResult,
+} from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
@@ -58,7 +70,7 @@ interface PositionFormProps {
   existingCustodyNames?: string[];
 }
 
-type CategoryType = 'crypto' | 'cash';
+type CategoryType = 'crypto' | 'cash' | 'equity';
 type FormMode = 'add' | 'import';
 
 type ImportedPosition = BulkImportPosition;
@@ -68,9 +80,18 @@ const STORAGE_TYPES = [
   { value: 'WALLET', label: 'Onchain' },
 ];
 
+const EQUITY_STORAGE_TYPES = [{ value: 'BROKERAGE', label: 'Brokerage' }];
+
 // Alphabetically sorted, with Others at the end
 const CEX_LOCATIONS = ['Binance', 'Bybit', 'Coinbase', 'Others'];
 const ONCHAIN_LOCATIONS = ['Ledger', 'Metamask', 'Rabby', 'SOL wallet', 'Others'];
+const BROKERAGE_LOCATIONS = ['FSMOne', 'Tiger', 'UOB Kay Hian', 'Others'];
+
+function locationOptionsForStorageType(storageType: string | null | undefined): string[] {
+  if (storageType === 'CEX') return CEX_LOCATIONS;
+  if (storageType === 'BROKERAGE') return BROKERAGE_LOCATIONS;
+  return ONCHAIN_LOCATIONS;
+}
 
 // Custom order: USDT, USDC, USDe, FDUSD, DAI
 const TOP_STABLECOINS = [
@@ -104,9 +125,8 @@ export function PositionForm({
 
   // Category state
   const [category, setCategory] = useState<CategoryType>(() => {
-    if (isStablecoinCategory(position?.asset.category)) {
-      return 'cash';
-    }
+    if (position?.asset.category === 'EQUITY') return 'equity';
+    if (isStablecoinCategory(position?.asset.category)) return 'cash';
     return 'crypto';
   });
 
@@ -137,8 +157,7 @@ export function PositionForm({
   const [storageLocation, setStorageLocation] = useState(() => {
     if (!position?.storageLocation) return '';
     const loc = position.storageLocation;
-    const isCex = position.storageType === 'CEX';
-    const options = isCex ? CEX_LOCATIONS : ONCHAIN_LOCATIONS;
+    const options = locationOptionsForStorageType(position.storageType);
     if (!options.slice(0, -1).includes(loc)) {
       return 'Others';
     }
@@ -147,8 +166,7 @@ export function PositionForm({
   const [customLocation, setCustomLocation] = useState(() => {
     if (!position?.storageLocation) return '';
     const loc = position.storageLocation;
-    const isCex = position.storageType === 'CEX';
-    const options = isCex ? CEX_LOCATIONS : ONCHAIN_LOCATIONS;
+    const options = locationOptionsForStorageType(position.storageType);
     if (!options.slice(0, -1).includes(loc)) {
       return loc;
     }
@@ -173,14 +191,24 @@ export function PositionForm({
 
   // Hooks
   const { data: assets } = useAssets();
-  const { data: searchResults, isLoading: searchLoading } = useSearchCoins(searchQuery);
+  const { data: searchResults, isLoading: searchLoading } = useSearchCoins(
+    category === 'equity' ? '' : searchQuery
+  );
+  const { data: equitySearchResults, isLoading: equitySearchLoading } = useSearchAssets(
+    category === 'equity' ? searchQuery : '',
+    { category: 'EQUITY', provider: 'yahoo' }
+  );
   const createAssetFromCoinGecko = useCreateAssetFromCoinGecko();
+  const createAssetFromProvider = useCreateAssetFromProvider();
   const createPosition = useCreatePosition();
   const updatePosition = useUpdatePosition();
 
   const isEditing = !!position;
   const isLoading =
-    createPosition.isPending || updatePosition.isPending || createAssetFromCoinGecko.isPending;
+    createPosition.isPending ||
+    updatePosition.isPending ||
+    createAssetFromCoinGecko.isPending ||
+    createAssetFromProvider.isPending;
 
   // Form validation
   const isFormValid = useMemo(() => {
@@ -320,12 +348,14 @@ export function PositionForm({
 
     let filtered = assets;
 
-    // Filter by category - exclude stablecoins for crypto
     if (category === 'crypto') {
-      filtered = filtered.filter((a) => !isStablecoinCategory(a.category));
+      filtered = filtered.filter(
+        (a) => !isStablecoinCategory(a.category) && a.category !== 'EQUITY'
+      );
+    } else if (category === 'equity') {
+      filtered = filtered.filter((a) => a.category === 'EQUITY');
     }
 
-    // Filter by search query
     if (searchQuery.length > 0) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -336,20 +366,21 @@ export function PositionForm({
     return filtered;
   }, [assets, category, searchQuery]);
 
-  // Combine existing assets with search results (for crypto)
+  // Combine existing assets with search results (for crypto + equity)
   const combinedResults = useMemo(() => {
-    if (category !== 'crypto') return [];
+    if (category === 'cash') return [];
 
-    const results: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: CoinSearchResult }> =
-      [];
+    const results: Array<{
+      type: 'existing' | 'search';
+      asset?: Asset;
+      coin?: CoinSearchResult | ProviderSearchResult;
+    }> = [];
 
-    // Add existing portfolio assets first
     filteredAssets.forEach((asset) => {
       results.push({ type: 'existing', asset });
     });
 
-    // Add CoinGecko search results that aren't already in portfolio
-    if (searchResults && searchQuery.length >= 1) {
+    if (category === 'crypto' && searchResults && searchQuery.length >= 1) {
       searchResults.forEach((coin) => {
         const existsInPortfolio = assets?.some(
           (a) => a.coingeckoId === coin.id || a.symbol.toLowerCase() === coin.symbol.toLowerCase()
@@ -360,8 +391,21 @@ export function PositionForm({
       });
     }
 
+    if (category === 'equity' && equitySearchResults && searchQuery.length >= 1) {
+      equitySearchResults.forEach((candidate) => {
+        const existsInPortfolio = assets?.some(
+          (a) =>
+            (a.priceProvider === 'yahoo' && a.providerAssetId === candidate.providerAssetId) ||
+            a.symbol.toLowerCase() === candidate.symbol.toLowerCase()
+        );
+        if (!existsInPortfolio) {
+          results.push({ type: 'search', coin: candidate });
+        }
+      });
+    }
+
     return results;
-  }, [filteredAssets, searchResults, searchQuery, category, assets]);
+  }, [filteredAssets, searchResults, equitySearchResults, searchQuery, category, assets]);
 
   const handleSelectExistingAsset = (asset: Asset) => {
     setAssetId(asset.id);
@@ -370,13 +414,26 @@ export function PositionForm({
     setShowDropdown(false);
   };
 
-  const handleSelectCoin = async (coin: CoinSearchResult) => {
-    const asset = await createAssetFromCoinGecko.mutateAsync({
-      coingeckoId: coin.id,
-      symbol: coin.symbol,
-      name: coin.name,
-      category: category === 'cash' ? 'STABLECOIN' : 'LIQUID_CRYPTO',
-    });
+  const handleSelectCoin = async (candidate: CoinSearchResult | ProviderSearchResult) => {
+    let asset: Asset;
+    if ('provider' in candidate) {
+      asset = await createAssetFromProvider.mutateAsync({
+        provider: candidate.provider,
+        providerAssetId: candidate.providerAssetId,
+        symbol: candidate.symbol,
+        name: candidate.name,
+        category: 'EQUITY',
+        nativeCurrency: candidate.nativeCurrency ?? undefined,
+        exchange: candidate.exchange ?? null,
+      });
+    } else {
+      asset = await createAssetFromCoinGecko.mutateAsync({
+        coingeckoId: candidate.id,
+        symbol: candidate.symbol,
+        name: candidate.name,
+        category: category === 'cash' ? 'STABLECOIN' : 'LIQUID_CRYPTO',
+      });
+    }
 
     setAssetId(asset.id);
     setSelectedAsset(asset);
@@ -465,6 +522,7 @@ export function PositionForm({
       setQuantity('');
       setTotalCost('');
       setError(null);
+      setStorageType(category === 'equity' ? 'BROKERAGE' : 'CEX');
     }
   }, [category, isEditing]);
 
@@ -483,7 +541,7 @@ export function PositionForm({
     }
   }, [storageType, isEditing]);
 
-  const locationOptions = storageType === 'CEX' ? CEX_LOCATIONS : ONCHAIN_LOCATIONS;
+  const locationOptions = locationOptionsForStorageType(storageType);
 
   const handleCustodySave = () => {
     if (isCustody && custodyOf.trim()) {
@@ -576,8 +634,8 @@ export function PositionForm({
       return;
     }
 
-    // Check position limit before submitting
-    if (!isEditing) {
+    // Check position limit before submitting (crypto + stables only; equities unbounded)
+    if (!isEditing && category !== 'equity') {
       const currentCount = category === 'crypto' ? cryptoCount : stablesCount;
       if (currentCount >= MAX_POSITIONS_PER_CATEGORY) {
         setError(
@@ -593,8 +651,8 @@ export function PositionForm({
     const data = {
       assetId,
       quantity: parseFloat(quantity),
-      avgCostUsd: category === 'crypto' ? parseFloat(avgCostUsd) || 0 : 1,
-      storageType: storageType as 'WALLET' | 'CEX' | 'DEFI' | 'BANK',
+      avgCostUsd: category === 'cash' ? 1 : parseFloat(avgCostUsd) || 0,
+      storageType: storageType as 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE',
       storageLocation: finalStorageLocation || undefined,
       notes: notes.trim() || undefined,
       custodyOf: isCustody ? custodyOf.trim() || 'Someone' : isEditing ? '' : undefined,
@@ -889,13 +947,14 @@ export function PositionForm({
                     <SelectContent>
                       <SelectItem value="crypto">Crypto</SelectItem>
                       <SelectItem value="cash">Stables</SelectItem>
+                      <SelectItem value="equity">Equity</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
 
-              {/* Asset Selection - Different UI for Crypto vs Cash */}
-              {category === 'crypto' ? (
+              {/* Asset Selection - Different UI for Crypto/Equity vs Cash */}
+              {category !== 'cash' ? (
                 <div className="space-y-1">
                   <Label htmlFor="pos-asset" className="text-sm">Asset</Label>
                   <AssetSearchDropdown
@@ -903,9 +962,12 @@ export function PositionForm({
                     searchQuery={searchQuery}
                     showDropdown={showDropdown}
                     highlightedIndex={highlightedIndex}
-                    searchLoading={searchLoading}
+                    searchLoading={category === 'equity' ? equitySearchLoading : searchLoading}
                     combinedResults={combinedResults}
                     isEditing={isEditing}
+                    placeholder={
+                      category === 'equity' ? 'Search ticker (e.g. AAPL, D05.SI)' : 'Search for a coin...'
+                    }
                     positionAssetSymbol={position?.asset.symbol}
                     positionAssetName={position?.asset.name}
                     onSearchChange={(value) => {
@@ -965,7 +1027,7 @@ export function PositionForm({
               {/* Quantity / Amount */}
               <div className="space-y-1">
                 <Label htmlFor="quantity" className="text-sm">
-                  {category === 'crypto' ? 'Quantity' : 'Amount'}
+                  {category === 'cash' ? 'Amount' : category === 'equity' ? 'Shares' : 'Quantity'}
                 </Label>
                 <Input
                   id="quantity"
@@ -981,8 +1043,8 @@ export function PositionForm({
                 />
               </div>
 
-              {/* Total Cost & Average Cost (Crypto only) */}
-              {category === 'crypto' && (
+              {/* Total Cost & Average Cost (Crypto + Equity) */}
+              {category !== 'cash' && (
                 <div className="space-y-2">
                   {/* Toggle for cost input mode */}
                   <div className="flex items-center gap-4 text-sm">
@@ -1062,14 +1124,14 @@ export function PositionForm({
                 <Select
                   value={storageType}
                   onValueChange={(value) =>
-                    setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK')
+                    setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE')
                   }
                 >
                   <SelectTrigger id="pos-storage-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {STORAGE_TYPES.map((type) => (
+                    {(category === 'equity' ? EQUITY_STORAGE_TYPES : STORAGE_TYPES).map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
                       </SelectItem>
@@ -1141,8 +1203,8 @@ export function PositionForm({
                 </div>
               )}
 
-              {/* Position Limit Info */}
-              {!isEditing && (
+              {/* Position Limit Info (crypto + stables only) */}
+              {!isEditing && category !== 'equity' && (
                 <div className="text-xs text-muted-foreground">
                   {category === 'crypto' ? cryptoCount : stablesCount} /{' '}
                   {MAX_POSITIONS_PER_CATEGORY} {category === 'crypto' ? 'crypto' : 'stables'}{' '}

@@ -34,6 +34,7 @@ import {
   Wallet,
   TrendingUp,
   TrendingDown,
+  LineChart,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/input';
@@ -58,7 +59,10 @@ const SECTION_CONFIG: SectionConfig[] = [
   {
     id: 'crypto',
     label: 'Crypto',
-    filter: (p) => !isStablecoinCategory(p.asset.category),
+    filter: (p) =>
+      p.asset.category !== 'EQUITY' &&
+      p.asset.category !== 'UNIT_TRUST' &&
+      !isStablecoinCategory(p.asset.category),
     icon: <Coins className="h-4 w-4 text-blue-500" />,
     accentColor: 'border-l-blue-500',
   },
@@ -69,8 +73,13 @@ const SECTION_CONFIG: SectionConfig[] = [
     icon: <Banknote className="h-4 w-4 text-green-500" />,
     accentColor: 'border-l-green-500',
   },
-  // Future: just add entries like:
-  // { id: 'equities', label: 'Equities', filter: ..., icon: ..., accentColor: '...' },
+  {
+    id: 'equities',
+    label: 'Equities',
+    filter: (p) => p.asset.category === 'EQUITY',
+    icon: <LineChart className="h-4 w-4 text-amber-500" />,
+    accentColor: 'border-l-amber-500',
+  },
 ];
 
 export default function Portfolio() {

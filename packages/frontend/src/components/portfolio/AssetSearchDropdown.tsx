@@ -1,7 +1,9 @@
 import { useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import type { Asset, CoinSearchResult } from '@/lib/types';
+import type { Asset, CoinSearchResult, ProviderSearchResult } from '@/lib/types';
+
+type SearchCandidate = CoinSearchResult | ProviderSearchResult;
 
 interface AssetSearchDropdownProps {
   selectedAsset: Asset | null;
@@ -9,8 +11,9 @@ interface AssetSearchDropdownProps {
   showDropdown: boolean;
   highlightedIndex: number;
   searchLoading: boolean;
-  combinedResults: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: CoinSearchResult }>;
+  combinedResults: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: SearchCandidate }>;
   isEditing: boolean;
+  placeholder?: string;
   positionAssetSymbol?: string;
   positionAssetName?: string;
   onSearchChange: (value: string) => void;
@@ -18,7 +21,7 @@ interface AssetSearchDropdownProps {
   onBlur: () => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onSelectExistingAsset: (asset: Asset) => void;
-  onSelectCoin: (coin: CoinSearchResult) => void;
+  onSelectCoin: (coin: SearchCandidate) => void;
   onClearSelection: () => void;
   setHighlightedIndex: (index: number) => void;
   setValidationError: (error: string | null) => void;
@@ -32,6 +35,7 @@ export function AssetSearchDropdown({
   searchLoading,
   combinedResults,
   isEditing,
+  placeholder = 'Search for a coin...',
   positionAssetSymbol,
   positionAssetName,
   onSearchChange,
@@ -84,7 +88,7 @@ export function AssetSearchDropdown({
   return (
     <div className="relative">
       <Input
-        placeholder="Search for a coin..."
+        placeholder={placeholder}
         value={searchQuery}
         onChange={(e) => {
           onSearchChange(e.target.value);
@@ -135,9 +139,16 @@ export function AssetSearchDropdown({
                     {result.type === 'existing' ? result.asset!.name : result.coin!.name}
                   </span>
                 </span>
-                {result.type === 'search' && result.coin!.rank && (
-                  <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
-                )}
+                {result.type === 'search' &&
+                  'exchange' in result.coin! &&
+                  result.coin!.exchange && (
+                    <span className="text-xs text-muted-foreground">{result.coin!.exchange}</span>
+                  )}
+                {result.type === 'search' &&
+                  !('exchange' in result.coin!) &&
+                  result.coin!.rank && (
+                    <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
+                  )}
                 {result.type === 'existing' && (
                   <span className="text-xs text-green-600">In portfolio</span>
                 )}

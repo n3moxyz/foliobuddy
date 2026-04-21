@@ -212,6 +212,30 @@ export interface CoinSearchResult {
   rank: number | null;
 }
 
+export type ProviderName = 'coingecko' | 'yahoo' | 'manual';
+
+export interface ProviderSearchResult {
+  id: string;
+  providerAssetId: string;
+  provider: ProviderName;
+  symbol: string;
+  name: string;
+  exchange: string | null;
+  nativeCurrency: string | null;
+  rank: number | null;
+}
+
+export interface CreateAssetFromProviderData {
+  provider: ProviderName;
+  providerAssetId: string;
+  symbol: string;
+  name: string;
+  category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH' | 'EQUITY' | 'UNIT_TRUST';
+  nativeCurrency?: string;
+  exchange?: string | null;
+  skipPriceFetch?: boolean;
+}
+
 export interface AssetPrice {
   id: string;
   symbol: string;

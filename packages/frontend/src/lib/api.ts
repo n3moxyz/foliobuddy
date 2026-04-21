@@ -10,6 +10,7 @@ import type {
   CategoryAllocation,
   CoinSearchResult,
   CreateAssetData,
+  CreateAssetFromProviderData,
   CreateInvestorData,
   CreateManualSnapshotData,
   CreatePositionData,
@@ -25,6 +26,8 @@ import type {
   Performer,
   PortfolioSummary,
   Position,
+  ProviderName,
+  ProviderSearchResult,
   Snapshot,
   SnapshotPosition,
   StorageAllocation,
@@ -118,6 +121,10 @@ export const api = {
     request<Asset[]>(`/assets${buildQuery({ category: params?.category, search: params?.search })}`),
   searchCoins: (query: string) =>
     request<CoinSearchResult[]>(`/assets/search?q=${encodeURIComponent(query)}`),
+  searchAssets: (query: string, params?: { category?: string; provider?: ProviderName }) =>
+    request<ProviderSearchResult[]>(
+      `/assets/search${buildQuery({ q: query, category: params?.category, provider: params?.provider })}`
+    ),
   getAsset: (id: string) => request<Asset>(`/assets/${id}`),
   createAsset: (data: CreateAssetData) =>
     request<Asset>('/assets', {
@@ -135,6 +142,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  createAssetFromProvider: (data: CreateAssetFromProviderData) =>
+    request<Asset>('/assets/from-provider', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  refreshAssetPrice: (id: string) =>
+    request<Asset>(`/assets/${id}/refresh-price`, { method: 'POST' }),
 
   // Trades
   getTrades: (params?: { status?: string; assetId?: string; from?: string; to?: string }) =>
