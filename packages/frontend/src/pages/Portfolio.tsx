@@ -68,13 +68,6 @@ const SECTION_CONFIG: SectionConfig[] = [
     accentColor: 'border-l-blue-500',
   },
   {
-    id: 'stables',
-    label: 'Stables',
-    filter: (p) => isStablecoinCategory(p.asset.category),
-    icon: <Banknote className="h-4 w-4 text-green-500" />,
-    accentColor: 'border-l-green-500',
-  },
-  {
     id: 'equities',
     label: 'Equities',
     filter: (p) => p.asset.category === 'EQUITY',
@@ -87,6 +80,13 @@ const SECTION_CONFIG: SectionConfig[] = [
     filter: (p) => p.asset.category === 'UNIT_TRUST',
     icon: <Wallet className="h-4 w-4 text-teal-500" />,
     accentColor: 'border-l-teal-500',
+  },
+  {
+    id: 'stables',
+    label: 'Stables',
+    filter: (p) => isStablecoinCategory(p.asset.category),
+    icon: <Banknote className="h-4 w-4 text-green-500" />,
+    accentColor: 'border-l-green-500',
   },
 ];
 

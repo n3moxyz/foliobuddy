@@ -840,6 +840,8 @@ export function PositionForm({
 
   return (
     <div className="space-y-3">
+      {custodyCheckbox}
+
       {/* Mode Selection (Add New vs Import) */}
       {!isEditing && (
         <div className="flex border-b mb-2" role="tablist">
@@ -1564,8 +1566,6 @@ export function PositionForm({
           )}
         </form>
       )}
-
-      {custodyCheckbox}
     </div>
   );
 }
