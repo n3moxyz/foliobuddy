@@ -26,6 +26,8 @@ export const AssetCategory = {
   NFT: 'NFT',
   ANGEL: 'ANGEL',
   CASH: 'CASH',
+  EQUITY: 'EQUITY',
+  UNIT_TRUST: 'UNIT_TRUST',
 } as const;
 export type AssetCategory = (typeof AssetCategory)[keyof typeof AssetCategory];
 export const ASSET_CATEGORIES = Object.values(AssetCategory) as [AssetCategory, ...AssetCategory[]];
@@ -36,6 +38,7 @@ export const StorageType = {
   CEX: 'CEX',
   DEFI: 'DEFI',
   BANK: 'BANK',
+  BROKERAGE: 'BROKERAGE',
 } as const;
 export type StorageType = (typeof StorageType)[keyof typeof StorageType];
 export const STORAGE_TYPES = Object.values(StorageType) as [StorageType, ...StorageType[]];
@@ -80,3 +83,19 @@ export const STABLECOIN_CATEGORIES: AssetCategory[] = [
   AssetCategory.STABLECOIN,
   AssetCategory.CASH,
 ];
+
+/** Price provider identifier stored on Asset.priceProvider */
+export const PriceProvider = {
+  COINGECKO: 'coingecko',
+  YAHOO: 'yahoo',
+  MANUAL: 'manual',
+} as const;
+export type PriceProvider = (typeof PriceProvider)[keyof typeof PriceProvider];
+
+/** Source attribution for PriceHistory rows */
+export const PriceSource = {
+  COINGECKO: 'coingecko',
+  YAHOO: 'yahoo',
+  MANUAL: 'manual',
+} as const;
+export type PriceSource = (typeof PriceSource)[keyof typeof PriceSource];

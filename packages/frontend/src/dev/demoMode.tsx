@@ -32,87 +32,54 @@ const Settings = lazy(() => import('@/pages/Settings'));
 
 const NOW = '2026-03-12T12:00:00.000Z';
 
+const ASSET_DEFAULTS = {
+  priceProvider: 'coingecko' as const,
+  nativeCurrency: 'USD',
+  exchange: null,
+  factsheetUrl: null,
+  isin: null,
+  priceUpdatedAt: NOW,
+};
+
+function demoCrypto(
+  id: string,
+  coingeckoId: string,
+  symbol: string,
+  name: string,
+  currentPriceUsd: number,
+  category: Asset['category'] = 'LIQUID_CRYPTO'
+): Asset {
+  return {
+    ...ASSET_DEFAULTS,
+    id,
+    coingeckoId,
+    providerAssetId: coingeckoId,
+    symbol,
+    name,
+    category,
+    currentPriceUsd,
+  };
+}
+
 const initialAssets: Asset[] = [
+  demoCrypto('btc', 'bitcoin', 'BTC', 'Bitcoin', 81250),
+  demoCrypto('eth', 'ethereum', 'ETH', 'Ethereum', 4320),
+  demoCrypto('sol', 'solana', 'SOL', 'Solana', 178),
+  demoCrypto('wld', 'worldcoin-wld', 'WLD', 'Worldcoin', 0.82),
+  demoCrypto('xrp', 'ripple', 'XRP', 'XRP', 1.52),
+  demoCrypto('hype', 'hyperliquid', 'HYPE', 'Hyperliquid', 31.2),
+  demoCrypto('ip', 'story-protocol', 'IP', 'Story Protocol', 2.15),
+  demoCrypto('usdc', 'usd-coin', 'USDC', 'USD Coin', 1, 'STABLECOIN'),
   {
-    id: 'btc',
-    coingeckoId: 'bitcoin',
-    symbol: 'BTC',
-    name: 'Bitcoin',
-    category: 'LIQUID_CRYPTO',
-    currentPriceUsd: 81250,
-    priceUpdatedAt: NOW,
-  },
-  {
-    id: 'eth',
-    coingeckoId: 'ethereum',
-    symbol: 'ETH',
-    name: 'Ethereum',
-    category: 'LIQUID_CRYPTO',
-    currentPriceUsd: 4320,
-    priceUpdatedAt: NOW,
-  },
-  {
-    id: 'sol',
-    coingeckoId: 'solana',
-    symbol: 'SOL',
-    name: 'Solana',
-    category: 'LIQUID_CRYPTO',
-    currentPriceUsd: 178,
-    priceUpdatedAt: NOW,
-  },
-  {
-    id: 'wld',
-    coingeckoId: 'worldcoin-wld',
-    symbol: 'WLD',
-    name: 'Worldcoin',
-    category: 'LIQUID_CRYPTO',
-    currentPriceUsd: 0.82,
-    priceUpdatedAt: NOW,
-  },
-  {
-    id: 'xrp',
-    coingeckoId: 'ripple',
-    symbol: 'XRP',
-    name: 'XRP',
-    category: 'LIQUID_CRYPTO',
-    currentPriceUsd: 1.52,
-    priceUpdatedAt: NOW,
-  },
-  {
-    id: 'hype',
-    coingeckoId: 'hyperliquid',
-    symbol: 'HYPE',
-    name: 'Hyperliquid',
-    category: 'LIQUID_CRYPTO',
-    currentPriceUsd: 31.2,
-    priceUpdatedAt: NOW,
-  },
-  {
-    id: 'ip',
-    coingeckoId: 'story-protocol',
-    symbol: 'IP',
-    name: 'Story Protocol',
-    category: 'LIQUID_CRYPTO',
-    currentPriceUsd: 2.15,
-    priceUpdatedAt: NOW,
-  },
-  {
-    id: 'usdc',
-    coingeckoId: 'usd-coin',
-    symbol: 'USDC',
-    name: 'USD Coin',
-    category: 'STABLECOIN',
-    currentPriceUsd: 1,
-    priceUpdatedAt: NOW,
-  },
-  {
+    ...ASSET_DEFAULTS,
     id: 'cash-sgd',
     coingeckoId: null,
+    providerAssetId: null,
+    nativeCurrency: 'SGD',
     symbol: 'SGD',
     name: 'Cash SGD',
     category: 'CASH',
     currentPriceUsd: 0.74,
-    priceUpdatedAt: NOW,
   },
 ];
 
@@ -743,8 +710,10 @@ function createDemoAsset(data: {
   if (existing) return existing;
 
   const asset: Asset = {
+    ...ASSET_DEFAULTS,
     id: nextDemoId('asset'),
     coingeckoId: data.coingeckoId,
+    providerAssetId: data.coingeckoId,
     symbol: data.symbol.toUpperCase(),
     name: data.name,
     category: data.category ?? 'LIQUID_CRYPTO',

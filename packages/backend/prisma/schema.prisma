@@ -25,6 +25,12 @@ model User {
 model Asset {
   id              String         @id @default(cuid())
   coingeckoId     String?        @unique
+  priceProvider   String         @default("coingecko")
+  providerAssetId String?
+  nativeCurrency  String         @default("USD")
+  exchange        String?
+  factsheetUrl    String?
+  isin            String?
   symbol          String
   name            String
   category        String         @default("LIQUID_CRYPTO")
@@ -36,18 +42,25 @@ model Asset {
   trades          Trade[]
   priceHistory    PriceHistory[]
 
+  @@unique([priceProvider, providerAssetId])
   @@index([symbol])
   @@index([coingeckoId])
 }
 
 // Price history for tracking asset prices over time
 model PriceHistory {
-  id        String   @id @default(cuid())
-  assetId   String
-  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  priceUsd  Float
-  timestamp DateTime @default(now())
+  id             String   @id @default(cuid())
+  assetId        String
+  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  priceUsd       Float
+  nativePrice    Float?
+  nativeCurrency String?
+  fxRateToUsd    Float?
+  source         String   @default("coingecko")
+  updatedBy      String?
+  timestamp      DateTime @default(now())
 
+  @@unique([assetId, timestamp])
   @@index([assetId, timestamp])
 }
 

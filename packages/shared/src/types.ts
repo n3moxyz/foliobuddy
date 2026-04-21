@@ -19,9 +19,15 @@ export interface DbHealth {
 export interface Asset {
   id: string;
   coingeckoId: string | null;
+  priceProvider: 'coingecko' | 'yahoo' | 'manual';
+  providerAssetId: string | null;
+  nativeCurrency: string;
+  exchange: string | null;
+  factsheetUrl: string | null;
+  isin: string | null;
   symbol: string;
   name: string;
-  category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
+  category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH' | 'EQUITY' | 'UNIT_TRUST';
   currentPriceUsd: number | null;
   priceUpdatedAt: string | null;
 }
@@ -32,7 +38,7 @@ export interface Position {
   asset: Asset;
   quantity: number;
   avgCostUsd: number;
-  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
+  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE';
   storageLocation: string | null;
   notes: string | null;
   custodyOf: string | null;
@@ -236,7 +242,7 @@ export interface CreatePositionData {
   assetId: string;
   quantity: number;
   avgCostUsd?: number;
-  storageType?: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
+  storageType?: 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE';
   storageLocation?: string;
   notes?: string;
   custodyOf?: string;
@@ -296,7 +302,7 @@ export interface BulkImportPosition {
   };
   quantity: number;
   avgCostUsd: number;
-  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK';
+  storageType: 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE';
   storageLocation: string | null;
   notes: string | null;
   custodyOf?: string | null;
