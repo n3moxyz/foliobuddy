@@ -918,6 +918,42 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   if (path === '/api/assets' && method === 'GET') return json(demoAssets);
   if (path === '/api/assets/search' && method === 'GET') {
     const q = (url.searchParams.get('q') ?? '').toLowerCase();
+    const category = url.searchParams.get('category');
+    const provider = url.searchParams.get('provider');
+
+    if (category === 'EQUITY' || provider === 'yahoo') {
+      const equities = [
+        { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', exchange: 'Singapore', nativeCurrency: 'SGD' },
+        { symbol: 'O39.SI', name: 'Oversea-Chinese Banking Corporation Ltd', exchange: 'Singapore', nativeCurrency: 'SGD' },
+        { symbol: 'U11.SI', name: 'United Overseas Bank Ltd', exchange: 'Singapore', nativeCurrency: 'SGD' },
+        { symbol: 'Z74.SI', name: 'Singapore Telecommunications Limited', exchange: 'Singapore', nativeCurrency: 'SGD' },
+        { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        { symbol: 'NVDA', name: 'NVIDIA Corporation', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        { symbol: 'TSLA', name: 'Tesla, Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        { symbol: 'MSFT', name: 'Microsoft Corporation', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        { symbol: 'GOOGL', name: 'Alphabet Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        { symbol: 'AMZN', name: 'Amazon.com, Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        { symbol: 'META', name: 'Meta Platforms, Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        { symbol: 'GLXY', name: 'Galaxy Digital Inc.', exchange: 'NASDAQ', nativeCurrency: 'USD' },
+        { symbol: 'COIN', name: 'Coinbase Global, Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        { symbol: 'MSTR', name: 'MicroStrategy Incorporated', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust', exchange: 'NYSEArca', nativeCurrency: 'USD' },
+        { symbol: 'QQQ', name: 'Invesco QQQ Trust', exchange: 'NasdaqGM', nativeCurrency: 'USD' },
+      ]
+        .filter((e) => !q || e.symbol.toLowerCase().includes(q) || e.name.toLowerCase().includes(q))
+        .map((e) => ({
+          id: e.symbol,
+          providerAssetId: e.symbol,
+          provider: 'yahoo',
+          symbol: e.symbol,
+          name: e.name,
+          exchange: e.exchange,
+          nativeCurrency: e.nativeCurrency,
+          rank: null,
+        }));
+      return json(equities);
+    }
+
     const results = [
       { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin', rank: 1 },
       { id: 'ethereum', symbol: 'eth', name: 'Ethereum', rank: 2 },
@@ -935,6 +971,40 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
       category?: Asset['category'];
     };
     return json(createDemoAsset(body), 201);
+  }
+  if (path === '/api/assets/from-provider' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
+      provider: 'coingecko' | 'yahoo' | 'manual';
+      providerAssetId: string;
+      symbol: string;
+      name: string;
+      category: Asset['category'];
+      nativeCurrency?: string;
+      exchange?: string | null;
+    };
+    const existing = demoAssets.find(
+      (a) =>
+        (a.priceProvider === body.provider && a.providerAssetId === body.providerAssetId) ||
+        a.symbol.toLowerCase() === body.symbol.toLowerCase()
+    );
+    if (existing) return json(existing);
+
+    const base = createDemoAsset({
+      coingeckoId: body.providerAssetId,
+      symbol: body.symbol,
+      name: body.name,
+      category: body.category,
+    });
+    const merged: Asset = {
+      ...base,
+      priceProvider: body.provider,
+      providerAssetId: body.providerAssetId,
+      coingeckoId: body.provider === 'coingecko' ? body.providerAssetId : null,
+      nativeCurrency: (body.nativeCurrency ?? 'USD').toUpperCase(),
+      exchange: body.exchange ?? null,
+    };
+    demoAssets = demoAssets.map((a) => (a.id === merged.id ? merged : a));
+    return json(merged, 201);
   }
   if (path === '/api/snapshots' && method === 'POST')
     return json({ ...snapshots[0], id: 'snap-demo-created' });

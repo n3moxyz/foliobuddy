@@ -817,28 +817,29 @@ export function PositionForm({
     return <ImportResultsList results={importResults} onDone={onSuccess} />;
   }
 
+  const custodyCheckbox = (
+    <CustodyCheckbox
+      id={isEditing ? 'isCustodyEdit' : 'isCustody'}
+      isCustody={isCustody}
+      custodyOf={custodyOf}
+      addingNewName={addingNewName}
+      newNameInput={newNameInput}
+      custodyNameOptions={custodyNameOptions}
+      showDescription={!isEditing}
+      onCustodyChange={handleCustodyChange}
+      onCustodyOfChange={setCustodyOf}
+      onStartAddingName={() => {
+        setAddingNewName(true);
+        setNewNameInput('');
+      }}
+      onNewNameInputChange={setNewNameInput}
+      onAddNewName={handleAddNewName}
+      onCancelAddingName={() => setAddingNewName(false)}
+    />
+  );
+
   return (
     <div className="space-y-3">
-      {/* Custody checkbox — applies to both Add, Import, and Edit */}
-      <CustodyCheckbox
-        id={isEditing ? 'isCustodyEdit' : 'isCustody'}
-        isCustody={isCustody}
-        custodyOf={custodyOf}
-        addingNewName={addingNewName}
-        newNameInput={newNameInput}
-        custodyNameOptions={custodyNameOptions}
-        showDescription={!isEditing}
-        onCustodyChange={handleCustodyChange}
-        onCustodyOfChange={setCustodyOf}
-        onStartAddingName={() => {
-          setAddingNewName(true);
-          setNewNameInput('');
-        }}
-        onNewNameInputChange={setNewNameInput}
-        onAddNewName={handleAddNewName}
-        onCancelAddingName={() => setAddingNewName(false)}
-      />
-
       {/* Mode Selection (Add New vs Import) */}
       {!isEditing && (
         <div className="flex border-b mb-2" role="tablist">
@@ -1089,7 +1090,7 @@ export function PositionForm({
                     <SelectContent>
                       <SelectItem value="crypto">Crypto</SelectItem>
                       <SelectItem value="cash">Stables</SelectItem>
-                      <SelectItem value="equity">Equity</SelectItem>
+                      <SelectItem value="equity">Equities</SelectItem>
                       <SelectItem value="unit_trust">Unit Trust</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1563,6 +1564,8 @@ export function PositionForm({
           )}
         </form>
       )}
+
+      {custodyCheckbox}
     </div>
   );
 }

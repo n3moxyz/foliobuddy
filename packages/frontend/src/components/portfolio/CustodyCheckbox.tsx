@@ -40,21 +40,21 @@ export function CustodyCheckbox({
   onCancelAddingName,
 }: CustodyCheckboxProps) {
   return (
-    <div className="flex items-start gap-3 rounded-md border p-3 bg-muted/30">
+    <div className="flex items-center gap-3 rounded-md border px-3 py-2 bg-muted/20">
       <input
         type="checkbox"
         id={id}
         checked={isCustody}
         onChange={(e) => onCustodyChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-purple-600"
+        className="h-4 w-4 shrink-0 rounded border-gray-300 accent-purple-600"
       />
-      <div className="flex-1 space-y-2">
-        <label htmlFor={id} className="text-sm font-medium cursor-pointer leading-tight">
+      <div className="flex-1 min-w-0">
+        <label htmlFor={id} className="block text-sm font-medium cursor-pointer leading-tight">
           Custody — held for someone else
         </label>
         {showDescription && (
-          <p className="text-xs text-muted-foreground">
-            Won't count toward your net worth, P&L, or exposure
+          <p className="mt-1 text-xs text-muted-foreground leading-tight">
+            Won&apos;t count toward net worth, P&amp;L, or exposure
           </p>
         )}
         {isCustody && !addingNewName && (
