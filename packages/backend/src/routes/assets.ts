@@ -8,9 +8,28 @@ import {
   ASSET_CATEGORIES,
   AssetCategory,
   PriceProvider,
+  USD_SGD_FALLBACK_RATE,
   categoryGroup,
 } from '../lib/constants.js';
 import type { ProviderName } from '../services/providers/types.js';
+
+async function navToUsd(navPrice: number, nativeCurrency: string): Promise<{ priceUsd: number; fxRateToUsd: number | null }> {
+  const ccy = nativeCurrency.toUpperCase();
+  if (ccy === 'USD') return { priceUsd: navPrice, fxRateToUsd: null };
+  if (ccy === 'SGD') {
+    const row = await prisma.fxRate.findUnique({
+      where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: 'SGD' } },
+    });
+    const rate = row?.rate ?? USD_SGD_FALLBACK_RATE;
+    return { priceUsd: navPrice / rate, fxRateToUsd: 1 / rate };
+  }
+  throw new AppError(`Unsupported native currency ${ccy}. Only USD and SGD are supported.`, 400);
+}
+
+function slugifyUtId(symbol: string, isin?: string | null): string {
+  if (isin && isin.trim()) return isin.trim().toUpperCase();
+  return `ut-${symbol.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
 
 const router = Router();
 
@@ -374,6 +393,137 @@ router.post('/:id/refresh-price', async (req, res, next) => {
         fxRateToUsd: priceData.fxRateToUsd ?? null,
         source: provider,
       },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+const createUnitTrustSchema = z.object({
+  symbol: z.string().min(1).max(40),
+  name: z.string().min(1),
+  nativeCurrency: z.string().min(1).max(8).default('SGD'),
+  factsheetUrl: z.string().url().optional().nullable(),
+  isin: z.string().min(1).max(20).optional().nullable(),
+  initialNav: z.number().positive().optional(),
+  navAsOfDate: z.string().datetime().optional(),
+});
+
+router.post('/unit-trust', async (req, res, next) => {
+  try {
+    const data = createUnitTrustSchema.parse(req.body);
+    const providerAssetId = slugifyUtId(data.symbol, data.isin);
+
+    const existing = await prisma.asset.findFirst({
+      where: {
+        OR: [
+          { priceProvider: 'manual', providerAssetId },
+          { symbol: data.symbol.toUpperCase() },
+        ],
+      },
+    });
+    if (existing) return res.json(existing);
+
+    let currentPriceUsd: number | null = null;
+    let initialPriceHistory: {
+      priceUsd: number;
+      nativePrice: number;
+      fxRateToUsd: number | null;
+      timestamp: Date;
+    } | null = null;
+
+    if (data.initialNav !== undefined) {
+      const converted = await navToUsd(data.initialNav, data.nativeCurrency);
+      currentPriceUsd = converted.priceUsd;
+      initialPriceHistory = {
+        priceUsd: converted.priceUsd,
+        nativePrice: data.initialNav,
+        fxRateToUsd: converted.fxRateToUsd,
+        timestamp: data.navAsOfDate ? new Date(data.navAsOfDate) : new Date(),
+      };
+    }
+
+    const asset = await prisma.asset.create({
+      data: {
+        priceProvider: 'manual',
+        providerAssetId,
+        coingeckoId: null,
+        symbol: data.symbol.toUpperCase(),
+        name: data.name,
+        category: AssetCategory.UNIT_TRUST,
+        nativeCurrency: data.nativeCurrency.toUpperCase(),
+        factsheetUrl: data.factsheetUrl ?? null,
+        isin: data.isin ?? null,
+        currentPriceUsd,
+        priceUpdatedAt: initialPriceHistory?.timestamp ?? null,
+      },
+    });
+
+    if (initialPriceHistory) {
+      await prisma.priceHistory.create({
+        data: {
+          assetId: asset.id,
+          priceUsd: initialPriceHistory.priceUsd,
+          nativePrice: initialPriceHistory.nativePrice,
+          nativeCurrency: asset.nativeCurrency,
+          fxRateToUsd: initialPriceHistory.fxRateToUsd,
+          source: 'manual',
+          updatedBy: req.userId ?? null,
+          timestamp: initialPriceHistory.timestamp,
+        },
+      });
+    }
+
+    res.status(201).json(asset);
+  } catch (error) {
+    next(error);
+  }
+});
+
+const navUpdateSchema = z.object({
+  navPrice: z.number().positive(),
+  asOfDate: z.string().datetime().optional(),
+  notes: z.string().max(500).optional(),
+});
+
+router.patch('/:id/nav', async (req, res, next) => {
+  try {
+    const data = navUpdateSchema.parse(req.body);
+
+    const asset = await prisma.asset.findUnique({ where: { id: req.params.id } });
+    if (!asset) throw new AppError('Asset not found', 404);
+    if (asset.priceProvider !== 'manual') {
+      throw new AppError('NAV updates only apply to manually-priced assets', 400);
+    }
+
+    const converted = await navToUsd(data.navPrice, asset.nativeCurrency);
+    const timestamp = data.asOfDate ? new Date(data.asOfDate) : new Date();
+
+    try {
+      await prisma.priceHistory.create({
+        data: {
+          assetId: asset.id,
+          priceUsd: converted.priceUsd,
+          nativePrice: data.navPrice,
+          nativeCurrency: asset.nativeCurrency,
+          fxRateToUsd: converted.fxRateToUsd,
+          source: 'manual',
+          updatedBy: req.userId ?? null,
+          timestamp,
+        },
+      });
+    } catch (err) {
+      // Unique constraint on (assetId, timestamp) — a same-second re-post is a no-op
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') {
+        throw err;
+      }
+    }
+
+    const updated = await prisma.asset.update({
+      where: { id: asset.id },
+      data: { currentPriceUsd: converted.priceUsd, priceUpdatedAt: timestamp },
     });
 
     res.json(updated);

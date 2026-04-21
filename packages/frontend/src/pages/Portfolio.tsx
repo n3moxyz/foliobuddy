@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { PositionForm } from '@/components/portfolio/PositionForm';
+import { UnitTrustForm } from '@/components/portfolio/UnitTrustForm';
+import { UpdateNavModal } from '@/components/portfolio/UpdateNavModal';
 import {
   Dialog,
   DialogContent,
@@ -80,6 +82,13 @@ const SECTION_CONFIG: SectionConfig[] = [
     icon: <LineChart className="h-4 w-4 text-amber-500" />,
     accentColor: 'border-l-amber-500',
   },
+  {
+    id: 'unit_trusts',
+    label: 'Unit Trusts',
+    filter: (p) => p.asset.category === 'UNIT_TRUST',
+    icon: <Wallet className="h-4 w-4 text-teal-500" />,
+    accentColor: 'border-l-teal-500',
+  },
 ];
 
 export default function Portfolio() {
@@ -88,6 +97,8 @@ export default function Portfolio() {
   const { data: summary } = usePortfolioSummary();
   const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddUnitTrust, setShowAddUnitTrust] = useState(false);
+  const [navAsset, setNavAsset] = useState<Position['asset'] | null>(null);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
 
@@ -223,6 +234,10 @@ export default function Portfolio() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowAddUnitTrust(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Unit Trust
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className="sm:hidden"
                 onClick={async () => {
@@ -472,6 +487,9 @@ export default function Portfolio() {
               currency={currency}
               fxRate={fxRate}
               sectionPrefix={section.id}
+              onUpdateNav={
+                section.id === 'unit_trusts' ? (p) => setNavAsset(p.asset) : undefined
+              }
             />
           </CollapsibleCard>
         ))}
@@ -523,6 +541,24 @@ export default function Portfolio() {
           />
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showAddUnitTrust} onOpenChange={setShowAddUnitTrust}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Unit Trust</DialogTitle>
+            <DialogDescription>
+              Manually track a unit trust. Log NAV updates from the position row once saved.
+            </DialogDescription>
+          </DialogHeader>
+          <UnitTrustForm onSuccess={() => setShowAddUnitTrust(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <UpdateNavModal
+        asset={navAsset}
+        open={!!navAsset}
+        onClose={() => setNavAsset(null)}
+      />
 
       <Dialog open={editingPerp} onOpenChange={setEditingPerp}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">

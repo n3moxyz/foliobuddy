@@ -91,3 +91,33 @@ export function useRefreshAssetPrice() {
     },
   });
 }
+
+export function useCreateUnitTrust() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: Parameters<typeof api.createUnitTrust>[0]) => api.createUnitTrust(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+    },
+  });
+}
+
+export function useUpdateAssetNav() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Parameters<typeof api.updateAssetNav>[1];
+    }) => api.updateAssetNav(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+    },
+  });
+}

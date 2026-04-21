@@ -147,6 +147,24 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  createUnitTrust: (data: {
+    symbol: string;
+    name: string;
+    nativeCurrency: string;
+    factsheetUrl?: string | null;
+    isin?: string | null;
+    initialNav?: number;
+    navAsOfDate?: string;
+  }) =>
+    request<Asset>('/assets/unit-trust', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateAssetNav: (id: string, data: { navPrice: number; asOfDate?: string; notes?: string }) =>
+    request<Asset>(`/assets/${id}/nav`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
   refreshAssetPrice: (id: string) =>
     request<Asset>(`/assets/${id}/refresh-price`, { method: 'POST' }),
 

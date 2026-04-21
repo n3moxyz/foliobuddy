@@ -75,6 +75,7 @@ interface PositionTableProps {
   currency?: 'USD' | 'SGD';
   fxRate?: number;
   sectionPrefix?: string;
+  onUpdateNav?: (position: Position) => void;
 }
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
@@ -100,6 +101,7 @@ export function PositionTable({
   currency = 'USD',
   fxRate = 1,
   sectionPrefix,
+  onUpdateNav,
 }: PositionTableProps) {
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
@@ -220,6 +222,7 @@ export function PositionTable({
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
         onCopy={handleCopy}
+        onUpdateNav={onUpdateNav}
       />
     );
   };

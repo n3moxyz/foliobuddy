@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { formatCurrency, formatNumber, formatPercent, getPnLColorClass, isStablecoinCategory } from '@/lib/utils';
-import { Pencil, Trash2, Copy, Check } from 'lucide-react';
+import { Pencil, Trash2, Copy, Check, RefreshCw } from 'lucide-react';
 import type { Position } from '@/lib/types';
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
@@ -22,6 +22,7 @@ interface PositionRowProps {
   onEdit: (position: Position) => void;
   onDelete: (position: Position) => void;
   onCopy: (position: Position, e: React.MouseEvent) => void;
+  onUpdateNav?: (position: Position) => void;
 }
 
 export const PositionRow = React.memo(function PositionRow({
@@ -34,6 +35,7 @@ export const PositionRow = React.memo(function PositionRow({
   onEdit,
   onDelete,
   onCopy,
+  onUpdateNav,
 }: PositionRowProps) {
   // Helper to convert USD values to selected currency
   const convert = (usdValue: number | null | undefined) => {
@@ -134,6 +136,18 @@ export const PositionRow = React.memo(function PositionRow({
               <Copy className="h-4 w-4" />
             )}
           </Button>
+          {onUpdateNav && position.asset.category === 'UNIT_TRUST' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 touch-manipulation"
+              onClick={() => onUpdateNav(position)}
+              title="Update NAV"
+              aria-label="Update NAV"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
