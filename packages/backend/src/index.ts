@@ -96,7 +96,7 @@ app.use('/api', limiter);
 app.use(clerkMiddleware());
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), build: 'yahoo-debug-v2' });
 });
 
 // TEMP: debug Yahoo connectivity from droplet
