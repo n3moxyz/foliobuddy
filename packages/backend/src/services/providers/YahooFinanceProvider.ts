@@ -200,16 +200,21 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     const cached = this.searchCache.get(cacheKey);
     if (cached) return cached;
 
-    // Uses yahoo-finance2 which handles crumb + cookie consent flow. The raw
-    // /v1/finance/search endpoint gets IP-blocked from datacenter ranges
-    // (Coolify droplet) even though /v7/finance/quote works fine.
-    let quotes: YahooSearchItem[];
+    // Yahoo rate-limits /v1/finance/search aggressively from datacenter IPs.
+    // Try yahoo-finance2 (handles crumb+cookie) first, then fall back to
+    // /v7/finance/lookup which has different rate limits.
+    let quotes: YahooSearchItem[] = [];
     try {
       const res = await yahooFinance.search(query, { quotesCount: 15, newsCount: 0 });
       quotes = (res.quotes ?? []) as YahooSearchItem[];
+      logger.info(`[Yahoo] search via lib for "${query}": ${quotes.length} quotes`);
     } catch (err) {
-      logger.warn('[Yahoo] search error:', err instanceof Error ? err.message : err);
-      return [];
+      logger.warn('[Yahoo] search lib error:', err instanceof Error ? err.message : err);
+    }
+
+    if (quotes.length === 0) {
+      quotes = await this.searchViaLookup(query);
+      logger.info(`[Yahoo] search via lookup for "${query}": ${quotes.length} quotes`);
     }
 
     const allowedTypes = new Set(['EQUITY']);
@@ -229,6 +234,39 @@ export class YahooFinanceProvider implements AssetPriceProvider {
 
     this.searchCache.set(cacheKey, results);
     return results;
+  }
+
+  private async searchViaLookup(query: string): Promise<YahooSearchItem[]> {
+    // /v7/finance/lookup is the older endpoint — same host as /v7/quote
+    // which we know works from the droplet. Returns paginated lookup results
+    // including symbol, shortName, longName, quoteType, exchange.
+    const url = `https://query2.finance.yahoo.com/v1/finance/lookup?query=${encodeURIComponent(
+      query
+    )}&type=equity&count=15&lang=en-US&region=US`;
+    type LookupResponse = {
+      finance?: {
+        result?: Array<{
+          documents?: Array<{
+            symbol: string;
+            shortName?: string;
+            longName?: string;
+            quoteType?: string;
+            exchange?: string;
+            exchangeDisplay?: string;
+          }>;
+        }>;
+      };
+    };
+    const data = await this.fetchJson<LookupResponse>(url);
+    const docs = data?.finance?.result?.[0]?.documents ?? [];
+    return docs.map((d) => ({
+      symbol: d.symbol,
+      shortname: d.shortName,
+      longname: d.longName,
+      quoteType: d.quoteType?.toUpperCase(),
+      exchange: d.exchange,
+      exchDisp: d.exchangeDisplay,
+    }));
   }
 
   private inferCurrencyFromSymbol(symbol: string): string {
