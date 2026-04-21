@@ -12,7 +12,6 @@ import type {
 
 const yahooFinance = new YahooFinance();
 
-const YAHOO_QUOTE_URL = 'https://query1.finance.yahoo.com/v7/finance/quote';
 const YAHOO_CHART_URL = 'https://query1.finance.yahoo.com/v8/finance/chart';
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
@@ -24,21 +23,6 @@ const HISTORICAL_CACHE_MAX_ENTRIES = 50;
 const SEARCH_CACHE_DURATION_MS = 10 * 60 * 1000;
 const BATCH_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 8000;
-
-type YahooQuoteItem = {
-  symbol: string;
-  regularMarketPrice?: number;
-  currency?: string;
-  exchange?: string;
-  fullExchangeName?: string;
-  longName?: string;
-  shortName?: string;
-  quoteType?: string;
-};
-
-type YahooQuoteResponse = {
-  quoteResponse: { result: YahooQuoteItem[]; error: unknown };
-};
 
 type YahooSearchItem = {
   symbol: string;
@@ -130,11 +114,28 @@ export class YahooFinanceProvider implements AssetPriceProvider {
 
     for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
       const batch = idsToFetch.slice(i, i + BATCH_SIZE);
-      const url = `${YAHOO_QUOTE_URL}?symbols=${batch.map(encodeURIComponent).join(',')}`;
-      const data = await this.fetchJson<YahooQuoteResponse>(url);
-      if (!data?.quoteResponse?.result) continue;
+      type QuoteLike = {
+        symbol: string;
+        regularMarketPrice?: number;
+        currency?: string;
+      };
+      let quotes: QuoteLike[] = [];
+      try {
+        // yahoo-finance2 handles the crumb+cookie consent flow that Yahoo now
+        // requires for /v7/finance/quote from datacenter IPs. Raw fetch against
+        // that endpoint silently returns 401/empty from Coolify droplet.
+        const res = await yahooFinance.quote(batch);
+        const arr = (Array.isArray(res) ? res : [res]) as unknown as QuoteLike[];
+        quotes = arr.filter((q) => !!q && typeof q.symbol === 'string');
+      } catch (err) {
+        logger.warn(
+          `[Yahoo] quote batch failed (${batch.length} symbols):`,
+          err instanceof Error ? err.message : err
+        );
+        continue;
+      }
 
-      for (const item of data.quoteResponse.result) {
+      for (const item of quotes) {
         if (item.regularMarketPrice === undefined) continue;
         const currency = item.currency?.toUpperCase() ?? 'USD';
         const nativePrice = item.regularMarketPrice;
