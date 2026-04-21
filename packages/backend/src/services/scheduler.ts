@@ -68,41 +68,45 @@ export async function createMissingSnapshots(): Promise<void> {
   }
 }
 
+async function runProviderRefresh(provider: 'coingecko' | 'yahoo', logTag: string): Promise<void> {
+  try {
+    logger.info(`${logTag} Starting...`);
+    const result = await priceService.refreshAllPrices(provider);
+    logger.info(`${logTag} Updated ${result.updated} prices, ${result.errors} errors`);
+
+    socketService.broadcastPriceUpdate(result.updated);
+
+    await priceService.updatePositionValues(result.changedAssetIds);
+
+    if (result.changedAssetIds.length === 0) return;
+
+    const usersWithPositions = await prisma.user.findMany({
+      where: { positions: { some: { assetId: { in: result.changedAssetIds } } } },
+      select: { id: true },
+    });
+
+    for (const user of usersWithPositions) {
+      socketService.broadcastPortfolioUpdate(user.id);
+    }
+  } catch (error) {
+    logger.error(`${logTag} Error:`, error);
+  }
+}
+
 /**
- * Start the price refresh job (every 60 seconds)
+ * Start the crypto price refresh job (every 60 seconds via CoinGecko)
  */
 export function startPriceRefreshJob(): void {
-  logger.info('📈 Starting price refresh scheduler');
+  logger.info('📈 Starting crypto price refresh scheduler (1min)');
+  cron.schedule('* * * * *', () => runProviderRefresh('coingecko', '[Price Refresh Crypto]'));
+}
 
-  // Run every minute
-  cron.schedule('* * * * *', async () => {
-    try {
-      logger.info('[Price Refresh] Starting...');
-      const result = await priceService.refreshAllPrices();
-      logger.info(`[Price Refresh] Updated ${result.updated} prices, ${result.errors} errors`);
-
-      // Broadcast price update to all connected clients
-      socketService.broadcastPriceUpdate(result.updated);
-
-      await priceService.updatePositionValues(result.changedAssetIds);
-      logger.info('[Price Refresh] Position values updated');
-
-      const usersWithPositions = await prisma.user.findMany({
-        where: {
-          positions: {
-            some: {},
-          },
-        },
-        select: { id: true },
-      });
-
-      for (const user of usersWithPositions) {
-        socketService.broadcastPortfolioUpdate(user.id);
-      }
-    } catch (error) {
-      logger.error('[Price Refresh] Error:', error);
-    }
-  });
+/**
+ * Start the equities price refresh job (every 15 minutes via Yahoo Finance)
+ */
+export function startEquityRefreshJob(): void {
+  logger.info('🏦 Starting equities price refresh scheduler (15min)');
+  cron.schedule('*/15 * * * *', () => runProviderRefresh('yahoo', '[Price Refresh Equities]'));
 }
 
 /**

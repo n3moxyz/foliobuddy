@@ -21,6 +21,7 @@ import { clerkMiddleware, ensureUser } from './middleware/auth.js';
 import { agentAuth } from './middleware/agentAuth.js';
 import {
   startPriceRefreshJob,
+  startEquityRefreshJob,
   startSnapshotJob,
   startFxRateJob,
   startPriceHistoryCleanupJob,
@@ -146,6 +147,7 @@ async function startServer() {
     const isProd = process.env.NODE_ENV === 'production';
     if (isProd) {
       startPriceRefreshJob();
+      startEquityRefreshJob();
       startSnapshotJob();
       startFxRateJob();
       startPriceHistoryCleanupJob();
