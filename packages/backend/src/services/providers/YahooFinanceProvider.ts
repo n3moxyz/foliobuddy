@@ -1,3 +1,4 @@
+import YahooFinance from 'yahoo-finance2';
 import { prisma } from '../../lib/prisma.js';
 import { TTLCache } from '../../lib/TTLCache.js';
 import { logger } from '../../lib/logger.js';
@@ -9,7 +10,8 @@ import type {
   ProviderSearchResult,
 } from './types.js';
 
-const YAHOO_SEARCH_URL = 'https://query1.finance.yahoo.com/v1/finance/search';
+const yahooFinance = new YahooFinance();
+
 const YAHOO_QUOTE_URL = 'https://query1.finance.yahoo.com/v7/finance/quote';
 const YAHOO_CHART_URL = 'https://query1.finance.yahoo.com/v8/finance/chart';
 const USER_AGENT =
@@ -46,8 +48,6 @@ type YahooSearchItem = {
   exchange?: string;
   exchDisp?: string;
 };
-
-type YahooSearchResponse = { quotes: YahooSearchItem[] };
 
 type YahooChartResponse = {
   chart: {
@@ -164,12 +164,18 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     const cached = this.searchCache.get(cacheKey);
     if (cached && cached.length > 0) return cached[0];
 
-    const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(trimmed)}&quotesCount=5&newsCount=0`;
-    const data = await this.fetchJson<YahooSearchResponse>(url);
-    if (!data?.quotes || data.quotes.length === 0) return null;
+    let quotes: YahooSearchItem[];
+    try {
+      const res = await yahooFinance.search(trimmed, { quotesCount: 5, newsCount: 0 });
+      quotes = (res.quotes ?? []) as YahooSearchItem[];
+    } catch (err) {
+      logger.warn('[Yahoo] searchByIsin error:', err instanceof Error ? err.message : err);
+      return null;
+    }
+    if (quotes.length === 0) return null;
 
     const preferredTypes = new Set(['MUTUALFUND', 'ETF', 'EQUITY']);
-    const best = data.quotes.find(
+    const best = quotes.find(
       (q) =>
         q.quoteType &&
         preferredTypes.has(q.quoteType) &&
@@ -194,12 +200,20 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     const cached = this.searchCache.get(cacheKey);
     if (cached) return cached;
 
-    const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=15&newsCount=0`;
-    const data = await this.fetchJson<YahooSearchResponse>(url);
-    if (!data?.quotes) return [];
+    // Uses yahoo-finance2 which handles crumb + cookie consent flow. The raw
+    // /v1/finance/search endpoint gets IP-blocked from datacenter ranges
+    // (Coolify droplet) even though /v7/finance/quote works fine.
+    let quotes: YahooSearchItem[];
+    try {
+      const res = await yahooFinance.search(query, { quotesCount: 15, newsCount: 0 });
+      quotes = (res.quotes ?? []) as YahooSearchItem[];
+    } catch (err) {
+      logger.warn('[Yahoo] search error:', err instanceof Error ? err.message : err);
+      return [];
+    }
 
     const allowedTypes = new Set(['EQUITY']);
-    const results: ProviderSearchResult[] = data.quotes
+    const results: ProviderSearchResult[] = quotes
       .filter((q) => {
         if (!q.quoteType || !allowedTypes.has(q.quoteType)) return false;
         return this.isSupportedCurrency(this.inferCurrencyFromSymbol(q.symbol));
