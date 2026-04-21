@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'packages/backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -20,7 +22,7 @@ jobs:
             "${{ secrets.COOLIFY_URL }}/api/v1/deploy" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"uuid":"${{ secrets.COOLIFY_APP_UUID }}","force":false}')
+            -d '{"uuid":"${{ secrets.COOLIFY_APP_UUID }}","force":true}')
           http_code=$(echo "$response" | tail -1)
           body=$(echo "$response" | head -n -1)
           echo "$body"
