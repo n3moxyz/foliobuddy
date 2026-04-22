@@ -48,6 +48,9 @@ blob-report/
 *.tmp
 *.temp
 
+# Backfill script audit files (rollback artifacts, per-run)
+packages/backend/scripts/audit-*.json
+
 # Claude Code workspace
 .claude/
 _ul*
