@@ -24,6 +24,17 @@ const SEARCH_CACHE_DURATION_MS = 10 * 60 * 1000;
 const BATCH_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 8000;
 
+// Lower rank = higher in results. Exact match first, then primary listings
+// (no exchange suffix), then cross-listings like EWY.SN or AAPL.BA.
+function rankSymbol(query: string, symbol: string): number {
+  const upper = symbol.toUpperCase();
+  if (upper === query) return 0;
+  const hasSuffix = upper.includes('.');
+  if (!hasSuffix) return 1;
+  if (upper.startsWith(`${query}.`)) return 2;
+  return 3;
+}
+
 type YahooSearchItem = {
   symbol: string;
   shortname?: string;
@@ -218,7 +229,8 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       logger.info(`[Yahoo] search via lookup for "${query}": ${quotes.length} quotes`);
     }
 
-    const allowedTypes = new Set(['EQUITY']);
+    const allowedTypes = new Set(['EQUITY', 'ETF']);
+    const upperQuery = query.toUpperCase();
     const results: ProviderSearchResult[] = quotes
       .filter((q) => {
         if (!q.quoteType || !allowedTypes.has(q.quoteType)) return false;
@@ -231,7 +243,12 @@ export class YahooFinanceProvider implements AssetPriceProvider {
         exchange: q.exchDisp || q.exchange || null,
         nativeCurrency: this.inferCurrencyFromSymbol(q.symbol),
         rank: null,
-      }));
+      }))
+      // Rank primary listings above cross-listings. Yahoo often returns
+      // exchange-suffixed variants (e.g. EWY.SN on Santiago) before the
+      // canonical NYSE ticker, so searches for "EWY" lose the ETF the user
+      // actually wants. Heuristic: exact symbol match > no-suffix > has-suffix.
+      .sort((a, b) => rankSymbol(upperQuery, a.symbol) - rankSymbol(upperQuery, b.symbol));
 
     this.searchCache.set(cacheKey, results);
     return results;
@@ -241,9 +258,11 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     // /v7/finance/lookup is the older endpoint — same host as /v7/quote
     // which we know works from the droplet. Returns paginated lookup results
     // including symbol, shortName, longName, quoteType, exchange.
+    // type=all returns EQUITY + ETF + MUTUALFUND + more; we filter to EQUITY/ETF
+    // in search() via allowedTypes. Using equity alone drops NYSE-listed ETFs.
     const url = `https://query2.finance.yahoo.com/v1/finance/lookup?query=${encodeURIComponent(
       query
-    )}&type=equity&count=15&lang=en-US&region=US`;
+    )}&type=all&count=15&lang=en-US&region=US`;
     type LookupResponse = {
       finance?: {
         result?: Array<{
