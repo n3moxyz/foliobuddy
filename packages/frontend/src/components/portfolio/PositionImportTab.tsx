@@ -10,6 +10,8 @@ interface PositionImportTabProps {
   importing: boolean;
   isCustody?: boolean;
   custodyOf?: string;
+  /** Rendered above the Import button — used to slot the custody checkbox */
+  footerSlot?: React.ReactNode;
   onJsonChange: (value: string) => void;
   onPaste: () => void;
   onImport: () => void;
@@ -22,6 +24,7 @@ export function PositionImportTab({
   importing,
   isCustody,
   custodyOf,
+  footerSlot,
   onJsonChange,
   onPaste,
   onImport,
@@ -77,6 +80,8 @@ export function PositionImportTab({
           </div>
         </div>
       )}
+
+      {footerSlot && <div className="pt-2 border-t border-border/60">{footerSlot}</div>}
 
       <div className="flex justify-end">
         <Button type="button" onClick={onImport} disabled={!parsedPositions || importing}>

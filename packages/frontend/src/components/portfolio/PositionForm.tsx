@@ -899,8 +899,6 @@ export function PositionForm({
 
   return (
     <div className="space-y-3">
-      {custodyCheckbox}
-
       {/* Mode Selection (Add New vs Import) */}
       {!isEditing && (
         <div className="flex border-b mb-2" role="tablist">
@@ -941,6 +939,7 @@ export function PositionForm({
           importing={importing}
           isCustody={isCustody}
           custodyOf={custodyOf}
+          footerSlot={custodyCheckbox}
           onJsonChange={(value) => {
             setJsonInput(value);
             parseJson(value);
@@ -1125,6 +1124,8 @@ export function PositionForm({
                   {validationError}
                 </div>
               )}
+
+              <div className="pt-3 border-t border-border/60">{custodyCheckbox}</div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="submit" disabled={isLoading}>
@@ -1684,6 +1685,8 @@ export function PositionForm({
                   positions
                 </div>
               )}
+
+              <div className="pt-3 border-t border-border/60">{custodyCheckbox}</div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button
