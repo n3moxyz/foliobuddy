@@ -1173,7 +1173,7 @@ export function PositionForm({
                       }`}
                     >
                       {equityMode === 'single' && <Check className="h-4 w-4" />}
-                      Single
+                      Stock / ETF
                     </button>
                     <button
                       type="button"
@@ -1185,7 +1185,7 @@ export function PositionForm({
                       }`}
                     >
                       {equityMode === 'fund' && <Check className="h-4 w-4" />}
-                      Fund-level
+                      Unit Trust
                     </button>
                   </div>
                 </div>

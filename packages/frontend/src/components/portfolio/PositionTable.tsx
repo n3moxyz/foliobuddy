@@ -462,8 +462,8 @@ export function PositionTable({
                   }`}
                 />
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
-                  Single
-                  <HelpTooltip content="Individual stock tickers (e.g. AAPL, D05.SI) priced live via Yahoo Finance" />
+                  Stock / ETF
+                  <HelpTooltip content="Stocks and ETFs (e.g. AAPL, D05.SI, EWY) priced live via Yahoo Finance" />
                 </p>
                 <span className="text-xs text-muted-foreground">({singlePositions.length})</span>
                 {!isExpanded(singleId) && (
@@ -497,7 +497,7 @@ export function PositionTable({
                   }`}
                 />
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
-                  Fund-level
+                  Unit Trust
                   <HelpTooltip content="Unit trusts and managed funds — NAV tracked per fund, often from broker statements" />
                 </p>
                 <span className="text-xs text-muted-foreground">({fundPositions.length})</span>
