@@ -53,13 +53,19 @@ class PortfolioService {
   }
 
   async getSummary(userId: string): Promise<PortfolioSummary> {
+    // YTD anchor = first snapshot of the *current* calendar year. Scoping by
+    // year prevents a pre-2026 snapshot from being used as the YTD baseline
+    // next January, which would silently pin YTD to a stale value.
+    const startOfYearUtc = new Date(
+      Date.UTC(new Date().getUTCFullYear(), 0, 1, 0, 0, 0, 0)
+    );
     const [positions, fxRate, ytdSnapshot] = await Promise.all([
       this.getOwnedPositions(userId),
       prisma.fxRate.findUnique({
         where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: 'SGD' } },
       }),
       prisma.snapshot.findFirst({
-        where: { userId },
+        where: { userId, timestamp: { gte: startOfYearUtc } },
         orderBy: { timestamp: 'asc' },
         select: { timestamp: true, totalValueUsd: true },
       }),
