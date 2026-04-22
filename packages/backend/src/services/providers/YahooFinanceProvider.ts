@@ -265,8 +265,52 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       // actually wants. Heuristic: exact symbol match > no-suffix > has-suffix.
       .sort((a, b) => rankSymbol(upperQuery, a.symbol) - rankSymbol(upperQuery, b.symbol));
 
+    // Fallback: if search didn't return an exact-symbol ETF/equity (common for
+    // US ETFs when our droplet is in SG — Yahoo's search geolocates by source
+    // IP and filters out NYSE listings), try a direct quote lookup. quote()
+    // isn't IP-filtered and resolves deterministic tickers like QQQ/EWY/SPY.
+    const hasExactMatch = results.some((r) => r.symbol.toUpperCase() === upperQuery);
+    if (!hasExactMatch && /^[A-Z0-9.\-]{1,10}$/.test(upperQuery)) {
+      const directMatch = await this.quoteAsSearchResult(upperQuery);
+      if (directMatch) results.unshift(directMatch);
+    }
+
     this.searchCache.set(cacheKey, results);
     return results;
+  }
+
+  private async quoteAsSearchResult(symbol: string): Promise<ProviderSearchResult | null> {
+    try {
+      type QuoteLike = {
+        symbol?: string;
+        quoteType?: string;
+        longName?: string;
+        shortName?: string;
+        fullExchangeName?: string;
+        exchange?: string;
+        currency?: string;
+      };
+      const q = (await yahooFinance.quote(symbol)) as QuoteLike | null;
+      if (!q || !q.symbol || !q.quoteType) return null;
+      const type = q.quoteType.toUpperCase();
+      if (type !== 'EQUITY' && type !== 'ETF') return null;
+      const currency = (q.currency ?? this.inferCurrencyFromSymbol(q.symbol)).toUpperCase();
+      if (!this.isSupportedCurrency(currency)) return null;
+      return {
+        providerAssetId: q.symbol,
+        symbol: q.symbol,
+        name: q.longName || q.shortName || q.symbol,
+        exchange: q.fullExchangeName || q.exchange || null,
+        nativeCurrency: currency,
+        rank: null,
+      };
+    } catch (err) {
+      logger.warn(
+        `[Yahoo] direct quote lookup for "${symbol}" failed:`,
+        err instanceof Error ? err.message : err
+      );
+      return null;
+    }
   }
 
   private async searchViaLookup(query: string): Promise<YahooSearchItem[]> {
