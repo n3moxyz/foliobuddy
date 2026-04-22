@@ -178,7 +178,12 @@ export class YahooFinanceProvider implements AssetPriceProvider {
 
     let quotes: YahooSearchItem[];
     try {
-      const res = await yahooFinance.search(trimmed, { quotesCount: 5, newsCount: 0 });
+      const res = await yahooFinance.search(trimmed, {
+        quotesCount: 5,
+        newsCount: 0,
+        lang: 'en-US',
+        region: 'US',
+      });
       quotes = (res.quotes ?? []) as YahooSearchItem[];
     } catch (err) {
       logger.warn('[Yahoo] searchByIsin error:', err instanceof Error ? err.message : err);
@@ -215,11 +220,21 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     // Yahoo rate-limits /v1/finance/search aggressively from datacenter IPs.
     // Try yahoo-finance2 (handles crumb+cookie) first, then fall back to
     // /v7/finance/lookup which has different rate limits.
+    // Force region=US/lang=en-US: our DO droplet is in Singapore and Yahoo
+    // otherwise geolocates and returns region-weighted results (e.g. EWY
+    // search returns only Santiago cross-listings, not the primary NYSE ETF).
     let quotes: YahooSearchItem[] = [];
     try {
-      const res = await yahooFinance.search(query, { quotesCount: 15, newsCount: 0 });
+      const res = await yahooFinance.search(query, {
+        quotesCount: 15,
+        newsCount: 0,
+        lang: 'en-US',
+        region: 'US',
+      });
       quotes = (res.quotes ?? []) as YahooSearchItem[];
-      logger.info(`[Yahoo] search via lib for "${query}": ${quotes.length} quotes`);
+      logger.info(
+        `[Yahoo] search via lib for "${query}": ${quotes.length} quotes (types: ${quotes.map((q) => q.quoteType).join(',')})`
+      );
     } catch (err) {
       logger.warn('[Yahoo] search lib error:', err instanceof Error ? err.message : err);
     }
