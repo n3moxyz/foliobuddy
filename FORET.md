@@ -1168,6 +1168,30 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 ---
 
+### Edit Mode Currency Must Follow the Asset, Not the Storage Format
+
+**The bug:** After adding SGD support for single-equity create, editing an SG stock (e.g. D05.SI) still displayed "Total Cost (USD)" with the raw USD number. Users entering a correction in what they thought was SGD would overwrite the stored cost with the wrong value.
+
+**The root cause:** `costCurrency` had an `if (isEditing) return 'USD'` early return — a conservative shortcut to avoid the round-trip conversion problem. But correctness beats caution here: the display currency should always follow `asset.nativeCurrency`, regardless of edit/create mode.
+
+**The fix:** Remove the early return and add a one-shot `useEffect` that converts the stored USD cost to SGD for display, gated on `portfolioSummary` being loaded (so the FX rate is real, not the 1.35 fallback). Submit path converts back to USD. Delta mode (Add/Reduce) follows the same currency convention.
+
+**The pattern:** When a value is stored in a canonical unit (USD) but entered in a user-facing unit (SGD), the conversion layer must be symmetric — display and submit must use the *same rate at the same moment*. Using a fallback rate on mount and the real rate on save is how silent cost-basis drift gets introduced.
+
+---
+
+### Copy/Paste Round-Trip Needs to Carry Provider Wiring, Not Just Identity
+
+**The bug:** A user could copy an equity position to JSON, paste it into the bulk import form, and see the row appear in the portfolio. But the new position would never show a market value — prices stayed `null` forever.
+
+**The root cause:** The copy format only included `asset.{coingeckoId, symbol, name, category}`. For a coin, that's enough (CoinGecko price jobs key off `coingeckoId`). For an equity, the price scheduler needs `priceProvider: 'yahoo'` and `providerAssetId` (the Yahoo ticker). The bulk import endpoint was creating bare Asset rows without those fields, so Yahoo's scheduler had nothing to query.
+
+**The fix:** Include `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` in the copy format for non-coingecko assets. Backend bulk schema accepts these as optional; defaults to `yahoo` for EQUITY and `manual` for UNIT_TRUST when missing. Re-import of an existing symbol still wins (matched by symbol in the assetMap).
+
+**The pattern:** A copy/paste feature that only preserves "what the thing is" (symbol + category) but not "how to price it" (provider + provider ID) is quietly lossy — it looks like it worked until a price refresh later when the user notices the row is frozen. When designing portable data formats, include every field needed for the receiving system to fully reconstitute behavior, not just identity.
+
+---
+
 ## Best Practices That Paid Off
 
 ### 1. TypeScript Everywhere

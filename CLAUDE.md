@@ -281,6 +281,32 @@ Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `cus
 - `PositionImportTab.tsx` shows a purple banner when importing as custody; all imported positions get `custodyOf` stamped
 - `PositionTable.tsx` includes `custodyOf` in clipboard JSON format when set
 
+### Equity Positions (Single Stocks + Fund-Level Unit Trusts)
+
+Equities are a single category covering two sub-types, selected via a toggle in the form:
+
+- **Single** — individual tickers priced via Yahoo Finance (AAPL, D05.SI, etc.). `asset.category === 'EQUITY'`, `priceProvider === 'yahoo'`.
+- **Fund-level** — unit trusts with NAV tracked manually or via Yahoo statement parser. `asset.category === 'UNIT_TRUST'`, `priceProvider === 'manual'` or `'yahoo'`.
+
+**Form UI:**
+
+- `PositionForm.tsx` Category dropdown has 3 options: Crypto, Stables, Equities. When Equities is selected, a Single/Fund-level segmented toggle appears (only in create mode; edit mode infers from `position.asset.category`).
+- "Storage Type" dropdown for equities is replaced with a broker list (FSMOne, Tiger, UOB Kay Hian, Others). `storageType` stays `'BROKERAGE'` behind the scenes; the dropdown drives `storageLocation`. The separate "Storage Location" field is hidden for equities.
+- Cost input currency follows the asset's `nativeCurrency`: SGD tickers (`.SI`) and SGD unit trusts show "Total Cost (SGD)" / "Average Cost (SGD)". Backend always stores USD — conversion happens on submit using the live FX rate from `portfolioSummary` (fallback 1.35).
+- Edit mode also respects `nativeCurrency`: a `costInitialized` flag + effect converts the stored USD cost basis to SGD for display once `portfolioSummary` loads. Delta mode (Add/Reduce) follows the same currency convention.
+- "Stored internally as USD (x USD per SGD)" note shown whenever cost input is in SGD, in both create and edit.
+
+**Display UI:**
+
+- `Portfolio.tsx` has one "Equities" section combining both sub-types. Inside, `PositionTable` with `groupBy='equityType'` splits into Single (stocks) and Fund-level (UTs) collapsible subsections — mirrors how Crypto splits into CEX/Onchain.
+- `PositionRow.tsx` Storage column: for `BROKERAGE` positions, shows the broker name directly (Tiger, UOB Kay Hian, FSMOne) instead of "Brokerage" with the broker as italic subtext. View dialog collapses to a single "Broker" field for brokerage positions.
+
+**Copy/Paste round-trip:**
+
+- Copy format (`PositionTable.formatPositionsForClipboard`) includes `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` for non-coingecko assets. Required so re-importing a not-yet-in-DB equity wires up Yahoo live prices.
+- Backend bulk import schema (`positions.ts`) accepts these as optional; honored only when creating a new Asset row. Defaults: `EQUITY → yahoo`, `UNIT_TRUST → manual`, else `coingecko`. Re-importing an existing symbol matches by symbol first and ignores these fields (existing wiring wins).
+- `BulkImportPosition` type in `packages/shared/src/types.ts` includes EQUITY + UNIT_TRUST in the category union.
+
 ### Position Edit Modes
 
 `PositionForm.tsx` edit mode now has two distinct tabs:
@@ -299,7 +325,7 @@ Rules:
 
 - **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
 - **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
-- **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items. Hover on pie slices shows info inline in the card header row using `compactUsd()` for short dollar values ($1.2K, $3.4M, $1.2B) — no Recharts Tooltip (removed to avoid overlap with legend). Maximally distinct hues per slice, avoiding benchmark line colors.
+- **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Custody positions are filtered out before allocations are computed (matches the backend's `custodyOf: null` treatment for summary/exposure) — done in `Dashboard.tsx` via `positions.filter((p) => !p.custodyOf)` before passing to `AllocationCharts`. Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items. Hover on pie slices shows info inline in the card header row using `compactUsd()` for short dollar values ($1.2K, $3.4M, $1.2B) — no Recharts Tooltip (removed to avoid overlap with legend). Maximally distinct hues per slice, avoiding benchmark line colors.
 - **Benchmark chart legend**: Portfolio line color is `#64748B` (slate gray) with matching color swatch dot — not the default `text-primary` indigo.
 
 ### Dashboard Investor Default
