@@ -322,7 +322,21 @@ export interface BulkImportPosition {
     coingeckoId: string | null;
     symbol: string;
     name: string;
-    category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
+    category:
+      | 'LIQUID_CRYPTO'
+      | 'STABLECOIN'
+      | 'NFT'
+      | 'ANGEL'
+      | 'CASH'
+      | 'EQUITY'
+      | 'UNIT_TRUST';
+    // Optional fields — carried through on copy/paste so re-importing a non-existent
+    // equity still wires up price feeds. Backend only uses these when creating a
+    // brand-new Asset row; ignored if the symbol already exists.
+    priceProvider?: 'coingecko' | 'yahoo' | 'manual' | null;
+    providerAssetId?: string | null;
+    nativeCurrency?: string | null;
+    exchange?: string | null;
   };
   quantity: number;
   avgCostUsd: number;

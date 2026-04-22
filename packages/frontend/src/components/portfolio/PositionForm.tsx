@@ -17,7 +17,7 @@ import {
   useCreateAssetFromProvider,
   useCreateUnitTrust,
 } from '@/hooks/useAssets';
-import { useCreatePosition, useUpdatePosition } from '@/hooks/usePortfolio';
+import { useCreatePosition, useUpdatePosition, usePortfolioSummary } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
 import type {
   Asset,
@@ -72,7 +72,8 @@ interface PositionFormProps {
   existingCustodyNames?: string[];
 }
 
-type CategoryType = 'crypto' | 'cash' | 'equity' | 'unit_trust';
+type CategoryType = 'crypto' | 'cash' | 'equity';
+type EquityMode = 'single' | 'fund';
 type FormMode = 'add' | 'import';
 
 type ImportedPosition = BulkImportPosition;
@@ -81,8 +82,6 @@ const STORAGE_TYPES = [
   { value: 'CEX', label: 'CEX' },
   { value: 'WALLET', label: 'Onchain' },
 ];
-
-const EQUITY_STORAGE_TYPES = [{ value: 'BROKERAGE', label: 'Brokerage' }];
 
 // Alphabetically sorted, with Others at the end
 const CEX_LOCATIONS = ['Binance', 'Bybit', 'Coinbase', 'Others'];
@@ -125,15 +124,20 @@ export function PositionForm({
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<ImportResultItem[] | null>(null);
 
-  // Category state
+  // Category state (Equities covers both single stocks and fund-level holdings)
   const [category, setCategory] = useState<CategoryType>(() => {
-    if (position?.asset.category === 'EQUITY') return 'equity';
-    if (position?.asset.category === 'UNIT_TRUST') return 'unit_trust';
+    if (position?.asset.category === 'EQUITY' || position?.asset.category === 'UNIT_TRUST')
+      return 'equity';
     if (isStablecoinCategory(position?.asset.category)) return 'cash';
     return 'crypto';
   });
 
-  // Unit Trust–specific form state (only used when category === 'unit_trust' and not editing)
+  // Sub-mode when category === 'equity': 'single' = stock ticker, 'fund' = unit-trust flow
+  const [equityMode, setEquityMode] = useState<EquityMode>(() =>
+    position?.asset.category === 'UNIT_TRUST' ? 'fund' : 'single'
+  );
+
+  // Fund-level (unit trust) form state — only used when category === 'equity' && equityMode === 'fund' && !isEditing
   const [utSymbol, setUtSymbol] = useState('');
   const [utName, setUtName] = useState('');
   const [utNativeCurrency, setUtNativeCurrency] = useState<'SGD' | 'USD'>('SGD');
@@ -175,6 +179,10 @@ export function PositionForm({
     return '';
   });
   const [avgCostInput, setAvgCostInput] = useState(position?.avgCostUsd?.toString() || '');
+  // Tracks whether we've populated cost fields for an existing position.
+  // For SGD-denominated edits we wait for portfolioSummary so the displayed
+  // SGD values match the FX rate used on submit.
+  const [costInitialized, setCostInitialized] = useState(false);
   const [storageType, setStorageType] = useState(position?.storageType || 'CEX');
   const [storageLocation, setStorageLocation] = useState(() => {
     if (!position?.storageLocation) return '';
@@ -234,17 +242,53 @@ export function PositionForm({
     createAssetFromProvider.isPending ||
     createUnitTrust.isPending;
 
+  // Live FX rate (SGD per 1 USD) — derived from portfolio summary so it matches displayed values.
+  // Used to convert single-equity SGD inputs to USD on submit.
+  const { data: portfolioSummary } = usePortfolioSummary();
+  const fxSgdPerUsd = useMemo(() => {
+    if (portfolioSummary && portfolioSummary.totalValueUsd > 0 && portfolioSummary.totalValueSgd > 0) {
+      return portfolioSummary.totalValueSgd / portfolioSummary.totalValueUsd;
+    }
+    return 1.35;
+  }, [portfolioSummary]);
+
+  // Currency the user is entering cost in. USD unless the asset is SGD-denominated
+  // (single equity with .SI ticker, or a SGD unit trust). Backend always stores USD.
+  const costCurrency = useMemo<'USD' | 'SGD'>(() => {
+    if (category !== 'equity') return 'USD';
+    if (equityMode === 'fund' && !isEditing) return utNativeCurrency;
+    const native = selectedAsset?.nativeCurrency?.toUpperCase();
+    return native === 'SGD' ? 'SGD' : 'USD';
+  }, [category, equityMode, isEditing, utNativeCurrency, selectedAsset]);
+
+  // When editing an SGD-native position, re-display the stored USD cost basis in SGD.
+  // Runs once per position; waits for portfolioSummary so the FX rate is real, not the
+  // 1.35 fallback (would otherwise round-trip incorrectly on save).
+  useEffect(() => {
+    if (!position || costInitialized) return;
+    if (costCurrency !== 'SGD') {
+      setCostInitialized(true);
+      return;
+    }
+    if (!portfolioSummary) return;
+    const displayAvg = position.avgCostUsd * fxSgdPerUsd;
+    const displayTotal = position.quantity * position.avgCostUsd * fxSgdPerUsd;
+    setAvgCostInput(displayAvg.toFixed(2));
+    setTotalCost(displayTotal.toFixed(2));
+    setCostInitialized(true);
+  }, [position, costCurrency, fxSgdPerUsd, portfolioSummary, costInitialized]);
+
   // Form validation
   const isFormValid = useMemo(() => {
     if (!quantity || parseFloat(quantity) <= 0) return false;
-    if (category === 'unit_trust' && !isEditing) {
+    if (category === 'equity' && equityMode === 'fund' && !isEditing) {
       if (!utSymbol.trim() || !utName.trim()) return false;
       if (!utNav || parseFloat(utNav) <= 0) return false;
       return true;
     }
     if (!assetId) return false;
     return true;
-  }, [assetId, quantity, category, isEditing, utSymbol, utName, utNav]);
+  }, [assetId, quantity, category, equityMode, isEditing, utSymbol, utName, utNav]);
 
   const handlePaste = async () => {
     try {
@@ -350,8 +394,11 @@ export function PositionForm({
   const addPreview = useMemo(() => {
     if (!position || editMode !== 'delta') return null;
     const deltaQty = parseFloat(additionalQuantity);
+    const rawDeltaCost = parseFloat(additionalTotalCost);
+    const deltaCostAddUsd =
+      costCurrency === 'SGD' ? rawDeltaCost / fxSgdPerUsd : rawDeltaCost;
     const deltaCost =
-      deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : parseFloat(additionalTotalCost);
+      deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
     if (!(deltaQty > 0) || !(deltaCost >= 0)) return null;
 
     const currentTotalCost = position.quantity * position.avgCostUsd;
@@ -361,15 +408,16 @@ export function PositionForm({
     if (nextQuantity < 0 || nextTotalCost < 0) return null;
     const nextAvgCost = nextQuantity > 0 ? nextTotalCost / nextQuantity : 0;
 
+    const rate = costCurrency === 'SGD' ? fxSgdPerUsd : 1;
     return {
       currentQuantity: position.quantity,
-      currentAvgCost: position.avgCostUsd,
-      currentTotalCost,
+      currentAvgCost: position.avgCostUsd * rate,
+      currentTotalCost: currentTotalCost * rate,
       nextQuantity,
-      nextAvgCost,
-      nextTotalCost,
+      nextAvgCost: nextAvgCost * rate,
+      nextTotalCost: nextTotalCost * rate,
     };
-  }, [position, editMode, additionalQuantity, additionalTotalCost, deltaMode]);
+  }, [position, editMode, additionalQuantity, additionalTotalCost, deltaMode, costCurrency, fxSgdPerUsd]);
 
   // Filter existing assets based on search and category
   const filteredAssets = useMemo(() => {
@@ -544,7 +592,7 @@ export function PositionForm({
     }
   };
 
-  // Reset form when category changes
+  // Reset form when category or equity sub-mode changes
   useEffect(() => {
     if (!isEditing) {
       setAssetId('');
@@ -554,11 +602,9 @@ export function PositionForm({
       setQuantity('');
       setTotalCost('');
       setError(null);
-      setStorageType(
-        category === 'equity' || category === 'unit_trust' ? 'BROKERAGE' : 'CEX'
-      );
+      setStorageType(category === 'equity' ? 'BROKERAGE' : 'CEX');
     }
-  }, [category, isEditing]);
+  }, [category, equityMode, isEditing]);
 
   // Reset import state when mode changes
   useEffect(() => {
@@ -658,8 +704,13 @@ export function PositionForm({
 
     if (isEditing && editMode === 'delta' && position) {
       const deltaQty = parseFloat(additionalQuantity);
+      // In add mode the user enters cost in costCurrency — convert to USD for persistence.
+      // In reduce mode we shrink basis at current avg cost (already USD), no conversion needed.
+      const deltaCostInput = parseFloat(additionalTotalCost);
+      const deltaCostAddUsd =
+        costCurrency === 'SGD' ? deltaCostInput / fxSgdPerUsd : deltaCostInput;
       const deltaCost =
-        deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : parseFloat(additionalTotalCost);
+        deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
 
       if (!(deltaQty > 0)) {
         setValidationError(`Please enter a valid ${deltaMode} quantity`);
@@ -727,8 +778,8 @@ export function PositionForm({
       }
     }
 
-    // Unit Trust create path: create asset + initial NAV, then create position
-    if (!isEditing && category === 'unit_trust') {
+    // Fund-level (unit trust) create path: create asset + initial NAV, then create position
+    if (!isEditing && category === 'equity' && equityMode === 'fund') {
       const navNum = parseFloat(utNav);
       const qtyNum = parseFloat(quantity);
       const costNumInput = parseFloat(calculatedTotalCost);
@@ -788,10 +839,18 @@ export function PositionForm({
     // Determine final storage location value
     const finalStorageLocation = storageLocation === 'Others' ? customLocation : storageLocation;
 
+    // Convert equity-SGD input to USD before persisting (backend stores USD).
+    // Applies to both create and edit (single stocks and unit trusts).
+    const rawAvgCost = category === 'cash' ? 1 : parseFloat(avgCostUsd) || 0;
+    const finalAvgCostUsd =
+      category === 'equity' && costCurrency === 'SGD'
+        ? rawAvgCost / fxSgdPerUsd
+        : rawAvgCost;
+
     const data = {
       assetId,
       quantity: parseFloat(quantity),
-      avgCostUsd: category === 'cash' ? 1 : parseFloat(avgCostUsd) || 0,
+      avgCostUsd: finalAvgCostUsd,
       storageType: storageType as 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE',
       storageLocation: finalStorageLocation || undefined,
       notes: notes.trim() || undefined,
@@ -993,7 +1052,7 @@ export function PositionForm({
               {deltaMode === 'add' ? (
                 <div className="space-y-1">
                   <Label htmlFor="additionalTotalCost" className="text-sm">
-                    Additional Total Cost (USD)
+                    Additional Total Cost ({costCurrency})
                   </Label>
                   <Input
                     id="additionalTotalCost"
@@ -1093,14 +1152,46 @@ export function PositionForm({
                       <SelectItem value="crypto">Crypto</SelectItem>
                       <SelectItem value="cash">Stables</SelectItem>
                       <SelectItem value="equity">Equities</SelectItem>
-                      <SelectItem value="unit_trust">Unit Trust</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
 
-              {/* Asset Selection - Different UI for Crypto/Equity vs Cash vs Unit Trust */}
-              {category === 'unit_trust' && !isEditing ? (
+              {/* Equity sub-type: Single stock vs Fund-level (unit trust) */}
+              {!isEditing && category === 'equity' && (
+                <div className="space-y-1">
+                  <Label className="text-sm">Type</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEquityMode('single')}
+                      className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                        equityMode === 'single'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {equityMode === 'single' && <Check className="h-4 w-4" />}
+                      Single
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEquityMode('fund')}
+                      className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                        equityMode === 'fund'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {equityMode === 'fund' && <Check className="h-4 w-4" />}
+                      Fund-level
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Asset Selection - Single ticker vs Fund-level (PDF upload) vs Cash */}
+              {category === 'equity' && equityMode === 'fund' && !isEditing ? (
                 <div className="space-y-3">
                   <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
                     <div className="flex items-center justify-between gap-2">
@@ -1352,10 +1443,10 @@ export function PositionForm({
                   {category === 'cash'
                     ? 'Amount'
                     : category === 'equity'
-                      ? 'Shares'
-                      : category === 'unit_trust'
+                      ? equityMode === 'fund'
                         ? 'Units'
-                        : 'Quantity'}
+                        : 'Shares'
+                      : 'Quantity'}
                 </Label>
                 <Input
                   id="quantity"
@@ -1414,7 +1505,7 @@ export function PositionForm({
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label htmlFor="totalCost" className="text-sm">
-                        Total Cost ({category === 'unit_trust' ? utNativeCurrency : 'USD'})
+                        Total Cost ({costCurrency})
                       </Label>
                       <Input
                         id="totalCost"
@@ -1429,7 +1520,7 @@ export function PositionForm({
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="avgCost" className="text-sm">
-                        Average Cost ({category === 'unit_trust' ? utNativeCurrency : 'USD'})
+                        Average Cost ({costCurrency})
                       </Label>
                       <Input
                         id="avgCost"
@@ -1443,78 +1534,119 @@ export function PositionForm({
                       />
                     </div>
                   </div>
-                  {category === 'unit_trust' && utNativeCurrency !== 'USD' && (
-                    <p className="text-xs text-muted-foreground">
-                      Stored internally as USD ({utUsdPerNative.toFixed(4)} USD per{' '}
-                      {utNativeCurrency}).
-                    </p>
-                  )}
+                  {!isEditing &&
+                    category === 'equity' &&
+                    equityMode === 'fund' &&
+                    utNativeCurrency !== 'USD' && (
+                      <p className="text-xs text-muted-foreground">
+                        Stored internally as USD ({utUsdPerNative.toFixed(4)} USD per{' '}
+                        {utNativeCurrency}).
+                      </p>
+                    )}
+                  {category === 'equity' &&
+                    !(equityMode === 'fund' && !isEditing) &&
+                    costCurrency === 'SGD' && (
+                      <p className="text-xs text-muted-foreground">
+                        Stored internally as USD ({(1 / fxSgdPerUsd).toFixed(4)} USD per SGD).
+                      </p>
+                    )}
                 </div>
               )}
 
-              {/* Storage Type */}
+              {/* Storage Type — for equities the dropdown holds broker names
+                  (storageType is always BROKERAGE behind the scenes, set via category effect) */}
               <div className="space-y-1">
                 <Label htmlFor="pos-storage-type" className="text-sm">
                   Storage Type
                 </Label>
-                <Select
-                  value={storageType}
-                  onValueChange={(value) =>
-                    setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE')
-                  }
-                >
-                  <SelectTrigger id="pos-storage-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(category === 'equity' || category === 'unit_trust'
-                      ? EQUITY_STORAGE_TYPES
-                      : STORAGE_TYPES
-                    ).map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Storage Location */}
-              <div className="space-y-1">
-                <Label htmlFor="pos-storage-location" className="text-sm">
-                  Storage Location (Optional)
-                </Label>
-                <Select
-                  value={storageLocation}
-                  onValueChange={(v) => {
-                    setStorageLocation(v);
-                    if (v !== 'Others') {
-                      setCustomLocation('');
+                {category === 'equity' ? (
+                  <>
+                    <Select
+                      value={storageLocation}
+                      onValueChange={(v) => {
+                        setStorageLocation(v);
+                        if (v !== 'Others') setCustomLocation('');
+                      }}
+                    >
+                      <SelectTrigger id="pos-storage-type">
+                        <SelectValue placeholder="Select broker" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BROKERAGE_LOCATIONS.map((loc) => (
+                          <SelectItem key={loc} value={loc}>
+                            {loc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {storageLocation === 'Others' && (
+                      <Input
+                        value={customLocation}
+                        onChange={(e) => setCustomLocation(e.target.value)}
+                        placeholder="Enter custom broker..."
+                        className="mt-2"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <Select
+                    value={storageType}
+                    onValueChange={(value) =>
+                      setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE')
                     }
-                  }}
-                >
-                  <SelectTrigger id="pos-storage-location">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locationOptions.map((loc) => (
-                      <SelectItem key={loc} value={loc}>
-                        {loc}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {/* Custom location input when "Others" is selected */}
-                {storageLocation === 'Others' && (
-                  <Input
-                    value={customLocation}
-                    onChange={(e) => setCustomLocation(e.target.value)}
-                    placeholder="Enter custom location..."
-                    className="mt-2"
-                  />
+                  >
+                    <SelectTrigger id="pos-storage-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STORAGE_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
+
+              {/* Storage Location — hidden for equities (broker already captured above) */}
+              {category !== 'equity' && (
+                <div className="space-y-1">
+                  <Label htmlFor="pos-storage-location" className="text-sm">
+                    Storage Location (Optional)
+                  </Label>
+                  <Select
+                    value={storageLocation}
+                    onValueChange={(v) => {
+                      setStorageLocation(v);
+                      if (v !== 'Others') {
+                        setCustomLocation('');
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="pos-storage-location">
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locationOptions.map((loc) => (
+                        <SelectItem key={loc} value={loc}>
+                          {loc}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Custom location input when "Others" is selected */}
+                  {storageLocation === 'Others' && (
+                    <Input
+                      value={customLocation}
+                      onChange={(e) => setCustomLocation(e.target.value)}
+                      placeholder="Enter custom location..."
+                      className="mt-2"
+                    />
+                  )}
+                </div>
+              )}
 
               <div className="space-y-1">
                 <Label htmlFor="notes" className="text-sm">

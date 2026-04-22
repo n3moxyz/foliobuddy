@@ -48,6 +48,16 @@ function formatPositionsForClipboard(positions: Position | Position[]) {
       symbol: p.asset.symbol,
       name: p.asset.name,
       category: p.asset.category,
+      // Provider wiring — only carried for non-coingecko assets (equities, UTs).
+      // Ensures a re-import of a not-yet-in-DB ticker still gets live prices.
+      ...(p.asset.priceProvider && p.asset.priceProvider !== 'coingecko'
+        ? {
+            priceProvider: p.asset.priceProvider,
+            providerAssetId: p.asset.providerAssetId,
+            nativeCurrency: p.asset.nativeCurrency,
+            exchange: p.asset.exchange,
+          }
+        : {}),
     },
     quantity: p.quantity,
     avgCostUsd: p.avgCostUsd,
@@ -76,6 +86,12 @@ interface PositionTableProps {
   fxRate?: number;
   sectionPrefix?: string;
   onUpdateNav?: (position: Position) => void;
+  /**
+   * How to sub-group rows inside the card:
+   * - 'storage' (default): CEX / Brokerage / Onchain — used for crypto/stables/custody
+   * - 'equityType': Single / Fund-level (by asset.category) — used for Equities
+   */
+  groupBy?: 'storage' | 'equityType';
 }
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
@@ -103,6 +119,7 @@ export function PositionTable({
   fxRate = 1,
   sectionPrefix,
   onUpdateNav,
+  groupBy = 'storage',
 }: PositionTableProps) {
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
@@ -188,6 +205,30 @@ export function PositionTable({
   const brokeragePositions = brokerageSort.sortedItems;
   const onchainPositions = onchainSort.sortedItems;
 
+  // Split Equities into Single (stocks) vs Fund-level (unit trusts) when groupBy === 'equityType'
+  const { defaultSingle, defaultFund, singleTotal, fundTotal } = useMemo(() => {
+    const single: Position[] = [];
+    const fund: Position[] = [];
+    positions.forEach((pos) => {
+      if (pos.asset.category === 'UNIT_TRUST') fund.push(pos);
+      else single.push(pos);
+    });
+    const byMv = (a: Position, b: Position) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
+    single.sort(byMv);
+    fund.sort(byMv);
+    return {
+      defaultSingle: single,
+      defaultFund: fund,
+      singleTotal: single.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+      fundTotal: fund.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+    };
+  }, [positions]);
+
+  const singleSort = useTableSort(defaultSingle, POSITION_COLUMNS);
+  const fundSort = useTableSort(defaultFund, POSITION_COLUMNS);
+  const singlePositions = singleSort.sortedItems;
+  const fundPositions = fundSort.sortedItems;
+
   const convertSub = (usdValue: number) => {
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
   };
@@ -195,6 +236,8 @@ export function PositionTable({
   const cexId = sectionPrefix ? `${sectionPrefix}-cex` : 'cex';
   const brokerageId = sectionPrefix ? `${sectionPrefix}-brokerage` : 'brokerage';
   const onchainId = sectionPrefix ? `${sectionPrefix}-onchain` : 'onchain';
+  const singleId = sectionPrefix ? `${sectionPrefix}-single` : 'single';
+  const fundId = sectionPrefix ? `${sectionPrefix}-fund` : 'fund';
 
   const handleDeleteClick = useCallback(
     (position: Position) => {
@@ -371,7 +414,7 @@ export function PositionTable({
           </Collapsible>
         )}
 
-        {brokeragePositions.length > 0 && (
+        {groupBy !== 'equityType' && brokeragePositions.length > 0 && (
           <Collapsible open={isExpanded(brokerageId)} onOpenChange={() => toggle(brokerageId)}>
             <CollapsibleTrigger asChild>
               <button
@@ -400,6 +443,76 @@ export function PositionTable({
                 <Table className={tableClass}>
                   {renderTableHeader(brokerageSort)}
                   <TableBody>{brokeragePositions.map(renderPositionRow)}</TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {groupBy === 'equityType' && singlePositions.length > 0 && (
+          <Collapsible open={isExpanded(singleId)} onOpenChange={() => toggle(singleId)}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
+              >
+                <ChevronRight
+                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
+                    isExpanded(singleId) ? 'rotate-90' : ''
+                  }`}
+                />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
+                  Single
+                  <HelpTooltip content="Individual stock tickers (e.g. AAPL, D05.SI) priced live via Yahoo Finance" />
+                </p>
+                <span className="text-xs text-muted-foreground">({singlePositions.length})</span>
+                {!isExpanded(singleId) && (
+                  <span className="text-xs font-mono text-muted-foreground ml-auto">
+                    {formatCurrency(convertSub(singleTotal), currency, 0)}
+                  </span>
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
+              <div className="rounded-md border overflow-x-auto">
+                <Table className={tableClass}>
+                  {renderTableHeader(singleSort)}
+                  <TableBody>{singlePositions.map(renderPositionRow)}</TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {groupBy === 'equityType' && fundPositions.length > 0 && (
+          <Collapsible open={isExpanded(fundId)} onOpenChange={() => toggle(fundId)}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
+              >
+                <ChevronRight
+                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
+                    isExpanded(fundId) ? 'rotate-90' : ''
+                  }`}
+                />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
+                  Fund-level
+                  <HelpTooltip content="Unit trusts and managed funds — NAV tracked per fund, often from broker statements" />
+                </p>
+                <span className="text-xs text-muted-foreground">({fundPositions.length})</span>
+                {!isExpanded(fundId) && (
+                  <span className="text-xs font-mono text-muted-foreground ml-auto">
+                    {formatCurrency(convertSub(fundTotal), currency, 0)}
+                  </span>
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
+              <div className="rounded-md border overflow-x-auto">
+                <Table className={tableClass}>
+                  {renderTableHeader(fundSort)}
+                  <TableBody>{fundPositions.map(renderPositionRow)}</TableBody>
                 </Table>
               </div>
             </CollapsibleContent>
@@ -585,18 +698,25 @@ export function PositionTable({
               </div>
 
               <div className="border-t pt-4">
-                <div className="grid grid-cols-2 gap-4">
+                {viewPosition.storageType === 'BROKERAGE' ? (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Storage Type</p>
-                    <p className="text-sm">
-                      {STORAGE_TYPE_LABELS[viewPosition.storageType] || viewPosition.storageType}
-                    </p>
+                    <p className="text-xs text-muted-foreground">Broker</p>
+                    <p className="text-sm">{viewPosition.storageLocation || 'Brokerage'}</p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Storage Location</p>
-                    <p className="text-sm">{viewPosition.storageLocation || '-'}</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Storage Type</p>
+                      <p className="text-sm">
+                        {STORAGE_TYPE_LABELS[viewPosition.storageType] || viewPosition.storageType}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Storage Location</p>
+                      <p className="text-sm">{viewPosition.storageLocation || '-'}</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {viewPosition.notes && (

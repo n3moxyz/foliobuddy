@@ -100,6 +100,13 @@ const bulkImportPositionSchema = z.object({
     symbol: z.string().min(1),
     name: z.string().min(1),
     category: z.enum(ASSET_CATEGORIES).default('LIQUID_CRYPTO'),
+    // Optional provider wiring — honored only when creating a new Asset row.
+    // Lets a copy/paste round-trip of equities and unit trusts preserve the
+    // price feed (Yahoo / manual NAV) for tickers not yet in the DB.
+    priceProvider: z.enum(['coingecko', 'yahoo', 'manual']).nullable().optional(),
+    providerAssetId: z.string().nullable().optional(),
+    nativeCurrency: z.string().nullable().optional(),
+    exchange: z.string().nullable().optional(),
   }),
   quantity: z.number().positive(),
   avgCostUsd: z.number().min(0).default(0),
@@ -137,6 +144,14 @@ router.post('/bulk', async (req, res, next) => {
           assetMap.get(pos.asset.symbol.toUpperCase());
 
         if (!asset) {
+          // Default priceProvider by category when not supplied: equities → yahoo,
+          // unit trusts → manual (NAV-driven), everything else → coingecko.
+          const defaultProvider =
+            pos.asset.category === 'EQUITY'
+              ? 'yahoo'
+              : pos.asset.category === 'UNIT_TRUST'
+                ? 'manual'
+                : 'coingecko';
           asset = await prisma.asset.create({
             data: {
               coingeckoId: pos.asset.coingeckoId || null,
@@ -144,6 +159,10 @@ router.post('/bulk', async (req, res, next) => {
               name: pos.asset.name,
               category: pos.asset.category,
               currentPriceUsd: null,
+              priceProvider: pos.asset.priceProvider || defaultProvider,
+              providerAssetId: pos.asset.providerAssetId || null,
+              nativeCurrency: pos.asset.nativeCurrency || 'USD',
+              exchange: pos.asset.exchange || null,
             },
           });
           assetMap.set(asset.symbol.toUpperCase(), asset);

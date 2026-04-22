@@ -239,7 +239,10 @@ export default function Dashboard() {
 
       {positions && (
         <div>
-          <AllocationCharts positions={positions} isLoading={positionsLoading} />
+          <AllocationCharts
+            positions={positions.filter((p) => !p.custodyOf)}
+            isLoading={positionsLoading}
+          />
         </div>
       )}
 

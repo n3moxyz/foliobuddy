@@ -70,16 +70,9 @@ const SECTION_CONFIG: SectionConfig[] = [
   {
     id: 'equities',
     label: 'Equities',
-    filter: (p) => p.asset.category === 'EQUITY',
+    filter: (p) => p.asset.category === 'EQUITY' || p.asset.category === 'UNIT_TRUST',
     icon: <LineChart className="h-4 w-4 text-amber-500" />,
     accentColor: 'border-l-amber-500',
-  },
-  {
-    id: 'unit_trusts',
-    label: 'Unit Trusts',
-    filter: (p) => p.asset.category === 'UNIT_TRUST',
-    icon: <Wallet className="h-4 w-4 text-teal-500" />,
-    accentColor: 'border-l-teal-500',
   },
   {
     id: 'stables',
@@ -481,8 +474,9 @@ export default function Portfolio() {
               currency={currency}
               fxRate={fxRate}
               sectionPrefix={section.id}
+              groupBy={section.id === 'equities' ? 'equityType' : 'storage'}
               onUpdateNav={
-                section.id === 'unit_trusts' ? (p) => setNavAsset(p.asset) : undefined
+                section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined
               }
             />
           </CollapsibleCard>

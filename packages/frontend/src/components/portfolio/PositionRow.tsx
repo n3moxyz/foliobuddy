@@ -131,13 +131,19 @@ export const PositionRow = React.memo(function PositionRow({
       </TableCell>
       <TableCell className={`text-right ${HIDDEN_MOBILE}`}>
         <div className="truncate">
-          <p className="text-sm">
-            {STORAGE_TYPE_LABELS[position.storageType] || position.storageType}
-          </p>
-          {position.storageLocation && (
-            <p className="text-xs text-muted-foreground italic truncate">
-              {position.storageLocation}
-            </p>
+          {position.storageType === 'BROKERAGE' ? (
+            <p className="text-sm truncate">{position.storageLocation || 'Brokerage'}</p>
+          ) : (
+            <>
+              <p className="text-sm">
+                {STORAGE_TYPE_LABELS[position.storageType] || position.storageType}
+              </p>
+              {position.storageLocation && (
+                <p className="text-xs text-muted-foreground italic truncate">
+                  {position.storageLocation}
+                </p>
+              )}
+            </>
           )}
         </div>
       </TableCell>
