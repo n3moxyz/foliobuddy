@@ -1192,6 +1192,69 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 ---
 
+### Yahoo's Search API Geolocates by Source IP — Even With `region=US`
+
+**The bug:** Searching "EWY" (iShares MSCI South Korea ETF, NYSE Arca) from the live app returned only Santiago Stock Exchange cross-listings (`EWY.SN`, `EWYCL.SN`). Searching "QQQ" returned nothing. Both are canonical US ETFs.
+
+**The investigation path:** First I assumed it was a `quoteType` filter — our code allowed only `'EQUITY'` and ETFs come back as `quoteType: 'ETF'`. Added ETF to the allowlist and ranked primary listings above cross-listings (exact match > no-suffix > prefix > other). Verified locally that Yahoo's raw `/v1/finance/search` endpoint returned `EWY` at the top for my query. Deployed. Still broken. Next hypothesis: passed `region=US&lang=en-US` explicitly to normalize — the `region` parameter controls localization but not IP-based result weighting. Still broken.
+
+**The root cause:** Our production droplet is in Singapore (DigitalOcean SG region, 203.0.113.10). Yahoo's `/v1/finance/search` endpoint *geolocates the caller IP* and region-filters results. US ETFs aren't in the SG-region result set, period — no parameter will change that.
+
+**The fix:** Fall back to a direct `quote()` lookup when the search query looks like a ticker (`/^[A-Z0-9.-]{1,10}$/`) and no exact-symbol match appeared in results. Yahoo's `/v7/finance/quote` endpoint is *not* IP-filtered — a deterministic symbol like QQQ resolves regardless of caller geography. The script now calls `yahoo.quote(upperQuery)` and, if it returns a valid EQUITY/ETF in a supported currency, prepends a synthetic search result. Covers ~every common case of a user typing a ticker they already know.
+
+**The pattern:** When a third-party search API returns regionally weighted results and you need consistent behavior from any server location, don't try to bully the search endpoint. Use a deterministic lookup endpoint as a fallback for the narrow case that matters (exact symbol match). The two endpoints have different rate-limit pools, different IP filters, and different shapes — pick the right one for the job instead of fighting the wrong one.
+
+---
+
+### Backfilling Historical Snapshots Needs an Audit + Restore-Baseline Pattern, Not In-Place Deltas
+
+**The problem:** I had six equity positions I'd been holding for weeks/months, but just entered them today. Every existing snapshot understated the portfolio by the equity value at the time — so the Dashboard chart showed a vertical cliff on today's date, and the YTD Start (Jan 1 snapshot) was missing ~$213K of holdings, making YTD P&L wildly overstated.
+
+**The naive plan (wrong):** Iterate snapshots, look up each equity's historical price per snapshot date, add `quantity × price` to `totalValueUsd`, upsert `SnapshotPosition` rows. Simple delta math.
+
+**Why that breaks:**
+
+1. **No idempotency.** `SnapshotPosition` has no unique key on `(snapshotId, assetSymbol)`, so Prisma `.upsert()` isn't available. Even with manual delete-then-insert of target rows, pre-purchase *cash placeholders* (for mid-year buys — e.g. "add $78.5K USD to totalValueUsd before EWY was bought") have no row to detect or subtract. Re-running the script double-adds.
+2. **Wrong FX.** `YahooProvider.getHistoricalPrices().priceUsd` converts native prices using the *current* stored USD/SGD rate, not the per-snapshot rate. For SG-native assets (D05.SI, LIONGLOB) this smears today's FX across months of history and gives the wrong USD attribution.
+3. **Stale cached metrics.** Snapshot rows store `dailyReturn`, `weeklyReturn`, `monthlyReturn`, `ytdReturn`, `athValueUsd`, `btcOutperform`, `ethOutperform` — all computed off `totalValueUsd`. Updating totals without recomputing these leaves the History tab showing old percentages.
+4. **Allocation drift.** `SnapshotPosition.allocation` is `valueUsd / totalValueUsd × 100`. Inserting new rows without rescaling existing rows breaks the invariant that allocations sum to 100%.
+
+**The correct shape:**
+
+- **Audit first, then apply.** Before any write, dump every affected snapshot's baseline totals + cached metrics + all `SnapshotPosition` rows to `scripts/audit-<iso>.json`. The apply phase computes deltas against the *captured baseline*, not current DB state. Re-running is deterministic regardless of how many times it was run. The audit file doubles as a deterministic rollback artifact (`--rollback <audit.json>` restores every column verbatim).
+- **Restore-baseline-then-apply, not add-to-current.** For each snapshot: start from the audit baseline, subtract stale target-row contributions from baseline, compute new contributions, delete-then-insert target rows inside a transaction. Survives re-runs even without unique constraints.
+- **Per-snapshot FX.** Use `snapshot.usdSgdRate` for the conversion, falling back to the latest `fxRate` row only when null. Keep SGD-native assets in native form until the conversion point.
+- **Recompute cached metrics in a second pass.** After all totals are written, walk snapshots in timestamp order and rewrite `dailyReturn`, `weeklyReturn`, `monthlyReturn`, `ytdReturn`, `athValueUsd`, `btcOutperform`, `ethOutperform` using the same formulas `snapshotService` uses (returns as *percent × 100*; YTD anchor = first snapshot of that calendar year; outperformance = portfolio YTD% − BTC/ETH YTD% from the same anchor). `athValueUsd` is a running max across *all* snapshots, not just affected ones.
+- **Rescale all allocations.** After updating `totalValueUsd`, recompute `allocation` on *every* `SnapshotPosition` in the affected snapshot — not just the target symbols. Percentages shift because the denominator changed.
+
+**The cutoff.** Use `max(Position.createdAt)` across target positions as the cutoff. Snapshots strictly before cutoff need backfill; snapshots at/after are left alone because the normal snapshot system captured them correctly.
+
+**Cash placeholders for mid-year buys.** For EWY (bought 2026-03-05 with $78.5K USD) and LIONGLOB (bought 2026-02-09 with SGD 100K), pre-purchase snapshots add the cash consideration to `totalValueUsd` *without* creating a `SnapshotPosition` row — the user held cash at the time, not the security. Keeps totals flat across the purchase date instead of spiking, which is the whole point of the backfill.
+
+**The pattern:** Any script that retroactively modifies time-series data with cached derived fields is really three scripts glued together: (1) capture an authoritative baseline *before* any mutation, (2) apply changes against that baseline with per-item transactions, (3) recompute all derived/cached fields in a separate pass. Skipping any of the three means you're either destroying your rollback path, double-counting on re-runs, or leaving the UI showing stale numbers that look plausible but aren't.
+
+---
+
+### YTD Anchor Queries Must Be Year-Scoped or They Rot Silently
+
+**The bug (latent):** `portfolioService.getSummary()` used the earliest-ever snapshot as the YTD baseline via `findFirst orderBy: timestamp asc` without a year filter. Works today because the dataset starts in 2026. Will silently pin YTD to a stale 2026 snapshot once 2027 rolls over, and every user will see a nonsensical "+300%" YTD P&L in January.
+
+**The fix:** Scope the query to `timestamp >= Jan 1 UTC of the current year`, computed fresh on every request.
+
+**The pattern:** Time-anchored queries (`earliest`, `latest`, `first of period`) need explicit period bounds. "First snapshot" without a year filter is a time bomb with a calendar-year fuse. Found during the backfill script design by asking "what happens in 8 months?" — worth asking any time you write `orderBy timestamp asc` without a `where` filter on the date range.
+
+---
+
+### The Equity Sub-Type Labels Were Telling Users the Wrong Story
+
+**The UX bug:** The Equities form had sub-type toggles "Single" and "Fund-level." A user tried to add EWY (iShares MSCI South Korea ETF) and intuitively picked "Fund-level" because it's a fund. Wrong — Fund-level meant *unit trust* (open-ended, NAV-based, PDF-ingested). ETFs trade on exchanges with tickers and live market prices, so they belong under "Single," which is what you'd never guess from the label.
+
+**The fix:** Renamed "Single" → "Stock / ETF" and "Fund-level" → "Unit Trust." Enum values (`equityMode === 'single' | 'fund'`, `asset.category === 'EQUITY' | 'UNIT_TRUST'`) unchanged — labels only.
+
+**The pattern:** "Single" was shorthand that made sense to the developer (single ticker = one instrument) but projected the wrong taxonomy to the user (single vs. fund = individual stock vs. ETF/fund of funds). When you find yourself writing help-tooltip copy that redefines a label, the label is wrong — rename, don't caption. Generic abstract terms ("single," "basic," "standard") almost always lose to concrete terms the user already uses ("stock," "ETF," "unit trust").
+
+---
+
 ## Best Practices That Paid Off
 
 ### 1. TypeScript Everywhere

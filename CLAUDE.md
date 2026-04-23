@@ -170,7 +170,32 @@ First-time Clerk users are auto-created in database via `ensureUser` middleware.
 
 ### Snapshot System
 
-Captures portfolio state at points in time for performance tracking. Calculates daily/weekly/monthly/YTD returns and benchmark outperformance vs BTC/ETH.
+Captures portfolio state at points in time for performance tracking. Calculates daily/weekly/monthly/YTD returns and benchmark outperformance vs BTC/ETH. All return fields stored as `percent × 100` (e.g. `12` = 12%, not `0.12`). YTD anchor = first snapshot of the *current calendar year*, scoped via `timestamp >= Jan 1 UTC` in `portfolioService.getSummary()` — not `findFirst orderBy:asc` without a date filter, which would pin YTD to a stale pre-year snapshot in future calendar years.
+
+### Snapshot Backfill Script
+
+`packages/backend/scripts/backfill-equity-snapshots.ts` — one-shot script for retroactively inserting positions into historical Snapshot + SnapshotPosition rows. Used when a long-held position is entered into the app mid-year; the backfill prevents a vertical cliff in the Dashboard chart and restores the correct YTD anchor.
+
+Pattern: audit-baseline-apply. Dumps every affected snapshot's totals + cached metrics + all `SnapshotPosition` rows to `scripts/audit-<iso>.json` *before* any write. Apply computes deltas from the captured baseline (not current DB), delete-then-inserts target rows inside a transaction, recomputes `allocation` on ALL positions in each snapshot, then walks snapshots in time order to rewrite cached `dailyReturn` / `weeklyReturn` / `monthlyReturn` / `ytdReturn` / `athValueUsd` / `btcOutperform` / `ethOutperform`. SGD-native assets convert using each snapshot's own `usdSgdRate`, not a single current rate. Mid-year buys add pre-purchase cash placeholders to `totalValueUsd` (no `SnapshotPosition` row) so totals stay flat across the purchase date.
+
+Usage:
+
+```bash
+tsx scripts/backfill-equity-snapshots.ts --dry --user-id=<id>
+tsx scripts/backfill-equity-snapshots.ts --apply --user-id=<id>
+tsx scripts/backfill-equity-snapshots.ts --rollback <audit.json>
+
+# Against prod (script reads DATABASE_URL from env):
+DATABASE_URL="$PRODUCTION_DATABASE_URL" tsx scripts/backfill-equity-snapshots.ts --apply --user-id=<id>
+```
+
+`scripts/audit-*.json` is gitignored (per-run rollback artifact, not code). Keep the file locally until you're sure the backfill stuck.
+
+### Yahoo Search IP-Filter Workaround
+
+Yahoo's `/v1/finance/search` endpoint geolocates the caller IP and region-filters results, *even when `region=US` is passed explicitly*. Our Coolify droplet is in Singapore, so searches for US ETFs (EWY, QQQ, SPY, VOO) returned only cross-listings like `EWY.SN` (Santiago) and `EWYCL.SN` or empty results.
+
+`YahooFinanceProvider.search()` now falls back to `quote()` when the query looks like a ticker (`/^[A-Z0-9.-]{1,10}$/`) and no exact-symbol match appeared in search results. The `/v7/finance/quote` endpoint is NOT IP-filtered, so deterministic tickers resolve regardless of server geography. Covers the common case of users typing tickers they already know.
 
 ### CoinGecko Rate Limiting
 
@@ -275,22 +300,22 @@ Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `cus
 
 - `Portfolio.tsx` splits positions into `ownedPositions` (sections) and `custodyPositions` (separate purple "Held for Others" `CollapsibleCard`, collapsed by default)
 - Custody section reuses `PositionTable` for identical columns/sorting as Crypto and Stables
-- `PositionForm.tsx` uses `CustodyCheckbox` component above the mode tabs (applies to Add, Import, and Edit). When checked, shows a `<Select>` dropdown with existing names + "Add new person" option. Edit mode sends empty string (not undefined) when unchecking custody to properly clear the field
+- `PositionForm.tsx` renders `CustodyCheckbox` at the *bottom* of every form variant, just above the submit button with a `pt-3 border-t border-border/60` separator (applies to Add New, Edit Totals, Add/Reduce delta, and Import tab via `footerSlot`). Placing it near the submit button keeps it visible as a final-step confirmation rather than dominating the top of the popup. When checked, shows a `<Select>` dropdown with existing names + "Add new person" option. Edit mode sends empty string (not undefined) when unchecking custody to properly clear the field
 - `CustodyCheckbox.tsx` — extracted shared UI component for custody toggle with name selection, used by both create and edit modes. Takes `showDescription` prop (true for create, false for edit)
 - Custody names persisted to `localStorage` (`foliobuddy-custody-names`) and merged with names from existing positions. Memo recomputes via version counter after saving new names
 - `PositionImportTab.tsx` shows a purple banner when importing as custody; all imported positions get `custodyOf` stamped
 - `PositionTable.tsx` includes `custodyOf` in clipboard JSON format when set
 
-### Equity Positions (Single Stocks + Fund-Level Unit Trusts)
+### Equity Positions (Stock/ETF + Unit Trust)
 
-Equities are a single category covering two sub-types, selected via a toggle in the form:
+Equities are a single category covering two sub-types, selected via a toggle in the form. Labels are UI-only; enum values (`equityMode === 'single' | 'fund'`, `asset.category === 'EQUITY' | 'UNIT_TRUST'`) are unchanged:
 
-- **Single** — individual tickers priced via Yahoo Finance (AAPL, D05.SI, etc.). `asset.category === 'EQUITY'`, `priceProvider === 'yahoo'`.
-- **Fund-level** — unit trusts with NAV tracked manually or via Yahoo statement parser. `asset.category === 'UNIT_TRUST'`, `priceProvider === 'manual'` or `'yahoo'`.
+- **Stock / ETF** (enum `single`) — tickers priced via Yahoo Finance (AAPL, D05.SI, EWY, QQQ, SPY, etc.). `asset.category === 'EQUITY'`, `priceProvider === 'yahoo'`. ETFs belong here, not Unit Trust — they trade on exchanges with live ticker prices, same pricing flow as individual stocks.
+- **Unit Trust** (enum `fund`) — open-ended funds with NAV tracked manually or via Yahoo statement parser. `asset.category === 'UNIT_TRUST'`, `priceProvider === 'manual'` or `'yahoo'`.
 
 **Form UI:**
 
-- `PositionForm.tsx` Category dropdown has 3 options: Crypto, Stables, Equities. When Equities is selected, a Single/Fund-level segmented toggle appears (only in create mode; edit mode infers from `position.asset.category`).
+- `PositionForm.tsx` Category dropdown has 3 options: Crypto, Stables, Equities. When Equities is selected, a Stock/ETF vs Unit Trust segmented toggle appears (only in create mode; edit mode infers from `position.asset.category`).
 - "Storage Type" dropdown for equities is replaced with a broker list (FSMOne, Tiger, UOB Kay Hian, Others). `storageType` stays `'BROKERAGE'` behind the scenes; the dropdown drives `storageLocation`. The separate "Storage Location" field is hidden for equities.
 - Cost input currency follows the asset's `nativeCurrency`: SGD tickers (`.SI`) and SGD unit trusts show "Total Cost (SGD)" / "Average Cost (SGD)". Backend always stores USD — conversion happens on submit using the live FX rate from `portfolioSummary` (fallback 1.35).
 - Edit mode also respects `nativeCurrency`: a `costInitialized` flag + effect converts the stored USD cost basis to SGD for display once `portfolioSummary` loads. Delta mode (Add/Reduce) follows the same currency convention.
@@ -298,7 +323,7 @@ Equities are a single category covering two sub-types, selected via a toggle in 
 
 **Display UI:**
 
-- `Portfolio.tsx` has one "Equities" section combining both sub-types. Inside, `PositionTable` with `groupBy='equityType'` splits into Single (stocks) and Fund-level (UTs) collapsible subsections — mirrors how Crypto splits into CEX/Onchain.
+- `Portfolio.tsx` has one "Equities" section combining both sub-types. Inside, `PositionTable` with `groupBy='equityType'` splits into Stock/ETF and Unit Trust collapsible subsections — mirrors how Crypto splits into CEX/Onchain.
 - `PositionRow.tsx` Storage column: for `BROKERAGE` positions, shows the broker name directly (Tiger, UOB Kay Hian, FSMOne) instead of "Brokerage" with the broker as italic subtext. View dialog collapses to a single "Broker" field for brokerage positions.
 
 **Copy/Paste round-trip:**
