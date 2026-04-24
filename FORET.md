@@ -1253,6 +1253,22 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 **The pattern:** "Single" was shorthand that made sense to the developer (single ticker = one instrument) but projected the wrong taxonomy to the user (single vs. fund = individual stock vs. ETF/fund of funds). When you find yourself writing help-tooltip copy that redefines a label, the label is wrong — rename, don't caption. Generic abstract terms ("single," "basic," "standard") almost always lose to concrete terms the user already uses ("stock," "ETF," "unit trust").
 
+### Rank Performers by Dollars, Not Percent
+
+**The UX bug:** Top Performers on the Dashboard had D05.SI in rank 1 at +200.71% / +$10,027, while HYPE sat in rank 4 despite being up +$62,542. Worst Performers had the symmetric issue — tiny positions down 90% outranked a real loss of −$20K on BTC. The list was sorted by `unrealizedPnLPct`, which rewards small-sample swings over actual P&L.
+
+**The fix:** One-line Prisma change in `portfolioService.getTopPerformers` / `getWorstPerformers` — `orderBy: { unrealizedPnLPct }` → `orderBy: { unrealizedPnL }`. Top = desc, Worst = asc.
+
+**The pattern:** "Top" on a portfolio dashboard should answer *"what moved my net worth?"*, not *"what had the biggest % move?"*. Percent is about volatility of the position; dollars are about impact on the portfolio. The `%` and `$` columns both still show in the card — the sort key is the editorial decision, and for a net-worth dashboard the answer is dollars. Whenever a ranked list surfaces %-based records for entries that have tiny dollar magnitude, the ranking is asking the wrong question.
+
+### Dev Server Port Gotchas: Orphaned tsx-watch Children and Fallback-Port CORS
+
+**The ops bug, part 1:** Restarted the backend between sessions by killing the npm wrapper. A later session ran `npm run dev` → `EADDRINUSE` on 4001, frontend fell back from 4000 to 4002. `TaskStop` on the wrapper doesn't reach the tsx-watch child (which is the actual Node process bound to 4001); it just stops the npm parent. To free the port you have to `netstat -ano | grep :4001 | awk '{print $5}'` to find the child PID and kill it directly.
+
+**The ops bug, part 2:** Once the frontend is on a non-default port like 4002, every API call fails CORS because `ALLOWED_ORIGINS` is hardcoded to `http://localhost:4000`. The browser sees `net::ERR_FAILED` on every `/api/v1/*` endpoint, the DB-down banner lights up, and the dashboard looks broken even though the backend is healthy. The failure mode looks like "app is down" when it's really "CORS is shaped for one port."
+
+**The pattern:** For any long-running dev script spawned through a parent (npm, pnpm, yarn, tsx watch, nodemon, vite), the process that holds the port is the grandchild, not the thing you started. TaskStop / Ctrl-C on the parent leaves the grandchild as an orphan listener. Standard fix: kill by PID from `netstat` output, don't rely on wrapper teardown. And CORS allowlists should include the fallback ports Vite will auto-pick (4000 → 4001 → 4002 …) — or at minimum 4000 and 4002, since 4001 collides with the backend and is always skipped anyway.
+
 ---
 
 ## Best Practices That Paid Off

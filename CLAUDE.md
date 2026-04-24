@@ -351,6 +351,7 @@ Rules:
 - **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
 - **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
 - **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Custody positions are filtered out before allocations are computed (matches the backend's `custodyOf: null` treatment for summary/exposure) — done in `Dashboard.tsx` via `positions.filter((p) => !p.custodyOf)` before passing to `AllocationCharts`. Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items. Hover on pie slices shows info inline in the card header row using `compactUsd()` for short dollar values ($1.2K, $3.4M, $1.2B) — no Recharts Tooltip (removed to avoid overlap with legend). Maximally distinct hues per slice, avoiding benchmark line colors.
+- **By Asset "Other" bucket**: The By Asset donut groups sub-2% slices into a single "Other" wedge once there are 2+ of them (`OTHER_THRESHOLD_PCT = 2` in `AllocationCharts.tsx`). Prevents a long tail of hair-thin 0-1% slivers from fraying the donut when a portfolio has many small equity positions. By Storage and Stables Breakdown are untouched — they typically have ≤ 5 categories.
 - **Benchmark chart legend**: Portfolio line color is `#64748B` (slate gray) with matching color swatch dot — not the default `text-primary` indigo.
 
 ### Dashboard Investor Default
@@ -364,6 +365,8 @@ Borderless hero section (no Card wrapper) with merged stat metrics. Shows invest
 ### Performers Card
 
 Borderless layout (no Card wrapper) — plain `<div className="pb-4">` with `divide-y` list. Title uses small icons (`h-4 w-4`) with `text-profit`/`text-loss opacity-70`. Rank numbers in subtle `text-xs text-muted-foreground tabular-nums`.
+
+**Ranking** (backend `portfolioService.getTopPerformers` / `getWorstPerformers`): sorted by absolute `unrealizedPnL` in USD, not `unrealizedPnLPct`. Top = desc (largest $ gain first), Worst = asc (largest $ loss first). This surfaces the positions actually moving net worth — a small new position up 200% shouldn't outrank a core holding up $60K but only 16%.
 
 ### Page Entrance Animations
 
