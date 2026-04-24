@@ -162,7 +162,7 @@ class PortfolioService {
     const positions = await prisma.position.findMany({
       where: { userId, custodyOf: null, unrealizedPnL: { gt: 0 } },
       include: { asset: true },
-      orderBy: { unrealizedPnLPct: 'desc' },
+      orderBy: { unrealizedPnL: 'desc' },
       take: limit,
     });
 
@@ -180,7 +180,7 @@ class PortfolioService {
     const positions = await prisma.position.findMany({
       where: { userId, custodyOf: null, unrealizedPnL: { lt: 0 } },
       include: { asset: true },
-      orderBy: { unrealizedPnLPct: 'asc' },
+      orderBy: { unrealizedPnL: 'asc' },
       take: limit,
     });
 

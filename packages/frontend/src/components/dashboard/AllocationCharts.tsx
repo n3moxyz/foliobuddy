@@ -50,13 +50,29 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
       assetMap.set('Stables', stablesTotal);
     }
 
-    const assetData: ChartData[] = Array.from(assetMap.entries())
+    const rawAssetData: ChartData[] = Array.from(assetMap.entries())
       .map(([name, value]) => ({
         name,
         value,
         percentage: total > 0 ? (value / total) * 100 : 0,
       }))
       .sort((a, b) => b.value - a.value);
+
+    // Group sub-2% slices into "Other" once there are 2+ of them, so the donut
+    // doesn't fray into a dozen hair-thin wedges
+    const OTHER_THRESHOLD_PCT = 2;
+    const smallSlices = rawAssetData.filter((d) => d.percentage < OTHER_THRESHOLD_PCT);
+    const assetData: ChartData[] =
+      smallSlices.length >= 2
+        ? [
+            ...rawAssetData.filter((d) => d.percentage >= OTHER_THRESHOLD_PCT),
+            {
+              name: 'Other',
+              value: smallSlices.reduce((sum, d) => sum + d.value, 0),
+              percentage: smallSlices.reduce((sum, d) => sum + d.percentage, 0),
+            },
+          ]
+        : rawAssetData;
 
     // Storage allocation: CEX, Onchain, Onchain Ledger
     const storageMap = new Map<string, number>();
