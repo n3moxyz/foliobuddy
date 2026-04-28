@@ -1269,6 +1269,38 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 **The pattern:** For any long-running dev script spawned through a parent (npm, pnpm, yarn, tsx watch, nodemon, vite), the process that holds the port is the grandchild, not the thing you started. TaskStop / Ctrl-C on the parent leaves the grandchild as an orphan listener. Standard fix: kill by PID from `netstat` output, don't rely on wrapper teardown. And CORS allowlists should include the fallback ports Vite will auto-pick (4000 → 4001 → 4002 …) — or at minimum 4000 and 4002, since 4001 collides with the backend and is always skipped anyway.
 
+### Stale-Device Duplicate Work: Pull Before You Edit, Reset If You Diverge
+
+**The bug:** Pulled `main` after working on a feature locally for one session, then continuing on a different device for four days. `git pull` errored — divergent branches, 4 local commits ahead and 46 remote commits ahead. Local commits added EQUITY / UNIT_TRUST / Yahoo / asset routes / unit-trust frontend support. Remote had landed the same four features with different field names (`priceProvider` vs `priceSource`, plus `providerAssetId`, `nativeCurrency`, `exchange`, `factsheetUrl`, `isin`) and 30+ follow-up commits building on its design (PDF import, NAV display, ETF search bug fixes, custody refinements, dashboard ranking).
+
+**The diagnosis:** Compared local commit subjects against remote ones — every local commit had a remote counterpart with a richer implementation. Schema diff confirmed: same conceptual feature, two different shapes. Rebase would have meant resolving conflicts on every file in both directions, then merging two designs into a Frankenstein where neither side's invariants held.
+
+**The fix:** Hard reset to remote, abandon the 4 local commits. Safety net: `git format-patch origin/main..main -o /tmp/<repo>-local-commits-backup/` saves each commit as an applyable `.patch` before the reset, and `git stash show -u -p > /tmp/<repo>-pre-reset-stash.patch` saves the stash. Then `git reset --hard origin/main && git stash drop`. Actual unique work in the abandoned set was tiny (one helper function not present in remote) — re-implemented as a fresh commit on top.
+
+**The pattern:** Multi-device sync drift creates duplicate work when both devices independently implement the same feature with different shapes. Three rules out of this:
+
+1. **Always pull before editing on a stale device.** The workspace CLAUDE.md already says this — running `cws` (or any sync script) before any config or feature work prevents the duplicate-implementation scenario entirely.
+2. **When you discover divergence, inspect before reconciling.** A blind rebase or merge of two implementations of the same feature is almost always wrong. Diff the commit subjects against each other; if the topics overlap, the remote (more-recently-shipped) design usually wins because it has follow-up work attached.
+3. **Save patch backups before destructive reset.** `git format-patch` for the commits, `git stash show -u -p` for working-tree state. Costs 5 seconds, lets you re-apply unique work as fresh commits if any of it survives the diff.
+
+### Codex CLI: When `model = "<latest>"` in Config Outpaces the CLI Build
+
+**The bug:** `/codex:review` failed with `The 'gpt-5.5' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.` Ran `brew upgrade codex` (0.121.0 → 0.125.0). Same error.
+
+**The root cause:** `~/.codex/config.toml` had `model = "gpt-5.5"`. Homebrew and npm both ship Codex CLI `0.125.0` (the latest stable), which doesn't recognize `gpt-5.5`. Support landed in the `0.126.0-alpha.X` pre-release series on GitHub Releases (~hours old when this hit) — `brew` doesn't track alphas. Repo evidence: a recent commit titled *"Update bundled OpenAI Docs skill for GPT-5.5"* in that version range. So the CLI's error message was correct: it really did need a newer build than any package manager was shipping.
+
+**The fix:** One-line config edit, `model = "gpt-5.4"` in `~/.codex/config.toml`. Bump back to `gpt-5.5` once `0.126.0` stable lands in Homebrew. Alternative was downloading the alpha tarball from GitHub and replacing `/opt/homebrew/bin/codex` directly — rejected because (a) brittle pre-release, (b) the next `brew upgrade codex` silently overwrites it back to stable.
+
+**The pattern:** Three independent moving parts here, each with a different release cadence:
+
+1. **The model** itself (released by OpenAI on their schedule).
+2. **The CLI binary** that knows about the model (released on Codex's schedule).
+3. **The package manager's pin** of that binary (released on Homebrew/npm's schedule, lagging both).
+
+When the model is fresh and the package manager hasn't caught up, a `model = "gpt-X.Y"` setting in config becomes a time bomb. Symptom looks like a CLI bug ("upgrade your CLI"), but the actionable fix is either downgrade the model or install pre-release manually. Useful diagnostic when an LLM/CLI rejects a model name: check `gh release list --repo <vendor>/<cli>` for tags newer than what `brew info <cli>` reports — if there's a gap, the brew formula is the lag, not the CLI.
+
+**Bonus pattern (LLM-specific):** When an LLM's "this doesn't exist" claim conflicts with the user's link to a vendor announcement, defer to the user. Training-data cutoffs and local model caches are stale by definition for new model releases — confidence based on those sources is unreliable for any "what's the latest X" question.
+
 ---
 
 ## Best Practices That Paid Off
