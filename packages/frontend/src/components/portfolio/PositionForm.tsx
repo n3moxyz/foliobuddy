@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,6 +60,23 @@ function saveCustodyName(name: string) {
     names.push(name);
     names.sort();
     localStorage.setItem(CUSTODY_NAMES_KEY, JSON.stringify(names));
+  }
+}
+
+// Pulls fund code + readable name from a Fundsupermart factsheet URL.
+// e.g. .../factsheet/370007/Amova-Singapore-Equity-SGD- → { code: "370007", name: "Amova Singapore Equity SGD" }
+// NAV and currency aren't in the URL — user enters those manually.
+function parseFundUrl(raw: string): { code: string; name: string } | null {
+  try {
+    const url = new URL(raw.trim());
+    const match = url.pathname.match(/\/factsheet\/(\d+)(?:\/([^/]+))?/);
+    if (!match) return null;
+    const code = match[1];
+    const slug = match[2] ? decodeURIComponent(match[2]) : '';
+    const name = slug.replace(/-+$/g, '').replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+    return { code, name };
+  } catch {
+    return null;
   }
 }
 
@@ -143,6 +160,10 @@ export function PositionForm({
   const [utNativeCurrency, setUtNativeCurrency] = useState<'SGD' | 'USD'>('SGD');
   const [utIsin, setUtIsin] = useState('');
   const [utFactsheetUrl, setUtFactsheetUrl] = useState('');
+  // Tracks the last fund-name we wrote from a parsed factsheet URL. Lets us
+  // overwrite a stale auto-fill when the URL is replaced — without clobbering
+  // a name the user has manually edited.
+  const lastAutoFilledFundName = useRef('');
   const [utNav, setUtNav] = useState('');
   const [utNavAsOfDate, setUtNavAsOfDate] = useState(new Date().toISOString().slice(0, 10));
   const [utUploading, setUtUploading] = useState(false);
@@ -1327,7 +1348,26 @@ export function PositionForm({
                       <Input
                         id="ut-factsheet"
                         value={utFactsheetUrl}
-                        onChange={(e) => setUtFactsheetUrl(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setUtFactsheetUrl(value);
+                          // Auto-fill the fund name from FSM factsheet URLs. Symbol stays
+                          // user-controlled — the FSM numeric code (e.g. "370007") would
+                          // collide with the mnemonic symbol used by the statement-import
+                          // path, breaking dedup in /assets/unit-trust.
+                          const parsed = parseFundUrl(value);
+                          if (!parsed?.name) return;
+                          // Overwrite when the field is empty or still holds the previous
+                          // auto-fill — but never when the user has typed something else.
+                          const isEmpty = !utName.trim();
+                          const isStaleAutoFill =
+                            lastAutoFilledFundName.current !== '' &&
+                            utName === lastAutoFilledFundName.current;
+                          if (isEmpty || isStaleAutoFill) {
+                            setUtName(parsed.name);
+                            lastAutoFilledFundName.current = parsed.name;
+                          }
+                        }}
                         placeholder="https://..."
                       />
                     </div>
