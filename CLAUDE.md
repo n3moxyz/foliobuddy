@@ -325,8 +325,16 @@ Rules:
 
 - **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
 - **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
-- **Allocation donut charts**: 3 charts (By Asset, By Storage, Stables Breakdown) with side legend layout (donut left, legend right). Custody positions are filtered out before allocations are computed (matches the backend's `custodyOf: null` treatment for summary/exposure) — done in `Dashboard.tsx` via `positions.filter((p) => !p.custodyOf)` before passing to `AllocationCharts`. Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items. Hover on pie slices shows info inline in the card header row using `compactUsd()` for short dollar values ($1.2K, $3.4M, $1.2B) — no Recharts Tooltip (removed to avoid overlap with legend). Maximally distinct hues per slice, avoiding benchmark line colors.
-- **By Asset "Other" bucket**: The By Asset donut groups sub-2% slices into a single "Other" wedge once there are 2+ of them (`OTHER_THRESHOLD_PCT = 2` in `AllocationCharts.tsx`). Prevents a long tail of hair-thin 0-1% slivers from fraying the donut when a portfolio has many small equity positions. By Storage and Stables Breakdown are untouched — they typically have ≤ 5 categories.
+- **Allocation donut charts**: 4 charts laid out responsively (`grid sm:grid-cols-2 lg:grid-cols-4`):
+  - **By Asset** — high-level buckets: Crypto / Equities / Stables. `bucketFor()` in `AllocationCharts.tsx` maps via `categoryGroup()`; both `EQUITY` and `UNIT_TRUST` fold into Equities.
+  - **By Detailed Asset** — crypto by individual symbol; Equities and Stables each shown as a single bundled wedge (protected from the "Other" rollup). Sub-2% crypto slices group into "Other" once 2+ of them (`OTHER_THRESHOLD_PCT = 2`).
+  - **By Storage** — CEX / Onchain / Onchain Ledger.
+  - **Stables Breakdown** — by stablecoin symbol; only rendered when stables exist.
+- Custody positions filtered out before allocations are computed (`positions.filter((p) => !p.custodyOf)` in `Dashboard.tsx`).
+- Inside each card: side legend (donut left, legend right) at sm/md (2-up); legend stacks below donut at lg+ (4-up) so labels stay readable in narrow cards (`flex-col sm:flex-row lg:flex-col`).
+- Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items.
+- Hover on a pie slice shows `name · $value · %` on its own line directly under the card title (`min-h-[16px]` reserves space so the donut doesn't shift on hover/leave). Uses `formatCurrency(..., true)` compact mode. No Recharts Tooltip — removed to avoid overlap with legend.
+- Maximally distinct hues per slice, avoiding benchmark line colors. Colors come from `ASSET_COLORS` / `STORAGE_COLORS` / `STABLES_COLORS` in `lib/chartColors.ts`.
 - **Benchmark chart legend**: Portfolio line color is `#64748B` (slate gray) with matching color swatch dot — not the default `text-primary` indigo.
 
 ### Dashboard Investor Default

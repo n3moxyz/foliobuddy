@@ -1890,6 +1890,12 @@ Recently completed:
   - Normalized all page headers to `text-2xl font-bold` with `size="sm"` buttons
   - Animated number tickers (`useAnimatedNumber` hook) for Net Worth, P&L, Cost Basis values
   - Compact dollar formatting (`compactUsd`) on allocation chart hover to prevent truncation
+- [x] **Allocation charts split for equities (4-up):**
+  - Added new high-level "By Asset" donut (Crypto / Equities / Stables) using `bucketFor()` over `categoryGroup()` — both `EQUITY` and `UNIT_TRUST` fold into Equities
+  - Renamed the original detailed donut to "By Detailed Asset" — now also bundles Equities (alongside the existing Stables bundle), so a portfolio with many small equity tickers stays readable
+  - Layout: `grid sm:grid-cols-2 lg:grid-cols-4`. At lg+ the legend stacks below the donut so labels fit in narrow cards (`flex-col sm:flex-row lg:flex-col`)
+  - Hover label moved to its own line directly under the card title with `min-h-[16px]` reserved — fixes the truncation/congestion in the title row and stops the donut shifting on hover/leave
+  - Lesson: when adding a wider grid breakpoint inside cards that have donut + side legend, recheck whether legend labels still fit at the new column width before shipping. The intermediate "row of 4 with side legend" state truncated every label.
 
 ---
 
