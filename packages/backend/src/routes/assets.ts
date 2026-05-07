@@ -13,6 +13,7 @@ import {
 } from '../lib/constants.js';
 import type { ProviderName } from '../services/providers/types.js';
 import { parseUobKhStatement } from '../services/statementParsers/uobKayHian.js';
+import { parseFsmOneStatement } from '../services/statementParsers/fsmOne.js';
 import { logger } from '../lib/logger.js';
 
 async function navToUsd(
@@ -633,13 +634,23 @@ router.post(
         throw new AppError('PDF contains no extractable text (scanned image?)', 422);
       }
 
-      let parsed;
-      try {
-        parsed = parseUobKhStatement(extractedText);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Parse failed';
+      const parsers = [
+        { name: 'UOB Kay Hian', fn: parseUobKhStatement },
+        { name: 'FSMOne', fn: parseFsmOneStatement },
+      ];
+      let parsed: ReturnType<typeof parseUobKhStatement> | undefined;
+      const parseErrors: string[] = [];
+      for (const p of parsers) {
+        try {
+          parsed = p.fn(extractedText);
+          break;
+        } catch (err) {
+          parseErrors.push(`${p.name}: ${err instanceof Error ? err.message : 'parse failed'}`);
+        }
+      }
+      if (!parsed) {
         throw new AppError(
-          `Could not recognise statement format. Supported: UOB Kay Hian Monthly Statement. (${msg})`,
+          `Could not recognise statement format. Supported: UOB Kay Hian, FSMOne. (${parseErrors.join('; ')})`,
           422
         );
       }

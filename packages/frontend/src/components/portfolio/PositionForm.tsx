@@ -688,7 +688,13 @@ export function PositionForm({
     setTotalCost(
       ccy === 'USD' ? h.totalCostUsd.toFixed(2) : h.totalCostNative.toFixed(2)
     );
-    setStorageLocation(broker.includes('UOB') ? 'UOB Kay Hian' : 'Others');
+    setStorageLocation(
+      broker.includes('UOB')
+        ? 'UOB Kay Hian'
+        : /FSM|fundsupermart|iFAST/i.test(broker)
+          ? 'FSMOne'
+          : 'Others'
+    );
     setUtPrefilledFrom(broker);
     setUtMultipleHoldings(null);
     setUtYahooSymbol(h.yahooSymbol ?? null);
@@ -1220,7 +1226,7 @@ export function PositionForm({
                       <div className="flex-1">
                         <p className="text-sm font-medium">Upload monthly statement (PDF)</p>
                         <p className="text-xs text-muted-foreground">
-                          We&apos;ll auto-fill the details below. Supports UOB Kay Hian.
+                          We&apos;ll auto-fill the details below. Supports UOB Kay Hian and FSMOne.
                         </p>
                       </div>
                       <label className="cursor-pointer">

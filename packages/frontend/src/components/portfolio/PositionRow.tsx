@@ -62,7 +62,8 @@ export const PositionRow = React.memo(function PositionRow({
   const totalCost = position.quantity * position.avgCostUsd;
   const isStable = isStablecoinCategory(position.asset.category);
   const isManual = position.asset.priceProvider === 'manual';
-  const ageInfo = isManual ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
+  const isUnitTrust = position.asset.category === 'UNIT_TRUST';
+  const ageInfo = isManual || isUnitTrust ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
 
   // Match PositionTable: hidden on mobile unless toggle is on
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
