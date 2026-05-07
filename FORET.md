@@ -1343,6 +1343,25 @@ Applies beyond PDFs: scraping JSON-shaped logs out of unstructured stdout, pulli
 
 **FSMOne-specific bonus:** the format omits ISINs (UOB Kay Hian includes them). The route's downstream Yahoo `searchByIsin` lookup is gated on `if (h.isin)`, so an empty ISIN naturally skips the lookup and the user wires up the Yahoo symbol manually after import. No code change needed — the gate was already defensive. Worth noting because "feature works because the next consumer was defensive" is the kind of accidental-correctness that's only obvious in hindsight, and might bite the next person who tightens the validation.
 
+### Backfill Scripts as Ephemeral State, Not a Registry
+
+**The bug:** Adding two new `AMOVASIN` positions (Amova Singapore Equity Fund, one in FSMOne and one in UOB Kay Hian — same fund, two brokers) to the prod snapshot history. Opened `backfill-equity-snapshots.ts` to add the entries. The `BACKFILLS` array already had six entries from prior runs (`D05.SI`, `S68.SI`, `OV8.SI`, `GLXY`, `EWY`, `LIONGLOB`). Initial instinct: "append the new ones, the script's docstring says re-running is idempotent."
+
+**Why it isn't:** the script's idempotency claim is *within a single invocation* — the audit captures a baseline snapshot total, then apply computes deltas relative to that captured baseline. Re-running mid-flight gives the same answer. But across separate `--apply` runs, the baseline captured the *second* time already includes the *first* run's modifications. Cash placeholders (`priorCashUsd`, `priorCashSgd`) are additive — they get added to `snapshot.totalValueUsd` whenever a snapshot's date is before the entry's `heldSince`. Re-applying with the same entry adds the same 100k SGD again. After two apply runs the Jan 1 snapshot would be 400k SGD heavier than it should be; YTD return tanks.
+
+Caught it by inspecting `LionGlobal`'s prod quantity (`68_482.15`) vs the script's `BACKFILLS` value (`68_153.43`). The 328.72-unit gap is exactly the dividend reinvestment that landed *after* the original backfill. So the script's six entries weren't a copy of prod state — they were the *input* of the *previous* backfill run, frozen in time. Treating them as a registry would have re-applied that delta on top of an already-modified DB.
+
+**The fix:** rewrite `BACKFILLS` to *only* the new entries (two `AMOVASIN` rows). Removing the old entries broke a hardcoded `BACKFILLS.find((b) => b.symbol === 'LIONGLOB')!` that prepared a Yahoo-fallback interpolation specifically for that one symbol. Generalised it: any symbol with `priorCashSgd + heldSince` and zero Yahoo points falls back to a `Map<symbol, InterpolationCfg>` keyed linear interpolation. Multiple entries on the same symbol (the FSMOne + UOB case) collapse to a weighted-average purchase NAV per symbol, since the historical NAV trajectory is shared across the brokers — only `quantity` and `heldSince` differ per entry.
+
+**The pattern:** *additive* migrations (anything that mutates state by `+= delta` rather than `:= absolute`) need stricter discipline than declarative ones. They're not idempotent, so the source has to either:
+1. Be ephemeral input — rewritten per run, never a registry of past work (this script's choice)
+2. Track a "last applied" cursor so re-runs skip already-applied entries
+3. Convert to absolute states — record "what the snapshot total should be" rather than "delta to add"
+
+(1) is fine for one-shot scripts because the audit JSON is the registry. The mental model: `BACKFILLS` is the *next migration to write*, not the migration *log*. The log is the audit files. Mixing the two — keeping old entries in `BACKFILLS` for "documentation" — is the failure mode.
+
+**Multi-position-same-symbol bonus:** the script identifies positions by `symbol → asset → first-matching-position`, which would silently collapse two `Position` rows sharing one `assetId` into one. But the actual mutation path doesn't go through the position object — `computeContribution` reads `cfg.quantity` from the `BACKFILLS` entry directly, and `applyPlans` deletes by `(snapshotId, assetSymbol)` then `createMany`'s fresh rows from `newTargetPositions`. So two entries with the same symbol produce two `SnapshotPosition` rows per snapshot — exactly what we want. The first-position-wins lookup in the sanity-check loop is purely cosmetic (a quantity mismatch warning). Worth knowing because the obvious-looking "bug" — "you can't backfill two positions with the same symbol" — turns out not to be a bug at all, but only because the mutation path skips the lookup. Another instance of "feature works because the path that matters bypasses the path that doesn't."
+
 ---
 
 ## Best Practices That Paid Off

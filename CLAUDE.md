@@ -191,6 +191,12 @@ DATABASE_URL="$PRODUCTION_DATABASE_URL" tsx scripts/backfill-equity-snapshots.ts
 
 `scripts/audit-*.json` is gitignored (per-run rollback artifact, not code). Keep the file locally until you're sure the backfill stuck.
 
+**`BACKFILLS` is rewritten per run.** It's the input to *this* invocation, not a permanent registry. Once `--apply` lands, those entries are baked into prod snapshots — re-running with the same entries would *double-add* the cash placeholders because they're additive deltas, not absolute states. So always: rewrite `BACKFILLS` to only the unbackfilled positions, dry-run, apply, then leave the array in that state until the next backfill.
+
+**Multiple entries on the same symbol are supported.** When one fund is split across brokers (e.g. AMOVASIN held in both FSMOne and UOB Kay Hian, sharing one `assetId` but two `Position` rows), pass two `BACKFILLS` entries with the same symbol and different `quantity` / `heldSince` / `priorCashSgd`. The script's `targetPositions.length === BACKFILLS.length` sanity check still passes, and `computeContribution` runs independently per entry, producing two `SnapshotPosition` rows per snapshot (no unique constraint on `(snapshotId, assetSymbol)`).
+
+**Yahoo-fallback interpolation is generic.** Any `BACKFILLS` entry whose symbol returns zero Yahoo points and has both `priorCashSgd` and `heldSince` set falls back to a linear NAV interpolation between purchase NAV (`priorCashSgd / quantity`) and the asset's current NAV. Multiple entries on the same symbol collapse to a single weighted-average interpolation per symbol — purchase NAV = `sum(priorCashSgd) / sum(quantity)`, held-since = earliest. SG unit trusts (LIONGLOB, AMOVASIN) typically need this path.
+
 ### Yahoo Search IP-Filter Workaround
 
 Yahoo's `/v1/finance/search` endpoint geolocates the caller IP and region-filters results, *even when `region=US` is passed explicitly*. Our Coolify droplet is in Singapore, so searches for US ETFs (EWY, QQQ, SPY, VOO) returned only cross-listings like `EWY.SN` (Santiago) and `EWYCL.SN` or empty results.
