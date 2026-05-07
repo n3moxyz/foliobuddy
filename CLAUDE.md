@@ -174,47 +174,28 @@ Captures portfolio state at points in time for performance tracking. Calculates 
 
 ### Snapshot Backfill Script
 
-`packages/backend/scripts/backfill-equity-snapshots.ts` — one-shot script for retroactively inserting positions into historical Snapshot + SnapshotPosition rows. Used when a long-held position is entered into the app mid-year; the backfill prevents a vertical cliff in the Dashboard chart and restores the correct YTD anchor.
-
-Pattern: audit-baseline-apply. Dumps every affected snapshot's totals + cached metrics + all `SnapshotPosition` rows to `scripts/audit-<iso>.json` *before* any write. Apply computes deltas from the captured baseline (not current DB), delete-then-inserts target rows inside a transaction, recomputes `allocation` on ALL positions in each snapshot, then walks snapshots in time order to rewrite cached `dailyReturn` / `weeklyReturn` / `monthlyReturn` / `ytdReturn` / `athValueUsd` / `btcOutperform` / `ethOutperform`. SGD-native assets convert using each snapshot's own `usdSgdRate`, not a single current rate. Mid-year buys add pre-purchase cash placeholders to `totalValueUsd` (no `SnapshotPosition` row) so totals stay flat across the purchase date.
-
-Usage:
+`packages/backend/scripts/backfill-equity-snapshots.ts` — one-shot script for retroactively inserting positions into historical snapshots when a long-held position is entered mid-year. Prevents a vertical cliff in the Dashboard chart and restores the correct YTD anchor. Full pattern, gotchas, and Yahoo-fallback interpolation logic live in the script header — read it before running.
 
 ```bash
 tsx scripts/backfill-equity-snapshots.ts --dry --user-id=<id>
 tsx scripts/backfill-equity-snapshots.ts --apply --user-id=<id>
 tsx scripts/backfill-equity-snapshots.ts --rollback <audit.json>
-
-# Against prod (script reads DATABASE_URL from env):
 DATABASE_URL="$PRODUCTION_DATABASE_URL" tsx scripts/backfill-equity-snapshots.ts --apply --user-id=<id>
 ```
 
-`scripts/audit-*.json` is gitignored (per-run rollback artifact, not code). Keep the file locally until you're sure the backfill stuck.
-
-**`BACKFILLS` is rewritten per run.** It's the input to *this* invocation, not a permanent registry. Once `--apply` lands, those entries are baked into prod snapshots — re-running with the same entries would *double-add* the cash placeholders because they're additive deltas, not absolute states. So always: rewrite `BACKFILLS` to only the unbackfilled positions, dry-run, apply, then leave the array in that state until the next backfill.
-
-**Multiple entries on the same symbol are supported.** When one fund is split across brokers (e.g. AMOVASIN held in both FSMOne and UOB Kay Hian, sharing one `assetId` but two `Position` rows), pass two `BACKFILLS` entries with the same symbol and different `quantity` / `heldSince` / `priorCashSgd`. The script's `targetPositions.length === BACKFILLS.length` sanity check still passes, and `computeContribution` runs independently per entry, producing two `SnapshotPosition` rows per snapshot (no unique constraint on `(snapshotId, assetSymbol)`).
-
-**Yahoo-fallback interpolation is generic.** Any `BACKFILLS` entry whose symbol returns zero Yahoo points and has both `priorCashSgd` and `heldSince` set falls back to a linear NAV interpolation between purchase NAV (`priorCashSgd / quantity`) and the asset's current NAV. Multiple entries on the same symbol collapse to a single weighted-average interpolation per symbol — purchase NAV = `sum(priorCashSgd) / sum(quantity)`, held-since = earliest. SG unit trusts (LIONGLOB, AMOVASIN) typically need this path.
+**`BACKFILLS` is ephemeral — rewrite it per run.** Entries are additive deltas, not absolute states. Re-running with the same entries double-adds. Multiple entries on the same symbol (one fund across multiple brokers) are supported. Audit JSON in `scripts/audit-*.json` is gitignored; keep locally until backfill is confirmed stuck.
 
 ### Yahoo Search IP-Filter Workaround
 
-Yahoo's `/v1/finance/search` endpoint geolocates the caller IP and region-filters results, *even when `region=US` is passed explicitly*. Our Coolify droplet is in Singapore, so searches for US ETFs (EWY, QQQ, SPY, VOO) returned only cross-listings like `EWY.SN` (Santiago) and `EWYCL.SN` or empty results.
-
-`YahooFinanceProvider.search()` now falls back to `quote()` when the query looks like a ticker (`/^[A-Z0-9.-]{1,10}$/`) and no exact-symbol match appeared in search results. The `/v7/finance/quote` endpoint is NOT IP-filtered, so deterministic tickers resolve regardless of server geography. Covers the common case of users typing tickers they already know.
+Yahoo's `/v1/finance/search` geolocates by caller IP and region-filters results even with `region=US`. Our Singapore droplet returned only cross-listings (e.g. `EWY.SN`) for US ETFs. `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` when the query matches `/^[A-Z0-9.-]{1,10}$/` and search returned no exact-symbol match.
 
 ### Unit Trust Statement Parsers (PDF Import)
 
-`POST /assets/parse-unit-trust-statement` receives a PDF body, extracts text via `pdf-parse`, and walks an array of broker-specific parsers in `packages/backend/src/services/statementParsers/` until one succeeds. Each parser exports a function returning the shared `ParsedStatement` shape (`broker`, `periodEnd`, `holdings[]`) and throws if the input isn't its format.
+`POST /assets/parse-unit-trust-statement` extracts text via `pdf-parse` and walks broker-specific parsers in `packages/backend/src/services/statementParsers/` until one succeeds. PDF text collapses table columns to a flat token stream, so each parser finds a deterministic anchor (ISIN regex or value-block regex) and reads fixed fields after it.
 
-Currently supported:
+Supported: **UOB Kay Hian** (`uobKayHian.ts`, ISIN-anchored, enables Yahoo lookup) and **FSMOne / iFAST** (`fsmOne.ts`, value-block-anchored, no ISIN — manual Yahoo wiring).
 
-- **UOB Kay Hian** (`uobKayHian.ts`) — anchors on ISIN regex within the "Portfolio Holdings" section. Each holding stamps a real ISIN, so Yahoo `searchByIsin` resolves a ticker for live pricing.
-- **FSMOne / iFAST** (`fsmOne.ts`) — anchors on a per-holding **value-block regex** capturing `priceCcy price PAYMENT wacCcy wac qty invCcy invAmt pnlCcy pnl pnl% mvCcy mv` (5 currency codes + 7 numbers + 1 payment-method token). The fund name is everything between blocks; trailing payment-method tokens (`Cash`/`RSP`/`CPF`/`SRS`/`IA`) are stripped from the tail. FSMOne statements don't print ISINs, so `isin` is left empty and downstream Yahoo lookup is skipped — user can manually wire a Yahoo symbol later.
-
-Adding another broker: drop a new file alongside, append to the `parsers` array in `routes/assets.ts`, update the supported-formats string in the error message, and add an optional broker-specific branch in `PositionForm.tsx:applyParsedHolding` that maps the broker label to a `storageLocation`.
-
-PDF text from `pdf-parse` collapses table columns into a flat token stream — visual layout is gone. Both parsers cope by finding a deterministic anchor (ISIN regex or value-block regex) and reading a fixed number of fields after it, rather than trying to reconstruct rows by position.
+Adding a broker: new file alongside, append to `parsers` array in `routes/assets.ts`, update supported-formats error string, and add a broker→`storageLocation` branch in `PositionForm.tsx:applyParsedHolding`.
 
 ### CoinGecko Rate Limiting
 
@@ -307,56 +288,24 @@ Positions are grouped two-level: **Crypto/Stables** (primary, in `Portfolio.tsx`
 
 ### Custody Positions ("Held for Others")
 
-Positions held on behalf of other people (e.g., "bought BTC for Mum"). Uses `custodyOf String?` field on the Position model — `null` = owned by user, non-null = custody.
+Positions held on behalf of others (e.g., "bought BTC for Mum"). Uses `custodyOf String?` on Position — `null` = owned, non-null = custody. Custody positions are excluded from net worth, P&L, allocations, snapshots, and exposure. Backend: `portfolioService` and `snapshotService` filter `custodyOf: null`; `positions.ts` Zod schemas accept it as `z.string().nullable().optional()` (empty string → null).
 
-**Backend behavior:**
-
-- `portfolioService` filters `custodyOf: null` on all queries (summary, allocation, performers) — custody positions excluded from net worth, P&L, and exposure
-- `snapshotService` excludes custody positions from snapshots
-- `positions.ts` routes accept `custodyOf` in create/update/bulk Zod schemas (`z.string().nullable().optional()`), converting empty strings to null
-
-**Frontend behavior:**
-
-- `Portfolio.tsx` splits positions into `ownedPositions` (sections) and `custodyPositions` (separate purple "Held for Others" `CollapsibleCard`, collapsed by default)
-- Custody section reuses `PositionTable` for identical columns/sorting as Crypto and Stables
-- `PositionForm.tsx` renders `CustodyCheckbox` at the *bottom* of every form variant, just above the submit button with a `pt-3 border-t border-border/60` separator (applies to Add New, Edit Totals, Add/Reduce delta, and Import tab via `footerSlot`). Placing it near the submit button keeps it visible as a final-step confirmation rather than dominating the top of the popup. When checked, shows a `<Select>` dropdown with existing names + "Add new person" option. Edit mode sends empty string (not undefined) when unchecking custody to properly clear the field
-- `CustodyCheckbox.tsx` — extracted shared UI component for custody toggle with name selection, used by both create and edit modes. Takes `showDescription` prop (true for create, false for edit)
-- Custody names persisted to `localStorage` (`foliobuddy-custody-names`) and merged with names from existing positions. Memo recomputes via version counter after saving new names
-- `PositionImportTab.tsx` shows a purple banner when importing as custody; all imported positions get `custodyOf` stamped
-- `PositionTable.tsx` includes `custodyOf` in clipboard JSON format when set
+Frontend: `Portfolio.tsx` splits into owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default, reuses `PositionTable`). `CustodyCheckbox.tsx` (shared between create/edit) renders at the *bottom* of every form variant just above submit, with name dropdown (existing names from positions + localStorage `foliobuddy-custody-names`, plus "Add new person"). Edit sends empty string to clear. `PositionImportTab.tsx` shows a purple banner when importing as custody; clipboard JSON in `PositionTable.tsx` includes `custodyOf` when set.
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
-Equities are a single category covering two sub-types, selected via a toggle in the form. Labels are UI-only; enum values (`equityMode === 'single' | 'fund'`, `asset.category === 'EQUITY' | 'UNIT_TRUST'`) are unchanged:
+Equities cover two sub-types via a UI toggle (enums unchanged):
 
-- **Stock / ETF** (enum `single`) — tickers priced via Yahoo Finance (AAPL, D05.SI, EWY, QQQ, SPY, etc.). `asset.category === 'EQUITY'`, `priceProvider === 'yahoo'`. ETFs belong here, not Unit Trust — they trade on exchanges with live ticker prices, same pricing flow as individual stocks.
-- **Unit Trust** (enum `fund`) — open-ended funds with NAV tracked manually or via Yahoo statement parser. `asset.category === 'UNIT_TRUST'`, `priceProvider === 'manual'` or `'yahoo'`.
+- **Stock / ETF** (`equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`) — tickers priced via Yahoo Finance. ETFs belong here, not Unit Trust — they have live ticker prices.
+- **Unit Trust** (`equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`) — NAV tracked manually or via Yahoo statement parser.
 
-**Form UI:**
+**Form (`PositionForm.tsx`):** Category dropdown is Crypto / Stables / Equities. Equities shows a Stock/ETF vs Unit Trust segmented toggle (create only; edit infers from `asset.category`). For equities, Storage Type is replaced with a broker dropdown (FSMOne, Tiger, UOB Kay Hian, Others) — `storageType` stays `'BROKERAGE'`, dropdown drives `storageLocation`. Cost input currency follows `asset.nativeCurrency`: SGD tickers (`.SI`) and SGD unit trusts show SGD inputs (with USD conversion note). Backend always stores USD; conversion uses live FX rate from `portfolioSummary` (fallback 1.35). Edit mode converts stored USD back to SGD via `costInitialized` flag.
 
-- `PositionForm.tsx` Category dropdown has 3 options: Crypto, Stables, Equities. When Equities is selected, a Stock/ETF vs Unit Trust segmented toggle appears (only in create mode; edit mode infers from `position.asset.category`).
-- "Storage Type" dropdown for equities is replaced with a broker list (FSMOne, Tiger, UOB Kay Hian, Others). `storageType` stays `'BROKERAGE'` behind the scenes; the dropdown drives `storageLocation`. The separate "Storage Location" field is hidden for equities.
-- Cost input currency follows the asset's `nativeCurrency`: SGD tickers (`.SI`) and SGD unit trusts show "Total Cost (SGD)" / "Average Cost (SGD)". Backend always stores USD — conversion happens on submit using the live FX rate from `portfolioSummary` (fallback 1.35).
-- Edit mode also respects `nativeCurrency`: a `costInitialized` flag + effect converts the stored USD cost basis to SGD for display once `portfolioSummary` loads. Delta mode (Add/Reduce) follows the same currency convention.
-- "Stored internally as USD (x USD per SGD)" note shown whenever cost input is in SGD, in both create and edit.
+**Display:** `Portfolio.tsx` has one "Equities" section; `PositionTable` with `groupBy='equityType'` splits into Stock/ETF and Unit Trust subsections. `PositionRow.tsx` shows the broker name directly for BROKERAGE positions. **NAV-age badge** appears under the symbol for unit trusts OR manual-priced positions; color follows freshness via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d, red "Never updated" if null). Crypto/equity tickers skip the badge — they refresh every minute.
 
-**Display UI:**
+**Statement upload (Unit Trust create form):** Dashed upload card is a `<label>` wrapping the file input — click or drag-drop a PDF works. Drag handlers on the label use `utDragOver` state to highlight `bg-primary/15`. Drop validates `application/pdf` / `.pdf` extension; same `handleUploadStatement` runs for both paths.
 
-- `Portfolio.tsx` has one "Equities" section combining both sub-types. Inside, `PositionTable` with `groupBy='equityType'` splits into Stock/ETF and Unit Trust collapsible subsections — mirrors how Crypto splits into CEX/Onchain.
-- `PositionRow.tsx` Storage column: for `BROKERAGE` positions, shows the broker name directly (Tiger, UOB Kay Hian, FSMOne) instead of "Brokerage" with the broker as italic subtext. View dialog collapses to a single "Broker" field for brokerage positions.
-- **NAV-age badge**: `PositionRow` shows a `NAV {age}` line under the asset symbol whenever the position is a unit trust OR uses the `manual` price provider, regardless of provider. Color follows freshness via `priceAgeClass`: muted (< 7d), amber (7–30d), red (≥ 30d), red "Never updated" if `priceUpdatedAt` is null. Hover shows the full timestamp. Crypto/equity-ticker positions don't show the badge — their prices refresh every minute via the scheduler so the info is noise.
-
-**Statement upload UX (Unit Trust create form):**
-
-- The dashed upload card is the drop zone — it's a `<label>` wrapping the file `<input>`, so click anywhere or drag a PDF onto it. Drag handlers (`onDragEnter/Over/Leave/Drop`) live on the label, with `utDragOver` state highlighting the card to `bg-primary/15` while dragging.
-- Drop validation: rejects anything that isn't `application/pdf` (or doesn't end in `.pdf`) with an inline error.
-- Same `handleUploadStatement` runs for both click and drop paths.
-
-**Copy/Paste round-trip:**
-
-- Copy format (`PositionTable.formatPositionsForClipboard`) includes `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` for non-coingecko assets. Required so re-importing a not-yet-in-DB equity wires up Yahoo live prices.
-- Backend bulk import schema (`positions.ts`) accepts these as optional; honored only when creating a new Asset row. Defaults: `EQUITY → yahoo`, `UNIT_TRUST → manual`, else `coingecko`. Re-importing an existing symbol matches by symbol first and ignores these fields (existing wiring wins).
-- `BulkImportPosition` type in `packages/shared/src/types.ts` includes EQUITY + UNIT_TRUST in the category union.
+**Copy/Paste round-trip:** `PositionTable.formatPositionsForClipboard` includes `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` for non-coingecko assets so re-imported equities wire up Yahoo live prices. Bulk import schema accepts these as optional; honored only when creating a new Asset (defaults: `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`). Re-importing an existing symbol matches by symbol first.
 
 ### Position Edit Modes
 
