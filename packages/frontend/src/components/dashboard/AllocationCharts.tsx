@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { formatNumber, formatCurrency, isStablecoinCategory } from '@/lib/utils';
+import { formatNumber, formatCurrency, isStablecoinCategory, categoryGroup } from '@/lib/utils';
 import { ASSET_COLORS, STORAGE_COLORS, STABLES_COLORS } from '@/lib/chartColors';
 import type { Position } from '@/lib/types';
 
@@ -17,120 +17,167 @@ interface ChartData {
   percentage: number;
 }
 
+type CategoryBucket = 'Crypto' | 'Equities' | 'Stables';
+
+function bucketFor(category: string | undefined | null): CategoryBucket {
+  const g = categoryGroup(category);
+  if (g === 'stables') return 'Stables';
+  if (g === 'equities' || g === 'unit_trusts') return 'Equities';
+  return 'Crypto';
+}
+
 export function AllocationCharts({ positions, isLoading }: AllocationChartsProps) {
   // Track hidden items for each chart
-  const [hiddenAssets, setHiddenAssets] = useState<Set<string>>(new Set());
+  const [hiddenCategory, setHiddenCategory] = useState<Set<string>>(new Set());
+  const [hiddenDetailed, setHiddenDetailed] = useState<Set<string>>(new Set());
   const [hiddenStorage, setHiddenStorage] = useState<Set<string>>(new Set());
   const [hiddenStables, setHiddenStables] = useState<Set<string>>(new Set());
+  const [hoveredSlice, setHoveredSlice] = useState<Record<string, number | null>>({});
 
   // Calculate all allocations from positions
-  const { assetAllocation, storageAllocation, stablesAllocation } = useMemo(() => {
-    if (!positions || positions.length === 0) {
-      return { assetAllocation: [], storageAllocation: [], stablesAllocation: [], totalValue: 0 };
-    }
-
-    const total = positions.reduce((sum, p) => sum + (p.marketValueUsd || 0), 0);
-
-    // Asset allocation: stables grouped, crypto by individual asset
-    const assetMap = new Map<string, number>();
-    let stablesTotal = 0;
-
-    positions.forEach((p) => {
-      const value = p.marketValueUsd || 0;
-      if (isStablecoinCategory(p.asset.category)) {
-        stablesTotal += value;
-      } else {
-        const symbol = p.asset.symbol;
-        assetMap.set(symbol, (assetMap.get(symbol) || 0) + value);
-      }
-    });
-
-    // Add stables as one entry
-    if (stablesTotal > 0) {
-      assetMap.set('Stables', stablesTotal);
-    }
-
-    const rawAssetData: ChartData[] = Array.from(assetMap.entries())
-      .map(([name, value]) => ({
-        name,
-        value,
-        percentage: total > 0 ? (value / total) * 100 : 0,
-      }))
-      .sort((a, b) => b.value - a.value);
-
-    // Group sub-2% slices into "Other" once there are 2+ of them, so the donut
-    // doesn't fray into a dozen hair-thin wedges
-    const OTHER_THRESHOLD_PCT = 2;
-    const smallSlices = rawAssetData.filter((d) => d.percentage < OTHER_THRESHOLD_PCT);
-    const assetData: ChartData[] =
-      smallSlices.length >= 2
-        ? [
-            ...rawAssetData.filter((d) => d.percentage >= OTHER_THRESHOLD_PCT),
-            {
-              name: 'Other',
-              value: smallSlices.reduce((sum, d) => sum + d.value, 0),
-              percentage: smallSlices.reduce((sum, d) => sum + d.percentage, 0),
-            },
-          ]
-        : rawAssetData;
-
-    // Storage allocation: CEX, Onchain, Onchain Ledger
-    const storageMap = new Map<string, number>();
-
-    positions.forEach((p) => {
-      const value = p.marketValueUsd || 0;
-      let storageLabel: string;
-
-      if (p.storageType === 'CEX') {
-        storageLabel = 'CEX';
-      } else if (p.storageLocation?.toLowerCase().includes('ledger')) {
-        storageLabel = 'Onchain Ledger';
-      } else {
-        storageLabel = 'Onchain';
+  const { categoryAllocation, detailedAllocation, storageAllocation, stablesAllocation } = useMemo(
+    () => {
+      if (!positions || positions.length === 0) {
+        return {
+          categoryAllocation: [],
+          detailedAllocation: [],
+          storageAllocation: [],
+          stablesAllocation: [],
+        };
       }
 
-      storageMap.set(storageLabel, (storageMap.get(storageLabel) || 0) + value);
-    });
+      const total = positions.reduce((sum, p) => sum + (p.marketValueUsd || 0), 0);
 
-    const storageData: ChartData[] = Array.from(storageMap.entries())
-      .map(([name, value]) => ({
-        name,
-        value,
-        percentage: total > 0 ? (value / total) * 100 : 0,
-      }))
-      .sort((a, b) => b.value - a.value);
+      // High-level category allocation: Crypto / Equities / Stables
+      const categoryMap = new Map<CategoryBucket, number>([
+        ['Crypto', 0],
+        ['Equities', 0],
+        ['Stables', 0],
+      ]);
 
-    // Stables by type
-    const stablesMap = new Map<string, number>();
+      positions.forEach((p) => {
+        const bucket = bucketFor(p.asset.category);
+        categoryMap.set(bucket, (categoryMap.get(bucket) || 0) + (p.marketValueUsd || 0));
+      });
 
-    positions.forEach((p) => {
-      if (isStablecoinCategory(p.asset.category)) {
+      const categoryData: ChartData[] = Array.from(categoryMap.entries())
+        .filter(([, v]) => v > 0)
+        .map(([name, value]) => ({
+          name,
+          value,
+          percentage: total > 0 ? (value / total) * 100 : 0,
+        }))
+        .sort((a, b) => b.value - a.value);
+
+      // Detailed asset allocation: crypto by symbol, equities + stables bundled
+      const detailedMap = new Map<string, number>();
+      let stablesTotal = 0;
+      let equitiesTotal = 0;
+
+      positions.forEach((p) => {
         const value = p.marketValueUsd || 0;
-        const symbol = p.asset.symbol;
-        stablesMap.set(symbol, (stablesMap.get(symbol) || 0) + value);
-      }
-    });
+        const bucket = bucketFor(p.asset.category);
+        if (bucket === 'Stables') {
+          stablesTotal += value;
+        } else if (bucket === 'Equities') {
+          equitiesTotal += value;
+        } else {
+          const symbol = p.asset.symbol;
+          detailedMap.set(symbol, (detailedMap.get(symbol) || 0) + value);
+        }
+      });
 
-    const stablesData: ChartData[] = Array.from(stablesMap.entries())
-      .map(([name, value]) => ({
-        name,
-        value,
-        percentage: stablesTotal > 0 ? (value / stablesTotal) * 100 : 0,
-      }))
-      .sort((a, b) => b.value - a.value);
+      if (stablesTotal > 0) detailedMap.set('Stables', stablesTotal);
+      if (equitiesTotal > 0) detailedMap.set('Equities', equitiesTotal);
 
-    return {
-      assetAllocation: assetData,
-      storageAllocation: storageData,
-      stablesAllocation: stablesData,
-      totalValue: total,
-    };
-  }, [positions]);
+      const rawDetailed: ChartData[] = Array.from(detailedMap.entries())
+        .map(([name, value]) => ({
+          name,
+          value,
+          percentage: total > 0 ? (value / total) * 100 : 0,
+        }))
+        .sort((a, b) => b.value - a.value);
+
+      // Group sub-2% crypto slices into "Other" once there are 2+ of them.
+      // Stables and Equities are protected — always shown as their own wedge.
+      const OTHER_THRESHOLD_PCT = 2;
+      const isProtected = (name: string) => name === 'Stables' || name === 'Equities';
+      const smallSlices = rawDetailed.filter(
+        (d) => d.percentage < OTHER_THRESHOLD_PCT && !isProtected(d.name)
+      );
+      const detailedData: ChartData[] =
+        smallSlices.length >= 2
+          ? [
+              ...rawDetailed.filter(
+                (d) => d.percentage >= OTHER_THRESHOLD_PCT || isProtected(d.name)
+              ),
+              {
+                name: 'Other',
+                value: smallSlices.reduce((sum, d) => sum + d.value, 0),
+                percentage: smallSlices.reduce((sum, d) => sum + d.percentage, 0),
+              },
+            ]
+          : rawDetailed;
+
+      // Storage allocation: CEX, Onchain, Onchain Ledger
+      const storageMap = new Map<string, number>();
+
+      positions.forEach((p) => {
+        const value = p.marketValueUsd || 0;
+        let storageLabel: string;
+
+        if (p.storageType === 'CEX') {
+          storageLabel = 'CEX';
+        } else if (p.storageLocation?.toLowerCase().includes('ledger')) {
+          storageLabel = 'Onchain Ledger';
+        } else {
+          storageLabel = 'Onchain';
+        }
+
+        storageMap.set(storageLabel, (storageMap.get(storageLabel) || 0) + value);
+      });
+
+      const storageData: ChartData[] = Array.from(storageMap.entries())
+        .map(([name, value]) => ({
+          name,
+          value,
+          percentage: total > 0 ? (value / total) * 100 : 0,
+        }))
+        .sort((a, b) => b.value - a.value);
+
+      // Stables by type
+      const stablesMap = new Map<string, number>();
+
+      positions.forEach((p) => {
+        if (isStablecoinCategory(p.asset.category)) {
+          const value = p.marketValueUsd || 0;
+          const symbol = p.asset.symbol;
+          stablesMap.set(symbol, (stablesMap.get(symbol) || 0) + value);
+        }
+      });
+
+      const stablesData: ChartData[] = Array.from(stablesMap.entries())
+        .map(([name, value]) => ({
+          name,
+          value,
+          percentage: stablesTotal > 0 ? (value / stablesTotal) * 100 : 0,
+        }))
+        .sort((a, b) => b.value - a.value);
+
+      return {
+        categoryAllocation: categoryData,
+        detailedAllocation: detailedData,
+        storageAllocation: storageData,
+        stablesAllocation: stablesData,
+      };
+    },
+    [positions]
+  );
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i}>
             <CardHeader className="pb-2">
               <Skeleton className="h-4 w-24" />
@@ -173,9 +220,6 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     setHidden(newHidden);
   };
 
-  // Track hovered slice index per chart for center label
-  const [hoveredSlice, setHoveredSlice] = useState<Record<string, number | null>>({});
-
   const renderPieChart = (
     data: ChartData[],
     colors: string[],
@@ -193,24 +237,24 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     return (
       <Card className="flex-1">
         <CardHeader className="pb-2">
-          <div className="flex items-baseline justify-between gap-3 min-h-[24px]">
-            <CardTitle className="text-base flex-shrink-0">{title}</CardTitle>
+          <CardTitle className="text-base">{title}</CardTitle>
+          <div className="text-xs text-muted-foreground tabular-nums truncate min-h-[16px]">
             {(() => {
               const hIdx = hoveredSlice[title];
               if (hIdx == null || !visibleData[hIdx]) return null;
               const hovered = visibleData[hIdx];
               return (
-                <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap truncate">
+                <>
                   {hovered.name} &middot; {formatCurrency(hovered.value, 'USD', true)} &middot;{' '}
                   {formatNumber(hovered.displayPercentage, 1)}%
-                </span>
+                </>
               );
             })()}
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="mx-auto h-[140px] w-[140px] flex-shrink-0 relative sm:mx-0">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center lg:flex-col lg:items-stretch lg:gap-3">
+            <div className="mx-auto h-[140px] w-[140px] flex-shrink-0 relative sm:mx-0 lg:mx-auto">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -295,8 +339,21 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
   };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-      {renderPieChart(assetAllocation, ASSET_COLORS, hiddenAssets, setHiddenAssets, 'By Asset')}
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {renderPieChart(
+        categoryAllocation,
+        ASSET_COLORS,
+        hiddenCategory,
+        setHiddenCategory,
+        'By Asset'
+      )}
+      {renderPieChart(
+        detailedAllocation,
+        ASSET_COLORS,
+        hiddenDetailed,
+        setHiddenDetailed,
+        'By Detailed Asset'
+      )}
       {renderPieChart(
         storageAllocation,
         STORAGE_COLORS,
