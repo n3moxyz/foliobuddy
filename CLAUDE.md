@@ -197,6 +197,19 @@ Yahoo's `/v1/finance/search` endpoint geolocates the caller IP and region-filter
 
 `YahooFinanceProvider.search()` now falls back to `quote()` when the query looks like a ticker (`/^[A-Z0-9.-]{1,10}$/`) and no exact-symbol match appeared in search results. The `/v7/finance/quote` endpoint is NOT IP-filtered, so deterministic tickers resolve regardless of server geography. Covers the common case of users typing tickers they already know.
 
+### Unit Trust Statement Parsers (PDF Import)
+
+`POST /assets/parse-unit-trust-statement` receives a PDF body, extracts text via `pdf-parse`, and walks an array of broker-specific parsers in `packages/backend/src/services/statementParsers/` until one succeeds. Each parser exports a function returning the shared `ParsedStatement` shape (`broker`, `periodEnd`, `holdings[]`) and throws if the input isn't its format.
+
+Currently supported:
+
+- **UOB Kay Hian** (`uobKayHian.ts`) — anchors on ISIN regex within the "Portfolio Holdings" section. Each holding stamps a real ISIN, so Yahoo `searchByIsin` resolves a ticker for live pricing.
+- **FSMOne / iFAST** (`fsmOne.ts`) — anchors on a per-holding **value-block regex** capturing `priceCcy price PAYMENT wacCcy wac qty invCcy invAmt pnlCcy pnl pnl% mvCcy mv` (5 currency codes + 7 numbers + 1 payment-method token). The fund name is everything between blocks; trailing payment-method tokens (`Cash`/`RSP`/`CPF`/`SRS`/`IA`) are stripped from the tail. FSMOne statements don't print ISINs, so `isin` is left empty and downstream Yahoo lookup is skipped — user can manually wire a Yahoo symbol later.
+
+Adding another broker: drop a new file alongside, append to the `parsers` array in `routes/assets.ts`, update the supported-formats string in the error message, and add an optional broker-specific branch in `PositionForm.tsx:applyParsedHolding` that maps the broker label to a `storageLocation`.
+
+PDF text from `pdf-parse` collapses table columns into a flat token stream — visual layout is gone. Both parsers cope by finding a deterministic anchor (ISIN regex or value-block regex) and reading a fixed number of fields after it, rather than trying to reconstruct rows by position.
+
 ### CoinGecko Rate Limiting
 
 Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. Batch requests up to 50 coins.
@@ -325,6 +338,13 @@ Equities are a single category covering two sub-types, selected via a toggle in 
 
 - `Portfolio.tsx` has one "Equities" section combining both sub-types. Inside, `PositionTable` with `groupBy='equityType'` splits into Stock/ETF and Unit Trust collapsible subsections — mirrors how Crypto splits into CEX/Onchain.
 - `PositionRow.tsx` Storage column: for `BROKERAGE` positions, shows the broker name directly (Tiger, UOB Kay Hian, FSMOne) instead of "Brokerage" with the broker as italic subtext. View dialog collapses to a single "Broker" field for brokerage positions.
+- **NAV-age badge**: `PositionRow` shows a `NAV {age}` line under the asset symbol whenever the position is a unit trust OR uses the `manual` price provider, regardless of provider. Color follows freshness via `priceAgeClass`: muted (< 7d), amber (7–30d), red (≥ 30d), red "Never updated" if `priceUpdatedAt` is null. Hover shows the full timestamp. Crypto/equity-ticker positions don't show the badge — their prices refresh every minute via the scheduler so the info is noise.
+
+**Statement upload UX (Unit Trust create form):**
+
+- The dashed upload card is the drop zone — it's a `<label>` wrapping the file `<input>`, so click anywhere or drag a PDF onto it. Drag handlers (`onDragEnter/Over/Leave/Drop`) live on the label, with `utDragOver` state highlighting the card to `bg-primary/15` while dragging.
+- Drop validation: rejects anything that isn't `application/pdf` (or doesn't end in `.pdf`) with an inline error.
+- Same `handleUploadStatement` runs for both click and drop paths.
 
 **Copy/Paste round-trip:**
 

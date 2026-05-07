@@ -1301,6 +1301,48 @@ When the model is fresh and the package manager hasn't caught up, a `model = "gp
 
 **Bonus pattern (LLM-specific):** When an LLM's "this doesn't exist" claim conflicts with the user's link to a vendor announcement, defer to the user. Training-data cutoffs and local model caches are stale by definition for new model releases — confidence based on those sources is unreliable for any "what's the latest X" question.
 
+### Parsing PDF Tables: Anchor on the Predictable Block, Not the Visual Layout
+
+**The bug:** Adding an FSMOne unit-trust statement parser. The statement looks like a clean table on screen — Product Name, Price, Payment Method, WAC, Quantity, Investment Amount, P/L, P/L %, Current Market Value — nine columns, neat rows. After `pdf-parse` extracts text the visual layout is gone:
+
+```
+Amova
+Singapore
+Equity SGD
+(formerly
+Nikko AM)
+SGD
+5.3036
+Cash SGD
+5.2663
+18,988.66 SGD
+100,000.00
+SGD
+708.26
+0.71 SGD
+100,708.26
+```
+
+The fund name spans five lines. Currency codes appear both inside the name (`Equity SGD`) and as column markers. `Cash` is sometimes a payment method, sometimes part of a fund name (`Cash Plus Fund`). Trying to reconstruct columns by counting tokens-per-row falls apart immediately because PDF text extraction doesn't preserve column boundaries — it interleaves vertically-aligned cells in reading order, which depends on the PDF's layout heuristics, not a stable grid.
+
+**The fix:** Don't reconstruct rows. Find the part of the format that's *deterministic regardless of layout*, anchor a regex on it, and let everything else fall out positionally.
+
+For each FSMOne holding, the value block always has the same shape: `priceCcy price PAYMENT wacCcy wac qty invCcy invAmt pnlCcy pnl pnl% mvCcy mv` — five 3-letter currency codes, seven decimal numbers, one payment-method token, in that exact order. That's a 13-token regex with no ambiguity:
+
+```
+([A-Z]{3})\s+([\d,]+\.\d+)\s+(\S+)\s+([A-Z]{3})\s+([\d,]+\.\d+)\s+([\d,]+\.\d+)\s+...
+```
+
+Run it as `/g`, collect all matches, and the fund name is *whatever text falls between the previous match's end and this match's start*. A multi-line name with embedded `SGD`s collapses to a single string because the regex won't match on a `SGD` followed by `(formerly` — only on a `SGD` followed by a number. The hardest part of the parsing problem disappears once the anchor is right.
+
+The `Cash Plus Fund` / `Cash` payment-method ambiguity? Solved by trimming a known set of payment-method tokens (`Cash|RSP|CPF|SRS|IA`) from the *tail* of the captured name string. Wrong by construction in pathological cases (a fund actually named "Cash") but correct for every iFAST product I'd find in practice.
+
+**The pattern:** When parsing semi-structured text that's been mangled by an extractor, look for the most rigid sub-pattern — usually a fixed sequence of typed tokens (currencies + numbers, dates, codes). Anchor a regex there, treat everything outside it as soft text, and let positional rules handle ambiguity at the edges. Versus the alternative of trying to reverse-engineer the original table grid, which is fragile to every layout variation the source might use.
+
+Applies beyond PDFs: scraping JSON-shaped logs out of unstructured stdout, pulling a known-format token sequence out of a chat transcript, parsing email subjects with embedded codes — same idea. Find the part you can match exactly, anchor there, treat the rest as the soft remainder.
+
+**FSMOne-specific bonus:** the format omits ISINs (UOB Kay Hian includes them). The route's downstream Yahoo `searchByIsin` lookup is gated on `if (h.isin)`, so an empty ISIN naturally skips the lookup and the user wires up the Yahoo symbol manually after import. No code change needed — the gate was already defensive. Worth noting because "feature works because the next consumer was defensive" is the kind of accidental-correctness that's only obvious in hindsight, and might bite the next person who tightens the validation.
+
 ---
 
 ## Best Practices That Paid Off
