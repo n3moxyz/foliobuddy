@@ -168,6 +168,7 @@ export function PositionForm({
   const [utNavAsOfDate, setUtNavAsOfDate] = useState(new Date().toISOString().slice(0, 10));
   const [utUploading, setUtUploading] = useState(false);
   const [utUploadError, setUtUploadError] = useState<string | null>(null);
+  const [utDragOver, setUtDragOver] = useState(false);
   const [utPrefilledFrom, setUtPrefilledFrom] = useState<string | null>(null);
   const [utMultipleHoldings, setUtMultipleHoldings] = useState<ParsedStatementHolding[] | null>(
     null
@@ -1221,36 +1222,68 @@ export function PositionForm({
               {/* Asset Selection - Single ticker vs Fund-level (PDF upload) vs Cash */}
               {category === 'equity' && equityMode === 'fund' && !isEditing ? (
                 <div className="space-y-3">
-                  <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+                  <label
+                    className={`block cursor-pointer rounded-md border border-dashed p-3 transition-colors ${
+                      utDragOver
+                        ? 'border-primary bg-primary/15'
+                        : 'border-primary/40 bg-primary/5 hover:bg-primary/10'
+                    }`}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!utUploading) setUtDragOver(true);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setUtDragOver(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setUtDragOver(false);
+                      if (utUploading) return;
+                      const file = e.dataTransfer.files?.[0];
+                      if (!file) return;
+                      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                        setUtUploadError('Please drop a PDF file');
+                        return;
+                      }
+                      handleUploadStatement(file);
+                    }}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1">
                         <p className="text-sm font-medium">Upload monthly statement (PDF)</p>
                         <p className="text-xs text-muted-foreground">
-                          We&apos;ll auto-fill the details below. Supports UOB Kay Hian and FSMOne.
+                          Drag &amp; drop or click to upload. Supports UOB Kay Hian and FSMOne.
                         </p>
                       </div>
-                      <label className="cursor-pointer">
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          className="sr-only"
-                          disabled={utUploading}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleUploadStatement(file);
-                            e.target.value = '';
-                          }}
-                        />
-                        <span className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-                          <Upload className="h-3.5 w-3.5" />
-                          {utUploading ? 'Parsing...' : 'Upload PDF'}
-                        </span>
-                      </label>
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        className="sr-only"
+                        disabled={utUploading}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadStatement(file);
+                          e.target.value = '';
+                        }}
+                      />
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                        <Upload className="h-3.5 w-3.5" />
+                        {utUploading ? 'Parsing...' : 'Upload PDF'}
+                      </span>
                     </div>
                     {utUploadError && (
                       <p className="mt-2 text-xs text-destructive">{utUploadError}</p>
                     )}
-                  </div>
+                  </label>
 
                   {utMultipleHoldings && (
                     <div className="space-y-2 rounded-md border bg-muted/20 p-3">
