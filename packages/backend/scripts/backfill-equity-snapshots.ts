@@ -22,11 +22,12 @@
  *   snapshot using snapshot.usdSgdRate (or the latest fxRate row as
  *   fallback), NOT the current FX rate — that's the whole reason we don't
  *   use YahooProvider.getHistoricalPrices().priceUsd directly.
- * - LIONGLC is a SG unit trust (LionGlobal Singapore Dividend Equity, Decum
- *   share class LCP211). If Yahoo doesn't have it, we interpolate NAV
- *   linearly from the purchase NAV (SGD 1.4673 = 100_000 / 68_153.43) to
- *   today's current NAV. Distributed dividends are implicit "value decline"
- *   since we don't model cash separately.
+ * - SG unit trusts (e.g. LIONGLOB, AMOVASIN) often aren't on Yahoo. Any
+ *   BACKFILLS entry whose symbol returns zero Yahoo points and has
+ *   priorCashSgd + heldSince set falls back to a linear NAV interpolation
+ *   from purchase NAV (priorCashSgd / quantity) to the asset's current NAV.
+ *   Multiple entries on the same symbol (one fund split across brokers)
+ *   collapse to a single weighted-average interpolation per symbol.
  *
  * Usage:
  *   tsx scripts/backfill-equity-snapshots.ts --dry
@@ -51,13 +52,19 @@ interface BackfillConfig {
   priorCashSgd?: number;
 }
 
+// NB: this list is rewritten per backfill run. Past runs (D05.SI, S68.SI,
+// OV8.SI, GLXY, EWY, LIONGLOB) are already baked into prod snapshots — re-
+// running them here would double-add their cash placeholders. Keep entries
+// here only for positions that haven't been backfilled yet.
 const BACKFILLS: BackfillConfig[] = [
-  { symbol: 'D05.SI', quantity: 350, heldSince: null },
-  { symbol: 'S68.SI', quantity: 800, heldSince: null },
-  { symbol: 'OV8.SI', quantity: 2000, heldSince: null },
-  { symbol: 'GLXY', quantity: 1178, heldSince: null },
-  { symbol: 'EWY', quantity: 590, heldSince: '2026-03-05', priorCashUsd: 78_500 },
-  { symbol: 'LIONGLOB', quantity: 68_153.43, heldSince: '2026-02-09', priorCashSgd: 100_000 },
+  // Two AMOVASIN positions sharing one assetId (FSMOne + UOB Kay Hian).
+  // Same fund (Amova Singapore Equity Fund - SGD Class), purchased one day
+  // apart at slightly different unit prices, 100k SGD each. Pre-purchase
+  // snapshots get a 100k SGD cash placeholder per entry (200k total). Yahoo
+  // doesn't carry this fund, so the generic interpolation path handles
+  // post-purchase NAV.
+  { symbol: 'AMOVASIN', quantity: 18_988.66, heldSince: '2026-04-14', priorCashSgd: 100_000 },
+  { symbol: 'AMOVASIN', quantity: 19_149.02, heldSince: '2026-04-16', priorCashSgd: 100_000 },
 ];
 
 const USD_SGD_FALLBACK = 1.35;
@@ -286,16 +293,18 @@ interface EquitySnapshotPrice {
   isCashPlaceholder: boolean;
 }
 
+interface InterpolationCfg {
+  heldSinceMs: number;
+  purchaseNav: number;
+  nowMs: number;
+  currentNav: number;
+}
+
 async function computeContribution(
   cfg: BackfillConfig,
   snapshot: SnapshotBaseline,
   nativePrices: NativePrice[],
-  liongleInterpolation: {
-    heldSinceMs: number;
-    purchaseNav: number;
-    nowMs: number;
-    currentNav: number;
-  } | null,
+  interpolation: InterpolationCfg | null,
   usdSgd: number
 ): Promise<EquitySnapshotPrice> {
   const snapshotMs = new Date(snapshot.timestamp).getTime();
@@ -323,12 +332,12 @@ async function computeContribution(
   if (historical) {
     nativePrice = historical.nativePrice;
     currency = historical.currency;
-  } else if (liongleInterpolation) {
+  } else if (interpolation) {
     nativePrice = interpolateNav(
-      liongleInterpolation.heldSinceMs,
-      liongleInterpolation.purchaseNav,
-      liongleInterpolation.nowMs,
-      liongleInterpolation.currentNav,
+      interpolation.heldSinceMs,
+      interpolation.purchaseNav,
+      interpolation.nowMs,
+      interpolation.currentNav,
       snapshotMs
     );
     currency = 'SGD';
@@ -352,13 +361,7 @@ async function computeContribution(
 async function planChanges(
   audit: AuditFile,
   prices: Map<string, NativePrice[]>,
-  liongleCfg: BackfillConfig | null,
-  liongleInterpolation: {
-    heldSinceMs: number;
-    purchaseNav: number;
-    nowMs: number;
-    currentNav: number;
-  } | null,
+  interpolations: Map<string, InterpolationCfg>,
   fxFallback: number
 ) {
   const plans: Array<{
@@ -406,7 +409,7 @@ async function planChanges(
         cfg,
         snapshot,
         prices.get(cfg.symbol) ?? [],
-        cfg.symbol === 'LIONGLOB' ? liongleInterpolation : null,
+        interpolations.get(cfg.symbol) ?? null,
         usdSgd
       );
 
@@ -432,9 +435,6 @@ async function planChanges(
       newTargetPositions,
       deltaUsd: newTotal - snapshot.totalValueUsd,
     });
-    // Keep `liongleCfg` referenced so the closure captures the intended config
-    // (silences "unused variable" linting while keeping the API symmetric).
-    void liongleCfg;
   }
 
   return plans;
@@ -730,32 +730,41 @@ async function main() {
     );
   }
 
-  // LIONGLC fallback: if Yahoo returned no data, prepare linear interpolation
-  const liongleCfg = BACKFILLS.find((b) => b.symbol === 'LIONGLOB')!;
-  const liongleAsset = targetAssets.find((a) => a.symbol === 'LIONGLOB')!;
-  const liongleHasYahoo = (prices.get('LIONGLOB') ?? []).length > 0;
-  let liongleInterpolation: {
-    heldSinceMs: number;
-    purchaseNav: number;
-    nowMs: number;
-    currentNav: number;
-  } | null = null;
-  if (!liongleHasYahoo) {
-    // Current NAV in SGD: asset.currentPriceUsd is USD; multiply by latest FX
-    const latestFx = await prisma.fxRate.findUnique({
-      where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: 'SGD' } },
-    });
-    const fx = latestFx?.rate ?? USD_SGD_FALLBACK;
-    const currentNavSgd = (liongleAsset.currentPriceUsd ?? (1.18 / fx)) * fx;
-    const purchaseNav = liongleCfg.priorCashSgd! / liongleCfg.quantity;
-    liongleInterpolation = {
-      heldSinceMs: new Date(liongleCfg.heldSince!).getTime(),
+  // Generic interpolation fallback: any SGD-cash-backed BACKFILLS entry whose
+  // symbol returned zero Yahoo points gets a linear NAV interpolation between
+  // its purchase price (priorCashSgd / quantity) and the asset's current
+  // price. Multiple entries on the same symbol (e.g. one fund split across
+  // brokers) collapse to a single weighted-average interpolation per symbol.
+  const interpolations = new Map<string, InterpolationCfg>();
+  const latestFx = await prisma.fxRate.findUnique({
+    where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: 'SGD' } },
+  });
+  const fxNow = latestFx?.rate ?? USD_SGD_FALLBACK;
+  const symbolsNeedingInterp = [
+    ...new Set(
+      BACKFILLS.filter(
+        (b) => (prices.get(b.symbol) ?? []).length === 0 && b.priorCashSgd != null && b.heldSince
+      ).map((b) => b.symbol)
+    ),
+  ];
+  for (const symbol of symbolsNeedingInterp) {
+    const cfgsForSymbol = BACKFILLS.filter((b) => b.symbol === symbol);
+    const totalQty = cfgsForSymbol.reduce((s, c) => s + c.quantity, 0);
+    const totalCostSgd = cfgsForSymbol.reduce((s, c) => s + (c.priorCashSgd ?? 0), 0);
+    const purchaseNav = totalCostSgd / totalQty;
+    const earliestHeldSinceMs = Math.min(
+      ...cfgsForSymbol.map((c) => new Date(c.heldSince!).getTime())
+    );
+    const asset = targetAssets.find((a) => a.symbol === symbol)!;
+    const currentNavSgd = (asset.currentPriceUsd ?? purchaseNav / fxNow) * fxNow;
+    interpolations.set(symbol, {
+      heldSinceMs: earliestHeldSinceMs,
       purchaseNav,
       nowMs: Date.now(),
       currentNav: currentNavSgd,
-    };
+    });
     log(
-      `  LIONGLC: no Yahoo data, interpolating SGD ${purchaseNav.toFixed(4)} → ${currentNavSgd.toFixed(4)}`
+      `  ${symbol}: no Yahoo data, interpolating SGD ${purchaseNav.toFixed(4)} → ${currentNavSgd.toFixed(4)} (covers ${cfgsForSymbol.length} entr${cfgsForSymbol.length === 1 ? 'y' : 'ies'})`
     );
   }
 
@@ -785,7 +794,7 @@ async function main() {
   });
   const fxFallback = fxRow?.rate ?? USD_SGD_FALLBACK;
 
-  const plans = await planChanges(audit, prices, liongleCfg, liongleInterpolation, fxFallback);
+  const plans = await planChanges(audit, prices, interpolations, fxFallback);
 
   // Report
   log('\n--- Plan summary ---');
