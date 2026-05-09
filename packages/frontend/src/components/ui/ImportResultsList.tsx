@@ -56,7 +56,7 @@ export function ImportResultsList({ results, onDone }: ImportResultsListProps) {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={onDone}>Done</Button>
+        <Button onClick={onDone}>Close Import</Button>
       </div>
     </div>
   );

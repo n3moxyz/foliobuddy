@@ -84,7 +84,9 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
   return (
     <div className="min-h-screen bg-background">
       {sidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Close navigation menu"
           className="fixed inset-0 z-40 bg-foreground/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />

@@ -35,8 +35,8 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
   const [hoveredSlice, setHoveredSlice] = useState<Record<string, number | null>>({});
 
   // Calculate all allocations from positions
-  const { categoryAllocation, detailedAllocation, storageAllocation, stablesAllocation } = useMemo(
-    () => {
+  const { categoryAllocation, detailedAllocation, storageAllocation, stablesAllocation } =
+    useMemo(() => {
       if (!positions || positions.length === 0) {
         return {
           categoryAllocation: [],
@@ -170,9 +170,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         storageAllocation: storageData,
         stablesAllocation: stablesData,
       };
-    },
-    [positions]
-  );
+    }, [positions]);
 
   if (isLoading) {
     return (
@@ -274,7 +272,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                           key={`cell-${entry.name}`}
                           fill={colors[originalIndex % colors.length]}
                           onMouseEnter={() => setHoveredSlice((prev) => ({ ...prev, [title]: i }))}
-                          style={{ cursor: 'pointer', outline: 'none' }}
+                          style={{ cursor: 'pointer' }}
                         />
                       );
                     })}

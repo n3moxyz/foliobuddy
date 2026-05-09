@@ -5,6 +5,7 @@ import {
   formatCurrency,
   formatNumber,
   formatPercent,
+  formatDateTime,
   getPnLColorClass,
   getPriceAgeInfo,
   isStablecoinCategory,
@@ -64,6 +65,9 @@ export const PositionRow = React.memo(function PositionRow({
   const isManual = position.asset.priceProvider === 'manual';
   const isUnitTrust = position.asset.category === 'UNIT_TRUST';
   const ageInfo = isManual || isUnitTrust ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
+  const priceUpdatedTitle = position.asset.priceUpdatedAt
+    ? `NAV updated ${formatDateTime(position.asset.priceUpdatedAt)}`
+    : 'NAV never set';
 
   // Match PositionTable: hidden on mobile unless toggle is on
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
@@ -88,11 +92,7 @@ export const PositionRow = React.memo(function PositionRow({
           {ageInfo && (
             <p
               className={`text-xs ${priceAgeClass(ageInfo.severity)} truncate`}
-              title={
-                position.asset.priceUpdatedAt
-                  ? `NAV updated ${new Date(position.asset.priceUpdatedAt).toLocaleString()}`
-                  : 'NAV never set'
-              }
+              title={priceUpdatedTitle}
             >
               NAV {ageInfo.label}
             </p>

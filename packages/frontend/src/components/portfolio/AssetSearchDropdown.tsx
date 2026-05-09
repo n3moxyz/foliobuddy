@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useId } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import type { Asset, CoinSearchResult, ProviderSearchResult } from '@/lib/types';
@@ -49,6 +49,11 @@ export function AssetSearchDropdown({
   setValidationError,
 }: AssetSearchDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
+  const activeOptionId =
+    highlightedIndex >= 0 && showDropdown && combinedResults.length > 0
+      ? `${listboxId}-option-${highlightedIndex}`
+      : undefined;
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -101,10 +106,13 @@ export function AssetSearchDropdown({
         aria-expanded={showDropdown && combinedResults.length > 0}
         aria-haspopup="listbox"
         aria-autocomplete="list"
+        aria-controls={listboxId}
+        aria-activedescendant={activeOptionId}
       />
 
       {showDropdown && (
         <div
+          id={listboxId}
           ref={dropdownRef}
           role="listbox"
           className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
@@ -115,8 +123,10 @@ export function AssetSearchDropdown({
             combinedResults.map((result, index) => (
               <button
                 key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
+                id={`${listboxId}-option-${index}`}
                 type="button"
                 role="option"
+                aria-selected={index === highlightedIndex}
                 className={`w-full px-3 py-2 text-left flex items-center justify-between ${
                   index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
                 }`}
@@ -144,11 +154,9 @@ export function AssetSearchDropdown({
                   result.coin!.exchange && (
                     <span className="text-xs text-muted-foreground">{result.coin!.exchange}</span>
                   )}
-                {result.type === 'search' &&
-                  !('exchange' in result.coin!) &&
-                  result.coin!.rank && (
-                    <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
-                  )}
+                {result.type === 'search' && !('exchange' in result.coin!) && result.coin!.rank && (
+                  <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
+                )}
                 {result.type === 'existing' && (
                   <span className="text-xs text-green-600">In portfolio</span>
                 )}

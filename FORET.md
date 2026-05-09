@@ -1154,7 +1154,7 @@ printf "/api/v1" | vercel env add VITE_API_URL production
   run: npm ls --workspaces --depth=0
 ```
 
-**The pattern:** "Works locally, fails on Vercel" is almost always about resolution assumptions. Local `npm install` and local `tsc` are *both* forgiving in ways production environments aren't. Anything that relies on root `node_modules` hoisting, dev-only type overrides, or un-cleaned build caches is a candidate. Lock them down with a CI check instead of discovering them at deploy time.
+**The pattern:** "Works locally, fails on Vercel" is almost always about resolution assumptions. Local `npm install` and local `tsc` are _both_ forgiving in ways production environments aren't. Anything that relies on root `node_modules` hoisting, dev-only type overrides, or un-cleaned build caches is a candidate. Lock them down with a CI check instead of discovering them at deploy time.
 
 ---
 
@@ -1176,7 +1176,7 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 **The fix:** Remove the early return and add a one-shot `useEffect` that converts the stored USD cost to SGD for display, gated on `portfolioSummary` being loaded (so the FX rate is real, not the 1.35 fallback). Submit path converts back to USD. Delta mode (Add/Reduce) follows the same currency convention.
 
-**The pattern:** When a value is stored in a canonical unit (USD) but entered in a user-facing unit (SGD), the conversion layer must be symmetric — display and submit must use the *same rate at the same moment*. Using a fallback rate on mount and the real rate on save is how silent cost-basis drift gets introduced.
+**The pattern:** When a value is stored in a canonical unit (USD) but entered in a user-facing unit (SGD), the conversion layer must be symmetric — display and submit must use the _same rate at the same moment_. Using a fallback rate on mount and the real rate on save is how silent cost-basis drift gets introduced.
 
 ---
 
@@ -1198,9 +1198,9 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 **The investigation path:** First I assumed it was a `quoteType` filter — our code allowed only `'EQUITY'` and ETFs come back as `quoteType: 'ETF'`. Added ETF to the allowlist and ranked primary listings above cross-listings (exact match > no-suffix > prefix > other). Verified locally that Yahoo's raw `/v1/finance/search` endpoint returned `EWY` at the top for my query. Deployed. Still broken. Next hypothesis: passed `region=US&lang=en-US` explicitly to normalize — the `region` parameter controls localization but not IP-based result weighting. Still broken.
 
-**The root cause:** Our production droplet is in Singapore (DigitalOcean SG region, 203.0.113.10). Yahoo's `/v1/finance/search` endpoint *geolocates the caller IP* and region-filters results. US ETFs aren't in the SG-region result set, period — no parameter will change that.
+**The root cause:** Our production droplet is in Singapore (DigitalOcean SG region, 203.0.113.10). Yahoo's `/v1/finance/search` endpoint _geolocates the caller IP_ and region-filters results. US ETFs aren't in the SG-region result set, period — no parameter will change that.
 
-**The fix:** Fall back to a direct `quote()` lookup when the search query looks like a ticker (`/^[A-Z0-9.-]{1,10}$/`) and no exact-symbol match appeared in results. Yahoo's `/v7/finance/quote` endpoint is *not* IP-filtered — a deterministic symbol like QQQ resolves regardless of caller geography. The script now calls `yahoo.quote(upperQuery)` and, if it returns a valid EQUITY/ETF in a supported currency, prepends a synthetic search result. Covers ~every common case of a user typing a ticker they already know.
+**The fix:** Fall back to a direct `quote()` lookup when the search query looks like a ticker (`/^[A-Z0-9.-]{1,10}$/`) and no exact-symbol match appeared in results. Yahoo's `/v7/finance/quote` endpoint is _not_ IP-filtered — a deterministic symbol like QQQ resolves regardless of caller geography. The script now calls `yahoo.quote(upperQuery)` and, if it returns a valid EQUITY/ETF in a supported currency, prepends a synthetic search result. Covers ~every common case of a user typing a ticker they already know.
 
 **The pattern:** When a third-party search API returns regionally weighted results and you need consistent behavior from any server location, don't try to bully the search endpoint. Use a deterministic lookup endpoint as a fallback for the narrow case that matters (exact symbol match). The two endpoints have different rate-limit pools, different IP filters, and different shapes — pick the right one for the job instead of fighting the wrong one.
 
@@ -1214,24 +1214,24 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 **Why that breaks:**
 
-1. **No idempotency.** `SnapshotPosition` has no unique key on `(snapshotId, assetSymbol)`, so Prisma `.upsert()` isn't available. Even with manual delete-then-insert of target rows, pre-purchase *cash placeholders* (for mid-year buys — e.g. "add $78.5K USD to totalValueUsd before EWY was bought") have no row to detect or subtract. Re-running the script double-adds.
-2. **Wrong FX.** `YahooProvider.getHistoricalPrices().priceUsd` converts native prices using the *current* stored USD/SGD rate, not the per-snapshot rate. For SG-native assets (D05.SI, LIONGLOB) this smears today's FX across months of history and gives the wrong USD attribution.
+1. **No idempotency.** `SnapshotPosition` has no unique key on `(snapshotId, assetSymbol)`, so Prisma `.upsert()` isn't available. Even with manual delete-then-insert of target rows, pre-purchase _cash placeholders_ (for mid-year buys — e.g. "add $78.5K USD to totalValueUsd before EWY was bought") have no row to detect or subtract. Re-running the script double-adds.
+2. **Wrong FX.** `YahooProvider.getHistoricalPrices().priceUsd` converts native prices using the _current_ stored USD/SGD rate, not the per-snapshot rate. For SG-native assets (D05.SI, LIONGLOB) this smears today's FX across months of history and gives the wrong USD attribution.
 3. **Stale cached metrics.** Snapshot rows store `dailyReturn`, `weeklyReturn`, `monthlyReturn`, `ytdReturn`, `athValueUsd`, `btcOutperform`, `ethOutperform` — all computed off `totalValueUsd`. Updating totals without recomputing these leaves the History tab showing old percentages.
 4. **Allocation drift.** `SnapshotPosition.allocation` is `valueUsd / totalValueUsd × 100`. Inserting new rows without rescaling existing rows breaks the invariant that allocations sum to 100%.
 
 **The correct shape:**
 
-- **Audit first, then apply.** Before any write, dump every affected snapshot's baseline totals + cached metrics + all `SnapshotPosition` rows to `scripts/audit-<iso>.json`. The apply phase computes deltas against the *captured baseline*, not current DB state. Re-running is deterministic regardless of how many times it was run. The audit file doubles as a deterministic rollback artifact (`--rollback <audit.json>` restores every column verbatim).
+- **Audit first, then apply.** Before any write, dump every affected snapshot's baseline totals + cached metrics + all `SnapshotPosition` rows to `scripts/audit-<iso>.json`. The apply phase computes deltas against the _captured baseline_, not current DB state. Re-running is deterministic regardless of how many times it was run. The audit file doubles as a deterministic rollback artifact (`--rollback <audit.json>` restores every column verbatim).
 - **Restore-baseline-then-apply, not add-to-current.** For each snapshot: start from the audit baseline, subtract stale target-row contributions from baseline, compute new contributions, delete-then-insert target rows inside a transaction. Survives re-runs even without unique constraints.
 - **Per-snapshot FX.** Use `snapshot.usdSgdRate` for the conversion, falling back to the latest `fxRate` row only when null. Keep SGD-native assets in native form until the conversion point.
-- **Recompute cached metrics in a second pass.** After all totals are written, walk snapshots in timestamp order and rewrite `dailyReturn`, `weeklyReturn`, `monthlyReturn`, `ytdReturn`, `athValueUsd`, `btcOutperform`, `ethOutperform` using the same formulas `snapshotService` uses (returns as *percent × 100*; YTD anchor = first snapshot of that calendar year; outperformance = portfolio YTD% − BTC/ETH YTD% from the same anchor). `athValueUsd` is a running max across *all* snapshots, not just affected ones.
-- **Rescale all allocations.** After updating `totalValueUsd`, recompute `allocation` on *every* `SnapshotPosition` in the affected snapshot — not just the target symbols. Percentages shift because the denominator changed.
+- **Recompute cached metrics in a second pass.** After all totals are written, walk snapshots in timestamp order and rewrite `dailyReturn`, `weeklyReturn`, `monthlyReturn`, `ytdReturn`, `athValueUsd`, `btcOutperform`, `ethOutperform` using the same formulas `snapshotService` uses (returns as _percent × 100_; YTD anchor = first snapshot of that calendar year; outperformance = portfolio YTD% − BTC/ETH YTD% from the same anchor). `athValueUsd` is a running max across _all_ snapshots, not just affected ones.
+- **Rescale all allocations.** After updating `totalValueUsd`, recompute `allocation` on _every_ `SnapshotPosition` in the affected snapshot — not just the target symbols. Percentages shift because the denominator changed.
 
 **The cutoff.** Use `max(Position.createdAt)` across target positions as the cutoff. Snapshots strictly before cutoff need backfill; snapshots at/after are left alone because the normal snapshot system captured them correctly.
 
-**Cash placeholders for mid-year buys.** For EWY (bought 2026-03-05 with $78.5K USD) and LIONGLOB (bought 2026-02-09 with SGD 100K), pre-purchase snapshots add the cash consideration to `totalValueUsd` *without* creating a `SnapshotPosition` row — the user held cash at the time, not the security. Keeps totals flat across the purchase date instead of spiking, which is the whole point of the backfill.
+**Cash placeholders for mid-year buys.** For EWY (bought 2026-03-05 with $78.5K USD) and LIONGLOB (bought 2026-02-09 with SGD 100K), pre-purchase snapshots add the cash consideration to `totalValueUsd` _without_ creating a `SnapshotPosition` row — the user held cash at the time, not the security. Keeps totals flat across the purchase date instead of spiking, which is the whole point of the backfill.
 
-**The pattern:** Any script that retroactively modifies time-series data with cached derived fields is really three scripts glued together: (1) capture an authoritative baseline *before* any mutation, (2) apply changes against that baseline with per-item transactions, (3) recompute all derived/cached fields in a separate pass. Skipping any of the three means you're either destroying your rollback path, double-counting on re-runs, or leaving the UI showing stale numbers that look plausible but aren't.
+**The pattern:** Any script that retroactively modifies time-series data with cached derived fields is really three scripts glued together: (1) capture an authoritative baseline _before_ any mutation, (2) apply changes against that baseline with per-item transactions, (3) recompute all derived/cached fields in a separate pass. Skipping any of the three means you're either destroying your rollback path, double-counting on re-runs, or leaving the UI showing stale numbers that look plausible but aren't.
 
 ---
 
@@ -1247,7 +1247,7 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 ### The Equity Sub-Type Labels Were Telling Users the Wrong Story
 
-**The UX bug:** The Equities form had sub-type toggles "Single" and "Fund-level." A user tried to add EWY (iShares MSCI South Korea ETF) and intuitively picked "Fund-level" because it's a fund. Wrong — Fund-level meant *unit trust* (open-ended, NAV-based, PDF-ingested). ETFs trade on exchanges with tickers and live market prices, so they belong under "Single," which is what you'd never guess from the label.
+**The UX bug:** The Equities form had sub-type toggles "Single" and "Fund-level." A user tried to add EWY (iShares MSCI South Korea ETF) and intuitively picked "Fund-level" because it's a fund. Wrong — Fund-level meant _unit trust_ (open-ended, NAV-based, PDF-ingested). ETFs trade on exchanges with tickers and live market prices, so they belong under "Single," which is what you'd never guess from the label.
 
 **The fix:** Renamed "Single" → "Stock / ETF" and "Fund-level" → "Unit Trust." Enum values (`equityMode === 'single' | 'fund'`, `asset.category === 'EQUITY' | 'UNIT_TRUST'`) unchanged — labels only.
 
@@ -1259,7 +1259,7 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 **The fix:** One-line Prisma change in `portfolioService.getTopPerformers` / `getWorstPerformers` — `orderBy: { unrealizedPnLPct }` → `orderBy: { unrealizedPnL }`. Top = desc, Worst = asc.
 
-**The pattern:** "Top" on a portfolio dashboard should answer *"what moved my net worth?"*, not *"what had the biggest % move?"*. Percent is about volatility of the position; dollars are about impact on the portfolio. The `%` and `$` columns both still show in the card — the sort key is the editorial decision, and for a net-worth dashboard the answer is dollars. Whenever a ranked list surfaces %-based records for entries that have tiny dollar magnitude, the ranking is asking the wrong question.
+**The pattern:** "Top" on a portfolio dashboard should answer _"what moved my net worth?"_, not _"what had the biggest % move?"_. Percent is about volatility of the position; dollars are about impact on the portfolio. The `%` and `$` columns both still show in the card — the sort key is the editorial decision, and for a net-worth dashboard the answer is dollars. Whenever a ranked list surfaces %-based records for entries that have tiny dollar magnitude, the ranking is asking the wrong question.
 
 ### Dev Server Port Gotchas: Orphaned tsx-watch Children and Fallback-Port CORS
 
@@ -1287,7 +1287,7 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 **The bug:** `/codex:review` failed with `The 'gpt-5.5' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.` Ran `brew upgrade codex` (0.121.0 → 0.125.0). Same error.
 
-**The root cause:** `~/.codex/config.toml` had `model = "gpt-5.5"`. Homebrew and npm both ship Codex CLI `0.125.0` (the latest stable), which doesn't recognize `gpt-5.5`. Support landed in the `0.126.0-alpha.X` pre-release series on GitHub Releases (~hours old when this hit) — `brew` doesn't track alphas. Repo evidence: a recent commit titled *"Update bundled OpenAI Docs skill for GPT-5.5"* in that version range. So the CLI's error message was correct: it really did need a newer build than any package manager was shipping.
+**The root cause:** `~/.codex/config.toml` had `model = "gpt-5.5"`. Homebrew and npm both ship Codex CLI `0.125.0` (the latest stable), which doesn't recognize `gpt-5.5`. Support landed in the `0.126.0-alpha.X` pre-release series on GitHub Releases (~hours old when this hit) — `brew` doesn't track alphas. Repo evidence: a recent commit titled _"Update bundled OpenAI Docs skill for GPT-5.5"_ in that version range. So the CLI's error message was correct: it really did need a newer build than any package manager was shipping.
 
 **The fix:** One-line config edit, `model = "gpt-5.4"` in `~/.codex/config.toml`. Bump back to `gpt-5.5` once `0.126.0` stable lands in Homebrew. Alternative was downloading the alpha tarball from GitHub and replacing `/opt/homebrew/bin/codex` directly — rejected because (a) brittle pre-release, (b) the next `brew upgrade codex` silently overwrites it back to stable.
 
@@ -1325,7 +1325,7 @@ SGD
 
 The fund name spans five lines. Currency codes appear both inside the name (`Equity SGD`) and as column markers. `Cash` is sometimes a payment method, sometimes part of a fund name (`Cash Plus Fund`). Trying to reconstruct columns by counting tokens-per-row falls apart immediately because PDF text extraction doesn't preserve column boundaries — it interleaves vertically-aligned cells in reading order, which depends on the PDF's layout heuristics, not a stable grid.
 
-**The fix:** Don't reconstruct rows. Find the part of the format that's *deterministic regardless of layout*, anchor a regex on it, and let everything else fall out positionally.
+**The fix:** Don't reconstruct rows. Find the part of the format that's _deterministic regardless of layout_, anchor a regex on it, and let everything else fall out positionally.
 
 For each FSMOne holding, the value block always has the same shape: `priceCcy price PAYMENT wacCcy wac qty invCcy invAmt pnlCcy pnl pnl% mvCcy mv` — five 3-letter currency codes, seven decimal numbers, one payment-method token, in that exact order. That's a 13-token regex with no ambiguity:
 
@@ -1333,9 +1333,9 @@ For each FSMOne holding, the value block always has the same shape: `priceCcy pr
 ([A-Z]{3})\s+([\d,]+\.\d+)\s+(\S+)\s+([A-Z]{3})\s+([\d,]+\.\d+)\s+([\d,]+\.\d+)\s+...
 ```
 
-Run it as `/g`, collect all matches, and the fund name is *whatever text falls between the previous match's end and this match's start*. A multi-line name with embedded `SGD`s collapses to a single string because the regex won't match on a `SGD` followed by `(formerly` — only on a `SGD` followed by a number. The hardest part of the parsing problem disappears once the anchor is right.
+Run it as `/g`, collect all matches, and the fund name is _whatever text falls between the previous match's end and this match's start_. A multi-line name with embedded `SGD`s collapses to a single string because the regex won't match on a `SGD` followed by `(formerly` — only on a `SGD` followed by a number. The hardest part of the parsing problem disappears once the anchor is right.
 
-The `Cash Plus Fund` / `Cash` payment-method ambiguity? Solved by trimming a known set of payment-method tokens (`Cash|RSP|CPF|SRS|IA`) from the *tail* of the captured name string. Wrong by construction in pathological cases (a fund actually named "Cash") but correct for every iFAST product I'd find in practice.
+The `Cash Plus Fund` / `Cash` payment-method ambiguity? Solved by trimming a known set of payment-method tokens (`Cash|RSP|CPF|SRS|IA`) from the _tail_ of the captured name string. Wrong by construction in pathological cases (a fund actually named "Cash") but correct for every iFAST product I'd find in practice.
 
 **The pattern:** When parsing semi-structured text that's been mangled by an extractor, look for the most rigid sub-pattern — usually a fixed sequence of typed tokens (currencies + numbers, dates, codes). Anchor a regex there, treat everything outside it as soft text, and let positional rules handle ambiguity at the edges. Versus the alternative of trying to reverse-engineer the original table grid, which is fragile to every layout variation the source might use.
 
@@ -1347,18 +1347,19 @@ Applies beyond PDFs: scraping JSON-shaped logs out of unstructured stdout, pulli
 
 **The bug:** Adding two new `AMOVASIN` positions (Amova Singapore Equity Fund, one in FSMOne and one in UOB Kay Hian — same fund, two brokers) to the prod snapshot history. Opened `backfill-equity-snapshots.ts` to add the entries. The `BACKFILLS` array already had six entries from prior runs (`D05.SI`, `S68.SI`, `OV8.SI`, `GLXY`, `EWY`, `LIONGLOB`). Initial instinct: "append the new ones, the script's docstring says re-running is idempotent."
 
-**Why it isn't:** the script's idempotency claim is *within a single invocation* — the audit captures a baseline snapshot total, then apply computes deltas relative to that captured baseline. Re-running mid-flight gives the same answer. But across separate `--apply` runs, the baseline captured the *second* time already includes the *first* run's modifications. Cash placeholders (`priorCashUsd`, `priorCashSgd`) are additive — they get added to `snapshot.totalValueUsd` whenever a snapshot's date is before the entry's `heldSince`. Re-applying with the same entry adds the same 100k SGD again. After two apply runs the Jan 1 snapshot would be 400k SGD heavier than it should be; YTD return tanks.
+**Why it isn't:** the script's idempotency claim is _within a single invocation_ — the audit captures a baseline snapshot total, then apply computes deltas relative to that captured baseline. Re-running mid-flight gives the same answer. But across separate `--apply` runs, the baseline captured the _second_ time already includes the _first_ run's modifications. Cash placeholders (`priorCashUsd`, `priorCashSgd`) are additive — they get added to `snapshot.totalValueUsd` whenever a snapshot's date is before the entry's `heldSince`. Re-applying with the same entry adds the same 100k SGD again. After two apply runs the Jan 1 snapshot would be 400k SGD heavier than it should be; YTD return tanks.
 
-Caught it by inspecting `LionGlobal`'s prod quantity (`68_482.15`) vs the script's `BACKFILLS` value (`68_153.43`). The 328.72-unit gap is exactly the dividend reinvestment that landed *after* the original backfill. So the script's six entries weren't a copy of prod state — they were the *input* of the *previous* backfill run, frozen in time. Treating them as a registry would have re-applied that delta on top of an already-modified DB.
+Caught it by inspecting `LionGlobal`'s prod quantity (`68_482.15`) vs the script's `BACKFILLS` value (`68_153.43`). The 328.72-unit gap is exactly the dividend reinvestment that landed _after_ the original backfill. So the script's six entries weren't a copy of prod state — they were the _input_ of the _previous_ backfill run, frozen in time. Treating them as a registry would have re-applied that delta on top of an already-modified DB.
 
-**The fix:** rewrite `BACKFILLS` to *only* the new entries (two `AMOVASIN` rows). Removing the old entries broke a hardcoded `BACKFILLS.find((b) => b.symbol === 'LIONGLOB')!` that prepared a Yahoo-fallback interpolation specifically for that one symbol. Generalised it: any symbol with `priorCashSgd + heldSince` and zero Yahoo points falls back to a `Map<symbol, InterpolationCfg>` keyed linear interpolation. Multiple entries on the same symbol (the FSMOne + UOB case) collapse to a weighted-average purchase NAV per symbol, since the historical NAV trajectory is shared across the brokers — only `quantity` and `heldSince` differ per entry.
+**The fix:** rewrite `BACKFILLS` to _only_ the new entries (two `AMOVASIN` rows). Removing the old entries broke a hardcoded `BACKFILLS.find((b) => b.symbol === 'LIONGLOB')!` that prepared a Yahoo-fallback interpolation specifically for that one symbol. Generalised it: any symbol with `priorCashSgd + heldSince` and zero Yahoo points falls back to a `Map<symbol, InterpolationCfg>` keyed linear interpolation. Multiple entries on the same symbol (the FSMOne + UOB case) collapse to a weighted-average purchase NAV per symbol, since the historical NAV trajectory is shared across the brokers — only `quantity` and `heldSince` differ per entry.
 
-**The pattern:** *additive* migrations (anything that mutates state by `+= delta` rather than `:= absolute`) need stricter discipline than declarative ones. They're not idempotent, so the source has to either:
+**The pattern:** _additive_ migrations (anything that mutates state by `+= delta` rather than `:= absolute`) need stricter discipline than declarative ones. They're not idempotent, so the source has to either:
+
 1. Be ephemeral input — rewritten per run, never a registry of past work (this script's choice)
 2. Track a "last applied" cursor so re-runs skip already-applied entries
 3. Convert to absolute states — record "what the snapshot total should be" rather than "delta to add"
 
-(1) is fine for one-shot scripts because the audit JSON is the registry. The mental model: `BACKFILLS` is the *next migration to write*, not the migration *log*. The log is the audit files. Mixing the two — keeping old entries in `BACKFILLS` for "documentation" — is the failure mode.
+(1) is fine for one-shot scripts because the audit JSON is the registry. The mental model: `BACKFILLS` is the _next migration to write_, not the migration _log_. The log is the audit files. Mixing the two — keeping old entries in `BACKFILLS` for "documentation" — is the failure mode.
 
 **Multi-position-same-symbol bonus:** the script identifies positions by `symbol → asset → first-matching-position`, which would silently collapse two `Position` rows sharing one `assetId` into one. But the actual mutation path doesn't go through the position object — `computeContribution` reads `cfg.quantity` from the `BACKFILLS` entry directly, and `applyPlans` deletes by `(snapshotId, assetSymbol)` then `createMany`'s fresh rows from `newTargetPositions`. So two entries with the same symbol produce two `SnapshotPosition` rows per snapshot — exactly what we want. The first-position-wins lookup in the sanity-check loop is purely cosmetic (a quantity mismatch warning). Worth knowing because the obvious-looking "bug" — "you can't backfill two positions with the same symbol" — turns out not to be a bug at all, but only because the mutation path skips the lookup. Another instance of "feature works because the path that matters bypasses the path that doesn't."
 
@@ -1450,6 +1451,18 @@ throw new AppError('Position not found', 404, {
   suggestion: 'Check the position ID is correct',
 });
 ```
+
+### 5. Advisory React Audits
+
+React Doctor is useful as a second pair of eyes for the frontend, but it works best like a smoke detector, not an autopilot. The first scan surfaced exactly the kind of things humans tend to miss in a polished dashboard: comboboxes without complete ARIA wiring, click-only wrappers in table actions, and date work hiding inside render paths.
+
+The useful pattern is:
+
+```bash
+npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none
+```
+
+Run it pinned and offline, then triage. Fix the user-facing stuff first: keyboard access, labels, ARIA relationships, and render correctness. Leave noisy mechanical guidance for a separate sweep. Otherwise you end up polishing the wrench while the sink is still dripping.
 
 ---
 

@@ -472,11 +472,11 @@ function InvestorForm({
                 </button>
               </p>
             )}
-            {exceedsTotal && (
+            {exceedsTotal ? (
               <p className="text-xs text-amber-600 dark:text-amber-400">
                 Total will be {formatStakePercentage(projectedTotal)}% - rebalancing needed
               </p>
-            )}
+            ) : null}
           </>
         ) : (
           // Add mode: show auto-calculated stake as read-only

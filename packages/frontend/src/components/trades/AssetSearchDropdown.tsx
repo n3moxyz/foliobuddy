@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
@@ -20,6 +20,7 @@ export function AssetSearchDropdown({
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
 
   const { data: assets } = useAssets();
   const { data: searchResults, isLoading: searchLoading } = useSearchCoins(searchQuery);
@@ -65,6 +66,11 @@ export function AssetSearchDropdown({
 
     return results;
   }, [filteredAssets, searchResults, searchQuery, assets]);
+
+  const activeOptionId =
+    highlightedIndex >= 0 && showDropdown && combinedResults.length > 0
+      ? `${listboxId}-option-${highlightedIndex}`
+      : undefined;
 
   const handleSelectExistingAsset = (asset: Asset) => {
     onSelectAsset(asset.id, asset);
@@ -176,10 +182,13 @@ export function AssetSearchDropdown({
         aria-expanded={showDropdown && combinedResults.length > 0}
         aria-haspopup="listbox"
         aria-autocomplete="list"
+        aria-controls={listboxId}
+        aria-activedescendant={activeOptionId}
       />
 
       {showDropdown && (
         <div
+          id={listboxId}
           ref={dropdownRef}
           role="listbox"
           className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
@@ -190,8 +199,10 @@ export function AssetSearchDropdown({
             combinedResults.map((result, index) => (
               <button
                 key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
+                id={`${listboxId}-option-${index}`}
                 type="button"
                 role="option"
+                aria-selected={index === highlightedIndex}
                 className={`w-full px-3 py-2 text-left flex items-center justify-between ${
                   index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
                 }`}

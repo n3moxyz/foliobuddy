@@ -99,7 +99,6 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
               value={nav}
               onChange={(e) => setNav(e.target.value)}
               placeholder="1.234"
-              autoFocus
               required
             />
           </div>

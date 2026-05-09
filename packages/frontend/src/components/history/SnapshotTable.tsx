@@ -85,6 +85,7 @@ export function SnapshotTable({
   const [positionsCache, setPositionsCache] = useState<Record<string, SnapshotPosition[]>>({});
   const [copiedSnapshotId, setCopiedSnapshotId] = useState<string | null>(null);
   const [copiedPositionsId, setCopiedPositionsId] = useState<string | null>(null);
+  const [liveRowTimestamp] = useState(() => new Date().toISOString());
 
   // Check if there's already a snapshot for today
   const hasTodaySnapshot = snapshots.some((s) => isToday(s.timestamp));
@@ -189,19 +190,25 @@ export function SnapshotTable({
                   <span className="sr-only">Expand details</span>
                 </TableHead>
                 <TableHead scope="col">Date</TableHead>
-                <TableHead className="text-right" scope="col">Value</TableHead>
-                <TableHead className="hidden sm:table-cell" scope="col">Source</TableHead>
-                <TableHead className="hidden md:table-cell" scope="col">Notes</TableHead>
-                <TableHead className="text-center" scope="col">Actions</TableHead>
+                <TableHead className="text-right" scope="col">
+                  Value
+                </TableHead>
+                <TableHead className="hidden sm:table-cell" scope="col">
+                  Source
+                </TableHead>
+                <TableHead className="hidden md:table-cell" scope="col">
+                  Notes
+                </TableHead>
+                <TableHead className="text-center" scope="col">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {showLiveRow && (
                 <TableRow className="bg-green-50 dark:bg-green-950/20">
                   <TableCell></TableCell>
-                  <TableCell className="font-medium">
-                    {formatDate(new Date().toISOString())}
-                  </TableCell>
+                  <TableCell className="font-medium">{formatDate(liveRowTimestamp)}</TableCell>
                   <TableCell className="text-right font-mono">
                     <div
                       className="text-green-600 dark:text-green-400"
@@ -243,8 +250,16 @@ export function SnapshotTable({
                           : undefined
                       }
                       tabIndex={snapshot.source === 'AUTOMATIC' ? 0 : undefined}
-                      aria-label={snapshot.source === 'AUTOMATIC' ? `Expand ${snapshot.snapshotType.toLowerCase()} snapshot` : undefined}
-                      aria-expanded={snapshot.source === 'AUTOMATIC' ? expandedSnapshots.has(snapshot.id) : undefined}
+                      aria-label={
+                        snapshot.source === 'AUTOMATIC'
+                          ? `Expand ${snapshot.snapshotType.toLowerCase()} snapshot`
+                          : undefined
+                      }
+                      aria-expanded={
+                        snapshot.source === 'AUTOMATIC'
+                          ? expandedSnapshots.has(snapshot.id)
+                          : undefined
+                      }
                       onKeyDown={
                         snapshot.source === 'AUTOMATIC'
                           ? (e) => {
@@ -311,10 +326,7 @@ export function SnapshotTable({
                         {snapshot.notes || '-'}
                       </TableCell>
                       <TableCell>
-                        <div
-                          className="flex items-center justify-center gap-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <div className="flex items-center justify-center gap-1">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -322,7 +334,10 @@ export function SnapshotTable({
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 touch-manipulation"
-                                  onClick={() => handleCopySnapshot(snapshot)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCopySnapshot(snapshot);
+                                  }}
                                   aria-label="Copy snapshot"
                                 >
                                   {isCopied ? (
@@ -343,7 +358,10 @@ export function SnapshotTable({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 touch-manipulation"
-                            onClick={() => onEdit(snapshot)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(snapshot);
+                            }}
                             aria-label="Edit snapshot"
                           >
                             <Pencil className="h-4 w-4" />
@@ -352,7 +370,10 @@ export function SnapshotTable({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => onDelete(snapshot)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(snapshot);
+                            }}
                             aria-label="Delete snapshot"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -394,10 +415,18 @@ export function SnapshotTable({
                                     <TableHeader>
                                       <TableRow>
                                         <TableHead scope="col">Asset</TableHead>
-                                        <TableHead className="text-right" scope="col">Quantity</TableHead>
-                                        <TableHead className="text-right" scope="col">Price</TableHead>
-                                        <TableHead className="text-right" scope="col">Value</TableHead>
-                                        <TableHead className="text-right" scope="col">Allocation</TableHead>
+                                        <TableHead className="text-right" scope="col">
+                                          Quantity
+                                        </TableHead>
+                                        <TableHead className="text-right" scope="col">
+                                          Price
+                                        </TableHead>
+                                        <TableHead className="text-right" scope="col">
+                                          Value
+                                        </TableHead>
+                                        <TableHead className="text-right" scope="col">
+                                          Allocation
+                                        </TableHead>
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>

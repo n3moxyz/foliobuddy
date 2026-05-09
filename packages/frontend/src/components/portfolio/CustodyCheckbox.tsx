@@ -97,7 +97,6 @@ export function CustodyCheckbox({
               }}
               placeholder="Enter name..."
               aria-label="Custody person name"
-              autoFocus
             />
             <Button type="button" size="sm" onClick={onAddNewName} disabled={!newNameInput.trim()}>
               Add

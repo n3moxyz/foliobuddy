@@ -142,6 +142,8 @@ npx prisma studio        # Database GUI
 # Frontend (packages/frontend/)
 npm run dev              # Start Vite dev server (port 4000)
 npm run build            # Production build
+npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none
+                         # Optional React quality/a11y scan (pinned, offline, advisory)
 
 # Frontend demo route (dev-only, uses mocked API responses)
 # Visit http://localhost:4000/dev/demo while Vite dev server is running
@@ -172,7 +174,7 @@ First-time Clerk users are auto-created in database via `ensureUser` middleware.
 
 ### Snapshot System
 
-Captures portfolio state at points in time for performance tracking. Calculates daily/weekly/monthly/YTD returns and benchmark outperformance vs BTC/ETH. All return fields stored as `percent × 100` (e.g. `12` = 12%, not `0.12`). YTD anchor = first snapshot of the *current calendar year*, scoped via `timestamp >= Jan 1 UTC` in `portfolioService.getSummary()` — not `findFirst orderBy:asc` without a date filter, which would pin YTD to a stale pre-year snapshot in future calendar years.
+Captures portfolio state at points in time for performance tracking. Calculates daily/weekly/monthly/YTD returns and benchmark outperformance vs BTC/ETH. All return fields stored as `percent × 100` (e.g. `12` = 12%, not `0.12`). YTD anchor = first snapshot of the _current calendar year_, scoped via `timestamp >= Jan 1 UTC` in `portfolioService.getSummary()` — not `findFirst orderBy:asc` without a date filter, which would pin YTD to a stale pre-year snapshot in future calendar years.
 
 ### Snapshot Backfill Script
 
@@ -237,6 +239,10 @@ All pages including Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. 
 - It now supports stateful in-browser portfolio CRUD for testing. Use `/dev/demo/portfolio` to validate add, edit, delete, and import UX without touching the real backend. The state resets on full refresh.
 - Use it for responsive/UI checks and demo-mode interaction testing only. It must never point at production write APIs.
 
+### React Doctor Quality Scan
+
+React Doctor can be used as an advisory frontend audit for React accessibility, correctness, state/effect, dead-code, and performance findings. Run the pinned, offline command from the repo root: `npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none`. Treat results as triage input, not an automatic refactor plan: fix high-signal user-facing items first (ARIA relationships, keyboard access, render correctness), and be skeptical of noisy rules like React 19 `forwardRef` warnings while the app is still on React 18.
+
 ### Ownership Checks on Mutations
 
 For protected backend resources, update/delete routes must filter by both `id` and `req.userId!`, not just `id`. Reads already did this in many places; writes now need to follow the same rule consistently to prevent cross-user mutation if an ID is guessed.
@@ -262,13 +268,13 @@ All pages follow iOS HIG-inspired responsive patterns:
 
 `formatPrice()` in `lib/utils.ts` — use instead of `formatCurrency(..., 0)` for per-unit prices (entry/exit, current price). Picks decimal places by magnitude:
 
-| Price Range | Decimals | Example |
-|---|---|---|
-| < $0.01 | 5 | $0.00842 |
-| < $0.10 | 4 | $0.0812 |
-| < $10 | 3 | $0.780, $1.480 |
-| < $1,000 | 2 | $32.15, $113.40 |
-| >= $1,000 | 0 | $67,200 |
+| Price Range | Decimals | Example         |
+| ----------- | -------- | --------------- |
+| < $0.01     | 5        | $0.00842        |
+| < $0.10     | 4        | $0.0812         |
+| < $10       | 3        | $0.780, $1.480  |
+| < $1,000    | 2        | $32.15, $113.40 |
+| >= $1,000   | 0        | $67,200         |
 
 Use `formatCurrency` (with explicit decimals or compact mode) for totals, sizes, and P&L — those don't need magnitude-aware decimals.
 
@@ -292,7 +298,7 @@ Positions are grouped two-level: **Crypto/Stables** (primary, in `Portfolio.tsx`
 
 Positions held on behalf of others (e.g., "bought BTC for Mum"). Uses `custodyOf String?` on Position — `null` = owned, non-null = custody. Custody positions are excluded from net worth, P&L, allocations, snapshots, and exposure. Backend: `portfolioService` and `snapshotService` filter `custodyOf: null`; `positions.ts` Zod schemas accept it as `z.string().nullable().optional()` (empty string → null).
 
-Frontend: `Portfolio.tsx` splits into owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default, reuses `PositionTable`). `CustodyCheckbox.tsx` (shared between create/edit) renders at the *bottom* of every form variant just above submit, with name dropdown (existing names from positions + localStorage `foliobuddy-custody-names`, plus "Add new person"). Edit sends empty string to clear. `PositionImportTab.tsx` shows a purple banner when importing as custody; clipboard JSON in `PositionTable.tsx` includes `custodyOf` when set.
+Frontend: `Portfolio.tsx` splits into owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default, reuses `PositionTable`). `CustodyCheckbox.tsx` (shared between create/edit) renders at the _bottom_ of every form variant just above submit, with name dropdown (existing names from positions + localStorage `foliobuddy-custody-names`, plus "Add new person"). Edit sends empty string to clear. `PositionImportTab.tsx` shows a purple banner when importing as custody; clipboard JSON in `PositionTable.tsx` includes `custodyOf` when set.
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
@@ -368,6 +374,7 @@ Summary stats use a flat inline row (`flex items-baseline gap-6 flex-wrap py-4 b
 ### Consistent Page Headers
 
 All pages MUST use the same header pattern for visual consistency when switching tabs:
+
 - **Wrapper**: `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`
 - **Title**: `text-2xl font-bold` (no responsive upsizing like `sm:text-3xl`)
 - **Subtitle**: `text-sm text-muted-foreground` (no `sm:text-base`)
@@ -439,7 +446,7 @@ For frontend-only layout verification without real auth, use the dev demo route 
 - **Auto-deploy**: Backend deploys via GitHub Actions on push to main (backend files). Frontend auto-deploys via Vercel.
 - **DB Backups**: Automated daily/weekly/monthly to DigitalOcean Spaces (`example-backup-bucket`). Retention: 7 daily, 4 weekly, 12 monthly.
 - **Uptime monitoring**: `.github/workflows/uptime.yml` runs every 10 min against `https://foliobuddy.xyz/api/v1/health/db`. Fails the job on non-200 and GitHub emails the repo owner — no third-party monitoring service.
-- **Source of truth for prod env vars**: `DEPLOYMENT.md` at repo root. Update it in the *same commit* as any Vercel/Coolify dashboard change; drift between file and dashboard is how prod breaks.
+- **Source of truth for prod env vars**: `DEPLOYMENT.md` at repo root. Update it in the _same commit_ as any Vercel/Coolify dashboard change; drift between file and dashboard is how prod breaks.
 - **Env var writes**: Always pipe values through `printf` (not `echo`) when running `vercel env add` — `echo` appends `\n` and the stored newline breaks URL construction while still being truthy enough to pass `if (value)` guards.
 
 ### Copy/Paste JSON Import Pattern
@@ -494,20 +501,24 @@ History page snapshot rows (AUTOMATIC source) are clickable anywhere to expand/c
 ## Design Context
 
 ### Users
+
 Small circle — the creator plus a few friends/family tracking personal portfolios. Used across contexts: quick net-worth glances on mobile, deeper analysis sessions on desktop. Users are financially literate but not professional traders. They want to feel in control of their money without the tool getting in the way.
 
 ### Brand Personality
+
 **Calm, confident, precise.** Like a Bloomberg terminal that went to a meditation retreat — trustworthy, no-nonsense, reassuring even when markets are red. The interface should project quiet competence.
 
 Three words: **Composed. Sharp. Trustworthy.**
 
 ### Aesthetic Direction
+
 - **Visual tone**: Dark-mode-native, clean, keyboard-friendly. Inspired by Linear/Raycast (polish, speed, restraint) crossed with Dune Analytics/Zapper (data-density, crypto-native charts, dark themes).
 - **References**: Linear's spatial clarity + Dune's information density + Raycast's micro-interactions
-- **Anti-references**: NO generic SaaS dashboards (identical card grids, admin-panel energy). NO corporate finance tools (Excel-in-a-browser, gray everything, Bloomberg clone). The interface should feel *designed*, not generated.
+- **Anti-references**: NO generic SaaS dashboards (identical card grids, admin-panel energy). NO corporate finance tools (Excel-in-a-browser, gray everything, Bloomberg clone). The interface should feel _designed_, not generated.
 - **Theme**: Dark mode primary. Light mode available but dark is the default and the optimized experience.
 
 ### Design Principles
+
 1. **Data speaks first** — Numbers, charts, and trends are the hero. Chrome and decoration get out of the way.
 2. **Quiet confidence** — Use restraint over flash. Subtle polish (spacing, type hierarchy, transitions) creates trust. No neon, no glow, no gratuitous gradients.
 3. **Density without clutter** — Show a lot of information clearly. Use hierarchy, grouping, and progressive disclosure instead of hiding data behind clicks.

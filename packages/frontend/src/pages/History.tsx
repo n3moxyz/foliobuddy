@@ -46,6 +46,16 @@ async function copySnapshotsToClipboard(snapshots: Snapshot[]): Promise<boolean>
   }
 }
 
+function isPendingTodaySnapshot(snapshot: Snapshot, now: Date): boolean {
+  const snapshotDate = new Date(snapshot.timestamp);
+  return snapshotDate.toDateString() === now.toDateString() && now.getUTCHours() < 13;
+}
+
+function completedSnapshotsOnly(snapshots: Snapshot[]): Snapshot[] {
+  const now = new Date();
+  return snapshots.filter((snapshot) => !isPendingTodaySnapshot(snapshot, now));
+}
+
 type SourceFilter = 'all' | 'AUTOMATIC' | 'MANUAL';
 
 export default function History() {
@@ -89,6 +99,15 @@ export default function History() {
     setDeletingSnapshot(null);
   };
 
+  const handleCopyCompletedSnapshots = async () => {
+    if (!allSnapshots || allSnapshots.length === 0) return;
+    const success = await copySnapshotsToClipboard(completedSnapshotsOnly(allSnapshots));
+    if (success) {
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
+    }
+  };
+
   const displayValue = (value: number) => {
     return currency === 'SGD'
       ? formatCurrency(value * fxRate, 'SGD', 0)
@@ -107,22 +126,7 @@ export default function History() {
             variant="outline"
             size="sm"
             className="hidden sm:inline-flex"
-            onClick={async () => {
-              if (allSnapshots && allSnapshots.length > 0) {
-                const completedSnapshots = allSnapshots.filter((s) => {
-                  const snapshotDate = new Date(s.timestamp);
-                  const today = new Date();
-                  const isSnapshotToday = snapshotDate.toDateString() === today.toDateString();
-                  const isBeforeSnapshotTime = today.getUTCHours() < 13;
-                  return !(isSnapshotToday && isBeforeSnapshotTime);
-                });
-                const success = await copySnapshotsToClipboard(completedSnapshots);
-                if (success) {
-                  setCopiedAll(true);
-                  setTimeout(() => setCopiedAll(false), 2000);
-                }
-              }
-            }}
+            onClick={handleCopyCompletedSnapshots}
             disabled={!allSnapshots || allSnapshots.length === 0}
           >
             {copiedAll ? (
@@ -149,20 +153,7 @@ export default function History() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={async () => {
-                  if (allSnapshots && allSnapshots.length > 0) {
-                    const completedSnapshots = allSnapshots.filter((s) => {
-                      const snapshotDate = new Date(s.timestamp);
-                      const today = new Date();
-                      const isSnapshotToday = snapshotDate.toDateString() === today.toDateString();
-                      const isBeforeSnapshotTime = today.getUTCHours() < 13;
-                      return !(isSnapshotToday && isBeforeSnapshotTime);
-                    });
-                    await copySnapshotsToClipboard(completedSnapshots);
-                    setCopiedAll(true);
-                    setTimeout(() => setCopiedAll(false), 2000);
-                  }
-                }}
+                onClick={handleCopyCompletedSnapshots}
                 disabled={!allSnapshots || allSnapshots.length === 0}
               >
                 <Copy className="h-4 w-4 mr-2" />
@@ -196,10 +187,7 @@ export default function History() {
         </div>
       </div>
 
-      <Tabs
-        defaultValue="all"
-        onValueChange={(v) => setSourceFilter(v as SourceFilter)}
-      >
+      <Tabs defaultValue="all" onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
         <TabsList className="sm:w-auto">
           <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
           <TabsTrigger value="AUTOMATIC">Automatic ({automaticCount})</TabsTrigger>

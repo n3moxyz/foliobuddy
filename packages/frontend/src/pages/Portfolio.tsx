@@ -46,6 +46,7 @@ import { HelpTooltip } from '@/components/ui/HelpTooltip';
 
 const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
 const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
+const PERP_EXPOSURE_INPUT_ID = 'perp-exposure-input';
 
 interface SectionConfig {
   id: string;
@@ -475,9 +476,7 @@ export default function Portfolio() {
               fxRate={fxRate}
               sectionPrefix={section.id}
               groupBy={section.id === 'equities' ? 'equityType' : 'storage'}
-              onUpdateNav={
-                section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined
-              }
+              onUpdateNav={section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined}
             />
           </CollapsibleCard>
         ))}
@@ -530,11 +529,7 @@ export default function Portfolio() {
         </DialogContent>
       </Dialog>
 
-      <UpdateNavModal
-        asset={navAsset}
-        open={!!navAsset}
-        onClose={() => setNavAsset(null)}
-      />
+      <UpdateNavModal asset={navAsset} open={!!navAsset} onClose={() => setNavAsset(null)} />
 
       <Dialog open={editingPerp} onOpenChange={setEditingPerp}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
@@ -547,14 +542,16 @@ export default function Portfolio() {
               exposure.
             </p>
             <div className="space-y-1">
-              <label className="text-sm">Position Size (USD)</label>
+              <label htmlFor={PERP_EXPOSURE_INPUT_ID} className="text-sm">
+                Position Size (USD)
+              </label>
               <Input
+                id={PERP_EXPOSURE_INPUT_ID}
                 type="number"
                 value={perpInput}
                 onChange={(e) => setPerpInput(e.target.value)}
                 onKeyDown={handlePerpKeyDown}
                 placeholder="0"
-                autoFocus
               />
             </div>
             <div className="flex justify-end gap-2">
