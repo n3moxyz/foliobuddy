@@ -210,7 +210,7 @@ export function PositionForm({
   // Tracks whether we've populated cost fields for an existing position.
   // For SGD-denominated edits we wait for portfolioSummary so the displayed
   // SGD values match the FX rate used on submit.
-  const [costInitialized, setCostInitialized] = useState(false);
+  const costInitializedRef = useRef(false);
   const [storageType, setStorageType] = useState(position?.storageType || 'CEX');
   const [storageLocation, setStorageLocation] = useState(() => {
     if (!position?.storageLocation) return '';
@@ -340,9 +340,9 @@ export function PositionForm({
   // Runs once per position; waits for portfolioSummary so the FX rate is real, not the
   // 1.35 fallback (would otherwise round-trip incorrectly on save).
   useEffect(() => {
-    if (!position || costInitialized) return;
+    if (!position || costInitializedRef.current) return;
     if (costCurrency !== 'SGD') {
-      setCostInitialized(true);
+      costInitializedRef.current = true;
       return;
     }
     if (!portfolioSummary) return;
@@ -350,8 +350,8 @@ export function PositionForm({
     const displayTotal = position.quantity * position.avgCostUsd * fxSgdPerUsd;
     setAvgCostInput(displayAvg.toFixed(2));
     setTotalCost(displayTotal.toFixed(2));
-    setCostInitialized(true);
-  }, [position, costCurrency, fxSgdPerUsd, portfolioSummary, costInitialized]);
+    costInitializedRef.current = true;
+  }, [position, costCurrency, fxSgdPerUsd, portfolioSummary]);
 
   // Form validation
   const isFormValid = useMemo(() => {

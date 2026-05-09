@@ -34,6 +34,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 
+const EMPTY_INVESTORS: Investor[] = [];
+
 // Helper to format stake percentage with up to 5 decimal places (trimming trailing zeros)
 function formatStakePercentage(value: number): string {
   // Format with 5 decimals, then trim trailing zeros
@@ -318,13 +320,15 @@ export default function Investors() {
                       <SelectValue placeholder="Select an investor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {investors
-                        .filter((inv) => inv.id !== deleteInvestor.id)
-                        .map((inv) => (
+                      {investors.reduce<React.ReactNode[]>((options, inv) => {
+                        if (inv.id === deleteInvestor.id) return options;
+                        options.push(
                           <SelectItem key={inv.id} value={inv.id}>
                             {inv.name} ({formatStakePercentage(inv.stakePercentage)}%)
                           </SelectItem>
-                        ))}
+                        );
+                        return options;
+                      }, [])}
                     </SelectContent>
                   </Select>
                 )}
@@ -377,7 +381,7 @@ function InvestorForm({
   isLoading,
   initialData,
   currentTotalStake = 0,
-  allInvestors = [],
+  allInvestors = EMPTY_INVESTORS,
 }: {
   onSubmit: (data: CreateInvestorData) => void;
   isLoading: boolean;

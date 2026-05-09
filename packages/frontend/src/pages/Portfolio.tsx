@@ -173,7 +173,12 @@ export default function Portfolio() {
 
   // Unique custody names from existing positions (for dropdown)
   const existingCustodyNames = useMemo(() => {
-    const names = new Set(custodyPositions.map((p) => p.custodyOf).filter(Boolean) as string[]);
+    const names = new Set<string>();
+    for (const position of custodyPositions) {
+      if (position.custodyOf) {
+        names.add(position.custodyOf);
+      }
+    }
     return Array.from(names).sort();
   }, [custodyPositions]);
 

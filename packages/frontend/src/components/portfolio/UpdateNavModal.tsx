@@ -22,7 +22,7 @@ interface UpdateNavModalProps {
 
 export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
   const [nav, setNav] = useState('');
-  const [asOfDate, setAsOfDate] = useState(new Date().toISOString().slice(0, 10));
+  const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [error, setError] = useState<string | null>(null);
   const updateNav = useUpdateAssetNav();
 

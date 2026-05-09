@@ -7,6 +7,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Upload, AlertCircle, Loader2 } from 'lucide-react';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 
+const TRADE_DIRECTIONS = new Set(['LONG', 'SHORT']);
+
 interface TradeImportTabProps {
   onSuccess: () => void;
 }
@@ -52,7 +54,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
         if (typeof t.quantity !== 'number' || t.quantity <= 0) {
           throw new Error('Invalid format: quantity must be a positive number');
         }
-        if (!t.direction || !['LONG', 'SHORT'].includes(t.direction)) {
+        if (!t.direction || !TRADE_DIRECTIONS.has(t.direction)) {
           throw new Error('Invalid format: direction must be LONG or SHORT');
         }
         if (!t.entryDate) {
