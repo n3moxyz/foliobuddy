@@ -77,6 +77,7 @@
 - `src/components/ui/skeleton.tsx` - Shimmer skeleton loading component (CSS-based animation)
 - `src/components/ui/HelpTooltip.tsx` - Contextual ? icon tooltip for domain-specific terms
 - `src/lib/chartColors.ts` - Centralized chart color constants (brand, portfolio line, allocation palettes)
+- `react-doctor.config.json` - Root-level React Doctor triage policy. Keeps the scan focused on actionable regressions after known React 18/Radix/shadcn and design-opinion rules were reviewed.
 
 ### Shared
 
@@ -242,6 +243,8 @@ All pages including Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. 
 ### React Doctor Quality Scan
 
 React Doctor can be used as an advisory frontend audit for React accessibility, correctness, state/effect, dead-code, and performance findings. Run the pinned, offline command from the repo root: `npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none`. Treat results as triage input, not an automatic refactor plan: fix high-signal user-facing items first (ARIA relationships, keyboard access, render correctness), and be skeptical of noisy rules like React 19 `forwardRef` warnings while the app is still on React 18.
+
+The root `react-doctor.config.json` intentionally suppresses reviewed scanner noise: React 19 migration advice that conflicts with the current React 18 + shadcn/Radix stack, broad design-opinion checks that do not match FolioBuddy's established UI rules, and large architectural refactor nudges that would be risky without a feature reason. Do not add suppressions for new accessibility, keyboard, ownership, render-correctness, or data-integrity findings without documenting why they are false positives.
 
 ### Ownership Checks on Mutations
 

@@ -1464,6 +1464,8 @@ npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none
 
 Run it pinned and offline, then triage. Fix the user-facing stuff first: keyboard access, labels, ARIA relationships, and render correctness. Leave noisy mechanical guidance for a separate sweep. Otherwise you end up polishing the wrench while the sink is still dripping.
 
+After the high-signal fixes, the remaining warnings were mostly policy friction: React 19 `forwardRef` migration nudges in a React 18 app, shadcn/Radix export patterns that look dead to a scanner, and design opinions that disagreed with FolioBuddy's existing visual system. The repo now keeps that decision in `react-doctor.config.json`. This makes the score useful again: if the configured scan drops below 100, assume it found something new enough to deserve attention, not just an old debate with a different hat.
+
 ---
 
 ## Deployment: Coolify + Vercel
