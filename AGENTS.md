@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-> **Self-Updating Rule**: This file is a living document. Claude should proactively update it when:
+> **Self-Updating Rule**: This file is a living document. Codex should proactively update it when:
 >
 > - New patterns, conventions, or architectural decisions are established
 > - New key files or directories are added
@@ -10,7 +10,7 @@
 
 > **Agent Instruction Sync**: Keep `CLAUDE.md` and `AGENTS.md` synchronized. When updating one, mirror the same project facts, workflows, and lessons into the other in the same change. The only expected differences are the file title and agent name (`Claude` vs `Codex`).
 
-> **FORET.md Maintenance**: After completing significant changes to this project, Claude MUST update `FORET.md` to reflect:
+> **FORET.md Maintenance**: After completing significant changes to this project, Codex MUST update `FORET.md` to reflect:
 >
 > - New features or architectural changes (add to relevant sections)
 > - Bugs encountered and how they were fixed (add to "Lessons Learned the Hard Way" section)
