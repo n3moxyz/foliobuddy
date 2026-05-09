@@ -329,9 +329,9 @@ export function PortfolioChart({
                   fill="url(#portfolioGradient)"
                   dot={(props: RechartsAreaDotProps) => {
                     const { cx, cy, index } = props;
-                    if (index !== chartData.length - 1) return <g key={`dot-${index}`} />;
+                    if (index !== chartData.length - 1) return <g />;
                     return (
-                      <g key={`dot-${index}`}>
+                      <g>
                         <circle cx={cx} cy={cy} r={3} fill={PORTFOLIO_LINE_COLOR} />
                         <text
                           x={cx + 8}

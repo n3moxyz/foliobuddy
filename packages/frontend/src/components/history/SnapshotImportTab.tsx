@@ -77,12 +77,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
   };
 
   if (importResults) {
-    return (
-      <ImportResultsList
-        results={importResults}
-        onDone={onSuccess}
-      />
-    );
+    return <ImportResultsList results={importResults} onDone={onSuccess} />;
   }
 
   return (
@@ -116,8 +111,11 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
             {parsedSnapshots.length !== 1 ? 's' : ''}:
           </p>
           <div className="max-h-40 overflow-y-auto space-y-1">
-            {parsedSnapshots.map((snap, i) => (
-              <div key={i} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
+            {parsedSnapshots.map((snap) => (
+              <div
+                key={`${snap.timestamp}-${snap.snapshotType ?? 'DAILY'}-${snap.totalValueUsd}`}
+                className="text-sm bg-muted/50 px-3 py-2 rounded-md"
+              >
                 <span className="font-medium">{snap.timestamp}</span>
                 <span className="text-muted-foreground ml-2">
                   ${snap.totalValueUsd.toLocaleString()}

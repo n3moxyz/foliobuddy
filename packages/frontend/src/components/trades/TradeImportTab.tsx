@@ -122,8 +122,11 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
             Ready to import {parsedTrades.length} trade{parsedTrades.length !== 1 ? 's' : ''}:
           </p>
           <div className="max-h-40 overflow-y-auto space-y-1">
-            {parsedTrades.map((t, i) => (
-              <div key={i} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
+            {parsedTrades.map((t) => (
+              <div
+                key={`${t.asset.symbol}-${t.direction}-${t.entryDate}-${t.quantity}-${t.entryPrice}-${t.exitDate ?? ''}`}
+                className="text-sm bg-muted/50 px-3 py-2 rounded-md"
+              >
                 <span
                   className={`font-medium ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}
                 >

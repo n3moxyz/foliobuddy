@@ -35,9 +35,9 @@ export function ImportResultsList({ results, onDone }: ImportResultsListProps) {
       </div>
 
       <div className="max-h-60 overflow-y-auto space-y-1">
-        {results.map((result, i) => (
+        {results.map((result) => (
           <div
-            key={i}
+            key={`${result.label}-${result.success ? 'success' : 'fail'}-${result.error ?? ''}`}
             className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
               result.success ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'
             }`}

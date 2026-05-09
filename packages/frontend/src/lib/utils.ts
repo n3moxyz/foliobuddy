@@ -5,6 +5,82 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const CURRENCY_FORMATTERS_BY_DECIMALS: Record<number, Intl.NumberFormat> = {
+  0: new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'standard',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  1: new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'standard',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }),
+  2: new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'standard',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }),
+  3: new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'standard',
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  }),
+  4: new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'standard',
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  }),
+  5: new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'standard',
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
+  }),
+};
+
+const COMPACT_CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  notation: 'compact',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 1,
+});
+
+const NUMBER_FORMATTERS_BY_DECIMALS: Record<number, Intl.NumberFormat> = {
+  0: new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+  1: new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+  2: new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+  3: new Intl.NumberFormat('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 }),
+  4: new Intl.NumberFormat('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
+  5: new Intl.NumberFormat('en-US', { minimumFractionDigits: 5, maximumFractionDigits: 5 }),
+};
+
+const DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
 export function formatCurrency(
   value: number | null | undefined,
   currency: 'USD' | 'SGD' = 'USD',
@@ -15,13 +91,9 @@ export function formatCurrency(
   const decimals = typeof compact === 'number' ? compact : 2;
   const useCompact = compact === true;
 
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    notation: useCompact ? 'compact' : 'standard',
-    minimumFractionDigits: useCompact ? 0 : decimals,
-    maximumFractionDigits: useCompact ? 1 : decimals,
-  });
+  const formatter = useCompact
+    ? COMPACT_CURRENCY_FORMATTER
+    : CURRENCY_FORMATTERS_BY_DECIMALS[decimals] || CURRENCY_FORMATTERS_BY_DECIMALS[2];
 
   const formatted = formatter.format(value);
 
@@ -51,10 +123,8 @@ export function formatPrice(
 export function formatNumber(value: number | null | undefined, decimals: number = 2): string {
   if (value === null || value === undefined) return '-';
 
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
+  const formatter = NUMBER_FORMATTERS_BY_DECIMALS[decimals] || NUMBER_FORMATTERS_BY_DECIMALS[2];
+  return formatter.format(value);
 }
 
 export function formatPercent(value: number | null | undefined): string {
@@ -69,11 +139,7 @@ export function formatDate(date: Date | string | null | undefined): string {
 
   const d = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.DateTimeFormat('en-GB', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(d);
+  return DATE_FORMATTER.format(d);
 }
 
 export function formatDateTime(date: Date | string | null | undefined): string {
@@ -81,13 +147,7 @@ export function formatDateTime(date: Date | string | null | undefined): string {
 
   const d = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.DateTimeFormat('en-GB', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d);
+  return DATE_TIME_FORMATTER.format(d);
 }
 
 export function getPnLColorClass(value: number | null | undefined): string {

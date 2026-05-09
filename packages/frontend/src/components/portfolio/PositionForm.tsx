@@ -92,6 +92,7 @@ interface PositionFormProps {
 type CategoryType = 'crypto' | 'cash' | 'equity';
 type EquityMode = 'single' | 'fund';
 type FormMode = 'add' | 'import';
+type PositionStorageType = 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE';
 
 type ImportedPosition = BulkImportPosition;
 
@@ -121,19 +122,21 @@ const TOP_STABLECOINS = [
 ];
 
 const MAX_POSITIONS_PER_CATEGORY = 20;
+const EMPTY_CUSTODY_NAMES: string[] = [];
 
 export function PositionForm({
   position,
   onSuccess,
   cryptoCount = 0,
   stablesCount = 0,
-  existingCustodyNames = [],
+  existingCustodyNames = EMPTY_CUSTODY_NAMES,
 }: PositionFormProps) {
   // Form mode state (add new or import)
   const [mode, setMode] = useState<FormMode>('add');
   const [editMode, setEditMode] = useState<'edit' | 'delta'>('edit');
   const [deltaMode, setDeltaMode] = useState<'add' | 'reduce'>('add');
   const queryClient = useQueryClient();
+  const isEditing = !!position;
 
   const [jsonInput, setJsonInput] = useState('');
   const [parseError, setParseError] = useState<string | null>(null);
@@ -165,7 +168,7 @@ export function PositionForm({
   // a name the user has manually edited.
   const lastAutoFilledFundName = useRef('');
   const [utNav, setUtNav] = useState('');
-  const [utNavAsOfDate, setUtNavAsOfDate] = useState(new Date().toISOString().slice(0, 10));
+  const [utNavAsOfDate, setUtNavAsOfDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [utUploading, setUtUploading] = useState(false);
   const [utUploadError, setUtUploadError] = useState<string | null>(null);
   const [utDragOver, setUtDragOver] = useState(false);
@@ -187,6 +190,9 @@ export function PositionForm({
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [selectedStablecoinId, setSelectedStablecoinId] = useState<string>(
+    position?.asset.coingeckoId || ''
+  );
 
   // Validation state
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -241,6 +247,50 @@ export function PositionForm({
   const [additionalQuantity, setAdditionalQuantity] = useState('');
   const [additionalTotalCost, setAdditionalTotalCost] = useState('');
 
+  const resetAssetEntryState = (nextCategory: CategoryType) => {
+    setAssetId('');
+    setSelectedAsset(null);
+    setSelectedStablecoinId('');
+    setSearchQuery('');
+    setShowDropdown(false);
+    setHighlightedIndex(-1);
+    setQuantity('');
+    setTotalCost('');
+    setError(null);
+    setStorageType(nextCategory === 'equity' ? 'BROKERAGE' : 'CEX');
+    setStorageLocation('');
+    setCustomLocation('');
+  };
+
+  const handleCategoryChange = (value: string) => {
+    const nextCategory = value as CategoryType;
+    setCategory(nextCategory);
+    if (!isEditing) {
+      resetAssetEntryState(nextCategory);
+    }
+  };
+
+  const handleEquityModeChange = (nextMode: EquityMode) => {
+    setEquityMode(nextMode);
+    if (!isEditing) {
+      resetAssetEntryState('equity');
+    }
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setShowDropdown(true);
+    setHighlightedIndex(-1);
+  };
+
+  const handleStorageTypeChange = (value: PositionStorageType) => {
+    setStorageType(value);
+    if (!isEditing) {
+      setStorageLocation('');
+      setCustomLocation('');
+    }
+  };
+
   // Hooks
   const { data: assets } = useAssets();
   const { data: searchResults, isLoading: searchLoading } = useSearchCoins(
@@ -256,7 +306,6 @@ export function PositionForm({
   const createPosition = useCreatePosition();
   const updatePosition = useUpdatePosition();
 
-  const isEditing = !!position;
   const isLoading =
     createPosition.isPending ||
     updatePosition.isPending ||
@@ -268,7 +317,11 @@ export function PositionForm({
   // Used to convert single-equity SGD inputs to USD on submit.
   const { data: portfolioSummary } = usePortfolioSummary();
   const fxSgdPerUsd = useMemo(() => {
-    if (portfolioSummary && portfolioSummary.totalValueUsd > 0 && portfolioSummary.totalValueSgd > 0) {
+    if (
+      portfolioSummary &&
+      portfolioSummary.totalValueUsd > 0 &&
+      portfolioSummary.totalValueSgd > 0
+    ) {
       return portfolioSummary.totalValueSgd / portfolioSummary.totalValueUsd;
     }
     return 1.35;
@@ -417,10 +470,8 @@ export function PositionForm({
     if (!position || editMode !== 'delta') return null;
     const deltaQty = parseFloat(additionalQuantity);
     const rawDeltaCost = parseFloat(additionalTotalCost);
-    const deltaCostAddUsd =
-      costCurrency === 'SGD' ? rawDeltaCost / fxSgdPerUsd : rawDeltaCost;
-    const deltaCost =
-      deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
+    const deltaCostAddUsd = costCurrency === 'SGD' ? rawDeltaCost / fxSgdPerUsd : rawDeltaCost;
+    const deltaCost = deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
     if (!(deltaQty > 0) || !(deltaCost >= 0)) return null;
 
     const currentTotalCost = position.quantity * position.avgCostUsd;
@@ -439,7 +490,15 @@ export function PositionForm({
       nextAvgCost: nextAvgCost * rate,
       nextTotalCost: nextTotalCost * rate,
     };
-  }, [position, editMode, additionalQuantity, additionalTotalCost, deltaMode, costCurrency, fxSgdPerUsd]);
+  }, [
+    position,
+    editMode,
+    additionalQuantity,
+    additionalTotalCost,
+    deltaMode,
+    costCurrency,
+    fxSgdPerUsd,
+  ]);
 
   // Filter existing assets based on search and category
   const filteredAssets = useMemo(() => {
@@ -513,6 +572,7 @@ export function PositionForm({
     setAssetId(asset.id);
     setSelectedAsset(asset);
     setSearchQuery('');
+    setHighlightedIndex(-1);
     setShowDropdown(false);
   };
 
@@ -540,13 +600,9 @@ export function PositionForm({
     setAssetId(asset.id);
     setSelectedAsset(asset);
     setSearchQuery('');
+    setHighlightedIndex(-1);
     setShowDropdown(false);
   };
-
-  // Reset highlighted index when results change
-  useEffect(() => {
-    setHighlightedIndex(-1);
-  }, [combinedResults.length, searchQuery]);
 
   // Keyboard navigation handler for search dropdown
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -579,11 +635,6 @@ export function PositionForm({
     }
   };
 
-  // Track stablecoin selection separately for immediate UI feedback
-  const [selectedStablecoinId, setSelectedStablecoinId] = useState<string>(
-    position?.asset.coingeckoId || ''
-  );
-
   const handleSelectStablecoin = async (coinId: string) => {
     setSelectedStablecoinId(coinId);
     setError(null);
@@ -614,34 +665,12 @@ export function PositionForm({
     }
   };
 
-  // Reset form when category or equity sub-mode changes
-  useEffect(() => {
-    if (!isEditing) {
-      setAssetId('');
-      setSelectedAsset(null);
-      setSelectedStablecoinId('');
-      setSearchQuery('');
-      setQuantity('');
-      setTotalCost('');
-      setError(null);
-      setStorageType(category === 'equity' ? 'BROKERAGE' : 'CEX');
-    }
-  }, [category, equityMode, isEditing]);
-
   // Reset import state when mode changes
   useEffect(() => {
     if (mode === 'add') {
       resetImportState();
     }
   }, [mode]);
-
-  // Reset storage location when storage type changes
-  useEffect(() => {
-    if (!isEditing) {
-      setStorageLocation('');
-      setCustomLocation('');
-    }
-  }, [storageType, isEditing]);
 
   const locationOptions = locationOptionsForStorageType(storageType);
 
@@ -686,9 +715,7 @@ export function PositionForm({
     // Prefill total cost in native currency when non-USD; store fx rate for later conversion
     const usdPerNative = h.fxRateToUsd ?? (ccy === 'USD' ? 1 : 1 / 1.35);
     setUtUsdPerNative(usdPerNative);
-    setTotalCost(
-      ccy === 'USD' ? h.totalCostUsd.toFixed(2) : h.totalCostNative.toFixed(2)
-    );
+    setTotalCost(ccy === 'USD' ? h.totalCostUsd.toFixed(2) : h.totalCostNative.toFixed(2));
     setStorageLocation(
       broker.includes('UOB')
         ? 'UOB Kay Hian'
@@ -737,8 +764,7 @@ export function PositionForm({
       const deltaCostInput = parseFloat(additionalTotalCost);
       const deltaCostAddUsd =
         costCurrency === 'SGD' ? deltaCostInput / fxSgdPerUsd : deltaCostInput;
-      const deltaCost =
-        deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
+      const deltaCost = deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
 
       if (!(deltaQty > 0)) {
         setValidationError(`Please enter a valid ${deltaMode} quantity`);
@@ -828,8 +854,7 @@ export function PositionForm({
       const totalCostUsd =
         utNativeCurrency === 'USD' ? costNumInput : costNumInput * utUsdPerNative;
 
-      const finalStorageLocation =
-        storageLocation === 'Others' ? customLocation : storageLocation;
+      const finalStorageLocation = storageLocation === 'Others' ? customLocation : storageLocation;
 
       try {
         const newAsset = await createUnitTrust.mutateAsync({
@@ -871,9 +896,7 @@ export function PositionForm({
     // Applies to both create and edit (single stocks and unit trusts).
     const rawAvgCost = category === 'cash' ? 1 : parseFloat(avgCostUsd) || 0;
     const finalAvgCostUsd =
-      category === 'equity' && costCurrency === 'SGD'
-        ? rawAvgCost / fxSgdPerUsd
-        : rawAvgCost;
+      category === 'equity' && costCurrency === 'SGD' ? rawAvgCost / fxSgdPerUsd : rawAvgCost;
 
     const data = {
       assetId,
@@ -1173,7 +1196,7 @@ export function PositionForm({
                   <Label htmlFor="pos-category" className="text-sm">
                     Category
                   </Label>
-                  <Select value={category} onValueChange={(v) => setCategory(v as CategoryType)}>
+                  <Select value={category} onValueChange={handleCategoryChange}>
                     <SelectTrigger id="pos-category">
                       <SelectValue />
                     </SelectTrigger>
@@ -1193,7 +1216,7 @@ export function PositionForm({
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setEquityMode('single')}
+                      onClick={() => handleEquityModeChange('single')}
                       className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
                         equityMode === 'single'
                           ? 'border-primary bg-primary/10 text-primary'
@@ -1205,7 +1228,7 @@ export function PositionForm({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setEquityMode('fund')}
+                      onClick={() => handleEquityModeChange('fund')}
                       className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
                         equityMode === 'fund'
                           ? 'border-primary bg-primary/10 text-primary'
@@ -1250,7 +1273,10 @@ export function PositionForm({
                       if (utUploading) return;
                       const file = e.dataTransfer.files?.[0];
                       if (!file) return;
-                      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                      if (
+                        file.type !== 'application/pdf' &&
+                        !file.name.toLowerCase().endsWith('.pdf')
+                      ) {
                         setUtUploadError('Please drop a PDF file');
                         return;
                       }
@@ -1461,10 +1487,7 @@ export function PositionForm({
                     }
                     positionAssetSymbol={position?.asset.symbol}
                     positionAssetName={position?.asset.name}
-                    onSearchChange={(value) => {
-                      setSearchQuery(value);
-                      setShowDropdown(true);
-                    }}
+                    onSearchChange={handleSearchChange}
                     onFocus={() => setShowDropdown(true)}
                     onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                     onKeyDown={handleSearchKeyDown}
@@ -1473,6 +1496,8 @@ export function PositionForm({
                     onClearSelection={() => {
                       setAssetId('');
                       setSelectedAsset(null);
+                      setSearchQuery('');
+                      setHighlightedIndex(-1);
                     }}
                     setHighlightedIndex={setHighlightedIndex}
                     setValidationError={setValidationError}
@@ -1671,9 +1696,7 @@ export function PositionForm({
                 ) : (
                   <Select
                     value={storageType}
-                    onValueChange={(value) =>
-                      setStorageType(value as 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE')
-                    }
+                    onValueChange={(value) => handleStorageTypeChange(value as PositionStorageType)}
                   >
                     <SelectTrigger id="pos-storage-type">
                       <SelectValue />

@@ -66,8 +66,11 @@ export function PositionImportTab({
             {parsedPositions.length !== 1 ? 's' : ''}:
           </p>
           <div className="max-h-40 overflow-y-auto space-y-1">
-            {parsedPositions.map((pos, i) => (
-              <div key={i} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
+            {parsedPositions.map((pos) => (
+              <div
+                key={`${pos.asset.symbol}-${pos.quantity}-${pos.avgCostUsd}-${pos.storageType}-${pos.storageLocation ?? ''}-${pos.custodyOf ?? ''}`}
+                className="text-sm bg-muted/50 px-3 py-2 rounded-md"
+              >
                 <span className="font-medium">{pos.asset.symbol}</span>
                 <span className="text-muted-foreground ml-2">
                   {pos.quantity} @ ${pos.avgCostUsd.toLocaleString()}
