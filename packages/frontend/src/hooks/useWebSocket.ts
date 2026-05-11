@@ -80,9 +80,12 @@ export function useWebSocket(): UseWebSocketReturn {
   }, [isSignedIn, getToken, queryClient]);
 
   useEffect(() => {
-    connect();
+    const frame = requestAnimationFrame(() => {
+      void connect();
+    });
 
     return () => {
+      cancelAnimationFrame(frame);
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;

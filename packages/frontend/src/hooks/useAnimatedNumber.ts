@@ -21,8 +21,9 @@ export function useAnimatedNumber(target: number | null | undefined, durationMs 
 
     // Skip animation if reduced motion preferred
     if (prefersReducedMotion.current) {
-      setDisplay(value);
-      return;
+      cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(() => setDisplay(value));
+      return () => cancelAnimationFrame(rafId.current);
     }
 
     // Skip animation on first render (from === 0 and value is the initial load)

@@ -76,6 +76,9 @@
 - `src/stores/` - Zustand stores
 - `src/components/ui/skeleton.tsx` - Shimmer skeleton loading component (CSS-based animation)
 - `src/components/ui/HelpTooltip.tsx` - Contextual ? icon tooltip for domain-specific terms
+- `src/components/trades/TradeLensViews.tsx` - Ticker and monthly trade review lens UI
+- `src/components/trades/tradeLensModels.ts` - Pure aggregation helpers for ticker dossiers and monthly reviews
+- `src/components/portfolio/positionClipboard.ts` - Shared portfolio copy-to-clipboard JSON formatter
 - `src/lib/chartColors.ts` - Centralized chart color constants (brand, portfolio line, allocation palettes)
 - `react-doctor.config.json` - Root-level React Doctor triage policy. Keeps the scan focused on actionable regressions after known React 18/Radix/shadcn and design-opinion rules were reviewed.
 
@@ -291,6 +294,8 @@ Use `formatCurrency` (with explicit decimals or compact mode) for totals, sizes,
 - **Monthly Postmortem** (`?view=monthly`) shows selectable month summaries, repeatable-edge tags, loss review, and open-trade watchlist.
 
 The page fetches all trades once via `useTrades()` and filters table status locally so the lens summaries do not disappear when the user switches All/Open/Closed tabs. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with the seeded trade rows because `TradeStatsCard` still renders those backend/mock callouts. Trade form defaults entry date to 5 days ago and exit date to today (optimized for logging closed trades).
+
+Keep lens UI in `components/trades/TradeLensViews.tsx` and pure aggregation in `components/trades/tradeLensModels.ts`. This preserves Fast Refresh/lint cleanliness and keeps `Trades.tsx` focused on routing, query params, dialogs, and the shared Trade Tape table.
 
 ### Portfolio Hero Summary
 

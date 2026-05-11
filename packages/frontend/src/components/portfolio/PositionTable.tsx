@@ -35,50 +35,10 @@ import { SortableHeader } from '@/components/ui/SortableHeader';
 import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
 import type { Position } from '@/lib/types';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
+import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboard';
 
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
-
-function formatPositionsForClipboard(positions: Position | Position[]) {
-  const posArray = Array.isArray(positions) ? positions : [positions];
-
-  const formatted = posArray.map((p) => ({
-    asset: {
-      coingeckoId: p.asset.coingeckoId,
-      symbol: p.asset.symbol,
-      name: p.asset.name,
-      category: p.asset.category,
-      // Provider wiring — only carried for non-coingecko assets (equities, UTs).
-      // Ensures a re-import of a not-yet-in-DB ticker still gets live prices.
-      ...(p.asset.priceProvider && p.asset.priceProvider !== 'coingecko'
-        ? {
-            priceProvider: p.asset.priceProvider,
-            providerAssetId: p.asset.providerAssetId,
-            nativeCurrency: p.asset.nativeCurrency,
-            exchange: p.asset.exchange,
-          }
-        : {}),
-    },
-    quantity: p.quantity,
-    avgCostUsd: p.avgCostUsd,
-    storageType: p.storageType,
-    storageLocation: p.storageLocation,
-    notes: p.notes,
-    ...(p.custodyOf ? { custodyOf: p.custodyOf } : {}),
-  }));
-
-  return JSON.stringify(formatted, null, 2);
-}
-
-export async function copyPositionsToClipboard(positions: Position | Position[]): Promise<boolean> {
-  try {
-    const text = formatPositionsForClipboard(positions);
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 interface PositionTableProps {
   positions: Position[];

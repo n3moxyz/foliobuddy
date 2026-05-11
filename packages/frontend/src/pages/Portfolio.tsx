@@ -3,7 +3,8 @@ import { usePositions, usePortfolioSummary, useDeleteAllPositions } from '@/hook
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { formatCurrency, formatPercent, getPnLColorClass, isStablecoinCategory } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { PositionTable, copyPositionsToClipboard } from '@/components/portfolio/PositionTable';
+import { PositionTable } from '@/components/portfolio/PositionTable';
+import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboard';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { PositionForm } from '@/components/portfolio/PositionForm';
 import { UpdateNavModal } from '@/components/portfolio/UpdateNavModal';

@@ -30,18 +30,6 @@ import { Plus, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 
-interface RechartsLineDotProps {
-  cx: number;
-  cy: number;
-  index: number;
-  value: number | undefined;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface BenchmarkComparisonChartProps {
-  // liveValueUsd could be used for live updates in the future
-}
-
 /** Recharts injects these at runtime into the dot render callback; the library types it as `any`. */
 interface RechartsLineDotProps {
   cx: number;
@@ -120,7 +108,7 @@ function formatTooltipDate(timestamp: string): string {
   });
 }
 
-export function BenchmarkComparisonChart(_props: BenchmarkComparisonChartProps) {
+export function BenchmarkComparisonChart() {
   const [period, setPeriod] = useState<TimePeriod>('YTD');
   const [benchmarks, setBenchmarks] = useState<BenchmarkConfig[]>(DEFAULT_BENCHMARKS);
   const [additionalBenchmarks, setAdditionalBenchmarks] = useState<BenchmarkConfig[]>([]);

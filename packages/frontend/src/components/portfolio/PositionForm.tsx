@@ -659,7 +659,7 @@ export function PositionForm({
 
       setAssetId(asset.id);
       setSelectedAsset(asset);
-    } catch (err) {
+    } catch {
       setError('Failed to load stablecoin data. Please try again.');
       setSelectedStablecoinId('');
     }

@@ -53,14 +53,12 @@ export function useTableSort<T>(
       if (aNull) return 1;
       if (bNull) return -1;
 
-      let comparison = 0;
-      if (config.type === 'number') {
-        comparison = (aVal as number) - (bVal as number);
-      } else if (config.type === 'date') {
-        comparison = new Date(aVal as string).getTime() - new Date(bVal as string).getTime();
-      } else {
-        comparison = String(aVal).localeCompare(String(bVal));
-      }
+      const comparison =
+        config.type === 'number'
+          ? (aVal as number) - (bVal as number)
+          : config.type === 'date'
+            ? new Date(aVal as string).getTime() - new Date(bVal as string).getTime()
+            : String(aVal).localeCompare(String(bVal));
 
       return sortDirection === 'desc' ? -comparison : comparison;
     });

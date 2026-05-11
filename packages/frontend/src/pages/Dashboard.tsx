@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   usePortfolioSummary,
   usePositions,
@@ -35,6 +35,8 @@ export default function Dashboard() {
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: investors } = useInvestors();
   const { data: perfHistory30d } = usePerformanceHistory({ days: 30 });
+  const totalValueUsd = summary?.totalValueUsd ?? 0;
+  const totalValueSgd = summary?.totalValueSgd ?? 0;
 
   // Value from 30 days ago for period comparison
   const valueUsd30dAgo = useMemo(() => {
@@ -42,26 +44,22 @@ export default function Dashboard() {
     return perfHistory30d[0].totalValueUsd;
   }, [perfHistory30d]);
 
-  // Investor filter state - lifted to Dashboard level
-  const [selectedInvestors, setSelectedInvestors] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!investors || investors.length === 0) return;
-    if (selectedInvestors.length > 0) return;
-
+  // Investor filter state - lifted to Dashboard level. Defaults to owner until manually changed.
+  const [manualSelectedInvestors, setManualSelectedInvestors] = useState<string[] | null>(null);
+  const defaultSelectedInvestors = useMemo(() => {
+    if (!investors || investors.length === 0) return [];
     const owner = investors.find((investor) => investor.isOwner);
-    if (owner) {
-      setSelectedInvestors([owner.id]);
-    }
-  }, [investors, selectedInvestors.length]);
+    return owner ? [owner.id] : [];
+  }, [investors]);
+  const selectedInvestors = manualSelectedInvestors ?? defaultSelectedInvestors;
 
   // Calculate FX rate from summary
   const fxRate = useMemo(() => {
-    if (summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0) {
-      return summary.totalValueSgd / summary.totalValueUsd;
+    if (totalValueUsd > 0 && totalValueSgd > 0) {
+      return totalValueSgd / totalValueUsd;
     }
     return 1.35; // Default fallback rate
-  }, [summary]);
+  }, [totalValueUsd, totalValueSgd]);
 
   // Calculate stake multiplier based on selected investors
   const stakeMultiplier = useMemo(() => {
@@ -85,27 +83,30 @@ export default function Dashboard() {
   }, []);
 
   const exposurePct = useMemo(() => {
-    if (!positions || !summary?.totalValueUsd || summary.totalValueUsd <= 0) return 0;
+    if (!positions || totalValueUsd <= 0) return 0;
     const ownedCryptoTotal = positions
       .filter((position) => !position.custodyOf)
       .filter((position) => isCryptoCategory(position.asset.category))
       .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
 
-    return ((ownedCryptoTotal + perpExposure) / summary.totalValueUsd) * 100;
-  }, [positions, summary?.totalValueUsd, perpExposure]);
+    return ((ownedCryptoTotal + perpExposure) / totalValueUsd) * 100;
+  }, [positions, totalValueUsd, perpExposure]);
 
   const handleInvestorToggle = (investorId: string) => {
-    setSelectedInvestors((prev) =>
-      prev.includes(investorId) ? prev.filter((id) => id !== investorId) : [...prev, investorId]
-    );
+    setManualSelectedInvestors((prev) => {
+      const current = prev ?? defaultSelectedInvestors;
+      return current.includes(investorId)
+        ? current.filter((id) => id !== investorId)
+        : [...current, investorId];
+    });
   };
 
   const handleSelectAll = () => {
     if (!investors) return;
     if (selectedInvestors.length === investors.length) {
-      setSelectedInvestors([]);
+      setManualSelectedInvestors([]);
     } else {
-      setSelectedInvestors(investors.map((inv) => inv.id));
+      setManualSelectedInvestors(investors.map((inv) => inv.id));
     }
   };
 

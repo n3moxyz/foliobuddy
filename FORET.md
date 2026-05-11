@@ -599,6 +599,8 @@ Recent refinement: the stat strip was merged into NetWorthCard as an equal-width
 
 Recent Trades refinement: the original Trades page is now the default Review lens — collapsed analytics card, collapsed P&L by ticker card, then the familiar All/Open/Closed table. Two extra lenses sit beside it instead of replacing it: Ticker Dossier opens via `?ticker=SOL` and shows a symbol-specific review plus focused tape; Monthly Postmortem lives at `?view=monthly`, with month chips, repeatable-edge tags, loss review, and an open-trade watchlist. The trick was not to bulldoze a working journal, but to add side rooms where deeper questions can live.
 
+Follow-up quality sweep: the trade lens code got split along a cleaner fault line. `Trades.tsx` now owns routing, query params, dialogs, and the shared tape. `TradeLensViews.tsx` owns the ticker/monthly UI. `tradeLensModels.ts` owns the pure aggregation math. That split made lint and React Doctor happy again, but more importantly it stops the journal page from turning into a filing cabinet with a router bolted on the front.
+
 ---
 
 ## Lessons Learned the Hard Way
@@ -1474,6 +1476,18 @@ npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none
 Run it pinned and offline, then triage. Fix the user-facing stuff first: keyboard access, labels, ARIA relationships, and render correctness. Leave noisy mechanical guidance for a separate sweep. Otherwise you end up polishing the wrench while the sink is still dripping.
 
 After the high-signal fixes, the remaining warnings were mostly policy friction: React 19 `forwardRef` migration nudges in a React 18 app, shadcn/Radix export patterns that look dead to a scanner, and design opinions that disagreed with FolioBuddy's existing visual system. The repo now keeps that decision in `react-doctor.config.json`. This makes the score useful again: if the configured scan drops below 100, assume it found something new enough to deserve attention, not just an old debate with a different hat.
+
+### 6. Keep Component Files Component-Only
+
+React Fast Refresh is happiest when `.tsx` files export components and type-only things, not a grab bag of runtime helpers. When a component also needs reusable math or clipboard formatting, move that into a plain `.ts` module and import it back.
+
+Recent examples:
+
+- `TradeLensViews.tsx` exports the UI, while `tradeLensModels.ts` exports ticker/monthly aggregation helpers.
+- `PositionTable.tsx` renders the table, while `positionClipboard.ts` owns the portfolio JSON copy format.
+- `button.tsx` keeps `buttonVariants` private because nothing outside the module needs that runtime export.
+
+The payoff is small but real: Fast Refresh warnings stay meaningful, lint output stays quiet, and files tell you what kind of thing they are before you even open them.
 
 ---
 

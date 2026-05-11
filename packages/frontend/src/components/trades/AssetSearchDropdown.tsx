@@ -67,9 +67,11 @@ export function AssetSearchDropdown({
     return results;
   }, [filteredAssets, searchResults, searchQuery, assets]);
 
+  const safeHighlightedIndex =
+    highlightedIndex >= 0 && highlightedIndex < combinedResults.length ? highlightedIndex : -1;
   const activeOptionId =
-    highlightedIndex >= 0 && showDropdown && combinedResults.length > 0
-      ? `${listboxId}-option-${highlightedIndex}`
+    safeHighlightedIndex >= 0 && showDropdown
+      ? `${listboxId}-option-${safeHighlightedIndex}`
       : undefined;
 
   const handleSelectExistingAsset = (asset: Asset) => {
@@ -90,11 +92,6 @@ export function AssetSearchDropdown({
     setSearchQuery('');
     setShowDropdown(false);
   };
-
-  // Reset highlighted index when results change
-  useEffect(() => {
-    setHighlightedIndex(-1);
-  }, [combinedResults.length, searchQuery]);
 
   // Keyboard navigation handler for search dropdown
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -174,6 +171,7 @@ export function AssetSearchDropdown({
         onChange={(e) => {
           setSearchQuery(e.target.value);
           setShowDropdown(true);
+          setHighlightedIndex(-1);
         }}
         onFocus={() => setShowDropdown(true)}
         onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
@@ -202,9 +200,9 @@ export function AssetSearchDropdown({
                 id={`${listboxId}-option-${index}`}
                 type="button"
                 role="option"
-                aria-selected={index === highlightedIndex}
+                aria-selected={index === safeHighlightedIndex}
                 className={`w-full px-3 py-2 text-left flex items-center justify-between ${
-                  index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
+                  index === safeHighlightedIndex ? 'bg-muted' : 'hover:bg-muted'
                 }`}
                 onClick={() => {
                   if (result.type === 'existing') {
