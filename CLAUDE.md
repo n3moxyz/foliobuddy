@@ -238,6 +238,7 @@ All pages including Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. 
 - It must stay **dev-only**. `App.tsx` lazy-loads it only when `import.meta.env.DEV` is true so the mock payload does not ship in production bundles.
 - It mocks `/api/*` in the browser and restores the original `fetch` + token getter on unmount. Do not leave global network monkey-patches installed after navigating away.
 - It now supports stateful in-browser portfolio CRUD for testing. Use `/dev/demo/portfolio` to validate add, edit, delete, and import UX without touching the real backend. The state resets on full refresh.
+- Demo seed data intentionally includes crypto, equities, stables, SGD cash, and custody positions so Dashboard allocation charts exercise all buckets. Keep each seeded `Position.assetId` and embedded `Position.asset` in sync; use the local `demoAsset(id)` helper instead of array indexes. The 4th Dashboard allocation chart appears only when stable/cash positions exist.
 - Use it for responsive/UI checks and demo-mode interaction testing only. It must never point at production write APIs.
 
 ### React Doctor Quality Scan

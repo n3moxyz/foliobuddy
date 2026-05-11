@@ -685,6 +685,7 @@ const unrealizedPnLPct = ((marketValue - costBasis) / costBasis) * 100;
 - New demo assets need seeded prices or portfolio totals fall apart
 - Demo ids cannot rely on plain `Date.now()` during bulk inserts
 - If a demo flow mimics real editing, it has to preserve related fields like custody too
+- Seeded `Position` objects are easy to corrupt if `assetId` and embedded `asset` point at different things. That exact bug made a supposed USDC position render as WLD, so the Dashboard never showed the Stables Breakdown chart. The fix was to use a `demoAsset(id)` helper instead of array indexes and seed crypto, equities, stables, SGD cash, and custody on purpose.
 
 ### Lesson 6: Railway Deployment Gotchas
 

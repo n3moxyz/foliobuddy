@@ -61,6 +61,29 @@ function demoCrypto(
   };
 }
 
+function demoEquity(
+  id: string,
+  symbol: string,
+  name: string,
+  currentPriceUsd: number,
+  nativeCurrency = 'USD',
+  exchange: string | null = 'NASDAQ'
+): Asset {
+  return {
+    ...ASSET_DEFAULTS,
+    id,
+    coingeckoId: null,
+    priceProvider: 'yahoo',
+    providerAssetId: symbol,
+    nativeCurrency,
+    exchange,
+    symbol,
+    name,
+    category: 'EQUITY',
+    currentPriceUsd,
+  };
+}
+
 const initialAssets: Asset[] = [
   demoCrypto('btc', 'bitcoin', 'BTC', 'Bitcoin', 81250),
   demoCrypto('eth', 'ethereum', 'ETH', 'Ethereum', 4320),
@@ -81,13 +104,22 @@ const initialAssets: Asset[] = [
     category: 'CASH',
     currentPriceUsd: 0.74,
   },
+  demoEquity('voo', 'VOO', 'Vanguard S&P 500 ETF', 510.0, 'USD', 'NYSEARCA'),
+  demoEquity('aapl', 'AAPL', 'Apple Inc.', 218.0, 'USD', 'NASDAQ'),
+  demoEquity('d05-si', 'D05.SI', 'DBS Group Holdings', 22.94, 'SGD', 'SES'),
 ];
+
+function demoAsset(id: string): Asset {
+  const asset = initialAssets.find((item) => item.id === id);
+  if (!asset) throw new Error(`Missing demo asset: ${id}`);
+  return asset;
+}
 
 const initialPositions: Position[] = [
   {
     id: 'pos-btc',
     assetId: 'btc',
-    asset: initialAssets[0],
+    asset: demoAsset('btc'),
     quantity: 1.42,
     avgCostUsd: 52300,
     storageType: 'WALLET',
@@ -103,7 +135,7 @@ const initialPositions: Position[] = [
   {
     id: 'pos-eth',
     assetId: 'eth',
-    asset: initialAssets[1],
+    asset: demoAsset('eth'),
     quantity: 11.8,
     avgCostUsd: 2850,
     storageType: 'WALLET',
@@ -119,7 +151,7 @@ const initialPositions: Position[] = [
   {
     id: 'pos-sol',
     assetId: 'sol',
-    asset: initialAssets[2],
+    asset: demoAsset('sol'),
     quantity: 220,
     avgCostUsd: 132,
     storageType: 'CEX',
@@ -135,7 +167,7 @@ const initialPositions: Position[] = [
   {
     id: 'pos-usdc',
     assetId: 'usdc',
-    asset: initialAssets[3],
+    asset: demoAsset('usdc'),
     quantity: 24500,
     avgCostUsd: 1,
     storageType: 'CEX',
@@ -149,9 +181,73 @@ const initialPositions: Position[] = [
     updatedAt: NOW,
   },
   {
+    id: 'pos-cash-sgd',
+    assetId: 'cash-sgd',
+    asset: demoAsset('cash-sgd'),
+    quantity: 18000,
+    avgCostUsd: 0.735,
+    storageType: 'BANK',
+    storageLocation: 'DBS Multiplier',
+    notes: 'SGD cash buffer',
+    custodyOf: null,
+    marketValueUsd: 13320,
+    unrealizedPnL: 90,
+    unrealizedPnLPct: 0.7,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'pos-voo',
+    assetId: 'voo',
+    asset: demoAsset('voo'),
+    quantity: 85,
+    avgCostUsd: 455,
+    storageType: 'BROKERAGE',
+    storageLocation: 'Interactive Brokers',
+    notes: 'Core US equity beta',
+    custodyOf: null,
+    marketValueUsd: 43350,
+    unrealizedPnL: 4675,
+    unrealizedPnLPct: 12.1,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'pos-aapl',
+    assetId: 'aapl',
+    asset: demoAsset('aapl'),
+    quantity: 120,
+    avgCostUsd: 176,
+    storageType: 'BROKERAGE',
+    storageLocation: 'Tiger Brokers',
+    notes: 'Single-name equity',
+    custodyOf: null,
+    marketValueUsd: 26160,
+    unrealizedPnL: 5040,
+    unrealizedPnLPct: 23.9,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'pos-d05-si',
+    assetId: 'd05-si',
+    asset: demoAsset('d05-si'),
+    quantity: 800,
+    avgCostUsd: 19.2,
+    storageType: 'BROKERAGE',
+    storageLocation: 'FSMOne',
+    notes: 'SGX bank exposure',
+    custodyOf: null,
+    marketValueUsd: 18352,
+    unrealizedPnL: 2992,
+    unrealizedPnLPct: 19.5,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
     id: 'pos-custody-btc',
     assetId: 'btc',
-    asset: initialAssets[0],
+    asset: demoAsset('btc'),
     quantity: 0.23,
     avgCostUsd: 47800,
     storageType: 'WALLET',
@@ -456,7 +552,7 @@ const snapshotPositions: Record<string, SnapshotPosition[]> = {
       priceUsd: 80400,
       valueUsd: 114168,
       allocation: 54.3,
-      asset: initialAssets[0],
+      asset: demoAsset('btc'),
     },
     {
       id: 'sp-2',
@@ -466,7 +562,7 @@ const snapshotPositions: Record<string, SnapshotPosition[]> = {
       priceUsd: 4210,
       valueUsd: 49678,
       allocation: 23.6,
-      asset: initialAssets[1],
+      asset: demoAsset('eth'),
     },
     {
       id: 'sp-3',
@@ -476,7 +572,7 @@ const snapshotPositions: Record<string, SnapshotPosition[]> = {
       priceUsd: 1,
       valueUsd: 24500,
       allocation: 11.6,
-      asset: initialAssets[3],
+      asset: demoAsset('usdc'),
     },
   ],
   'snap-3': [
@@ -488,7 +584,7 @@ const snapshotPositions: Record<string, SnapshotPosition[]> = {
       priceUsd: 81250,
       valueUsd: 115375,
       allocation: 52.7,
-      asset: initialAssets[0],
+      asset: demoAsset('btc'),
     },
     {
       id: 'sp-5',
@@ -498,7 +594,7 @@ const snapshotPositions: Record<string, SnapshotPosition[]> = {
       priceUsd: 4320,
       valueUsd: 50976,
       allocation: 23.3,
-      asset: initialAssets[1],
+      asset: demoAsset('eth'),
     },
     {
       id: 'sp-6',
@@ -508,7 +604,7 @@ const snapshotPositions: Record<string, SnapshotPosition[]> = {
       priceUsd: 178,
       valueUsd: 39160,
       allocation: 17.9,
-      asset: initialAssets[2],
+      asset: demoAsset('sol'),
     },
   ],
 };
@@ -923,21 +1019,66 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
 
     if (category === 'EQUITY' || provider === 'yahoo') {
       const equities = [
-        { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', exchange: 'Singapore', nativeCurrency: 'SGD' },
-        { symbol: 'O39.SI', name: 'Oversea-Chinese Banking Corporation Ltd', exchange: 'Singapore', nativeCurrency: 'SGD' },
-        { symbol: 'U11.SI', name: 'United Overseas Bank Ltd', exchange: 'Singapore', nativeCurrency: 'SGD' },
-        { symbol: 'Z74.SI', name: 'Singapore Telecommunications Limited', exchange: 'Singapore', nativeCurrency: 'SGD' },
+        {
+          symbol: 'D05.SI',
+          name: 'DBS Group Holdings Ltd',
+          exchange: 'Singapore',
+          nativeCurrency: 'SGD',
+        },
+        {
+          symbol: 'O39.SI',
+          name: 'Oversea-Chinese Banking Corporation Ltd',
+          exchange: 'Singapore',
+          nativeCurrency: 'SGD',
+        },
+        {
+          symbol: 'U11.SI',
+          name: 'United Overseas Bank Ltd',
+          exchange: 'Singapore',
+          nativeCurrency: 'SGD',
+        },
+        {
+          symbol: 'Z74.SI',
+          name: 'Singapore Telecommunications Limited',
+          exchange: 'Singapore',
+          nativeCurrency: 'SGD',
+        },
         { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
         { symbol: 'NVDA', name: 'NVIDIA Corporation', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
         { symbol: 'TSLA', name: 'Tesla, Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
-        { symbol: 'MSFT', name: 'Microsoft Corporation', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        {
+          symbol: 'MSFT',
+          name: 'Microsoft Corporation',
+          exchange: 'NasdaqGS',
+          nativeCurrency: 'USD',
+        },
         { symbol: 'GOOGL', name: 'Alphabet Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
         { symbol: 'AMZN', name: 'Amazon.com, Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
-        { symbol: 'META', name: 'Meta Platforms, Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
+        {
+          symbol: 'META',
+          name: 'Meta Platforms, Inc.',
+          exchange: 'NasdaqGS',
+          nativeCurrency: 'USD',
+        },
         { symbol: 'GLXY', name: 'Galaxy Digital Inc.', exchange: 'NASDAQ', nativeCurrency: 'USD' },
-        { symbol: 'COIN', name: 'Coinbase Global, Inc.', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
-        { symbol: 'MSTR', name: 'MicroStrategy Incorporated', exchange: 'NasdaqGS', nativeCurrency: 'USD' },
-        { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust', exchange: 'NYSEArca', nativeCurrency: 'USD' },
+        {
+          symbol: 'COIN',
+          name: 'Coinbase Global, Inc.',
+          exchange: 'NasdaqGS',
+          nativeCurrency: 'USD',
+        },
+        {
+          symbol: 'MSTR',
+          name: 'MicroStrategy Incorporated',
+          exchange: 'NasdaqGS',
+          nativeCurrency: 'USD',
+        },
+        {
+          symbol: 'SPY',
+          name: 'SPDR S&P 500 ETF Trust',
+          exchange: 'NYSEArca',
+          nativeCurrency: 'USD',
+        },
         { symbol: 'QQQ', name: 'Invesco QQQ Trust', exchange: 'NasdaqGM', nativeCurrency: 'USD' },
       ]
         .filter((e) => !q || e.symbol.toLowerCase().includes(q) || e.name.toLowerCase().includes(q))
