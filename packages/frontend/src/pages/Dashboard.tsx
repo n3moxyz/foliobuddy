@@ -9,7 +9,7 @@ import {
 } from '@/hooks/usePortfolio';
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
-import { formatDateTime, isCryptoCategory } from '@/lib/utils';
+import { formatDateTime, isMarketExposureCategory } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -84,12 +84,12 @@ export default function Dashboard() {
 
   const exposurePct = useMemo(() => {
     if (!positions || totalValueUsd <= 0) return 0;
-    const ownedCryptoTotal = positions
+    const ownedMarketExposureTotal = positions
       .filter((position) => !position.custodyOf)
-      .filter((position) => isCryptoCategory(position.asset.category))
+      .filter((position) => isMarketExposureCategory(position.asset.category))
       .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
 
-    return ((ownedCryptoTotal + perpExposure) / totalValueUsd) * 100;
+    return ((ownedMarketExposureTotal + perpExposure) / totalValueUsd) * 100;
   }, [positions, totalValueUsd, perpExposure]);
 
   const handleInvestorToggle = (investorId: string) => {

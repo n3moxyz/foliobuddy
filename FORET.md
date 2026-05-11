@@ -595,7 +595,7 @@ components/ui/
 
 Each card is self-contained. Data flows down, events bubble up.
 
-Recent refinement: the stat strip was merged into NetWorthCard as an equal-width 6-column grid (`grid-cols-6 divide-x`) with HelpTooltips on every label. `Exposure` and `Positions` link to Portfolio, `Trades` links to Trades. The card shows investor context in its title (`Net Worth (Nemo)`). PerformersCard went borderless (no Card wrapper) — plain list with divide-y, subtle rank numbers. Allocation chart tooltips were replaced with hover info inline in the card header row (Recharts Tooltip caused overlap). Benchmark chart Portfolio legend color was fixed to match the actual line (#64748B slate, not indigo). All pages now use staggered fade-in-up entrance animations (60ms intervals, prefers-reduced-motion respected) and consistent header sizing (`text-2xl font-bold`, `size="sm"` buttons). The overall aesthetic follows Linear/Raycast (calm, precise) rather than generic SaaS dashboard patterns.
+Recent refinement: the stat strip was merged into NetWorthCard as an equal-width 6-column grid (`grid-cols-6 divide-x`) with HelpTooltips on every label. `Exposure` and `Positions` link to Portfolio, `Trades` links to Trades. Exposure now means the whole market-risk side of the portfolio — crypto, equities, unit trusts, alternatives, plus local perp exposure — while deliberately excluding stablecoins, cash, and custody. The card shows investor context in its title (`Net Worth (Nemo)`). PerformersCard went borderless (no Card wrapper) — plain list with divide-y, subtle rank numbers. Allocation chart tooltips were replaced with hover info inline in the card header row (Recharts Tooltip caused overlap). Benchmark chart Portfolio legend color was fixed to match the actual line (#64748B slate, not indigo). All pages now use staggered fade-in-up entrance animations (60ms intervals, prefers-reduced-motion respected) and consistent header sizing (`text-2xl font-bold`, `size="sm"` buttons). The overall aesthetic follows Linear/Raycast (calm, precise) rather than generic SaaS dashboard patterns.
 
 Recent Trades refinement: the original Trades page is now the default Review lens — collapsed analytics card, collapsed P&L by ticker card, then the familiar All/Open/Closed table. Two extra lenses sit beside it instead of replacing it: Ticker Dossier opens via `?ticker=SOL` and shows a symbol-specific review plus focused tape; Monthly Postmortem lives at `?view=monthly`, with month chips, repeatable-edge tags, loss review, and an open-trade watchlist. The trick was not to bulldoze a working journal, but to add side rooms where deeper questions can live.
 
@@ -606,6 +606,12 @@ Shell refinement: the left sidebar now has a Codex-style collapsible desktop rai
 ---
 
 ## Lessons Learned the Hard Way
+
+### Exposure Is Not Just Crypto
+
+**The bug:** The Exposure stat kept its old "volatile crypto only" calculation after FolioBuddy grew into equities and unit trusts. That made the number look oddly underfed once non-crypto market assets became a real part of the portfolio.
+
+**The fix:** Centralize the frontend meaning in `isMarketExposureCategory()`: include every owned non-stable/non-cash category, add local perp exposure, and keep custody out. Dashboard and Portfolio now read from the same idea instead of each hand-rolling the math.
 
 ### Lesson 1: Prisma Cascading Deletes
 
@@ -1859,6 +1865,7 @@ Features I want to add:
 
 Recently completed:
 
+- [x] Exposure calculation widened from crypto-only to total market-risk exposure: all owned non-stable/non-cash assets plus local perps, excluding custody
 - [x] Local-only `/dev/demo` route for authenticated UI testing with mocked API responses; lazy-loaded in dev so mock data does not ship to production bundles
 - [x] Stateful demo-mode portfolio sandbox: `/dev/demo/portfolio` now supports in-browser add/edit/delete/import testing and resets on refresh
 - [x] Position edit UX overhaul: `Add/Reduce Position` inside the existing pencil flow, with auto cost-basis handling and Old/New comparison table

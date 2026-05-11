@@ -122,7 +122,7 @@ export function NetWorthCard({
         <Link to="/portfolio" className="px-4 hover:text-primary transition-colors">
           <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">Exposure</p>
-            <HelpTooltip content="Percentage of portfolio in non-stablecoin crypto (including perps)" />
+            <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash, including perps" />
           </div>
           <p className="font-medium tabular-nums">
             {exposurePct !== undefined ? `${exposurePct.toFixed(1)}%` : '—'}

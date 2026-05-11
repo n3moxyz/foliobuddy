@@ -299,11 +299,11 @@ Keep lens UI in `components/trades/TradeLensViews.tsx` and pure aggregation in `
 
 ### Portfolio Hero Summary
 
-Borderless hero section (matching Dashboard's Net Worth pattern). Total Value at `text-3xl sm:text-4xl font-bold tracking-tight tabular-nums` with inline YTD P&L trend arrow. Secondary stats in `divide-x` grid (YTD Start, Exposure, Positions, YTD P&L) — 4 columns on desktop, 2-column grid on mobile. All labels have `HelpTooltip`. Uses `pb-6 mb-2 border-b` wrapper.
+Borderless hero section (matching Dashboard's Net Worth pattern). Total Value at `text-3xl sm:text-4xl font-bold tracking-tight tabular-nums` with inline YTD P&L trend arrow. Secondary stats in `divide-x` grid (YTD Start, Exposure, Positions, YTD P&L) — 4 columns on desktop, 2-column grid on mobile. All labels have `HelpTooltip`. Exposure means owned market-risk value divided by total portfolio value: all non-stable/non-cash assets (crypto, equities, unit trusts, alternatives) plus local perp exposure; custody remains excluded. Uses `pb-6 mb-2 border-b` wrapper.
 
 ### Portfolio Section Headers
 
-Positions are grouped two-level: **Crypto/Stables** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, green for Stables, purple for Custody).
+Positions are grouped two-level: **Crypto/Equities/Stables** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Brokerage/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, amber for Equities, green for Stables, purple for Custody).
 
 ### Custody Positions ("Held for Others")
 
@@ -362,7 +362,7 @@ The dashboard investor filter should default to the primary owner investor (`isO
 
 ### Net Worth Card
 
-Borderless hero section (no Card wrapper) with merged stat metrics. Shows investor label in title: `Net Worth (Nemo)`. Net worth at `text-4xl sm:text-5xl font-bold tracking-tight`. YTD trend arrow inline. Desktop: `grid grid-cols-6 divide-x divide-border` for equal-width metric sections (YTD P&L, YTD Start, vs 30D ago, Exposure, Positions, Trades). Mobile: `grid grid-cols-2 gap-4`. All labels have `HelpTooltip`. Exposure/Positions link to `/portfolio`, Trades links to `/trades`. Alternate currency in small text below. Key numeric values (net worth, P&L, cost basis, alt currency) use `useAnimatedNumber` hook for smooth counting transitions on value changes.
+Borderless hero section (no Card wrapper) with merged stat metrics. Shows investor label in title: `Net Worth (Nemo)`. Net worth at `text-4xl sm:text-5xl font-bold tracking-tight`. YTD trend arrow inline. Desktop: `grid grid-cols-6 divide-x divide-border` for equal-width metric sections (YTD P&L, YTD Start, vs 30D ago, Exposure, Positions, Trades). Mobile: `grid grid-cols-2 gap-4`. All labels have `HelpTooltip`. Exposure uses the same market-risk formula as Portfolio: all owned non-stable/non-cash assets plus local perp exposure over total portfolio value. Exposure/Positions link to `/portfolio`, Trades links to `/trades`. Alternate currency in small text below. Key numeric values (net worth, P&L, cost basis, alt currency) use `useAnimatedNumber` hook for smooth counting transitions on value changes.
 
 ### Performers Card
 

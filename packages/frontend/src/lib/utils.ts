@@ -175,6 +175,11 @@ export function isCryptoCategory(category: string | undefined | null): boolean {
   return categoryGroup(category) === 'crypto';
 }
 
+/** True for market-risk assets — excludes stablecoins and cash equivalents */
+export function isMarketExposureCategory(category: string | undefined | null): boolean {
+  return categoryGroup(category) !== 'stables';
+}
+
 export type PriceAgeSeverity = 'fresh' | 'aging' | 'stale' | 'unknown';
 
 export interface PriceAgeInfo {

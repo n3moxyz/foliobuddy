@@ -1,7 +1,13 @@
 import { useState, useMemo } from 'react';
 import { usePositions, usePortfolioSummary, useDeleteAllPositions } from '@/hooks/usePortfolio';
 import { useCurrencyStore } from '@/stores/currencyStore';
-import { formatCurrency, formatPercent, getPnLColorClass, isStablecoinCategory } from '@/lib/utils';
+import {
+  formatCurrency,
+  formatPercent,
+  getPnLColorClass,
+  isMarketExposureCategory,
+  isStablecoinCategory,
+} from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PositionTable } from '@/components/portfolio/PositionTable';
 import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboard';
@@ -184,7 +190,11 @@ export default function Portfolio() {
   }, [custodyPositions]);
 
   // Derived total for exposure calc in summary cards
-  const cryptoTotal = sections.find((s) => s.id === 'crypto')?.total ?? 0;
+  const marketExposureTotal = useMemo(() => {
+    return ownedPositions
+      .filter((position) => isMarketExposureCategory(position.asset.category))
+      .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
+  }, [ownedPositions]);
 
   return (
     <div className="space-y-6">
@@ -303,11 +313,11 @@ export default function Portfolio() {
             <div className="px-4">
               <div className="flex items-center gap-1">
                 <p className="text-muted-foreground text-sm">Exposure</p>
-                <HelpTooltip content="Percentage of portfolio in volatile crypto (excluding stablecoins)" />
+                <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
               </div>
               <p className="font-medium tabular-nums">
                 {summary.totalValueUsd > 0
-                  ? `${(((cryptoTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
+                  ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
                   : '0%'}
               </p>
             </div>
@@ -343,11 +353,11 @@ export default function Portfolio() {
             <div>
               <div className="flex items-center gap-1">
                 <p className="text-muted-foreground text-sm">Exposure</p>
-                <HelpTooltip content="Percentage of portfolio in volatile crypto (excluding stablecoins)" />
+                <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
               </div>
               <p className="font-medium tabular-nums">
                 {summary.totalValueUsd > 0
-                  ? `${(((cryptoTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
+                  ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
                   : '0%'}
               </p>
             </div>
