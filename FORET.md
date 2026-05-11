@@ -597,6 +597,8 @@ Each card is self-contained. Data flows down, events bubble up.
 
 Recent refinement: the stat strip was merged into NetWorthCard as an equal-width 6-column grid (`grid-cols-6 divide-x`) with HelpTooltips on every label. `Exposure` and `Positions` link to Portfolio, `Trades` links to Trades. The card shows investor context in its title (`Net Worth (Nemo)`). PerformersCard went borderless (no Card wrapper) — plain list with divide-y, subtle rank numbers. Allocation chart tooltips were replaced with hover info inline in the card header row (Recharts Tooltip caused overlap). Benchmark chart Portfolio legend color was fixed to match the actual line (#64748B slate, not indigo). All pages now use staggered fade-in-up entrance animations (60ms intervals, prefers-reduced-motion respected) and consistent header sizing (`text-2xl font-bold`, `size="sm"` buttons). The overall aesthetic follows Linear/Raycast (calm, precise) rather than generic SaaS dashboard patterns.
 
+Recent Trades refinement: the original Trades page is now the default Review lens — collapsed analytics card, collapsed P&L by ticker card, then the familiar All/Open/Closed table. Two extra lenses sit beside it instead of replacing it: Ticker Dossier opens via `?ticker=SOL` and shows a symbol-specific review plus focused tape; Monthly Postmortem lives at `?view=monthly`, with month chips, repeatable-edge tags, loss review, and an open-trade watchlist. The trick was not to bulldoze a working journal, but to add side rooms where deeper questions can live.
+
 ---
 
 ## Lessons Learned the Hard Way
@@ -1085,6 +1087,12 @@ Additionally, timestamp matching used a hardcoded 24-hour threshold, but CoinGec
 **The root cause:** Using `as const` on color arrays makes them `readonly` tuples, but Recharts and utility functions expect mutable `string[]`. The fix: type the exports as `string[]` instead of using `as const` for arrays (keep `as const` only for objects like `BRAND_COLORS`).
 
 **The pattern:** When centralizing constants that will be passed to third-party libraries, use explicit type annotations instead of `as const` inference. SVG/Recharts attributes also require JSX curly braces for variable references (`stopColor={COLOR}` not `stopColor=COLOR`) — easy to miss during search-and-replace.
+
+### Lesson 24: Mock Analytics Drift From Visible Rows
+
+**The bug:** The demo trade rows had a huge SOL loss, but the mocked `TradeAnalytics.worstTrade` still pointed at a much smaller older loss. The page looked like it was lying even though the table data was right.
+
+**The fix:** Keep demo analytics fixtures synchronized with the rows they summarize, especially when `TradeStatsCard` renders backend/mock `bestTrade` and `worstTrade` directly. If a callout can be derived cheaply from visible rows, prefer deriving it; otherwise treat mock analytics like a contract that needs updating whenever seed trades change.
 
 ---
 

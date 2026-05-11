@@ -282,13 +282,15 @@ All pages follow iOS HIG-inspired responsive patterns:
 
 Use `formatCurrency` (with explicit decimals or compact mode) for totals, sizes, and P&L — those don't need magnitude-aware decimals.
 
-### Trade Analytics Card
+### Trades Review Lenses
 
-`TradeStatsCard` displays analytics with derived metrics (expectancy, risk:reward ratio) calculated client-side from backend data. Uses `CollapsibleCard` — collapsed by default on the Trades page to save space. When collapsed, `headerRight` shows a compact summary: Total P&L (colored), Win Rate %, and trade count. Metric labels use `MetricLabel` component with shadcn `Tooltip` for hover definitions — formulas use `×`, `÷`, `−` symbols where math is clearer than words. Trade form defaults entry date to 5 days ago and exit date to today (optimized for logging closed trades).
+`Trades.tsx` is organized as one page with three lenses above the shared Trade Tape table:
 
-### P&L by Ticker Card
+- **Review** (default `/trades`) preserves the original Trades page: collapsed `TradeStatsCard`, collapsed `TickerPnLCard`, then the All/Open/Closed table.
+- **Ticker Dossier** (`?ticker=SOL`) opens when a ticker is selected from the Ticker tab or P&L by Ticker card. It shows ticker-level P&L, win rate, average hold, largest win/loss, tags, recent closed trades, and a focused All/Open/Closed table. The ticker chip clears the query param.
+- **Monthly Postmortem** (`?view=monthly`) shows selectable month summaries, repeatable-edge tags, loss review, and open-trade watchlist.
 
-`TickerPnLCard` (`components/trades/TickerPnLCard.tsx`) shows aggregated P&L per ticker — one row per asset with columns: Ticker, Trades, Win Rate, Total P&L. Only includes closed trades (those with `realizedPnL`). Default sort: P&L descending. Uses `CollapsibleCard` — collapsed by default. Clicking a ticker row filters the main trade table below; a filter chip appears next to the tabs to clear the filter.
+The page fetches all trades once via `useTrades()` and filters table status locally so the lens summaries do not disappear when the user switches All/Open/Closed tabs. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with the seeded trade rows because `TradeStatsCard` still renders those backend/mock callouts. Trade form defaults entry date to 5 days ago and exit date to today (optimized for logging closed trades).
 
 ### Portfolio Hero Summary
 

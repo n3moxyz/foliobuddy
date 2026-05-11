@@ -475,18 +475,18 @@ const tradeAnalytics: TradeAnalytics = {
     short: { count: 1, winRate: 0, pnl: -765 },
   },
   bestTrade: {
-    id: 'trade-9',
+    id: 'trade-5',
     asset: 'WLD',
     pnl: 18849,
     pnlPct: 8.97,
     date: '2026-03-27T00:00:00.000Z',
   },
   worstTrade: {
-    id: 'trade-3',
+    id: 'trade-9',
     asset: 'SOL',
-    pnl: -765,
-    pnlPct: -4.7,
-    date: '2026-03-02T00:00:00.000Z',
+    pnl: -68003,
+    pnlPct: -9.96,
+    date: '2026-02-01T00:00:00.000Z',
   },
   monthlyBreakdown: [
     { month: 'Jan 2026', pnl: 0, count: 0, winRate: 0 },
