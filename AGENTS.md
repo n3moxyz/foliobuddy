@@ -403,7 +403,7 @@ All pages MUST use the same header pattern for visual consistency when switching
 - **Chart colors**: Centralized in `src/lib/chartColors.ts` — `BRAND_COLORS` (BTC/ETH), `PORTFOLIO_LINE_COLOR`, `ASSET_COLORS`, `STORAGE_COLORS`, `STABLES_COLORS`. Always use these constants instead of inline hex in chart components
 - **Skeleton loading**: CSS shimmer animation via `.skeleton` class — used on all pages and chart components
 - **HelpTooltip**: `?` icon tooltips on domain-specific finance terms (YTD Start, Exposure, CEX, Onchain, etc.). Controlled open state with tap-to-toggle for touch devices. `stopPropagation` on pointer events prevents CollapsibleCard toggle when tapping help icons.
-- **Sidebar**: Linear-style active state — `bg-primary/10 text-primary font-semibold border-r-2 border-primary`
+- **Sidebar**: Linear-style active state — `bg-primary/10 text-primary font-semibold border-r-2 border-primary`. Desktop sidebar can collapse to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed` in localStorage); mobile remains a full-width drawer with labels.
 - **Scrollbars**: Thin 6px with transparent track, rounded thumb
 - **Empty states**: Icon + heading + descriptive text + action CTA (Portfolio, Trades, History)
 - **Design context**: `.impeccable.md` at project root — brand personality, aesthetic direction, design principles

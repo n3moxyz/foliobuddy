@@ -601,6 +601,8 @@ Recent Trades refinement: the original Trades page is now the default Review len
 
 Follow-up quality sweep: the trade lens code got split along a cleaner fault line. `Trades.tsx` now owns routing, query params, dialogs, and the shared tape. `TradeLensViews.tsx` owns the ticker/monthly UI. `tradeLensModels.ts` owns the pure aggregation math. That split made lint and React Doctor happy again, but more importantly it stops the journal page from turning into a filing cabinet with a router bolted on the front.
 
+Shell refinement: the left sidebar now has a Codex-style collapsible desktop rail. Expanded mode stays at 256px with labels and shortcuts; collapsed mode persists as a 72px icon rail with right-side tooltips. Mobile deliberately ignores the rail preference and keeps the full drawer, because a tiny icon rail on a phone is clever in exactly the wrong way.
+
 ---
 
 ## Lessons Learned the Hard Way
@@ -1488,6 +1490,12 @@ Recent examples:
 - `button.tsx` keeps `buttonVariants` private because nothing outside the module needs that runtime export.
 
 The payoff is small but real: Fast Refresh warnings stay meaningful, lint output stays quiet, and files tell you what kind of thing they are before you even open them.
+
+### 7. Desktop Preferences Should Not Leak Into Mobile
+
+The collapsible sidebar is a useful desktop preference, so it persists in localStorage. But mobile navigation has a different job: quick orientation and large touch targets. The shell keeps those modes separate with responsive classes — the persisted desktop rail only applies at `lg`, while the mobile drawer stays 256px wide with labels.
+
+The pattern: persist preference, not layout dogma. A good setting remembers the user's intent, then adapts it to the device instead of blindly replaying pixels.
 
 ---
 

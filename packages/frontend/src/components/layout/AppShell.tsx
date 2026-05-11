@@ -8,6 +8,8 @@ import {
   Settings,
   Menu,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   Download,
   Sun,
@@ -26,6 +28,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { api } from '@/lib/api';
@@ -53,9 +56,17 @@ const themeIcons: Record<Theme, typeof Sun> = {
   dark: Moon,
 };
 
+const SIDEBAR_COLLAPSED_KEY = 'foliobuddy-sidebar-collapsed';
+
+function getInitialSidebarCollapsed() {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
+}
+
 export function AppShell({ children, basePath = '', demoMode = false }: AppShellProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
   const [refreshing, setRefreshing] = useState(false);
   const { currency, toggleCurrency } = useCurrencyStore();
   const { theme, cycleTheme } = useThemeStore();
@@ -63,6 +74,15 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
   const { status: wsStatus, lastUpdate } = useWebSocket();
   const ThemeIcon = themeIcons[theme];
   const buildPath = (href: string) => `${basePath}${href === '/' ? '' : href}` || '/';
+  const SidebarToggleIcon = sidebarCollapsed ? PanelLeftOpen : PanelLeftClose;
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      return next;
+    });
+  };
 
   const handleRefreshPrices = async () => {
     setRefreshing(true);
@@ -95,12 +115,25 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
       <aside
         aria-label="Main navigation"
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-card border-r transition-transform lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-card border-r transition-[transform,width] duration-200 ease-out lg:translate-x-0',
+          sidebarCollapsed ? 'lg:w-[4.5rem]' : 'lg:w-64',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex h-16 items-center justify-between px-6 border-b">
-          <Link to={buildPath('/')} className="flex items-center gap-2">
+        <div
+          className={cn(
+            'flex h-16 items-center justify-between px-6 border-b',
+            sidebarCollapsed && 'lg:justify-center lg:px-0'
+          )}
+        >
+          <Link
+            to={buildPath('/')}
+            className={cn(
+              'flex min-w-0 items-center gap-2',
+              sidebarCollapsed && 'lg:justify-center'
+            )}
+            aria-label="FolioBuddy dashboard"
+          >
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <svg
                 aria-hidden="true"
@@ -116,7 +149,9 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
                 <path d="M13 5h4v4" />
               </svg>
             </div>
-            <span className="font-semibold text-lg">FolioBuddy</span>
+            <span className={cn('font-semibold text-lg', sidebarCollapsed && 'lg:hidden')}>
+              FolioBuddy
+            </span>
           </Link>
           <button
             className="lg:hidden"
@@ -127,41 +162,67 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
           </button>
         </div>
 
-        <nav aria-label="Main" className="flex-1 p-4 space-y-1">
-          {navigation.map((item) => {
-            const targetHref = buildPath(item.href);
-            const isActive = location.pathname === targetHref;
-            return (
-              <Link
-                key={item.name}
-                to={targetHref}
-                className={cn(
-                  'flex items-center justify-between px-3 py-3 rounded-md text-sm transition-colors touch-manipulation',
-                  isActive
-                    ? 'bg-primary/10 text-primary font-semibold border-r-2 border-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground font-medium'
-                )}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <span className="flex items-center gap-3">
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                </span>
-                <kbd
+        <TooltipProvider delayDuration={150}>
+          <nav
+            aria-label="Main"
+            className={cn('flex-1 p-4 space-y-1', sidebarCollapsed && 'lg:px-3')}
+          >
+            {navigation.map((item) => {
+              const targetHref = buildPath(item.href);
+              const isActive = location.pathname === targetHref;
+              const link = (
+                <Link
+                  key={item.name}
+                  to={targetHref}
                   className={cn(
-                    'hidden lg:inline-block text-xs px-1.5 py-0.5 rounded',
-                    isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
+                    'flex items-center justify-between px-3 py-3 rounded-md text-sm transition-colors touch-manipulation',
+                    sidebarCollapsed && 'lg:h-11 lg:justify-center lg:px-0',
+                    isActive
+                      ? 'bg-primary/10 text-primary font-semibold border-r-2 border-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground font-medium'
                   )}
+                  onClick={() => setSidebarOpen(false)}
+                  aria-label={sidebarCollapsed ? item.name : undefined}
                 >
-                  {item.shortcut}
-                </kbd>
-              </Link>
-            );
-          })}
-        </nav>
+                  <span className="flex min-w-0 items-center gap-3">
+                    <item.icon className="h-5 w-5 shrink-0" />
+                    <span className={cn('truncate', sidebarCollapsed && 'lg:hidden')}>
+                      {item.name}
+                    </span>
+                  </span>
+                  <kbd
+                    className={cn(
+                      'hidden lg:inline-block text-xs px-1.5 py-0.5 rounded',
+                      sidebarCollapsed && 'lg:hidden',
+                      isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
+                    )}
+                  >
+                    {item.shortcut}
+                  </kbd>
+                </Link>
+              );
+
+              return sidebarCollapsed ? (
+                <Tooltip key={item.name}>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right" className="hidden lg:block">
+                    {item.name}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                link
+              );
+            })}
+          </nav>
+        </TooltipProvider>
       </aside>
 
-      <div className="lg:pl-64">
+      <div
+        className={cn(
+          'transition-[padding] duration-200 ease-out',
+          sidebarCollapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64'
+        )}
+      >
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur px-3 sm:h-16 sm:gap-4 sm:px-4 lg:px-6">
           <button
             className="lg:hidden p-2 -ml-2 touch-manipulation"
@@ -170,6 +231,16 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
           >
             <Menu className="h-5 w-5" />
           </button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebarCollapsed}
+            aria-label={sidebarCollapsed ? 'Expand navigation panel' : 'Collapse navigation panel'}
+            title={sidebarCollapsed ? 'Expand navigation panel' : 'Collapse navigation panel'}
+            className="hidden h-9 w-9 -ml-2 touch-manipulation lg:inline-flex"
+          >
+            <SidebarToggleIcon className="h-4 w-4" />
+          </Button>
 
           <div className="flex-1" />
 
