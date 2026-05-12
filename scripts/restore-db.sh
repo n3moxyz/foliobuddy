@@ -1,19 +1,19 @@
 #!/bin/bash
-# Restore database from a DigitalOcean Spaces backup
+# Restore database from an S3-compatible object storage backup
 # Usage: ./scripts/restore-db.sh [backup-path]
 #
 # Examples:
 #   ./scripts/restore-db.sh                                              # List available backups
 #   ./scripts/restore-db.sh daily/example_portfolio_db_daily_20260227_020000.sql.gz  # Restore specific backup
 #
-# Run on the DO droplet. Uses docker exec for psql.
+# Run on the private database host. Uses docker exec for psql.
 
 set -euo pipefail
 
-DB_CONTAINER="container-placeholder"
-DB_NAME="example_portfolio_db"
-DB_USER="pa_user"
-SPACES_BUCKET="s3://example-backup-bucket"
+DB_CONTAINER="${DB_CONTAINER:?Set DB_CONTAINER to the Postgres container name}"
+DB_NAME="${DB_NAME:?Set DB_NAME to the database name}"
+DB_USER="${DB_USER:?Set DB_USER to the database user}"
+SPACES_BUCKET="${SPACES_BUCKET:?Set SPACES_BUCKET to the private backup bucket URI}"
 TMP_DIR="/tmp/db-backups"
 
 mkdir -p "$TMP_DIR"

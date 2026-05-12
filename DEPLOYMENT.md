@@ -1,15 +1,15 @@
 # Deployment
 
-> **Rule**: When production env vars change, update this file in the same commit. Drift between what's documented here and what's in the Vercel/Coolify dashboards is how prod breaks.
+> **Public repo rule**: This file documents deployment shape and required variable names only. Real host IPs, dashboard URLs, backup bucket names, project IDs, and secret values belong in private ops notes or a password manager.
 
 ## Hosts
 
 | Component | Host | URL |
 |---|---|---|
-| Frontend | Vercel (`foliobuddy` project, `n3mos-projects` team) | https://foliobuddy.xyz |
-| Backend  | Coolify on DigitalOcean | https://api.foliobuddy.xyz |
-| Database | Self-hosted Postgres 17 on DO via Coolify | `203.0.113.10:5432` |
-| DB backups | DO Spaces (`example-backup-bucket`) | Daily / weekly / monthly |
+| Frontend | Static app host | https://foliobuddy.xyz |
+| Backend  | Node API host | https://api.foliobuddy.xyz |
+| Database | PostgreSQL | Private network |
+| DB backups | Private object storage | Daily / weekly / monthly |
 
 Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `main` (touching `packages/backend/**`). Frontend via Vercel's GitHub integration on every push.
 
@@ -21,15 +21,15 @@ Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `mai
 |---|---|---|
 | `VITE_API_URL` | `/api/v1` | MUST include `/v1`. Rewrite in `vercel.json` forwards `/api/*` → `api.foliobuddy.xyz/api/*`. |
 | `VITE_WS_BACKEND_URL` | `https://api.foliobuddy.xyz` | Direct — Vercel doesn't proxy WebSockets. |
-| `VITE_CLERK_PUBLISHABLE_KEY` | `pk_live_...` | Use live keys, not `pk_test_...`. Must match backend's `CLERK_SECRET_KEY` instance. |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Set privately | Use the publishable key for the same Clerk instance as the backend secret key. |
 | `VITE_SENTRY_DSN` | (optional) | Leave unset to disable. |
 
-### Coolify (backend)
+### Backend host
 
 | Name | Value | Notes |
 |---|---|---|
-| `DATABASE_URL` | `postgresql://...` | Prod DB. |
-| `CLERK_SECRET_KEY` | `sk_live_...` | Must match frontend's publishable key instance. |
+| `DATABASE_URL` | Set privately | Production PostgreSQL connection string. |
+| `CLERK_SECRET_KEY` | Set privately | Must match frontend's publishable key instance. |
 | `ALLOWED_ORIGINS` | `https://foliobuddy.xyz,http://localhost:4000` | Exact origin matching — no wildcards. |
 | `RATE_LIMIT_MAX` | (unset → 200) | Override only for load testing. |
 | `SENTRY_DSN` | (optional) | |
@@ -52,14 +52,14 @@ curl https://foliobuddy.xyz/api/v1/health/db
 #    - Dashboard renders data (not "No data for YTD period")
 ```
 
-If (2) returns 404, `VITE_API_URL` in Vercel is stale — run `vercel env ls production` to inspect.
+If (2) returns 404, check the frontend host's `VITE_API_URL` value and redeploy after changing it.
 
 ## Env var change workflow
 
-Drift between dashboard env vars and what the code expects caused an outage on 2026-04-19. To change a prod env var:
+Drift between host env vars and what the code expects caused an outage on 2026-04-19. To change a prod env var:
 
-1. Update `DEPLOYMENT.md` (this file) first, in a commit.
-2. Update the Vercel / Coolify dashboard to match.
+1. Update this file if the required variable name or expected shape changed.
+2. Update the deployment provider dashboard to match.
 3. Redeploy (`vercel deploy --prod` or push to `main`).
 4. Run the smoke check above.
 

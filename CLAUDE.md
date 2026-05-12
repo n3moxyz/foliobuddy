@@ -30,7 +30,7 @@
 
 - **Runtime**: Node.js + TypeScript (ES2022 modules)
 - **Framework**: Express.js 4.18
-- **Database**: PostgreSQL (prod on DigitalOcean, local via Docker)
+- **Database**: PostgreSQL (private production host, local via Docker)
 - **ORM**: Prisma 5.10
 - **Auth**: Clerk
 - **Scheduling**: node-cron
@@ -156,11 +156,11 @@ npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none
 ## Architecture
 
 ```
-Vercel (Frontend: React + Vite)
+Static host (Frontend: React + Vite)
     ↓ HTTP + Clerk JWT
-Coolify/DigitalOcean (Backend: Express.js)
+Node host (Backend: Express.js)
     ↓ Prisma ORM
-DigitalOcean/Coolify (Database: PostgreSQL 17)
+PostgreSQL 17 (private network)
 
 Background Jobs (node-cron):
 ├── Price refresh (every minute)
@@ -414,7 +414,7 @@ All pages MUST use the same header pattern for visual consistency when switching
 
 ```
 DATABASE_URL=              # Local: postgresql://dev:dev@localhost:5433/example_portfolio_db
-PRODUCTION_DATABASE_URL=   # Production DB (used by npm run db:sync)
+PRODUCTION_DATABASE_URL=   # Optional private DB mirror source; never commit a real value
 PORT=4001                  # Backend port (DO NOT use 3001 — that's reserved for other projects)
 CLERK_SECRET_KEY=          # Clerk backend key
 ALLOWED_ORIGINS=http://localhost:4000
@@ -432,13 +432,7 @@ VITE_CLERK_PUBLISHABLE_KEY=              # Clerk frontend key
 
 ### Frontend-Only Development (No Docker)
 
-For testing frontend changes without running Docker or the local backend, point `VITE_API_URL` at the production Coolify backend:
-
-```
-VITE_API_URL=https://api.foliobuddy.xyz/api/v1
-```
-
-`http://localhost:4000` is already in Coolify's `ALLOWED_ORIGINS`, so CORS works. Remember to switch back to `http://localhost:4001/api/v1` when doing backend work.
+For layout and interaction work without running Docker or a backend, use the dev demo route below. If you need to point `VITE_API_URL` at a live backend, use one you control and keep any production-origin allowlist notes in private ops docs.
 
 ### Local Authenticated UI Testing
 
@@ -451,13 +445,13 @@ For frontend-only layout verification without real auth, use the dev demo route 
 
 ## Deployment
 
-- **Backend**: Coolify on DigitalOcean — `https://api.foliobuddy.xyz` (HTTPS via Let's Encrypt/Traefik)
-- **Frontend**: Vercel — `https://foliobuddy.xyz` (rewrites API calls to backend)
-- **Database**: Self-hosted PostgreSQL on DigitalOcean via Coolify (203.0.113.10:5432)
+- **Backend**: Node API host — `https://api.foliobuddy.xyz`
+- **Frontend**: Static app host — `https://foliobuddy.xyz` (rewrites API calls to backend)
+- **Database**: PostgreSQL on a private network
 - **Auto-deploy**: Backend deploys via GitHub Actions on push to main (backend files). Frontend auto-deploys via Vercel.
-- **DB Backups**: Automated daily/weekly/monthly to DigitalOcean Spaces (`example-backup-bucket`). Retention: 7 daily, 4 weekly, 12 monthly.
+- **DB Backups**: Automated daily/weekly/monthly to private object storage.
 - **Uptime monitoring**: `.github/workflows/uptime.yml` runs every 10 min against `https://foliobuddy.xyz/api/v1/health/db`. Fails the job on non-200 and GitHub emails the repo owner — no third-party monitoring service.
-- **Source of truth for prod env vars**: `DEPLOYMENT.md` at repo root. Update it in the _same commit_ as any Vercel/Coolify dashboard change; drift between file and dashboard is how prod breaks.
+- **Public deployment docs**: `DEPLOYMENT.md` lists required variable names and deployment shape. Keep real host details, dashboard URLs, project IDs, and secret values in private ops notes.
 - **Env var writes**: Always pipe values through `printf` (not `echo`) when running `vercel env add` — `echo` appends `\n` and the stored newline breaks URL construction while still being truthy enough to pass `if (value)` guards.
 
 ### Copy/Paste JSON Import Pattern
@@ -484,7 +478,7 @@ All data tables (Portfolio, Trades, History) follow the same copy/import pattern
 
 **One-time setup:**
 
-1. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env` (get from Coolify dashboard)
+1. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env` from private ops notes
 2. Verify `DATABASE_URL` in `.env` points to `postgresql://dev:dev@localhost:5433/example_portfolio_db`
 
 **Daily workflow:**
@@ -503,7 +497,7 @@ npm run dev            # Start dev servers
 - **Logo**: Growth-chart SVG icon (trending line with arrow). Favicon at `public/logo.svg` (indigo→purple gradient). Sidebar icon uses inline SVG with `bg-primary`/`text-primary-foreground` for theme adaptivity.
 - **Package scope**: `@foliobuddy/*` (root: `foliobuddy`)
 - **GitHub repo**: `n3moxyz/foliobuddy` (renamed from `PA-portfolio-dash`)
-- **Infrastructure names unchanged**: database `example_portfolio_db`, DO Spaces bucket `example-backup-bucket` — renaming these would require migration
+- **Infrastructure names**: local database name is `example_portfolio_db`; production storage/bucket names live in private ops notes.
 
 ### Clickable Snapshot Rows
 

@@ -1,22 +1,22 @@
 #!/bin/bash
-# Automated database backup to DigitalOcean Spaces
+# Automated database backup to S3-compatible object storage
 # Usage: ./scripts/backup-db.sh [daily|weekly|monthly]
 #
-# Run on the DO droplet (not locally). Uses docker exec so pg tools
-# don't need to be installed on the host.
+# Run on the private database host (not locally). Uses docker exec so pg tools
+# do not need to be installed on the host.
 #
 # Requires:
-#   - s3cmd configured on the host (/root/.s3cfg)
+#   - s3cmd configured on the host
 #   - Docker running with the Postgres container
-#   - DO Spaces bucket: example-backup-bucket
+#   - DB_CONTAINER, DB_NAME, DB_USER, and SPACES_BUCKET exported in the environment
 
 set -euo pipefail
 
-# Configuration
-DB_CONTAINER="container-placeholder"
-DB_NAME="example_portfolio_db"
-DB_USER="pa_user"
-SPACES_BUCKET="s3://example-backup-bucket"
+# Configuration lives in private ops environment, not in the public repo.
+DB_CONTAINER="${DB_CONTAINER:?Set DB_CONTAINER to the Postgres container name}"
+DB_NAME="${DB_NAME:?Set DB_NAME to the database name}"
+DB_USER="${DB_USER:?Set DB_USER to the database user}"
+SPACES_BUCKET="${SPACES_BUCKET:?Set SPACES_BUCKET to the private backup bucket URI}"
 BACKUP_TYPE="${1:-daily}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="example_portfolio_db_${BACKUP_TYPE}_${TIMESTAMP}.sql.gz"

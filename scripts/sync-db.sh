@@ -23,7 +23,7 @@ if [ -z "$PROD_URL" ]; then
   echo "Error: PRODUCTION_DATABASE_URL not found in packages/backend/.env"
   echo ""
   echo "Add this line to packages/backend/.env:"
-  echo "PRODUCTION_DATABASE_URL=postgresql://user:pass@203.0.113.10:5432/dbname"
+  echo "PRODUCTION_DATABASE_URL=postgresql://user:password@db.example.internal:5432/foliobuddy"
   exit 1
 fi
 
@@ -38,7 +38,7 @@ fi
 LOCAL_URL="postgresql://dev:dev@localhost:5432/example_portfolio_db"
 
 echo "Syncing production → local..."
-echo "  From: production (DigitalOcean/Coolify)"
+echo "  From: configured production database"
 echo "  To:   local (${CONTAINER_NAME})"
 echo ""
 

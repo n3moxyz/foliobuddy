@@ -1217,7 +1217,7 @@ Rather than sign up for UptimeRobot (free tier requires an email address and a t
 
 **The investigation path:** First I assumed it was a `quoteType` filter — our code allowed only `'EQUITY'` and ETFs come back as `quoteType: 'ETF'`. Added ETF to the allowlist and ranked primary listings above cross-listings (exact match > no-suffix > prefix > other). Verified locally that Yahoo's raw `/v1/finance/search` endpoint returned `EWY` at the top for my query. Deployed. Still broken. Next hypothesis: passed `region=US&lang=en-US` explicitly to normalize — the `region` parameter controls localization but not IP-based result weighting. Still broken.
 
-**The root cause:** Our production droplet is in Singapore (DigitalOcean SG region, 203.0.113.10). Yahoo's `/v1/finance/search` endpoint _geolocates the caller IP_ and region-filters results. US ETFs aren't in the SG-region result set, period — no parameter will change that.
+**The root cause:** The production host's egress IP was geolocated to Singapore. Yahoo's `/v1/finance/search` endpoint _geolocates the caller IP_ and region-filters results. US ETFs weren't in that region's result set, period — no parameter would change that.
 
 **The fix:** Fall back to a direct `quote()` lookup when the search query looks like a ticker (`/^[A-Z0-9.-]{1,10}$/`) and no exact-symbol match appeared in results. Yahoo's `/v7/finance/quote` endpoint is _not_ IP-filtered — a deterministic symbol like QQQ resolves regardless of caller geography. The script now calls `yahoo.quote(upperQuery)` and, if it returns a valid EQUITY/ETF in a supported currency, prepends a synthetic search result. Covers ~every common case of a user typing a ticker they already know.
 
@@ -1505,62 +1505,35 @@ The pattern: persist preference, not layout dogma. A good setting remembers the 
 
 ---
 
-## Deployment: Coolify + Vercel
+## Deployment: Public Shape
 
-### Backend → Coolify (DigitalOcean)
+### Backend → Node API Host
 
-The backend runs as a Docker container on the same DigitalOcean droplet as the database, managed by Coolify:
+The backend runs as a Dockerized Node service behind `https://api.foliobuddy.xyz`:
 
-- **Droplet:** 203.0.113.10 (Ubuntu 24.04)
-- **Coolify dashboard:** `http://private-admin-host:8000`
-- **App UUID:** `app-placeholder`
-- **Backend URL:** `https://api.foliobuddy.xyz` (via Traefik)
-- **Port:** 3001 internal
 - **Dockerfile:** `packages/backend/Dockerfile` (multi-stage build, node:20-alpine)
 - **Startup command:** `npx prisma migrate deploy && node dist/index.js`
+- **Private ops note:** host IPs, dashboard URLs, app IDs, container IDs, and firewall details live outside the public repository.
 
-**Why Coolify instead of Railway?** Railway free trial expired. Coolify runs on the same $6/month DO droplet as the database — both backend and DB on one server.
+**Deploying backend changes:** GitHub Actions workflow (`deploy-backend.yml`) auto-deploys on push to main when backend files change, then runs a health check to verify the new version is live.
 
-**Deploying backend changes:** GitHub Actions workflow (`deploy-backend.yml`) auto-deploys on push to main when backend files change. Triggers Coolify API to rebuild and deploy, then runs a health check to verify the new version is live.
+**Important:** Provider "restart" and "deploy" actions may differ. Restart can reuse an old image; deploy should rebuild from source, run migrations, and start the new image.
 
-**Important:** Coolify "Restart" ≠ "Deploy". Restart reuses the old image. Deploy rebuilds from source (pulls latest code, runs Dockerfile, applies migrations).
+### Database → PostgreSQL
 
-### Database → DigitalOcean/Coolify (Self-Hosted Postgres)
-
-The database runs as a Docker container on the same droplet:
-
-- **Container:** `container-placeholder` (postgres:17-alpine)
-- **Credentials:** user `pa_user`, database `example_portfolio_db`
-- **Port:** 5432 exposed externally, secured by DO firewall
-- **Firewall:** `pa-portfolio` — allows SSH (22), HTTP (80), HTTPS (443), Postgres (5432), Coolify dashboard (8000)
+The database is PostgreSQL on a private network. Exact hostnames, credentials, exposed ports, firewall rules, and backup locations belong in private ops notes, not the public repo.
 
 **Why self-hosted instead of managed Postgres?**
-We originally used Railway's built-in Postgres, but wanted more control and cost savings. Coolify makes self-hosting almost as easy as managed—it handles Docker, persistent volumes, and can host multiple databases on one $6/month droplet.
+We originally used a managed Postgres service, but wanted more control and cost savings. The important engineering lesson is to keep migrations reproducible and to verify which database URL production actually uses before moving data.
 
 **Current production URLs:**
 
 - Backend: `https://api.foliobuddy.xyz`
 - Health check: `/health` returns `{"status":"ok"}`
 
-### Database Backups → DigitalOcean Spaces
+### Database Backups
 
-Automated backups via `scripts/backup-db.sh` running as cron jobs on the droplet. Dumps are `pg_dump | gzip` piped through Docker, uploaded to DO Spaces.
-
-- **Bucket:** `example-backup-bucket` (SGP1, private)
-- **Scripts on server:** `/root/backup-db.sh`, `/root/restore-db.sh`
-- **Backup size:** ~4.5MB compressed
-- **Retention:** 7 daily, 4 weekly, 12 monthly (auto-pruned)
-
-**Cron schedule (UTC):**
-| Schedule | Type | Time |
-|----------|------|------|
-| Daily | `backup-db.sh daily` | 2:00 AM |
-| Weekly | `backup-db.sh weekly` | 3:00 AM Sundays |
-| Monthly | `backup-db.sh monthly` | 4:00 AM 1st of month |
-
-**Restoring:** Run `/root/restore-db.sh` on the server — with no args it lists available backups, with a path it downloads and restores (with confirmation prompt).
-
-**Monitoring:** Check `/var/log/db-backup.log` on the droplet for backup history and errors.
+Automated backups run on a private schedule and write to private object storage. Public docs should describe the backup expectation, not bucket names, server paths, or restore commands.
 
 ### Frontend → Vercel
 
@@ -1571,7 +1544,7 @@ Automated backups via `scripts/backup-db.sh` running as cron jobs on the droplet
 }
 ```
 
-**The API proxy pattern:** Frontend makes requests to `/api/*`, Vercel rewrites them to the Coolify backend at `api.foliobuddy.xyz`. This avoids CORS issues and keeps the backend URL hidden from the client.
+**The API proxy pattern:** Frontend makes requests to `/api/*`, and the static host rewrites them to the backend API. This avoids CORS issues and keeps client configuration stable.
 
 **Current production URL:**
 
@@ -1851,9 +1824,9 @@ const queryClient = new QueryClient({
 
 Before making the app public:
 
-- [x] **Add Sentry DSNs** - Added `SENTRY_DSN` to Coolify (backend) and `VITE_SENTRY_DSN` to Vercel (frontend), both redeployed
-- [x] **Migrate off Railway** - Backend now runs on Coolify/DigitalOcean (Railway trial expired)
-- [x] **Set up auto-deploy** - Added `COOLIFY_API_TOKEN`, `COOLIFY_URL`, and `COOLIFY_APP_UUID` GitHub secrets; `deploy-backend.yml` triggers on push to `packages/backend/**`
+- [x] **Add Sentry DSNs** - Added `SENTRY_DSN` to backend hosting and `VITE_SENTRY_DSN` to frontend hosting, both redeployed
+- [x] **Migrate backend/database hosting** - Backend and database now run on the current production host
+- [x] **Set up auto-deploy** - Added provider API credentials as GitHub secrets; `deploy-backend.yml` triggers on push to `packages/backend/**`
 
 ---
 
