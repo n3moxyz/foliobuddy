@@ -56,9 +56,7 @@ class PortfolioService {
     // YTD anchor = first snapshot of the *current* calendar year. Scoping by
     // year prevents a pre-2026 snapshot from being used as the YTD baseline
     // next January, which would silently pin YTD to a stale value.
-    const startOfYearUtc = new Date(
-      Date.UTC(new Date().getUTCFullYear(), 0, 1, 0, 0, 0, 0)
-    );
+    const startOfYearUtc = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1, 0, 0, 0, 0));
     const [positions, fxRate, ytdSnapshot] = await Promise.all([
       this.getOwnedPositions(userId),
       prisma.fxRate.findUnique({

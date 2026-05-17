@@ -675,7 +675,9 @@ router.post(
               const match =
                 'searchByIsin' in yahooProvider
                   ? await (
-                      yahooProvider as { searchByIsin(isin: string): Promise<{ symbol: string } | null> }
+                      yahooProvider as {
+                        searchByIsin(isin: string): Promise<{ symbol: string } | null>;
+                      }
                     ).searchByIsin(h.isin)
                   : null;
               yahooSymbol = match?.symbol ?? null;

@@ -124,7 +124,8 @@ cd packages/frontend && npm run dev
 # Root (monorepo)
 npm install              # Install all dependencies
 npm run format           # Format all files with Prettier
-npm run format:check     # Check formatting without writing
+npm run format:check     # Check formatting + shell script syntax without writing
+npm run scripts:check    # Syntax-check root shell scripts with bash -n
 
 # Local Database
 npm run db:local         # Start local Postgres (Docker, port 5433)
@@ -209,6 +210,10 @@ Adding a broker: new file alongside, append to `parsers` array in `routes/assets
 
 Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. Batch requests up to 50 coins.
 
+### TTLCache
+
+`TTLCache` uses `Map` insertion order for LRU eviction. Eviction must check the iterator result's `done` flag, not whether the key value is `undefined`, because `Map` permits `undefined` as a real key. Keep `TTLCache.test.ts` coverage for normal LRU eviction and the `undefined` oldest-key case.
+
 ### React Query + Zustand Split
 
 - React Query: Server state (positions, trades, snapshots). No global `refetchInterval` — data refreshes on mount and manual invalidation only. `refetchOnWindowFocus: false` to avoid surprise refetches
@@ -216,7 +221,7 @@ Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. 
 
 ### Structured Logging
 
-All backend code uses `logger` from `src/lib/logger.ts` instead of `console.log`. Respects `LOG_LEVEL` env var (debug/info/warn/error). No `console.log` in production code.
+All backend code uses `logger` from `src/lib/logger.ts` instead of `console.log`. Respects `LOG_LEVEL` env var (debug/info/warn/error), and invalid values fall back to `info` so a typo does not suppress warn/error output. No `console.log` in production code.
 
 ### Rate Limiting
 

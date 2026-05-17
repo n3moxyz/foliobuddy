@@ -80,9 +80,9 @@ export class TTLCache<K, V> {
     if (!Number.isFinite(this.maxEntries)) return;
 
     while (this.store.size > this.maxEntries) {
-      const oldestKey = this.store.keys().next().value;
-      if (oldestKey === undefined) break;
-      this.store.delete(oldestKey);
+      const oldest = this.store.keys().next();
+      if (oldest.done) break;
+      this.store.delete(oldest.value);
     }
   }
 }

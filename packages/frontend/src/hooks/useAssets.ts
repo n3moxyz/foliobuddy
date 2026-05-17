@@ -107,13 +107,8 @@ export function useUpdateAssetNav() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: Parameters<typeof api.updateAssetNav>[1];
-    }) => api.updateAssetNav(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.updateAssetNav>[1] }) =>
+      api.updateAssetNav(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['positions'] });

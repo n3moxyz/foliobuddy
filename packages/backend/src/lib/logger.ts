@@ -7,7 +7,15 @@
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
 type LogLevel = keyof typeof LOG_LEVELS;
 
-const currentLevel: LogLevel = (process.env.LOG_LEVEL as LogLevel) || 'info';
+function parseLogLevel(value: string | undefined): LogLevel {
+  if (value && Object.prototype.hasOwnProperty.call(LOG_LEVELS, value)) {
+    return value as LogLevel;
+  }
+
+  return 'info';
+}
+
+const currentLevel = parseLogLevel(process.env.LOG_LEVEL);
 
 function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] >= LOG_LEVELS[currentLevel];

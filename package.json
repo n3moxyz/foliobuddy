@@ -14,8 +14,9 @@
     "build": "npm run build --workspaces",
     "db:migrate": "npm run db:migrate --workspace=@foliobuddy/backend",
     "db:seed": "npm run db:seed --workspace=@foliobuddy/backend",
-    "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,css}\"",
-    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "format": "prettier --ignore-unknown --write \"*.{json,ts,js,yml,yaml}\" \"e2e/**/*\" \"scripts/**/*\" \"packages/**/*.{ts,tsx,js,jsx,json,css,html,yml,yaml}\"",
+    "format:check": "prettier --ignore-unknown --check \"*.{json,ts,js,yml,yaml}\" \"e2e/**/*\" \"scripts/**/*\" \"packages/**/*.{ts,tsx,js,jsx,json,css,html,yml,yaml}\" && npm run scripts:check",
+    "scripts:check": "bash -n scripts/*.sh",
     "db:local": "docker compose up -d",
     "db:local:stop": "docker compose down",
     "db:sync": "bash scripts/sync-db.sh"

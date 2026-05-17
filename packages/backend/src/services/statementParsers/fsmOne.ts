@@ -2,10 +2,29 @@ import { logger } from '../../lib/logger.js';
 import type { ParsedHolding, ParsedStatement } from './uobKayHian.js';
 
 const MONTHS: Record<string, number> = {
-  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
-  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
-  jan: 0, feb: 1, mar: 2, apr: 3, jun: 5,
-  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  january: 0,
+  february: 1,
+  march: 2,
+  april: 3,
+  may: 4,
+  june: 5,
+  july: 6,
+  august: 7,
+  september: 8,
+  october: 9,
+  november: 10,
+  december: 11,
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11,
 };
 
 function parseEnglishDate(dateStr: string): string | null {
@@ -81,10 +100,7 @@ export function parseFsmOneStatement(text: string): ParsedStatement {
     const nameTokens = rawName.split(/\s+/).filter(Boolean);
     // Drop trailing payment-method tokens that get glued onto the name when
     // the regex anchors on the second occurrence (e.g. fund name ends in "Cash").
-    while (
-      nameTokens.length > 1 &&
-      PAYMENT_METHOD_TOKENS.test(nameTokens[nameTokens.length - 1])
-    ) {
+    while (nameTokens.length > 1 && PAYMENT_METHOD_TOKENS.test(nameTokens[nameTokens.length - 1])) {
       nameTokens.pop();
     }
     const name = nameTokens.join(' ').trim();

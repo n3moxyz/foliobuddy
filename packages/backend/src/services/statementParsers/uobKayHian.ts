@@ -22,8 +22,18 @@ export interface ParsedStatement {
 const ISIN_REGEX = /\b(SGX[A-Z0-9]{9}|[A-Z]{2}[A-Z0-9]{9}[0-9])\b/;
 
 const MONTHS: Record<string, number> = {
-  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
-  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+  january: 0,
+  february: 1,
+  march: 2,
+  april: 3,
+  may: 4,
+  june: 5,
+  july: 6,
+  august: 7,
+  september: 8,
+  october: 9,
+  november: 10,
+  december: 11,
 };
 
 function parseEnglishDate(dateStr: string): string | null {
@@ -107,13 +117,14 @@ function parseHoldingBlock(
     currentValueNative = units * navNative;
   }
 
-  const symbolFromName = fullName
-    .split(/\s+/)
-    .slice(0, 3)
-    .map((w) => w.replace(/[^A-Za-z0-9]/g, '').toUpperCase())
-    .filter(Boolean)
-    .join('')
-    .slice(0, 8) || isin.slice(0, 8);
+  const symbolFromName =
+    fullName
+      .split(/\s+/)
+      .slice(0, 3)
+      .map((w) => w.replace(/[^A-Za-z0-9]/g, '').toUpperCase())
+      .filter(Boolean)
+      .join('')
+      .slice(0, 8) || isin.slice(0, 8);
 
   return {
     symbol: symbolFromName,

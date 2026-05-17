@@ -41,9 +41,7 @@ export * from './types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
-function buildQuery(
-  params: Record<string, string | number | boolean | undefined | null>
-): string {
+function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
   const sp = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null) {
@@ -119,7 +117,9 @@ export const api = {
 
   // Assets
   getAssets: (params?: { category?: string; search?: string }) =>
-    request<Asset[]>(`/assets${buildQuery({ category: params?.category, search: params?.search })}`),
+    request<Asset[]>(
+      `/assets${buildQuery({ category: params?.category, search: params?.search })}`
+    ),
   searchCoins: (query: string) =>
     request<CoinSearchResult[]>(`/assets/search?q=${encodeURIComponent(query)}`),
   searchAssets: (query: string, params?: { category?: string; provider?: ProviderName }) =>

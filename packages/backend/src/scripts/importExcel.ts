@@ -170,7 +170,11 @@ function getCellValue(row: ExcelJS.Row, colIndex: number): string | number | boo
 
   if (typeof cell.value === 'object' && 'result' in cell.value) {
     const result = (cell.value as ExcelJS.CellFormulaValue).result;
-    if (result instanceof Error || (typeof result === 'object' && result !== null && !(result instanceof Date))) return null;
+    if (
+      result instanceof Error ||
+      (typeof result === 'object' && result !== null && !(result instanceof Date))
+    )
+      return null;
     return result ?? null;
   }
 

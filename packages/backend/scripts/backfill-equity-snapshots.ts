@@ -396,9 +396,7 @@ async function planChanges(
     // target symbols from baseline — they're stale (pre-backfill) and would
     // double-count when we add the authoritative new contribution below.
     const baselineTargetPositions = audit.snapshotPositions.filter(
-      (p) =>
-        p.snapshotId === snapshot.id &&
-        BACKFILLS.some((b) => b.symbol === p.assetSymbol)
+      (p) => p.snapshotId === snapshot.id && BACKFILLS.some((b) => b.symbol === p.assetSymbol)
     );
     for (const stale of baselineTargetPositions) {
       newTotal -= stale.valueUsd;
@@ -415,7 +413,11 @@ async function planChanges(
 
       newTotal += contribution.valueUsd;
 
-      if (!contribution.isCashPlaceholder && contribution.priceUsd != null && contribution.quantity != null) {
+      if (
+        !contribution.isCashPlaceholder &&
+        contribution.priceUsd != null &&
+        contribution.quantity != null
+      ) {
         newTargetPositions.push({
           symbol: cfg.symbol,
           quantity: contribution.quantity,
@@ -440,10 +442,7 @@ async function planChanges(
   return plans;
 }
 
-async function applyPlans(
-  plans: Awaited<ReturnType<typeof planChanges>>,
-  audit: AuditFile
-) {
+async function applyPlans(plans: Awaited<ReturnType<typeof planChanges>>, audit: AuditFile) {
   for (const plan of plans) {
     const { snapshot, newTotalValueUsd, newTotalValueSgd, newTargetPositions } = plan;
 
@@ -520,7 +519,10 @@ async function recomputeMetrics(audit: AuditFile) {
   let athValue = -Infinity;
 
   // YTD anchor per calendar year
-  const ytdByYear = new Map<number, { value: number; btcPrice: number | null; ethPrice: number | null }>();
+  const ytdByYear = new Map<
+    number,
+    { value: number; btcPrice: number | null; ethPrice: number | null }
+  >();
 
   // First pass: populate YTD anchors and per-index lookup by timestamp
   for (const s of all) {
@@ -575,9 +577,7 @@ async function recomputeMetrics(audit: AuditFile) {
     const year = s.timestamp.getUTCFullYear();
     const ytd = ytdByYear.get(year);
     const ytdReturn =
-      ytd && ytd.value > 0
-        ? ((s.totalValueUsd - ytd.value) / ytd.value) * 100
-        : null;
+      ytd && ytd.value > 0 ? ((s.totalValueUsd - ytd.value) / ytd.value) * 100 : null;
 
     let btcOutperform: number | null = null;
     let ethOutperform: number | null = null;
@@ -672,9 +672,7 @@ async function main() {
     const users = await prisma.user.findMany({ select: { id: true, email: true } });
     if (users.length === 0) throw new Error('No users found');
     if (users.length > 1) {
-      throw new Error(
-        `Multiple users. Add --user-id=<id>: ${users.map((u) => u.id).join(', ')}`
-      );
+      throw new Error(`Multiple users. Add --user-id=<id>: ${users.map((u) => u.id).join(', ')}`);
     }
     userId = users[0].id;
     log(`User: ${users[0].email} (${userId})`);
@@ -702,9 +700,7 @@ async function main() {
       log(`  ! ${cfg.symbol}: DB qty ${pos.quantity} vs config ${cfg.quantity}`);
     }
   }
-  const cutoff = new Date(
-    Math.max(...targetPositions.map((p) => p.createdAt.getTime()))
-  );
+  const cutoff = new Date(Math.max(...targetPositions.map((p) => p.createdAt.getTime())));
   log(`Cutoff: ${cutoff.toISOString()} (max Position.createdAt across targets)`);
 
   // Fetch historical prices for each target
@@ -725,9 +721,7 @@ async function main() {
     const providerAssetId = asset.providerAssetId ?? asset.symbol;
     const pts = await fetchHistoricalNativePrices(yahoo, providerAssetId, fetchFrom, fetchTo);
     prices.set(cfg.symbol, pts);
-    log(
-      `  ${cfg.symbol} (${providerAssetId}): fetched ${pts.length} historical points from Yahoo`
-    );
+    log(`  ${cfg.symbol} (${providerAssetId}): fetched ${pts.length} historical points from Yahoo`);
   }
 
   // Generic interpolation fallback: any SGD-cash-backed BACKFILLS entry whose
@@ -798,7 +792,9 @@ async function main() {
 
   // Report
   log('\n--- Plan summary ---');
-  log(`${'date'.padEnd(12)}  ${'oldUsd'.padStart(14)}  ${'newUsd'.padStart(14)}  ${'delta'.padStart(14)}  targets`);
+  log(
+    `${'date'.padEnd(12)}  ${'oldUsd'.padStart(14)}  ${'newUsd'.padStart(14)}  ${'delta'.padStart(14)}  targets`
+  );
   for (const p of plans) {
     const date = p.snapshot.timestamp.slice(0, 10);
     const symbols = p.newTargetPositions.map((t) => t.symbol).join(',');
@@ -808,7 +804,10 @@ async function main() {
   }
 
   if (args.mode === 'dry') {
-    const auditPath = resolve('scripts', `audit-${new Date().toISOString().replace(/[:.]/g, '-')}-DRY.json`);
+    const auditPath = resolve(
+      'scripts',
+      `audit-${new Date().toISOString().replace(/[:.]/g, '-')}-DRY.json`
+    );
     writeFileSync(auditPath, JSON.stringify(audit, null, 2));
     log(`\nDry run. Audit would be: ${auditPath}`);
     log('Run with --apply to write changes.');
@@ -816,7 +815,10 @@ async function main() {
   }
 
   // --apply
-  const auditPath = resolve('scripts', `audit-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
+  const auditPath = resolve(
+    'scripts',
+    `audit-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+  );
   writeFileSync(auditPath, JSON.stringify(audit, null, 2));
   log(`\nAudit written: ${auditPath}`);
   log('Applying changes...');

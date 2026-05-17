@@ -33,6 +33,7 @@ npm-debug.log*
 
 # AI tooling
 .agents/
+.clawpatch/
 
 # OS files
 .DS_Store

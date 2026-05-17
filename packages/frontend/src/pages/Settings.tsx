@@ -90,10 +90,7 @@ export default function Settings() {
               <Label htmlFor="currency-select">Default Currency</Label>
               <p className="text-sm text-muted-foreground">Display values in USD or SGD</p>
             </div>
-            <Select
-              value={currency}
-              onValueChange={(v) => setCurrency(v as 'USD' | 'SGD')}
-            >
+            <Select value={currency} onValueChange={(v) => setCurrency(v as 'USD' | 'SGD')}>
               <SelectTrigger id="currency-select" className="w-full sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
@@ -267,8 +264,8 @@ export default function Settings() {
             <strong>FolioBuddy</strong> v1.0.0
           </p>
           <p className="text-muted-foreground">
-            A portfolio tracking application for managing crypto investments, trade journaling,
-            and multi-investor support.
+            A portfolio tracking application for managing crypto investments, trade journaling, and
+            multi-investor support.
           </p>
           <div className="pt-4">
             <p className="text-muted-foreground">Data Sources:</p>

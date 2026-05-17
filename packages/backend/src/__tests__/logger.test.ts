@@ -1,9 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { logger } from '../lib/logger.js';
 
 describe('logger', () => {
+  const originalLogLevel = process.env.LOG_LEVEL;
+
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    if (originalLogLevel === undefined) {
+      delete process.env.LOG_LEVEL;
+    } else {
+      process.env.LOG_LEVEL = originalLogLevel;
+    }
+    vi.resetModules();
   });
 
   it('has all expected methods', () => {
@@ -68,5 +79,20 @@ describe('logger', () => {
     expect(spy.mock.calls[0][1]).toBe('message');
     expect(spy.mock.calls[0][2]).toEqual({ key: 'value' });
     expect(spy.mock.calls[0][3]).toBe(123);
+  });
+
+  it('falls back to info when LOG_LEVEL is invalid', async () => {
+    vi.resetModules();
+    process.env.LOG_LEVEL = 'verbose';
+    const { logger: freshLogger } = await import('../lib/logger.js');
+
+    const infoSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    freshLogger.info('still visible');
+    freshLogger.error('also visible');
+
+    expect(infoSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
   });
 });

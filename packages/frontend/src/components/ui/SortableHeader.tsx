@@ -35,11 +35,7 @@ export function SortableHeader({
     <TableHead
       scope="col"
       style={style}
-      className={cn(
-        'select-none',
-        align === 'right' && 'text-right',
-        className
-      )}
+      className={cn('select-none', align === 'right' && 'text-right', className)}
       aria-sort={ariaSort}
     >
       <button

@@ -613,6 +613,14 @@ Shell refinement: the left sidebar now has a Codex-style collapsible desktop rai
 
 **The fix:** Centralize the frontend meaning in `isMarketExposureCategory()`: include every owned non-stable/non-cash category, add local perp exposure, and keep custody out. Dashboard and Portfolio now read from the same idea instead of each hand-rolling the math.
 
+### Tiny Quality Gates Catch Weird Future Pain
+
+**The bug:** A ClawPatch pass found three small cracks: root formatting ignored config/e2e files, `LOG_LEVEL=verbose` could accidentally silence even error logs, and `TTLCache` treated an `undefined` key like an empty iterator instead of a real cache key.
+
+**The fix:** The root quality gate now checks root config, e2e files, package files, and shell script syntax. Logger env parsing validates `debug/info/warn/error` and falls back to `info`. `TTLCache` eviction now looks at the iterator's `done` flag, which is the boring-but-correct way to ask "is there an oldest entry?" instead of assuming no one would ever use `undefined` as a key.
+
+**The lesson:** Quality tooling is most useful when it catches the little splinters before they become production mysteries. A typo in logging config and a cache edge case are not dramatic bugs, but they are exactly the sort of thing that makes a future outage feel haunted.
+
 ### Lesson 1: Prisma Cascading Deletes
 
 **The bug:** Deleted a user, database exploded with foreign key errors.
