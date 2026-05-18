@@ -302,6 +302,8 @@ Use `formatCurrency` (with explicit decimals or compact mode) for totals, sizes,
 
 The page fetches all trades once via `useTrades()` and filters table status locally so the lens summaries do not disappear when the user switches All/Open/Closed tabs. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with the seeded trade rows because `TradeStatsCard` still renders those backend/mock callouts. Trade form defaults entry date to 5 days ago and exit date to today (optimized for logging closed trades).
 
+Trade Tape rows are clickable and keyboard-activatable (Enter/Space) to open a compact trade detail dialog, matching the Portfolio row detail pattern. Keep row action cells isolated with `stopPropagation()` so Copy/Edit/Delete do not also open the detail card.
+
 Keep lens UI in `components/trades/TradeLensViews.tsx` and pure aggregation in `components/trades/tradeLensModels.ts`. This preserves Fast Refresh/lint cleanliness and keeps `Trades.tsx` focused on routing, query params, dialogs, and the shared Trade Tape table.
 
 ### Portfolio Hero Summary

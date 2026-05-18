@@ -601,6 +601,8 @@ Recent Trades refinement: the original Trades page is now the default Review len
 
 Follow-up quality sweep: the trade lens code got split along a cleaner fault line. `Trades.tsx` now owns routing, query params, dialogs, and the shared tape. `TradeLensViews.tsx` owns the ticker/monthly UI. `tradeLensModels.ts` owns the pure aggregation math. That split made lint and React Doctor happy again, but more importantly it stops the journal page from turning into a filing cabinet with a router bolted on the front.
 
+Small UX polish that matters: Trade Tape rows now behave like Portfolio rows. Click a trade, or focus it and press Enter/Space, and a compact detail dialog opens with side, status, size, prices, dates, realized P&L, notes, and the same Copy/Edit/Delete actions. The action cell stops event propagation so a copy or edit click stays a copy or edit click, not an accidental dialog open.
+
 Shell refinement: the left sidebar now has a Codex-style collapsible desktop rail. Expanded mode stays at 256px with labels and shortcuts; collapsed mode persists as a 72px icon rail with right-side tooltips. Mobile deliberately ignores the rail preference and keeps the full drawer, because a tiny icon rail on a phone is clever in exactly the wrong way.
 
 ---

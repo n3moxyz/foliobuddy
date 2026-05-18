@@ -13,6 +13,7 @@ import {
   formatPrice,
   formatPercent,
   formatDate,
+  formatNumber,
   getPnLColorClass,
 } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
@@ -606,6 +607,19 @@ async function copyTradeToClipboard(trade: Trade): Promise<boolean> {
   }
 }
 
+function formatTradeTags(tags: string | null): string | null {
+  if (!tags) return null;
+  try {
+    const parsed = JSON.parse(tags);
+    if (Array.isArray(parsed)) {
+      return parsed.join(', ');
+    }
+  } catch {
+    // Older demo/import data may store tags as a plain comma-separated string.
+  }
+  return tags;
+}
+
 const TRADE_COLUMNS: Record<string, ColumnConfig<Trade>> = {
   asset: { accessor: (t) => t.asset.symbol, type: 'string' },
   direction: { accessor: (t) => t.direction, type: 'string' },
@@ -636,6 +650,7 @@ function TradeTable({
   onHighlightComplete,
 }: TradeTableProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [viewTrade, setViewTrade] = useState<Trade | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [flashId, setFlashId] = useState<string | null>(null);
   const highlightRef = useRef<HTMLTableRowElement>(null);
@@ -678,6 +693,10 @@ function TradeTable({
     }
   };
 
+  const handleView = useCallback((trade: Trade) => {
+    setViewTrade(trade);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="rounded-md border">
@@ -708,6 +727,7 @@ function TradeTable({
   }
 
   const tableClass = showAllColumns ? 'text-sm w-full min-w-[800px]' : 'text-sm';
+  const viewTradeTags = viewTrade ? formatTradeTags(viewTrade.tags) : null;
 
   return (
     <>
@@ -816,7 +836,21 @@ function TradeTable({
                   <TableRow
                     key={trade.id}
                     ref={trade.id === flashId ? highlightRef : undefined}
-                    className={trade.id === flashId ? 'animate-highlight-flash' : ''}
+                    className={`cursor-pointer hover:bg-muted/50 ${
+                      trade.id === flashId ? 'animate-highlight-flash' : ''
+                    }`}
+                    onClick={() => handleView(trade)}
+                    tabIndex={0}
+                    aria-label={`View ${trade.asset.symbol} ${trade.direction} trade`}
+                    onKeyDown={(e) => {
+                      if (
+                        e.currentTarget === e.target &&
+                        (e.key === 'Enter' || e.key === ' ')
+                      ) {
+                        e.preventDefault();
+                        handleView(trade);
+                      }
+                    }}
                   >
                     <TableCell className="font-medium whitespace-nowrap">
                       {trade.asset.symbol}
@@ -880,7 +914,10 @@ function TradeTable({
                     <TableCell className={`${HIDDEN_LG} max-w-[140px] truncate`}>
                       {trade.notes || '-'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center justify-center gap-0">
                         <Button
                           variant="ghost"
@@ -925,6 +962,147 @@ function TradeTable({
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!viewTrade} onOpenChange={(open) => !open && setViewTrade(null)}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span>{viewTrade?.asset.symbol}</span>
+              <span className="text-muted-foreground font-normal">Trade Details</span>
+            </DialogTitle>
+            <DialogDescription>{viewTrade?.asset.name}</DialogDescription>
+          </DialogHeader>
+          {viewTrade && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
+                    viewTrade.direction === 'LONG'
+                      ? 'bg-profit/10 text-profit'
+                      : 'bg-loss/10 text-loss'
+                  }`}
+                >
+                  {viewTrade.direction === 'LONG' ? (
+                    <TrendingUp className="h-3 w-3" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3" />
+                  )}
+                  {viewTrade.direction}
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    viewTrade.status === 'OPEN'
+                      ? 'bg-info/10 text-info'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {viewTrade.status}
+                </span>
+                {viewTradeTags && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    {viewTradeTags}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Quantity</p>
+                  <p className="font-mono font-medium">{formatNumber(viewTrade.quantity, 4)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Position Size</p>
+                  <p className="font-mono font-medium">
+                    {formatCurrency(viewTrade.positionSizeUsd, 'USD', 0)}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Entry Price</p>
+                  <p className="font-mono">{formatPrice(viewTrade.entryPrice)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Exit Price</p>
+                  <p className="font-mono">
+                    {viewTrade.exitPrice !== null ? (
+                      formatPrice(viewTrade.exitPrice)
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Entry Date</p>
+                  <p className="text-sm">{formatDate(viewTrade.entryDate)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Exit Date</p>
+                  <p className="text-sm">
+                    {viewTrade.exitDate ? (
+                      formatDate(viewTrade.exitDate)
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <p className="text-xs text-muted-foreground mb-1">Realized P&L</p>
+                {viewTrade.realizedPnL !== null ? (
+                  <p className={`font-mono font-medium ${getPnLColorClass(viewTrade.realizedPnL)}`}>
+                    {formatCurrency(viewTrade.realizedPnL, 'USD', 0)}
+                    <span className="text-xs ml-1">({formatPercent(viewTrade.realizedPnLPct)})</span>
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Open trade</p>
+                )}
+              </div>
+
+              {viewTrade.notes && (
+                <div className="border-t pt-4">
+                  <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                  <p className="text-sm whitespace-pre-wrap rounded-md bg-muted/50 p-3">
+                    {viewTrade.notes}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => handleCopy(viewTrade)}>
+                  {copiedId === viewTrade.id ? (
+                    <Check className="h-3.5 w-3.5 mr-1 text-profit" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  {copiedId === viewTrade.id ? 'Copied!' : 'Copy'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setViewTrade(null);
+                    onEdit(viewTrade);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setViewTrade(null);
+                    onDelete(viewTrade);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
