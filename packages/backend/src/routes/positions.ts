@@ -255,7 +255,7 @@ router.post('/', async (req, res, next) => {
     if (categoryPositions.length >= MAX_POSITIONS_PER_CATEGORY) {
       const groupLabel: Record<CategoryGroup, string> = {
         crypto: 'crypto',
-        stables: 'stables',
+        stables: 'cash',
         equities: 'equities',
         unit_trusts: 'unit-trust',
       };

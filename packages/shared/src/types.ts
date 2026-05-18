@@ -276,7 +276,12 @@ export interface CreateAssetData {
   coingeckoId?: string;
   symbol: string;
   name: string;
-  category?: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
+  category?: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH' | 'EQUITY' | 'UNIT_TRUST';
+  priceProvider?: 'coingecko' | 'yahoo' | 'manual';
+  providerAssetId?: string | null;
+  nativeCurrency?: string;
+  exchange?: string | null;
+  currentPriceUsd?: number;
 }
 
 export interface CreateTradeData {

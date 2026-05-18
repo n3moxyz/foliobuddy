@@ -69,6 +69,52 @@ beforeEach(() => {
   mockPriceService.updatePositionValues.mockResolvedValue(undefined);
 });
 
+describe('POST /api/assets', () => {
+  it('creates a manually-priced fiat cash asset with an initial USD price', async () => {
+    mockPrisma.asset.findFirst.mockResolvedValue(null);
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({
+      id: 'asset-cash',
+      coingeckoId: data.coingeckoId ?? null,
+      priceProvider: data.priceProvider ?? 'coingecko',
+      providerAssetId: data.providerAssetId ?? null,
+      nativeCurrency: data.nativeCurrency ?? 'USD',
+      exchange: data.exchange ?? null,
+      factsheetUrl: null,
+      isin: null,
+      symbol: data.symbol,
+      name: data.name,
+      category: data.category,
+      currentPriceUsd: data.currentPriceUsd,
+      priceUpdatedAt: data.priceUpdatedAt,
+      createdAt: new Date('2026-04-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-01T00:00:00.000Z'),
+    }));
+
+    const res = await request(app).post('/api/assets').send({
+      symbol: 'SGD',
+      name: 'Cash SGD',
+      category: 'CASH',
+      priceProvider: 'manual',
+      nativeCurrency: 'SGD',
+      currentPriceUsd: 0.742,
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockPriceService.getDirectPrice).not.toHaveBeenCalled();
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        symbol: 'SGD',
+        name: 'Cash SGD',
+        category: 'CASH',
+        priceProvider: 'manual',
+        nativeCurrency: 'SGD',
+        currentPriceUsd: 0.742,
+        priceUpdatedAt: expect.any(Date),
+      }),
+    });
+  });
+});
+
 describe('PATCH /api/assets/:id/nav', () => {
   it('rejects NAV updates when the authenticated user does not hold the asset', async () => {
     mockPrisma.asset.findUnique.mockResolvedValue(mockManualAsset());

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { CreateAssetFromProviderData, ProviderName } from '@/lib/types';
+import type { CreateAssetData, CreateAssetFromProviderData, ProviderName } from '@/lib/types';
 
 export function useAssets(params?: { category?: string; search?: string }) {
   return useQuery({
@@ -43,6 +43,17 @@ export function useCreateAssetFromCoinGecko() {
   return useMutation({
     mutationFn: (data: { coingeckoId: string; symbol: string; name: string; category?: string }) =>
       api.createAssetFromCoinGecko(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+    },
+  });
+}
+
+export function useCreateAsset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateAssetData) => api.createAsset(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
     },

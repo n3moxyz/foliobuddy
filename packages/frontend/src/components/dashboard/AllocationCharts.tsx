@@ -17,11 +17,11 @@ interface ChartData {
   percentage: number;
 }
 
-type CategoryBucket = 'Crypto' | 'Equities' | 'Stables';
+type CategoryBucket = 'Crypto' | 'Equities' | 'Cash';
 
 function bucketFor(category: string | undefined | null): CategoryBucket {
   const g = categoryGroup(category);
-  if (g === 'stables') return 'Stables';
+  if (g === 'stables') return 'Cash';
   if (g === 'equities' || g === 'unit_trusts') return 'Equities';
   return 'Crypto';
 }
@@ -31,28 +31,28 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
   const [hiddenCategory, setHiddenCategory] = useState<Set<string>>(new Set());
   const [hiddenDetailed, setHiddenDetailed] = useState<Set<string>>(new Set());
   const [hiddenStorage, setHiddenStorage] = useState<Set<string>>(new Set());
-  const [hiddenStables, setHiddenStables] = useState<Set<string>>(new Set());
+  const [hiddenCash, setHiddenCash] = useState<Set<string>>(new Set());
   const [hoveredSlice, setHoveredSlice] = useState<Record<string, number | null>>({});
 
   // Calculate all allocations from positions
-  const { categoryAllocation, detailedAllocation, storageAllocation, stablesAllocation } =
+  const { categoryAllocation, detailedAllocation, storageAllocation, cashAllocation } =
     useMemo(() => {
       if (!positions || positions.length === 0) {
         return {
           categoryAllocation: [],
           detailedAllocation: [],
           storageAllocation: [],
-          stablesAllocation: [],
+          cashAllocation: [],
         };
       }
 
       const total = positions.reduce((sum, p) => sum + (p.marketValueUsd || 0), 0);
 
-      // High-level category allocation: Crypto / Equities / Stables
+      // High-level category allocation: Crypto / Equities / Cash
       const categoryMap = new Map<CategoryBucket, number>([
         ['Crypto', 0],
         ['Equities', 0],
-        ['Stables', 0],
+        ['Cash', 0],
       ]);
 
       positions.forEach((p) => {
@@ -69,16 +69,16 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         }))
         .sort((a, b) => b.value - a.value);
 
-      // Detailed asset allocation: crypto by symbol, equities + stables bundled
+      // Detailed asset allocation: crypto by symbol, equities + cash bundled
       const detailedMap = new Map<string, number>();
-      let stablesTotal = 0;
+      let cashTotal = 0;
       let equitiesTotal = 0;
 
       positions.forEach((p) => {
         const value = p.marketValueUsd || 0;
         const bucket = bucketFor(p.asset.category);
-        if (bucket === 'Stables') {
-          stablesTotal += value;
+        if (bucket === 'Cash') {
+          cashTotal += value;
         } else if (bucket === 'Equities') {
           equitiesTotal += value;
         } else {
@@ -87,7 +87,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         }
       });
 
-      if (stablesTotal > 0) detailedMap.set('Stables', stablesTotal);
+      if (cashTotal > 0) detailedMap.set('Cash', cashTotal);
       if (equitiesTotal > 0) detailedMap.set('Equities', equitiesTotal);
 
       const rawDetailed: ChartData[] = Array.from(detailedMap.entries())
@@ -99,9 +99,9 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         .sort((a, b) => b.value - a.value);
 
       // Group sub-2% crypto slices into "Other" once there are 2+ of them.
-      // Stables and Equities are protected — always shown as their own wedge.
+      // Cash and Equities are protected — always shown as their own wedge.
       const OTHER_THRESHOLD_PCT = 2;
-      const isProtected = (name: string) => name === 'Stables' || name === 'Equities';
+      const isProtected = (name: string) => name === 'Cash' || name === 'Equities';
       const smallSlices = rawDetailed.filter(
         (d) => d.percentage < OTHER_THRESHOLD_PCT && !isProtected(d.name)
       );
@@ -119,7 +119,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
             ]
           : rawDetailed;
 
-      // Storage allocation: CEX, Onchain, Onchain Ledger
+      // Storage allocation: CEX, Broker account, Bank, Onchain, Onchain Ledger
       const storageMap = new Map<string, number>();
 
       positions.forEach((p) => {
@@ -128,6 +128,10 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
 
         if (p.storageType === 'CEX') {
           storageLabel = 'CEX';
+        } else if (p.storageType === 'BROKERAGE') {
+          storageLabel = 'Broker account';
+        } else if (p.storageType === 'BANK') {
+          storageLabel = 'Bank';
         } else if (p.storageLocation?.toLowerCase().includes('ledger')) {
           storageLabel = 'Onchain Ledger';
         } else {
@@ -145,22 +149,22 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         }))
         .sort((a, b) => b.value - a.value);
 
-      // Stables by type
-      const stablesMap = new Map<string, number>();
+      // Cash by type
+      const cashMap = new Map<string, number>();
 
       positions.forEach((p) => {
         if (isStablecoinCategory(p.asset.category)) {
           const value = p.marketValueUsd || 0;
           const symbol = p.asset.symbol;
-          stablesMap.set(symbol, (stablesMap.get(symbol) || 0) + value);
+          cashMap.set(symbol, (cashMap.get(symbol) || 0) + value);
         }
       });
 
-      const stablesData: ChartData[] = Array.from(stablesMap.entries())
+      const cashData: ChartData[] = Array.from(cashMap.entries())
         .map(([name, value]) => ({
           name,
           value,
-          percentage: stablesTotal > 0 ? (value / stablesTotal) * 100 : 0,
+          percentage: cashTotal > 0 ? (value / cashTotal) * 100 : 0,
         }))
         .sort((a, b) => b.value - a.value);
 
@@ -168,7 +172,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         categoryAllocation: categoryData,
         detailedAllocation: detailedData,
         storageAllocation: storageData,
-        stablesAllocation: stablesData,
+        cashAllocation: cashData,
       };
     }, [positions]);
 
@@ -359,14 +363,8 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         setHiddenStorage,
         'By Storage'
       )}
-      {stablesAllocation.length > 0 &&
-        renderPieChart(
-          stablesAllocation,
-          STABLES_COLORS,
-          hiddenStables,
-          setHiddenStables,
-          'Stables Breakdown'
-        )}
+      {cashAllocation.length > 0 &&
+        renderPieChart(cashAllocation, STABLES_COLORS, hiddenCash, setHiddenCash, 'Cash Breakdown')}
     </div>
   );
 }

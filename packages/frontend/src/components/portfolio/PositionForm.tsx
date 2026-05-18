@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  useCreateAsset,
   useAssets,
   useSearchCoins,
   useSearchAssets,
@@ -34,6 +35,13 @@ import { CustodyCheckbox } from './CustodyCheckbox';
 import { formatNumber, isStablecoinCategory } from '@/lib/utils';
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
+import {
+  BROKER_LOCATIONS,
+  CRYPTO_STORAGE_TYPES,
+  FIAT_CASH_STORAGE_TYPES,
+  locationLabelForStorageType,
+  locationOptionsForStorageType,
+} from './positionOptions';
 
 const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
 const LEGACY_CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
@@ -84,7 +92,7 @@ interface PositionFormProps {
   position?: Position;
   onSuccess: () => void;
   cryptoCount?: number;
-  stablesCount?: number;
+  cashCount?: number;
   /** Existing custody names derived from positions */
   existingCustodyNames?: string[];
 }
@@ -96,22 +104,6 @@ type PositionStorageType = 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE';
 
 type ImportedPosition = BulkImportPosition;
 
-const STORAGE_TYPES = [
-  { value: 'CEX', label: 'CEX' },
-  { value: 'WALLET', label: 'Onchain' },
-];
-
-// Alphabetically sorted, with Others at the end
-const CEX_LOCATIONS = ['Binance', 'Bybit', 'Coinbase', 'Others'];
-const ONCHAIN_LOCATIONS = ['Ledger', 'Metamask', 'Rabby', 'SOL wallet', 'Others'];
-const BROKERAGE_LOCATIONS = ['FSMOne', 'Tiger', 'UOB Kay Hian', 'Others'];
-
-function locationOptionsForStorageType(storageType: string | null | undefined): string[] {
-  if (storageType === 'CEX') return CEX_LOCATIONS;
-  if (storageType === 'BROKERAGE') return BROKERAGE_LOCATIONS;
-  return ONCHAIN_LOCATIONS;
-}
-
 // Custom order: USDT, USDC, USDe, FDUSD, DAI
 const TOP_STABLECOINS = [
   { id: 'tether', symbol: 'USDT', name: 'Tether' },
@@ -121,14 +113,29 @@ const TOP_STABLECOINS = [
   { id: 'dai', symbol: 'DAI', name: 'Dai' },
 ];
 
+const FIAT_CASH_TYPE_ID = 'cash-fiat';
+type FiatCashCurrency = 'USD' | 'SGD' | 'GBP';
+const DEFAULT_FIAT_CASH_CURRENCY: FiatCashCurrency = 'USD';
+const DEFAULT_FIAT_CASH_STORAGE_TYPE: PositionStorageType = 'BROKERAGE';
+const DEFAULT_STABLECOIN_STORAGE_TYPE: PositionStorageType = 'CEX';
+const FIAT_CASH_CURRENCIES: FiatCashCurrency[] = ['USD', 'SGD', 'GBP'];
+const FIAT_CASH_USD_FALLBACKS: Record<Exclude<FiatCashCurrency, 'SGD'>, number> = {
+  USD: 1,
+  GBP: 1.27,
+};
+
 const MAX_POSITIONS_PER_CATEGORY = 20;
 const EMPTY_CUSTODY_NAMES: string[] = [];
+
+function isFiatCashCurrency(value: string): value is FiatCashCurrency {
+  return FIAT_CASH_CURRENCIES.includes(value as FiatCashCurrency);
+}
 
 export function PositionForm({
   position,
   onSuccess,
   cryptoCount = 0,
-  stablesCount = 0,
+  cashCount = 0,
   existingCustodyNames = EMPTY_CUSTODY_NAMES,
 }: PositionFormProps) {
   // Form mode state (add new or import)
@@ -190,9 +197,17 @@ export function PositionForm({
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [selectedStablecoinId, setSelectedStablecoinId] = useState<string>(
-    position?.asset.coingeckoId || ''
-  );
+  const [selectedCashTypeId, setSelectedCashTypeId] = useState<string>(() => {
+    if (position?.asset.category === 'CASH') return FIAT_CASH_TYPE_ID;
+    return position?.asset.coingeckoId || '';
+  });
+  const [selectedFiatCurrency, setSelectedFiatCurrency] = useState<FiatCashCurrency>(() => {
+    if (position?.asset.category === 'CASH') {
+      const symbol = position.asset.symbol.toUpperCase();
+      return isFiatCashCurrency(symbol) ? symbol : DEFAULT_FIAT_CASH_CURRENCY;
+    }
+    return DEFAULT_FIAT_CASH_CURRENCY;
+  });
 
   // Validation state
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -250,14 +265,15 @@ export function PositionForm({
   const resetAssetEntryState = (nextCategory: CategoryType) => {
     setAssetId('');
     setSelectedAsset(null);
-    setSelectedStablecoinId('');
+    setSelectedCashTypeId('');
+    setSelectedFiatCurrency(DEFAULT_FIAT_CASH_CURRENCY);
     setSearchQuery('');
     setShowDropdown(false);
     setHighlightedIndex(-1);
     setQuantity('');
     setTotalCost('');
     setError(null);
-    setStorageType(nextCategory === 'equity' ? 'BROKERAGE' : 'CEX');
+    setStorageType(nextCategory === 'equity' ? 'BROKERAGE' : DEFAULT_STABLECOIN_STORAGE_TYPE);
     setStorageLocation('');
     setCustomLocation('');
   };
@@ -300,6 +316,7 @@ export function PositionForm({
     category === 'equity' ? searchQuery : '',
     { category: 'EQUITY', provider: 'yahoo' }
   );
+  const createAsset = useCreateAsset();
   const createAssetFromCoinGecko = useCreateAssetFromCoinGecko();
   const createAssetFromProvider = useCreateAssetFromProvider();
   const createUnitTrust = useCreateUnitTrust();
@@ -309,6 +326,7 @@ export function PositionForm({
   const isLoading =
     createPosition.isPending ||
     updatePosition.isPending ||
+    createAsset.isPending ||
     createAssetFromCoinGecko.isPending ||
     createAssetFromProvider.isPending ||
     createUnitTrust.isPending;
@@ -576,6 +594,42 @@ export function PositionForm({
     setShowDropdown(false);
   };
 
+  const fiatCashPriceUsd = (currency: FiatCashCurrency) => {
+    if (currency === 'SGD') return 1 / fxSgdPerUsd;
+    return FIAT_CASH_USD_FALLBACKS[currency];
+  };
+
+  const ensureFiatCashAsset = async (currency: FiatCashCurrency) => {
+    const existingCashAsset = assets?.find(
+      (a) => a.category === 'CASH' && a.symbol.toUpperCase() === currency
+    );
+    if (existingCashAsset) {
+      setAssetId(existingCashAsset.id);
+      setSelectedAsset(existingCashAsset);
+      return existingCashAsset;
+    }
+
+    try {
+      const asset = await createAsset.mutateAsync({
+        symbol: currency,
+        name: `Cash ${currency}`,
+        category: 'CASH',
+        priceProvider: 'manual',
+        nativeCurrency: currency,
+        currentPriceUsd: fiatCashPriceUsd(currency),
+      });
+
+      setAssetId(asset.id);
+      setSelectedAsset(asset);
+      return asset;
+    } catch {
+      setAssetId('');
+      setSelectedAsset(null);
+      setError(`Failed to create ${currency} cash asset. Please try again.`);
+      return null;
+    }
+  };
+
   const handleSelectCoin = async (candidate: CoinSearchResult | ProviderSearchResult) => {
     let asset: Asset;
     if ('provider' in candidate) {
@@ -635,14 +689,29 @@ export function PositionForm({
     }
   };
 
-  const handleSelectStablecoin = async (coinId: string) => {
-    setSelectedStablecoinId(coinId);
+  const handleSelectCashType = async (cashTypeId: string) => {
+    setSelectedCashTypeId(cashTypeId);
     setError(null);
 
-    const stablecoin = TOP_STABLECOINS.find((s) => s.id === coinId);
+    if (cashTypeId === FIAT_CASH_TYPE_ID) {
+      setStorageType(DEFAULT_FIAT_CASH_STORAGE_TYPE);
+      setStorageLocation('');
+      setCustomLocation('');
+      const asset = await ensureFiatCashAsset(selectedFiatCurrency);
+      if (!asset) {
+        setSelectedCashTypeId('');
+      }
+      return;
+    }
+
+    const stablecoin = TOP_STABLECOINS.find((s) => s.id === cashTypeId);
     if (!stablecoin) return;
 
-    const existingAsset = assets?.find((a) => a.coingeckoId === coinId);
+    setStorageType(DEFAULT_STABLECOIN_STORAGE_TYPE);
+    setStorageLocation('');
+    setCustomLocation('');
+
+    const existingAsset = assets?.find((a) => a.coingeckoId === cashTypeId);
     if (existingAsset) {
       setAssetId(existingAsset.id);
       setSelectedAsset(existingAsset);
@@ -661,7 +730,15 @@ export function PositionForm({
       setSelectedAsset(asset);
     } catch {
       setError('Failed to load stablecoin data. Please try again.');
-      setSelectedStablecoinId('');
+      setSelectedCashTypeId('');
+    }
+  };
+
+  const handleFiatCurrencyChange = async (value: string) => {
+    const nextCurrency = isFiatCashCurrency(value) ? value : DEFAULT_FIAT_CASH_CURRENCY;
+    setSelectedFiatCurrency(nextCurrency);
+    if (selectedCashTypeId === FIAT_CASH_TYPE_ID) {
+      await ensureFiatCashAsset(nextCurrency);
     }
   };
 
@@ -673,6 +750,11 @@ export function PositionForm({
   }, [mode]);
 
   const locationOptions = locationOptionsForStorageType(storageType);
+  const storageTypeOptions =
+    category === 'cash' && selectedCashTypeId === FIAT_CASH_TYPE_ID
+      ? FIAT_CASH_STORAGE_TYPES
+      : CRYPTO_STORAGE_TYPES;
+  const storageLocationLabel = locationLabelForStorageType(storageType);
 
   const handleCustodySave = () => {
     if (isCustody && custodyOf.trim()) {
@@ -821,12 +903,12 @@ export function PositionForm({
       return;
     }
 
-    // Check position limit before submitting (crypto + stables only; equities + unit trusts unbounded)
+    // Check position limit before submitting (crypto + cash only; equities + unit trusts unbounded)
     if (!isEditing && (category === 'crypto' || category === 'cash')) {
-      const currentCount = category === 'crypto' ? cryptoCount : stablesCount;
+      const currentCount = category === 'crypto' ? cryptoCount : cashCount;
       if (currentCount >= MAX_POSITIONS_PER_CATEGORY) {
         setError(
-          `Maximum ${MAX_POSITIONS_PER_CATEGORY} ${category === 'crypto' ? 'crypto' : 'stables'} positions allowed`
+          `Maximum ${MAX_POSITIONS_PER_CATEGORY} ${category === 'crypto' ? 'crypto' : 'cash'} positions allowed`
         );
         return;
       }
@@ -894,7 +976,8 @@ export function PositionForm({
 
     // Convert equity-SGD input to USD before persisting (backend stores USD).
     // Applies to both create and edit (single stocks and unit trusts).
-    const rawAvgCost = category === 'cash' ? 1 : parseFloat(avgCostUsd) || 0;
+    const rawAvgCost =
+      category === 'cash' ? (selectedAsset?.currentPriceUsd ?? 1) : parseFloat(avgCostUsd) || 0;
     const finalAvgCostUsd =
       category === 'equity' && costCurrency === 'SGD' ? rawAvgCost / fxSgdPerUsd : rawAvgCost;
 
@@ -1202,7 +1285,7 @@ export function PositionForm({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="crypto">Crypto</SelectItem>
-                      <SelectItem value="cash">Stables</SelectItem>
+                      <SelectItem value="cash">Cash</SelectItem>
                       <SelectItem value="equity">Equities</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1504,40 +1587,67 @@ export function PositionForm({
                   />
                 </div>
               ) : (
-                /* Cash / Stablecoin Selection */
-                <div className="space-y-1">
-                  <Label htmlFor="pos-stablecoin" className="text-sm">
-                    Stablecoin
-                  </Label>
-                  {isEditing ? (
-                    <Input
-                      value={`${position.asset.symbol} - ${position.asset.name}`}
-                      disabled
-                      className="bg-muted"
-                    />
-                  ) : (
-                    <Select
-                      value={selectedStablecoinId}
-                      onValueChange={handleSelectStablecoin}
-                      disabled={createAssetFromCoinGecko.isPending}
-                    >
-                      <SelectTrigger id="pos-stablecoin">
-                        <SelectValue
-                          placeholder={
-                            createAssetFromCoinGecko.isPending
-                              ? 'Loading...'
-                              : 'Select a stablecoin'
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TOP_STABLECOINS.map((coin) => (
-                          <SelectItem key={coin.id} value={coin.id}>
-                            {coin.symbol}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                /* Cash type selection */
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="pos-cash-type" className="text-sm">
+                      Type
+                    </Label>
+                    {isEditing ? (
+                      <Input
+                        value={`${position.asset.symbol} - ${position.asset.name}`}
+                        disabled
+                        className="bg-muted"
+                      />
+                    ) : (
+                      <Select
+                        value={selectedCashTypeId}
+                        onValueChange={handleSelectCashType}
+                        disabled={createAssetFromCoinGecko.isPending || createAsset.isPending}
+                      >
+                        <SelectTrigger id="pos-cash-type">
+                          <SelectValue
+                            placeholder={
+                              createAssetFromCoinGecko.isPending || createAsset.isPending
+                                ? 'Loading...'
+                                : 'Select a type'
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TOP_STABLECOINS.map((coin) => (
+                            <SelectItem key={coin.id} value={coin.id}>
+                              {coin.symbol}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value={FIAT_CASH_TYPE_ID}>Cash (fiat)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  {!isEditing && selectedCashTypeId === FIAT_CASH_TYPE_ID && (
+                    <div className="space-y-1">
+                      <Label htmlFor="pos-fiat-currency" className="text-sm">
+                        Currency
+                      </Label>
+                      <Select
+                        value={selectedFiatCurrency}
+                        onValueChange={handleFiatCurrencyChange}
+                        disabled={createAsset.isPending}
+                      >
+                        <SelectTrigger id="pos-fiat-currency">
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {FIAT_CASH_CURRENCIES.map((currency) => (
+                            <SelectItem key={currency} value={currency}>
+                              {currency}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
                 </div>
               )}
@@ -1677,7 +1787,7 @@ export function PositionForm({
                         <SelectValue placeholder="Select broker" />
                       </SelectTrigger>
                       <SelectContent>
-                        {BROKERAGE_LOCATIONS.map((loc) => (
+                        {BROKER_LOCATIONS.map((loc) => (
                           <SelectItem key={loc} value={loc}>
                             {loc}
                           </SelectItem>
@@ -1702,7 +1812,7 @@ export function PositionForm({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {STORAGE_TYPES.map((type) => (
+                      {storageTypeOptions.map((type) => (
                         <SelectItem key={type.value} value={type.value}>
                           {type.label}
                         </SelectItem>
@@ -1716,7 +1826,7 @@ export function PositionForm({
               {category !== 'equity' && (
                 <div className="space-y-1">
                   <Label htmlFor="pos-storage-location" className="text-sm">
-                    Storage Location (Optional)
+                    {storageLocationLabel}
                   </Label>
                   <Select
                     value={storageLocation}
@@ -1728,7 +1838,7 @@ export function PositionForm({
                     }}
                   >
                     <SelectTrigger id="pos-storage-location">
-                      <SelectValue placeholder="Select location" />
+                      <SelectValue placeholder={`Select ${storageLocationLabel.toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
                       {locationOptions.map((loc) => (
@@ -1744,7 +1854,7 @@ export function PositionForm({
                     <Input
                       value={customLocation}
                       onChange={(e) => setCustomLocation(e.target.value)}
-                      placeholder="Enter custom location..."
+                      placeholder={`Enter custom ${storageLocationLabel.toLowerCase()}...`}
                       className="mt-2"
                     />
                   )}
@@ -1779,12 +1889,11 @@ export function PositionForm({
                 </div>
               )}
 
-              {/* Position Limit Info (crypto + stables only) */}
+              {/* Position Limit Info (crypto + cash only) */}
               {!isEditing && category !== 'equity' && (
                 <div className="text-xs text-muted-foreground">
-                  {category === 'crypto' ? cryptoCount : stablesCount} /{' '}
-                  {MAX_POSITIONS_PER_CATEGORY} {category === 'crypto' ? 'crypto' : 'stables'}{' '}
-                  positions
+                  {category === 'crypto' ? cryptoCount : cashCount} / {MAX_POSITIONS_PER_CATEGORY}{' '}
+                  {category === 'crypto' ? 'crypto' : 'cash'} positions
                 </div>
               )}
 

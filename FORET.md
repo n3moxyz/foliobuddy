@@ -707,6 +707,10 @@ const unrealizedPnLPct = ((marketValue - costBasis) / costBasis) * 100;
 - If a demo flow mimics real editing, it has to preserve related fields like custody too
 - Seeded `Position` objects are easy to corrupt if `assetId` and embedded `asset` point at different things. That exact bug made a supposed USDC position render as WLD, so the Dashboard never showed the Stables Breakdown chart. The fix was to use a `demoAsset(id)` helper instead of array indexes and seed crypto, equities, stables, SGD cash, and custody on purpose.
 
+**Cash taxonomy follow-up:** Once fiat cash joined the old "Stables" lane, the label had to grow up. The UI now calls the section **Cash**, then asks for a **Type**: stablecoin tickers or Cash (fiat). Fiat then gets its own tiny **Currency** dropdown (USD default, then SGD/GBP), because "cash" without currency is a denomination-shaped trap. Storage follows the Type: stablecoins live on CEX/Onchain; fiat cash lives in Broker account/Bank. The important engineering move was not the rename; it was pulling broker and bank options into `positionOptions.ts`. Equities and cash broker accounts now share the same `BROKER_LOCATIONS` list, so "add Tiger here too" is one edit, not a tiny future scavenger hunt.
+
+**Tiny display trap:** Fiat cash is manual-priced, but it is not NAV-tracked. `PositionRow` must suppress the NAV-age badge for cash-equivalent categories, otherwise a cash row says things like "NAV Today" and looks like a fund. Cash-equivalent row subtitles should also be plain "Cash"; the ticker already says USDC/USD/SGD/GBP, so "Cash USD" or a long stablecoin name is just the UI saying the quiet part twice.
+
 ### Lesson 6: Railway Deployment Gotchas
 
 **The bug:** Backend returning 502 errors after deployment.
@@ -819,6 +823,8 @@ const handleImport = async () => {
 - Install the `fetch` mock only while the demo route is mounted, then restore the original `fetch` on cleanup
 
 **Key lesson:** "Dev-only behavior" is not a comment, it's a bundling decision. If you `import` a file in the normal app entry, assume production may ship it.
+
+**Follow-up gotcha:** The demo fetch mock originally matched only `/api/*`. Once the frontend was configured to call `/api/v1/*`, demo mode looked mounted but empty: seeded positions disappeared, health fell through to the real backend, and the Dashboard showed "DB Down". The mock now normalizes `/api/v1` back to `/api` before matching routes and waits to render child routes until the mock is installed, so React Query cannot cache empty real-backend responses first. A demo harness should mirror the same API base paths the real client can produce, or it becomes a beautiful little stage with nobody on it.
 
 ### Lesson 11: Record IDs Are Not Authorization
 
@@ -1846,6 +1852,7 @@ Features I want to add:
 
 Recently completed:
 
+- [x] Cash taxonomy refresh: the old Stables add-position flow is now Cash, with Type = USDT/USDC/USDe/FDUSD/DAI/Cash (fiat), storage support for Broker account and Bank, shared broker options with Equities, and Cash-labeled portfolio/dashboard groupings
 - [x] Exposure calculation widened from crypto-only to total market-risk exposure: all owned non-stable/non-cash assets plus local perps, excluding custody
 - [x] Local-only `/dev/demo` route for authenticated UI testing with mocked API responses; lazy-loaded in dev so mock data does not ship to production bundles
 - [x] Stateful demo-mode portfolio sandbox: `/dev/demo/portfolio` now supports in-browser add/edit/delete/import testing and resets on refresh
@@ -1872,7 +1879,7 @@ Recently completed:
 - [x] Local Postgres via Docker with production data sync script
 - [x] CSV export buttons on Portfolio and Trades pages
 - [x] Responsive mobile design (iOS HIG-inspired) with column toggle, touch targets, overflow menus
-- [x] Colored accent section headers (Crypto=blue, Stables=green) with icons on CollapsibleCard
+- [x] Colored accent section headers (Crypto=blue, Cash=green) with icons on CollapsibleCard
 - [x] Trade stats card redesign: expectancy, R:R ratio, visual win rate bar, avg win/loss comparison, best/worst trades
 - [x] P&L by Ticker card: aggregated per-ticker stats (trades, win rate, total P&L) with click-to-filter, collapsible
 - [x] Trade Analytics + P&L by Ticker cards collapsible by default (using CollapsibleCard)
@@ -1925,8 +1932,8 @@ Recently completed:
   - Animated number tickers (`useAnimatedNumber` hook) for Net Worth, P&L, Cost Basis values
   - Compact dollar formatting (`compactUsd`) on allocation chart hover to prevent truncation
 - [x] **Allocation charts split for equities (4-up):**
-  - Added new high-level "By Asset" donut (Crypto / Equities / Stables) using `bucketFor()` over `categoryGroup()` — both `EQUITY` and `UNIT_TRUST` fold into Equities
-  - Renamed the original detailed donut to "By Detailed Asset" — now also bundles Equities (alongside the existing Stables bundle), so a portfolio with many small equity tickers stays readable
+  - Added new high-level "By Asset" donut (Crypto / Equities / Cash) using `bucketFor()` over `categoryGroup()` — both `EQUITY` and `UNIT_TRUST` fold into Equities, while `STABLECOIN` and `CASH` display as Cash
+  - Renamed the original detailed donut to "By Detailed Asset" — now also bundles Equities (alongside the Cash bundle), so a portfolio with many small equity tickers stays readable
   - Layout: `grid sm:grid-cols-2 lg:grid-cols-4`. At lg+ the legend stacks below the donut so labels fit in narrow cards (`flex-col sm:flex-row lg:flex-col`)
   - Hover label moved to its own line directly under the card title with `min-h-[16px]` reserved — fixes the truncation/congestion in the title row and stops the donut shifting on hover/leave
   - Lesson: when adding a wider grid breakpoint inside cards that have donut + side legend, recheck whether legend labels still fit at the new column width before shipping. The intermediate "row of 4 with side legend" state truncated every label.

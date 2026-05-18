@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useLayoutEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { ShortcutsHelpModal } from '@/components/layout/ShortcutsHelpModal';
@@ -10,6 +10,7 @@ import type {
   AssetPrice,
   BenchmarkHistoricalData,
   BulkImportPosition,
+  CreateAssetData,
   CreatePositionData,
   DbHealth,
   FxRate,
@@ -943,8 +944,12 @@ function filterTrades(url: URL) {
   return status ? trades.filter((trade) => trade.status === status) : trades;
 }
 
+function demoApiPath(url: URL) {
+  return url.pathname.replace(/^\/api\/v1(?=\/|$)/, '/api');
+}
+
 async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
-  const path = url.pathname;
+  const path = demoApiPath(url);
 
   if (path === '/api/positions' && method === 'GET') return json(demoPositions);
   if (path === '/api/positions' && method === 'POST') {
@@ -1012,6 +1017,33 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
     return json(benchmarkHistory(path.split('/').pop() ?? 'benchmark'));
   }
   if (path === '/api/assets' && method === 'GET') return json(demoAssets);
+  if (path === '/api/assets' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as CreateAssetData;
+    const existing = demoAssets.find(
+      (asset) => asset.symbol.toLowerCase() === body.symbol.toLowerCase()
+    );
+    if (existing) return json(existing);
+
+    const currentPriceUsd =
+      body.currentPriceUsd ??
+      seedDemoPrice(body.coingeckoId ?? null, body.category ?? 'LIQUID_CRYPTO');
+    const asset: Asset = {
+      ...ASSET_DEFAULTS,
+      id: nextDemoId('asset'),
+      coingeckoId: body.coingeckoId ?? null,
+      priceProvider: body.priceProvider ?? 'coingecko',
+      providerAssetId: body.providerAssetId ?? body.coingeckoId ?? null,
+      nativeCurrency: (body.nativeCurrency ?? 'USD').toUpperCase(),
+      exchange: body.exchange ?? null,
+      symbol: body.symbol.toUpperCase(),
+      name: body.name,
+      category: body.category ?? 'LIQUID_CRYPTO',
+      currentPriceUsd,
+      priceUpdatedAt: currentPriceUsd !== null ? new Date().toISOString() : null,
+    };
+    demoAssets = [...demoAssets, asset];
+    return json(asset, 201);
+  }
   if (path === '/api/assets/search' && method === 'GET') {
     const q = (url.searchParams.get('q') ?? '').toLowerCase();
     const category = url.searchParams.get('category');
@@ -1245,15 +1277,25 @@ function installDemoApiMock() {
 
 function DemoPages() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [apiMockReady, setApiMockReady] = useState(false);
 
   useThemeEffect();
   useKeyboardShortcuts({
     onShowHelp: () => setShowShortcutsHelp(true),
   });
-  useEffect(() => {
+  useLayoutEffect(() => {
     const cleanup = installDemoApiMock();
+    setApiMockReady(true);
     return cleanup ?? undefined;
   }, []);
+
+  if (!apiMockReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <>

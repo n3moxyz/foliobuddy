@@ -83,8 +83,8 @@ const SECTION_CONFIG: SectionConfig[] = [
     accentColor: 'border-l-amber-500',
   },
   {
-    id: 'stables',
-    label: 'Stables',
+    id: 'cash',
+    label: 'Cash',
     filter: (p) => isStablecoinCategory(p.asset.category),
     icon: <Banknote className="h-4 w-4 text-green-500" />,
     accentColor: 'border-l-green-500',
@@ -416,8 +416,7 @@ export default function Portfolio() {
           <Wallet className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <h3 className="text-lg font-semibold mb-1">No positions yet</h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-            Add your first crypto or stablecoin position to start tracking your portfolio value and
-            P&L.
+            Add your first crypto or cash position to start tracking your portfolio value and P&L.
           </p>
           <Button onClick={() => setShowAddForm(true)}>
             <Plus className="h-4 w-4 mr-1.5" />
@@ -455,7 +454,7 @@ export default function Portfolio() {
               </div>
             }
             headerExtra={
-              section.id === 'stables' ? (
+              section.id === 'cash' ? (
                 <div className="flex items-center justify-end gap-2 mt-1">
                   {perpExposure > 0 && (
                     <>
@@ -539,7 +538,7 @@ export default function Portfolio() {
           <PositionForm
             onSuccess={() => setShowAddForm(false)}
             cryptoCount={sections.find((s) => s.id === 'crypto')?.positions.length ?? 0}
-            stablesCount={sections.find((s) => s.id === 'stables')?.positions.length ?? 0}
+            cashCount={sections.find((s) => s.id === 'cash')?.positions.length ?? 0}
             existingCustodyNames={existingCustodyNames}
           />
         </DialogContent>

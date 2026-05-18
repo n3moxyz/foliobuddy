@@ -79,6 +79,7 @@
 - `src/components/trades/TradeLensViews.tsx` - Ticker and monthly trade review lens UI
 - `src/components/trades/tradeLensModels.ts` - Pure aggregation helpers for ticker dossiers and monthly reviews
 - `src/components/portfolio/positionClipboard.ts` - Shared portfolio copy-to-clipboard JSON formatter
+- `src/components/portfolio/positionOptions.ts` - Shared storage location option lists (CEX, onchain, broker, bank) used by position forms
 - `src/lib/chartColors.ts` - Centralized chart color constants (brand, portfolio line, allocation palettes)
 - `react-doctor.config.json` - Root-level React Doctor triage policy. Keeps the scan focused on actionable regressions after known React 18/Radix/shadcn and design-opinion rules were reviewed.
 
@@ -244,7 +245,8 @@ All pages including Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. 
 `src/dev/demoMode.tsx` provides a local-only `/dev/demo` route for UI testing without Clerk sign-in or backend access. Important constraints:
 
 - It must stay **dev-only**. `App.tsx` lazy-loads it only when `import.meta.env.DEV` is true so the mock payload does not ship in production bundles.
-- It mocks `/api/*` in the browser and restores the original `fetch` + token getter on unmount. Do not leave global network monkey-patches installed after navigating away.
+- It mocks `/api/*` and `/api/v1/*` in the browser and restores the original `fetch` + token getter on unmount. Do not leave global network monkey-patches installed after navigating away.
+- It renders child routes only after the browser fetch mock is installed. If portfolio/dashboard queries run before the mock is ready, React Query caches empty real-backend responses and demo mode appears blank.
 - It now supports stateful in-browser portfolio CRUD for testing. Use `/dev/demo/portfolio` to validate add, edit, delete, and import UX without touching the real backend. The state resets on full refresh.
 - Demo seed data intentionally includes crypto, equities, stables, SGD cash, and custody positions so Dashboard allocation charts exercise all buckets. Keep each seeded `Position.assetId` and embedded `Position.asset` in sync; use the local `demoAsset(id)` helper instead of array indexes. The 4th Dashboard allocation chart appears only when stable/cash positions exist.
 - Use it for responsive/UI checks and demo-mode interaction testing only. It must never point at production write APIs.
@@ -308,13 +310,19 @@ Borderless hero section (matching Dashboard's Net Worth pattern). Total Value at
 
 ### Portfolio Section Headers
 
-Positions are grouped two-level: **Crypto/Equities/Stables** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Brokerage/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, amber for Equities, green for Stables, purple for Custody).
+Positions are grouped two-level: **Crypto/Equities/Cash** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, amber for Equities, green for Cash, purple for Custody).
 
 ### Custody Positions ("Held for Others")
 
 Positions held on behalf of others (e.g., "bought BTC for Mum"). Uses `custodyOf String?` on Position — `null` = owned, non-null = custody. Custody positions are excluded from net worth, P&L, allocations, snapshots, and exposure. Backend: `portfolioService` and `snapshotService` filter `custodyOf: null`; `positions.ts` Zod schemas accept it as `z.string().nullable().optional()` (empty string → null).
 
 Frontend: `Portfolio.tsx` splits into owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default, reuses `PositionTable`). `CustodyCheckbox.tsx` (shared between create/edit) renders at the _bottom_ of every form variant just above submit, with name dropdown (existing names from positions + localStorage `foliobuddy-custody-names`, plus "Add new person"). Edit sends empty string to clear. `PositionImportTab.tsx` shows a purple banner when importing as custody; clipboard JSON in `PositionTable.tsx` includes `custodyOf` when set.
+
+### Cash Positions (Stablecoins + Fiat)
+
+The former Stables add-position category is labeled **Cash**. In `PositionForm.tsx`, Cash shows a **Type** dropdown with USDT, USDC, USDe, FDUSD, DAI, and **Cash (fiat)**. Cash (fiat) reveals a **Currency** dropdown (`USD`, `SGD`, `GBP`) that defaults to USD and creates/reuses a `CASH` asset with that currency symbol. SGD is priced from the current USD/SGD summary rate at creation; USD and GBP use simple manual prices for now. All fiat cash assets use `priceProvider='manual'`. Portfolio rows show the asset symbol on top and the subtitle simply as `Cash` for all cash-equivalent assets (not `Cash USD` / `Cash SGD` or long stablecoin names).
+
+Cash storage depends on Type: stablecoins use **CEX** / **Onchain**; Cash (fiat) uses **Broker account** / **Bank**. Broker account locations use the same `BROKER_LOCATIONS` array as the Equities broker dropdown in `positionOptions.ts` (FSMOne, Tiger, UOB Kay Hian, Others), so changing the broker list updates both flows. Bank locations are DBS, Trust+, SCB, UOB, Citi, Others.
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
@@ -323,9 +331,9 @@ Equities cover two sub-types via a UI toggle (enums unchanged):
 - **Stock / ETF** (`equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`) — tickers priced via Yahoo Finance. ETFs belong here, not Unit Trust — they have live ticker prices.
 - **Unit Trust** (`equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`) — NAV tracked manually or via Yahoo statement parser.
 
-**Form (`PositionForm.tsx`):** Category dropdown is Crypto / Stables / Equities. Equities shows a Stock/ETF vs Unit Trust segmented toggle (create only; edit infers from `asset.category`). For equities, Storage Type is replaced with a broker dropdown (FSMOne, Tiger, UOB Kay Hian, Others) — `storageType` stays `'BROKERAGE'`, dropdown drives `storageLocation`. Cost input currency follows `asset.nativeCurrency`: SGD tickers (`.SI`) and SGD unit trusts show SGD inputs (with USD conversion note). Backend always stores USD; conversion uses live FX rate from `portfolioSummary` (fallback 1.35). Edit mode converts stored USD back to SGD via `costInitialized` flag.
+**Form (`PositionForm.tsx`):** Category dropdown is Crypto / Cash / Equities. Equities shows a Stock/ETF vs Unit Trust segmented toggle (create only; edit infers from `asset.category`). For equities, Storage Type is replaced with a broker dropdown sourced from `BROKER_LOCATIONS` (FSMOne, Tiger, UOB Kay Hian, Others) — `storageType` stays `'BROKERAGE'`, dropdown drives `storageLocation`. Cost input currency follows `asset.nativeCurrency`: SGD tickers (`.SI`) and SGD unit trusts show SGD inputs (with USD conversion note). Backend always stores USD; conversion uses live FX rate from `portfolioSummary` (fallback 1.35). Edit mode converts stored USD back to SGD via `costInitialized` flag.
 
-**Display:** `Portfolio.tsx` has one "Equities" section; `PositionTable` with `groupBy='equityType'` splits into Stock/ETF and Unit Trust subsections. `PositionRow.tsx` shows the broker name directly for BROKERAGE positions. **NAV-age badge** appears under the symbol for unit trusts OR manual-priced positions; color follows freshness via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d, red "Never updated" if null). Crypto/equity tickers skip the badge — they refresh every minute.
+**Display:** `Portfolio.tsx` has one "Equities" section; `PositionTable` with `groupBy='equityType'` splits into Stock/ETF and Unit Trust subsections. `PositionRow.tsx` shows the broker name directly for BROKERAGE positions. **NAV-age badge** appears under the symbol for unit trusts OR manual-priced non-cash positions; color follows freshness via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d, red "Never updated" if null). Crypto/equity tickers and fiat cash skip the badge — live tickers refresh automatically, and cash should not show NAV language.
 
 **Statement upload (Unit Trust create form):** Dashed upload card is a `<label>` wrapping the file input — click or drag-drop a PDF works. Drag handlers on the label use `utDragOver` state to highlight `bg-primary/15`. Drop validates `application/pdf` / `.pdf` extension; same `handleUploadStatement` runs for both paths.
 
@@ -350,10 +358,10 @@ Rules:
 - **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
 - **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
 - **Allocation donut charts**: 4 charts laid out responsively (`grid sm:grid-cols-2 lg:grid-cols-4`):
-  - **By Asset** — high-level buckets: Crypto / Equities / Stables. `bucketFor()` in `AllocationCharts.tsx` maps via `categoryGroup()`; both `EQUITY` and `UNIT_TRUST` fold into Equities.
-  - **By Detailed Asset** — crypto by individual symbol; Equities and Stables each shown as a single bundled wedge (protected from the "Other" rollup). Sub-2% crypto slices group into "Other" once 2+ of them (`OTHER_THRESHOLD_PCT = 2`).
-  - **By Storage** — CEX / Onchain / Onchain Ledger.
-  - **Stables Breakdown** — by stablecoin symbol; only rendered when stables exist.
+  - **By Asset** — high-level buckets: Crypto / Equities / Cash. `bucketFor()` in `AllocationCharts.tsx` maps via `categoryGroup()`; both `EQUITY` and `UNIT_TRUST` fold into Equities, while `STABLECOIN` and `CASH` display as Cash.
+  - **By Detailed Asset** — crypto by individual symbol; Equities and Cash each shown as a single bundled wedge (protected from the "Other" rollup). Sub-2% crypto slices group into "Other" once 2+ of them (`OTHER_THRESHOLD_PCT = 2`).
+  - **By Storage** — CEX / Broker account / Bank / Onchain / Onchain Ledger.
+  - **Cash Breakdown** — by stablecoin/fiat symbol; only rendered when cash-equivalent positions exist.
 - Custody positions filtered out before allocations are computed (`positions.filter((p) => !p.custodyOf)` in `Dashboard.tsx`).
 - Inside each card: side legend (donut left, legend right) at sm/md (2-up); legend stacks below donut at lg+ (4-up) so labels stay readable in narrow cards (`flex-col sm:flex-row lg:flex-col`).
 - Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items.

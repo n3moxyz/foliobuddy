@@ -20,7 +20,7 @@ export const ASSET_COLORS: string[] = [
   '#65A30D',
 ];
 
-export const STORAGE_COLORS: string[] = ['#16A34A', '#0284C7', '#64748B'];
+export const STORAGE_COLORS: string[] = ['#16A34A', '#0284C7', '#7C3AED', '#BE185D', '#64748B'];
 export const STABLES_COLORS: string[] = ['#0369A1', '#16A34A', '#BE185D', '#854D0E', '#64748B'];
 
 export const ADDITIONAL_BENCHMARK_COLORS: string[] = ['#14B8A6', '#EF4444', '#8B5CF6', '#F59E0B'];

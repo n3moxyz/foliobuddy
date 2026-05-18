@@ -47,13 +47,14 @@ const createAssetSchema = z.object({
   symbol: z.string().min(1).max(20),
   name: z.string().min(1),
   category: z.enum(ASSET_CATEGORIES).default(AssetCategory.LIQUID_CRYPTO),
-  priceProvider: z.string().optional(),
-  providerAssetId: z.string().optional(),
+  priceProvider: z.enum(['coingecko', 'yahoo', 'manual']).optional(),
+  providerAssetId: z.string().nullable().optional(),
   nativeCurrency: z.string().optional(),
-  exchange: z.string().optional(),
+  exchange: z.string().nullable().optional(),
+  currentPriceUsd: z.number().nonnegative().optional(),
 });
 
-const updateAssetSchema = createAssetSchema.partial();
+const updateAssetSchema = createAssetSchema.omit({ currentPriceUsd: true }).partial();
 
 const PROVIDER_FOR_CATEGORY: Record<string, ProviderName> = {
   EQUITY: 'yahoo',
@@ -167,17 +168,23 @@ router.post('/', async (req, res, next) => {
       throw new AppError(`Asset with symbol ${data.symbol} already exists`, 409);
     }
 
-    let currentPriceUsd: number | null = null;
-    if (data.coingeckoId) {
+    let currentPriceUsd: number | null = data.currentPriceUsd ?? null;
+    if (currentPriceUsd === null && data.coingeckoId) {
       currentPriceUsd = await priceService.getDirectPrice(data.coingeckoId);
     }
 
     const asset = await prisma.asset.create({
       data: {
-        ...data,
+        coingeckoId: data.coingeckoId,
+        priceProvider: data.priceProvider,
+        providerAssetId: data.providerAssetId,
+        nativeCurrency: data.nativeCurrency,
+        exchange: data.exchange,
         symbol: data.symbol.toUpperCase(),
+        name: data.name,
+        category: data.category,
         currentPriceUsd,
-        priceUpdatedAt: currentPriceUsd ? new Date() : null,
+        priceUpdatedAt: currentPriceUsd !== null ? new Date() : null,
       },
     });
 

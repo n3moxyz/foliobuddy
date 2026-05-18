@@ -19,7 +19,7 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
   CEX: 'CEX',
   DEFI: 'DeFi',
   BANK: 'Bank',
-  BROKERAGE: 'Brokerage',
+  BROKERAGE: 'Broker account',
 };
 
 interface PositionRowProps {
@@ -64,7 +64,9 @@ export const PositionRow = React.memo(function PositionRow({
   const isStable = isStablecoinCategory(position.asset.category);
   const isManual = position.asset.priceProvider === 'manual';
   const isUnitTrust = position.asset.category === 'UNIT_TRUST';
-  const ageInfo = isManual || isUnitTrust ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
+  const shouldShowNavAge = isUnitTrust || (isManual && !isStable);
+  const ageInfo = shouldShowNavAge ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
+  const assetNameLabel = isStable ? 'Cash' : position.asset.name;
   const priceUpdatedTitle = position.asset.priceUpdatedAt
     ? `NAV updated ${formatDateTime(position.asset.priceUpdatedAt)}`
     : 'NAV never set';
@@ -88,7 +90,7 @@ export const PositionRow = React.memo(function PositionRow({
       <TableCell>
         <div className="truncate">
           <p className="font-medium text-sm">{position.asset.symbol}</p>
-          <p className="text-xs text-muted-foreground truncate">{position.asset.name}</p>
+          <p className="text-xs text-muted-foreground truncate">{assetNameLabel}</p>
           {ageInfo && (
             <p
               className={`text-xs ${priceAgeClass(ageInfo.severity)} truncate`}
@@ -133,7 +135,7 @@ export const PositionRow = React.memo(function PositionRow({
       <TableCell className={`text-right ${HIDDEN_MOBILE}`}>
         <div className="truncate">
           {position.storageType === 'BROKERAGE' ? (
-            <p className="text-sm truncate">{position.storageLocation || 'Brokerage'}</p>
+            <p className="text-sm truncate">{position.storageLocation || 'Broker account'}</p>
           ) : (
             <>
               <p className="text-sm">

@@ -48,7 +48,7 @@ interface PositionTableProps {
   onUpdateNav?: (position: Position) => void;
   /**
    * How to sub-group rows inside the card:
-   * - 'storage' (default): CEX / Brokerage / Onchain — used for crypto/stables/custody
+   * - 'storage' (default): CEX / Broker account / Bank / Onchain — used for crypto/cash/custody
    * - 'equityType': Single / Fund-level (by asset.category) — used for Equities
    */
   groupBy?: 'storage' | 'equityType';
@@ -59,7 +59,7 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
   CEX: 'CEX',
   DEFI: 'DeFi',
   BANK: 'Bank',
-  BROKERAGE: 'Brokerage',
+  BROKERAGE: 'Broker account',
 };
 
 const POSITION_COLUMNS: Record<string, ColumnConfig<Position>> = {
@@ -121,48 +121,64 @@ export function PositionTable({
 
   const { isExpanded, toggle } = useCollapsibleState();
 
-  const { defaultCex, defaultBrokerage, defaultOnchain, cexTotal, brokerageTotal, onchainTotal } =
-    useMemo(() => {
-      const cex: Position[] = [];
-      const brokerage: Position[] = [];
-      const onchain: Position[] = [];
+  const {
+    defaultCex,
+    defaultBrokerage,
+    defaultBank,
+    defaultOnchain,
+    cexTotal,
+    brokerageTotal,
+    bankTotal,
+    onchainTotal,
+  } = useMemo(() => {
+    const cex: Position[] = [];
+    const brokerage: Position[] = [];
+    const bank: Position[] = [];
+    const onchain: Position[] = [];
 
-      positions.forEach((pos) => {
-        if (pos.storageType === 'CEX') {
-          cex.push(pos);
-        } else if (pos.storageType === 'BROKERAGE') {
-          brokerage.push(pos);
-        } else {
-          onchain.push(pos);
-        }
-      });
+    positions.forEach((pos) => {
+      if (pos.storageType === 'CEX') {
+        cex.push(pos);
+      } else if (pos.storageType === 'BROKERAGE') {
+        brokerage.push(pos);
+      } else if (pos.storageType === 'BANK') {
+        bank.push(pos);
+      } else {
+        onchain.push(pos);
+      }
+    });
 
-      cex.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
-      brokerage.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
+    cex.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
+    brokerage.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
+    bank.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
 
-      // Ledger positions sort to the top; ties break by market value
-      onchain.sort((a, b) => {
-        const aIsLedger = a.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
-        const bIsLedger = b.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
-        if (aIsLedger !== bIsLedger) return bIsLedger - aIsLedger;
-        return (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
-      });
+    // Ledger positions sort to the top; ties break by market value
+    onchain.sort((a, b) => {
+      const aIsLedger = a.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
+      const bIsLedger = b.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
+      if (aIsLedger !== bIsLedger) return bIsLedger - aIsLedger;
+      return (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
+    });
 
-      return {
-        defaultCex: cex,
-        defaultBrokerage: brokerage,
-        defaultOnchain: onchain,
-        cexTotal: cex.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
-        brokerageTotal: brokerage.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
-        onchainTotal: onchain.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
-      };
-    }, [positions]);
+    return {
+      defaultCex: cex,
+      defaultBrokerage: brokerage,
+      defaultBank: bank,
+      defaultOnchain: onchain,
+      cexTotal: cex.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+      brokerageTotal: brokerage.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+      bankTotal: bank.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+      onchainTotal: onchain.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
+    };
+  }, [positions]);
 
   const cexSort = useTableSort(defaultCex, POSITION_COLUMNS);
   const brokerageSort = useTableSort(defaultBrokerage, POSITION_COLUMNS);
+  const bankSort = useTableSort(defaultBank, POSITION_COLUMNS);
   const onchainSort = useTableSort(defaultOnchain, POSITION_COLUMNS);
   const cexPositions = cexSort.sortedItems;
   const brokeragePositions = brokerageSort.sortedItems;
+  const bankPositions = bankSort.sortedItems;
   const onchainPositions = onchainSort.sortedItems;
 
   // Split Equities into Single (stocks) vs Fund-level (unit trusts) when groupBy === 'equityType'
@@ -195,6 +211,7 @@ export function PositionTable({
 
   const cexId = sectionPrefix ? `${sectionPrefix}-cex` : 'cex';
   const brokerageId = sectionPrefix ? `${sectionPrefix}-brokerage` : 'brokerage';
+  const bankId = sectionPrefix ? `${sectionPrefix}-bank` : 'bank';
   const onchainId = sectionPrefix ? `${sectionPrefix}-onchain` : 'onchain';
   const singleId = sectionPrefix ? `${sectionPrefix}-single` : 'single';
   const fundId = sectionPrefix ? `${sectionPrefix}-fund` : 'fund';
@@ -387,8 +404,8 @@ export function PositionTable({
                   }`}
                 />
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
-                  Brokerage
-                  <HelpTooltip content="Assets held on brokerage or fund platforms" />
+                  Broker account
+                  <HelpTooltip content="Assets held in broker accounts or fund platforms" />
                 </p>
                 <span className="text-xs text-muted-foreground">({brokeragePositions.length})</span>
                 {!isExpanded(brokerageId) && (
@@ -403,6 +420,41 @@ export function PositionTable({
                 <Table className={tableClass}>
                   {renderTableHeader(brokerageSort)}
                   <TableBody>{brokeragePositions.map(renderPositionRow)}</TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {groupBy !== 'equityType' && bankPositions.length > 0 && (
+          <Collapsible open={isExpanded(bankId)} onOpenChange={() => toggle(bankId)}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
+              >
+                <ChevronRight
+                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
+                    isExpanded(bankId) ? 'rotate-90' : ''
+                  }`}
+                />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
+                  Bank
+                  <HelpTooltip content="Cash held directly in bank accounts" />
+                </p>
+                <span className="text-xs text-muted-foreground">({bankPositions.length})</span>
+                {!isExpanded(bankId) && (
+                  <span className="text-xs font-mono text-muted-foreground ml-auto">
+                    {formatCurrency(convertSub(bankTotal), currency, 0)}
+                  </span>
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
+              <div className="rounded-md border overflow-x-auto">
+                <Table className={tableClass}>
+                  {renderTableHeader(bankSort)}
+                  <TableBody>{bankPositions.map(renderPositionRow)}</TableBody>
                 </Table>
               </div>
             </CollapsibleContent>
@@ -661,7 +713,7 @@ export function PositionTable({
                 {viewPosition.storageType === 'BROKERAGE' ? (
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Broker</p>
-                    <p className="text-sm">{viewPosition.storageLocation || 'Brokerage'}</p>
+                    <p className="text-sm">{viewPosition.storageLocation || 'Broker account'}</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-4">
