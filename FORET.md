@@ -1191,6 +1191,20 @@ printf "/api/v1" | vercel env add VITE_API_URL production
 
 **The pattern:** "Works locally, fails on Vercel" is almost always about resolution assumptions. Local `npm install` and local `tsc` are _both_ forgiving in ways production environments aren't. Anything that relies on root `node_modules` hoisting, dev-only type overrides, or un-cleaned build caches is a candidate. Lock them down with a CI check instead of discovering them at deploy time.
 
+### "Monorepo" Doesn't Mean "Shared Everywhere" — The Backend Docker Trap
+
+**The bug:** During a /simplify pass I moved domain enums and constants (`AssetCategory`, `StorageType`, `USD_SGD_FALLBACK_RATE`, the `categoryGroup()` helper, etc.) from `packages/backend/src/lib/constants.ts` into `@foliobuddy/shared`, so the frontend wouldn't have to duplicate them. Backend `tsc --noEmit` passed, frontend typechecked clean, all 84 backend tests still green. Looked perfect. Was about to commit.
+
+**The catch:** `packages/backend/Dockerfile` is the trap. It doesn't COPY the monorepo root — it `COPY package*.json ./` from the backend directory, then `npm install`. Inside the container there's no root `package.json`, no `packages/shared/` folder, nothing for npm workspaces to resolve. The compiled `dist/index.js` would still contain `from '@foliobuddy/shared'`, and Node at runtime would have no way to resolve it. Production would have crashed on the first import.
+
+**The fix:** Revert the backend changes. Keep `@foliobuddy/shared` exporting the canonical enums for the frontend. Leave `packages/backend/src/lib/constants.ts` with its own copy and a header comment marking the intentional duplication. Sync manually when adding new domain enums.
+
+**The lesson:** TypeScript typechecks resolve modules differently from Node at runtime. `tsc --noEmit` will happily follow the `types` field in a workspace package's `package.json` — even if that points to a `.ts` file Node could never execute. Local dev hides this because `tsx` (the watch runner) handles `.ts` mains fine. The crash window is the production Docker container.
+
+The deeper lesson: "shared package" is not a property of the repo, it's a property of every consumer's build/deploy pipeline. Vercel pulls the whole repo, so frontend can share via shared. The backend's Dockerfile is package-isolated, so it cannot. The right question isn't "can these packages share types?" — it's "does every consumer's build context include the shared code?". If the answer is no, you have three choices: widen the Docker context, bundle shared in via a build step (esbuild/tsup), or duplicate. We chose duplication because the values rarely change and the alternatives all add operational complexity for a small DRY win.
+
+**Catch-it-earlier idea:** A CI step that does `cd packages/backend && docker build .` would have caught this. We don't run it today because Docker-in-CI is slow and Coolify rebuilds anyway. The README and `CLAUDE.md` Gotchas now flag the trap in writing — second-best defense.
+
 ---
 
 ### Uptime as a Git-Committed Workflow

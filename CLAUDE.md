@@ -67,11 +67,12 @@
 - `src/components/portfolio/positionClipboard.ts` - Shared portfolio copy-to-clipboard JSON formatter
 - `src/components/portfolio/positionOptions.ts` - Shared storage location option lists (CEX, onchain, broker, bank) used by position forms
 - `src/lib/chartColors.ts` - Centralized chart color constants (brand, portfolio line, allocation palettes)
+- `src/lib/chartUtils.ts` - Time-period date helpers (`getDateRange`, `formatXAxisDate`, `formatTooltipDate`) shared between PortfolioChart and BenchmarkComparisonChart
 - `react-doctor.config.json` - Root-level React Doctor triage policy. Keeps the scan focused on actionable regressions after known React 18/Radix/shadcn and design-opinion rules were reviewed.
 
 ### Shared
 
-- `packages/shared/src/types.ts` - Cross-package type definitions (Position, Trade, Snapshot, Asset, Investor)
+- `packages/shared/src/types.ts` - Cross-package type definitions, domain enums (`AssetCategory`, `StorageType`, `TradeStatus`, etc.), `categoryGroup()`, `USD_SGD_FALLBACK_RATE`, `MAX_POSITIONS_PER_CATEGORY`. Frontend is the only consumer at runtime — see Gotchas re: backend Docker isolation.
 
 ### E2E
 
@@ -453,23 +454,11 @@ All data tables (Portfolio, Trades, History) follow the same copy/import pattern
 
 ### Trade Form Editing
 
-`TradeForm` component supports both create and edit modes:
-
-```typescript
-<TradeForm trade={existingTrade} onSuccess={handleClose} />  // Edit mode
-<TradeForm onSuccess={handleClose} />                         // Create mode
-```
+`TradeForm` accepts an optional `trade` prop — pass it for edit mode, omit for create.
 
 ## Local Database Setup
 
-**Prerequisites:** Docker Desktop installed.
-
-**One-time setup:**
-
-1. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env` from private ops notes
-2. Verify `DATABASE_URL` in `.env` points to `postgresql://dev:dev@localhost:5433/example_portfolio_db`
-
-**Daily workflow:**
+Prereq: Docker Desktop. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env`; `DATABASE_URL` defaults to `postgresql://dev:dev@localhost:5433/example_portfolio_db`.
 
 ```bash
 npm run db:local       # Start local Postgres (port 5433)
@@ -477,15 +466,14 @@ npm run db:sync        # Pull fresh production data → local
 npm run dev            # Start dev servers
 ```
 
-**How it works:** Local backend connects to local Postgres (your sandbox). Production data is pulled on-demand via `db:sync`. Local changes do NOT affect production. Run `db:sync` anytime you want fresh data.
+Local backend connects to local Postgres. Production is untouched. Re-run `db:sync` anytime for fresh data.
 
 ### Branding
 
-- **App name**: FolioBuddy (formerly "PA Portfolio")
-- **Logo**: Growth-chart SVG icon (trending line with arrow). Favicon at `public/logo.svg` (indigo→purple gradient). Sidebar icon uses inline SVG with `bg-primary`/`text-primary-foreground` for theme adaptivity.
-- **Package scope**: `@foliobuddy/*` (root: `foliobuddy`)
-- **GitHub repo**: `n3moxyz/foliobuddy` (renamed from `PA-portfolio-dash`)
-- **Infrastructure names**: local database name is `example_portfolio_db`; production storage/bucket names live in private ops notes.
+- **App name**: FolioBuddy
+- **Logo**: Growth-chart SVG (`public/logo.svg`, indigo→purple gradient). Sidebar icon uses inline SVG with `bg-primary` for theme adaptivity.
+- **Package scope**: `@foliobuddy/*` (root: `foliobuddy`); GitHub repo: `n3moxyz/foliobuddy`.
+- Local DB name: `example_portfolio_db`. Production storage/bucket names live in private ops notes.
 
 ### Clickable Snapshot Rows
 
@@ -513,4 +501,5 @@ See `.impeccable.md` at project root — source of truth for users, brand person
 - `VITE_WS_BACKEND_URL` must be set in Vercel env vars for production WebSocket to work (warns + disables if missing)
 - When deploying: backend must deploy before frontend when API versioning paths change (frontend uses `/api/v1`)
 - Frontend imports from a workspace package (`@foliobuddy/shared`, etc.) MUST be declared in the consumer's `package.json`. Local npm install hoists into root `node_modules` and masks the missing dep — Vercel's `npm ci` rejects it. CI guards this via `npm ls --workspaces --depth=0` in `ci.yml`.
+- Backend Dockerfile is package-isolated: it `COPY package*.json ./` and `npm install` from `packages/backend/` only, so `@foliobuddy/shared` is not resolvable at runtime. `packages/backend/src/lib/constants.ts` intentionally duplicates enums/constants in shared — keep both copies in sync manually when adding new domain enums.
 - `VITE_API_URL` in Vercel must be the full resolved path (`/api/v1`), not just `/api`. A stale `/api` value silently broke prod when the backend removed legacy `/api/*` routes — the frontend still got 200s from the rewrite but hit the wrong paths. Always verify with `curl https://foliobuddy.xyz/api/v1/health/db` after any change.
