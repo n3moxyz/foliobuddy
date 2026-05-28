@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, AlertCircle, Loader2 } from 'lucide-react';
 import type { BulkImportPosition } from '@/lib/types';
+import { formatPrice } from '@/lib/utils';
 
 interface PositionImportTabProps {
   jsonInput: string;
@@ -73,7 +74,7 @@ export function PositionImportTab({
               >
                 <span className="font-medium">{pos.asset.symbol}</span>
                 <span className="text-muted-foreground ml-2">
-                  {pos.quantity} @ ${pos.avgCostUsd.toLocaleString()}
+                  {pos.quantity} @ {formatPrice(pos.avgCostUsd)}
                 </span>
                 {pos.storageLocation && (
                   <span className="text-muted-foreground ml-2">({pos.storageLocation})</span>

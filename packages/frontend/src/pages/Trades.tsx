@@ -8,6 +8,7 @@ import {
 } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
+import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import {
   formatCurrency,
   formatPrice,
@@ -73,32 +74,39 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Format trades for clipboard - includes asset info for recreating
-function formatTradesForClipboard(trades: Trade[]) {
-  const formatted = trades.map((t) => ({
+function formatTradeForClipboard(trade: Trade) {
+  return {
     asset: {
-      coingeckoId: t.asset.coingeckoId,
-      symbol: t.asset.symbol,
-      name: t.asset.name,
-      category: t.asset.category,
+      coingeckoId: trade.asset.coingeckoId,
+      symbol: trade.asset.symbol,
+      name: trade.asset.name,
+      category: trade.asset.category,
     },
-    direction: t.direction,
-    entryPrice: t.entryPrice,
-    exitPrice: t.exitPrice,
-    quantity: t.quantity,
-    entryDate: t.entryDate,
-    exitDate: t.exitDate,
-    status: t.status,
-    notes: t.notes,
-    tags: t.tags,
-  }));
-  return JSON.stringify(formatted, null, 2);
+    direction: trade.direction,
+    entryPrice: trade.entryPrice,
+    exitPrice: trade.exitPrice,
+    quantity: trade.quantity,
+    entryDate: trade.entryDate,
+    exitDate: trade.exitDate,
+    status: trade.status,
+    notes: trade.notes,
+    tags: trade.tags,
+  };
 }
 
 async function copyTradesToClipboard(trades: Trade[]): Promise<boolean> {
   try {
-    const text = formatTradesForClipboard(trades);
+    const text = JSON.stringify(trades.map(formatTradeForClipboard), null, 2);
     await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function copyTradeToClipboard(trade: Trade): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(formatTradeForClipboard(trade), null, 2));
     return true;
   } catch {
     return false;
@@ -124,11 +132,10 @@ export default function Trades() {
   const deleteAllMutation = useDeleteAllTrades();
   const deleteTradeMutation = useDeleteTrade();
 
-  // Calculate FX rate from summary
   const fxRate =
     summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
       ? summary.totalValueSgd / summary.totalValueUsd
-      : 1.35;
+      : USD_SGD_FALLBACK_RATE;
 
   const allTrades = useMemo(() => trades ?? [], [trades]);
   const tickerDossiers = useMemo(() => buildTickerDossiers(allTrades), [allTrades]);
@@ -576,36 +583,6 @@ function TradeTapeSection({
   );
 }
 
-// Format a single trade for clipboard (same format as bulk export)
-function formatTradeForClipboard(trade: Trade) {
-  return {
-    asset: {
-      coingeckoId: trade.asset.coingeckoId,
-      symbol: trade.asset.symbol,
-      name: trade.asset.name,
-      category: trade.asset.category,
-    },
-    direction: trade.direction,
-    entryPrice: trade.entryPrice,
-    exitPrice: trade.exitPrice,
-    quantity: trade.quantity,
-    entryDate: trade.entryDate,
-    exitDate: trade.exitDate,
-    status: trade.status,
-    notes: trade.notes,
-    tags: trade.tags,
-  };
-}
-
-async function copyTradeToClipboard(trade: Trade): Promise<boolean> {
-  try {
-    const formatted = formatTradeForClipboard(trade);
-    await navigator.clipboard.writeText(JSON.stringify(formatted, null, 2));
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function formatTradeTags(tags: string | null): string | null {
   if (!tags) return null;

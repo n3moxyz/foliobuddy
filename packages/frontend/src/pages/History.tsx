@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSnapshots, useDeleteSnapshot, useDeleteAllSnapshots } from '@/hooks/useSnapshots';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
+import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -73,11 +74,10 @@ export default function History() {
   const deleteSnapshot = useDeleteSnapshot();
   const deleteAllMutation = useDeleteAllSnapshots();
 
-  // Calculate FX rate from summary
   const fxRate =
     summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
       ? summary.totalValueSgd / summary.totalValueUsd
-      : 1.35;
+      : USD_SGD_FALLBACK_RATE;
 
   // Calculate counts from full data
   const automaticSnapshots = allSnapshots?.filter((s) => s.source === 'AUTOMATIC') || [];

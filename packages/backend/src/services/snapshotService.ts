@@ -20,20 +20,19 @@ class SnapshotService {
    * Create a new portfolio snapshot
    */
   async createSnapshot(userId: string, snapshotType: string = 'DAILY'): Promise<string> {
-    const summary = await portfolioService.getSummary(userId);
+    const [summary, fxRates, btcPrice, ethPrice, positions] = await Promise.all([
+      portfolioService.getSummary(userId),
+      priceService.getExchangeRates(),
+      priceService.getPrice('bitcoin'),
+      priceService.getPrice('ethereum'),
+      prisma.position.findMany({
+        where: { userId, custodyOf: null },
+        include: { asset: true },
+      }),
+    ]);
 
-    const fxRates = await priceService.getExchangeRates();
     const usdSgdRate = fxRates?.usdSgd ?? USD_SGD_FALLBACK_RATE;
-
-    const btcPrice = await priceService.getPrice('bitcoin');
-    const ethPrice = await priceService.getPrice('ethereum');
-
     const metrics = await this.calculatePerformanceMetrics(userId, summary.totalValueUsd);
-
-    const positions = await prisma.position.findMany({
-      where: { userId, custodyOf: null },
-      include: { asset: true },
-    });
 
     const snapshot = await prisma.snapshot.create({
       data: {
@@ -106,8 +105,10 @@ class SnapshotService {
     let ethOutperform: number | null = null;
 
     if (startOfYear && startOfYear.btcPrice && startOfYear.ethPrice) {
-      const currentBtc = await priceService.getPrice('bitcoin');
-      const currentEth = await priceService.getPrice('ethereum');
+      const [currentBtc, currentEth] = await Promise.all([
+        priceService.getPrice('bitcoin'),
+        priceService.getPrice('ethereum'),
+      ]);
 
       if (currentBtc && ytdReturn !== null) {
         const btcYtdReturn = ((currentBtc - startOfYear.btcPrice) / startOfYear.btcPrice) * 100;

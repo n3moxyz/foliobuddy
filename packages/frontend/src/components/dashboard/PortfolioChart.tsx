@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
 import { formatCurrency } from '@/lib/utils';
+import { getDateRange, formatXAxisDate, formatTooltipDate } from '@/lib/chartUtils';
 import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 import type { TimePeriod } from '@/lib/types';
 
@@ -28,60 +29,6 @@ interface RechartsAreaDotProps {
   cx: number;
   cy: number;
   index: number;
-}
-
-function getDateRange(period: TimePeriod): { from?: string; to?: string; days?: number } {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  switch (period) {
-    case '7D':
-      return { days: 7 };
-    case '1M':
-      return { days: 30 };
-    case '3M':
-      return { days: 90 };
-    case '1Y':
-      return { days: 365 };
-    case 'YTD': {
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      return { from: startOfYear.toISOString(), to: today.toISOString() };
-    }
-    case 'Max':
-      return {}; // No date filter - get all data
-    default:
-      return { days: 30 };
-  }
-}
-
-// Format date for X-axis based on data range (CoinGecko style)
-// The format depends on the SPAN of data, not just the selected period
-function formatXAxisDate(timestamp: string, totalDays: number): string {
-  const date = new Date(timestamp);
-  const day = date.getDate();
-  const month = date.toLocaleDateString('en-US', { month: 'short' });
-  const year = date.getFullYear();
-
-  if (totalDays <= 14) {
-    // Very short range: "23 Jan"
-    return `${day} ${month}`;
-  } else if (totalDays <= 60) {
-    // Short/medium range: "23 Jan"
-    return `${day} ${month}`;
-  } else {
-    // Longer range (3M+): "Jan 2026"
-    return `${month} ${year}`;
-  }
-}
-
-// Format date for tooltip (always show full date)
-function formatTooltipDate(timestamp: string): string {
-  const date = new Date(timestamp);
-  return date.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
 }
 
 export function PortfolioChart({

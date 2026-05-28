@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { usePositions, usePortfolioSummary, useDeleteAllPositions } from '@/hooks/usePortfolio';
 import { useCurrencyStore } from '@/stores/currencyStore';
+import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import {
   formatCurrency,
   formatPercent,
@@ -115,12 +116,11 @@ export default function Portfolio() {
   const [editingPerp, setEditingPerp] = useState(false);
   const [perpInput, setPerpInput] = useState('');
 
-  // Calculate FX rate from summary
   const fxRate = useMemo(() => {
     if (summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0) {
       return summary.totalValueSgd / summary.totalValueUsd;
     }
-    return 1.35; // Default fallback rate
+    return USD_SGD_FALLBACK_RATE;
   }, [summary]);
 
   // Helper to convert values based on currency
@@ -151,7 +151,6 @@ export default function Portfolio() {
 
   const { isExpanded, toggle } = useCollapsibleState();
 
-  // Split positions: owned (custodyOf is null) vs custody (custodyOf is set)
   const { ownedPositions, custodyPositions } = useMemo(() => {
     if (!positions) return { ownedPositions: [] as Position[], custodyPositions: [] as Position[] };
     return {
@@ -160,7 +159,6 @@ export default function Portfolio() {
     };
   }, [positions]);
 
-  // Build sections dynamically from config (owned positions only)
   const sections = useMemo(() => {
     return SECTION_CONFIG.map((config) => {
       const filtered = ownedPositions.filter(config.filter);

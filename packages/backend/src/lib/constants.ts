@@ -1,3 +1,7 @@
+// NOTE: These values intentionally duplicate definitions in @foliobuddy/shared.
+// The backend Docker build copies only this package, so it cannot resolve the
+// workspace at runtime. Keep both copies in sync when adding new domain enums.
+
 /** Fallback USD/SGD exchange rate when FX API is unavailable */
 export const USD_SGD_FALLBACK_RATE = 1.35;
 
@@ -14,12 +18,9 @@ export const MAX_HISTORICAL_DAYS = 365;
 export const MAX_PAYLOAD_SIZE = '1mb';
 
 /** Rate limiting: requests per window (override with RATE_LIMIT_MAX env var) */
-export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 export const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX || '200', 10);
 
-// ── Domain enums ────────────────────────────────────────────────────────
-
-/** Asset categories */
 export const AssetCategory = {
   LIQUID_CRYPTO: 'LIQUID_CRYPTO',
   STABLECOIN: 'STABLECOIN',
@@ -32,7 +33,6 @@ export const AssetCategory = {
 export type AssetCategory = (typeof AssetCategory)[keyof typeof AssetCategory];
 export const ASSET_CATEGORIES = Object.values(AssetCategory) as [AssetCategory, ...AssetCategory[]];
 
-/** Position storage types */
 export const StorageType = {
   WALLET: 'WALLET',
   CEX: 'CEX',
@@ -43,7 +43,6 @@ export const StorageType = {
 export type StorageType = (typeof StorageType)[keyof typeof StorageType];
 export const STORAGE_TYPES = Object.values(StorageType) as [StorageType, ...StorageType[]];
 
-/** Trade direction */
 export const TradeDirection = {
   LONG: 'LONG',
   SHORT: 'SHORT',
@@ -54,7 +53,6 @@ export const TRADE_DIRECTIONS = Object.values(TradeDirection) as [
   ...TradeDirection[],
 ];
 
-/** Trade status */
 export const TradeStatus = {
   OPEN: 'OPEN',
   CLOSED: 'CLOSED',
@@ -62,7 +60,6 @@ export const TradeStatus = {
 export type TradeStatus = (typeof TradeStatus)[keyof typeof TradeStatus];
 export const TRADE_STATUSES = Object.values(TradeStatus) as [TradeStatus, ...TradeStatus[]];
 
-/** Snapshot types */
 export const SnapshotType = {
   DAILY: 'DAILY',
   WEEKLY: 'WEEKLY',
@@ -71,20 +68,17 @@ export const SnapshotType = {
 export type SnapshotType = (typeof SnapshotType)[keyof typeof SnapshotType];
 export const SNAPSHOT_TYPES = Object.values(SnapshotType) as [SnapshotType, ...SnapshotType[]];
 
-/** Snapshot sources */
 export const SnapshotSource = {
   AUTOMATIC: 'AUTOMATIC',
   MANUAL: 'MANUAL',
 } as const;
 export type SnapshotSource = (typeof SnapshotSource)[keyof typeof SnapshotSource];
 
-/** Stablecoin-like categories (for grouping in UI) */
 export const STABLECOIN_CATEGORIES: AssetCategory[] = [
   AssetCategory.STABLECOIN,
   AssetCategory.CASH,
 ];
 
-/** Category groups — single source of truth for position-limit and UI bucketing */
 export const CategoryGroup = {
   CRYPTO: 'crypto',
   STABLES: 'stables',
@@ -102,7 +96,6 @@ export function categoryGroup(category: string): CategoryGroup {
   return CategoryGroup.CRYPTO;
 }
 
-/** Asset categories that belong to each group — for Prisma `in` filters */
 export const CATEGORIES_IN_GROUP: Record<CategoryGroup, AssetCategory[]> = {
   [CategoryGroup.STABLES]: [AssetCategory.STABLECOIN, AssetCategory.CASH],
   [CategoryGroup.EQUITIES]: [AssetCategory.EQUITY],
@@ -110,7 +103,6 @@ export const CATEGORIES_IN_GROUP: Record<CategoryGroup, AssetCategory[]> = {
   [CategoryGroup.CRYPTO]: [AssetCategory.LIQUID_CRYPTO, AssetCategory.NFT, AssetCategory.ANGEL],
 };
 
-/** Price provider identifier stored on Asset.priceProvider */
 export const PriceProvider = {
   COINGECKO: 'coingecko',
   YAHOO: 'yahoo',
@@ -118,7 +110,6 @@ export const PriceProvider = {
 } as const;
 export type PriceProvider = (typeof PriceProvider)[keyof typeof PriceProvider];
 
-/** Source attribution for PriceHistory rows */
 export const PriceSource = {
   COINGECKO: 'coingecko',
   YAHOO: 'yahoo',

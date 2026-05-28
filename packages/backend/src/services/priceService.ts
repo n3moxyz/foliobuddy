@@ -118,6 +118,8 @@ class PriceService {
     let errors = 0;
     const changedAssetIds: string[] = [];
 
+    const now = new Date();
+
     for (const [providerName, providerAssets] of byProvider) {
       const provider = this.providers[providerName];
       const ids = providerAssets
@@ -133,6 +135,16 @@ class PriceService {
         continue;
       }
 
+      const assetUpdates: Array<ReturnType<typeof prisma.asset.update>> = [];
+      const historyRows: Array<{
+        assetId: string;
+        priceUsd: number;
+        nativePrice: number | null;
+        nativeCurrency: string | null;
+        fxRateToUsd: number | null;
+        source: ProviderName;
+      }> = [];
+
       for (const asset of providerAssets) {
         if (!asset.providerAssetId) continue;
         const price = priceMap.get(asset.providerAssetId);
@@ -140,37 +152,43 @@ class PriceService {
           errors++;
           continue;
         }
-        try {
-          await prisma.asset.update({
+        assetUpdates.push(
+          prisma.asset.update({
             where: { id: asset.id },
-            data: {
-              currentPriceUsd: price.priceUsd,
-              priceUpdatedAt: new Date(),
-            },
+            data: { currentPriceUsd: price.priceUsd, priceUpdatedAt: now },
+          })
+        );
+        // Manual assets get PriceHistory rows only from explicit NAV updates
+        if (providerName !== 'manual') {
+          historyRows.push({
+            assetId: asset.id,
+            priceUsd: price.priceUsd,
+            nativePrice: price.nativePrice ?? null,
+            nativeCurrency: price.nativeCurrency ?? null,
+            fxRateToUsd: price.fxRateToUsd ?? null,
+            source: providerName,
           });
-          // Manual assets get PriceHistory rows only from explicit NAV updates, not the refresh loop
-          if (providerName !== 'manual') {
-            try {
-              await prisma.priceHistory.create({
-                data: {
-                  assetId: asset.id,
-                  priceUsd: price.priceUsd,
-                  nativePrice: price.nativePrice ?? null,
-                  nativeCurrency: price.nativeCurrency ?? null,
-                  fxRateToUsd: price.fxRateToUsd ?? null,
-                  source: providerName,
-                },
-              });
-            } catch (err) {
-              // Unique constraint on (assetId, timestamp) — can collide on sub-second re-runs
-              if (!isUniqueConstraintError(err)) throw err;
-            }
-          }
-          if (asset.currentPriceUsd !== price.priceUsd) changedAssetIds.push(asset.id);
-          updated++;
+        }
+        if (asset.currentPriceUsd !== price.priceUsd) changedAssetIds.push(asset.id);
+        updated++;
+      }
+
+      if (assetUpdates.length > 0) {
+        try {
+          await prisma.$transaction(assetUpdates);
         } catch (error) {
-          logger.error(`[Price Refresh] update failed for ${asset.providerAssetId}:`, error);
-          errors++;
+          logger.error(`[Price Refresh] ${providerName} asset update batch failed:`, error);
+          errors += assetUpdates.length;
+          updated -= assetUpdates.length;
+        }
+      }
+
+      if (historyRows.length > 0) {
+        try {
+          // skipDuplicates handles (assetId, timestamp) collisions on sub-second re-runs
+          await prisma.priceHistory.createMany({ data: historyRows, skipDuplicates: true });
+        } catch (error) {
+          logger.error(`[Price Refresh] ${providerName} history insert batch failed:`, error);
         }
       }
     }
@@ -182,38 +200,33 @@ class PriceService {
     if (changedAssetIds && changedAssetIds.length === 0) return;
     const positions = await prisma.position.findMany({
       ...(changedAssetIds ? { where: { assetId: { in: changedAssetIds } } } : {}),
-      include: { asset: true },
+      select: {
+        id: true,
+        quantity: true,
+        avgCostUsd: true,
+        asset: { select: { currentPriceUsd: true } },
+      },
     });
-    for (const position of positions) {
-      if (!position.asset.currentPriceUsd) continue;
-      const marketValue = position.quantity * position.asset.currentPriceUsd;
-      const costBasis = position.quantity * position.avgCostUsd;
-      const unrealizedPnL = marketValue - costBasis;
-      const unrealizedPnLPct = costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
-      await prisma.position.update({
-        where: { id: position.id },
-        data: {
-          marketValueUsd: marketValue,
-          unrealizedPnL,
-          unrealizedPnLPct,
-        },
+    const updates = positions
+      .filter((p) => p.asset.currentPriceUsd != null)
+      .map((p) => {
+        const marketValue = p.quantity * (p.asset.currentPriceUsd as number);
+        const costBasis = p.quantity * p.avgCostUsd;
+        const unrealizedPnL = marketValue - costBasis;
+        const unrealizedPnLPct = costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
+        return prisma.position.update({
+          where: { id: p.id },
+          data: { marketValueUsd: marketValue, unrealizedPnL, unrealizedPnLPct },
+        });
       });
-    }
+    if (updates.length === 0) return;
+    await prisma.$transaction(updates);
   }
 
   clearCache(): void {
     this.coingecko.clearCache();
     this.yahoo.clearCache();
   }
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code: string }).code === 'P2002'
-  );
 }
 
 export const priceService = new PriceService();

@@ -19,6 +19,7 @@ import {
   useCreateUnitTrust,
 } from '@/hooks/useAssets';
 import { useCreatePosition, useUpdatePosition, usePortfolioSummary } from '@/hooks/usePortfolio';
+import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import { api } from '@/lib/api';
 import type {
   Asset,
@@ -138,7 +139,6 @@ export function PositionForm({
   cashCount = 0,
   existingCustodyNames = EMPTY_CUSTODY_NAMES,
 }: PositionFormProps) {
-  // Form mode state (add new or import)
   const [mode, setMode] = useState<FormMode>('add');
   const [editMode, setEditMode] = useState<'edit' | 'delta'>('edit');
   const [deltaMode, setDeltaMode] = useState<'add' | 'reduce'>('add');
@@ -183,9 +183,8 @@ export function PositionForm({
   const [utMultipleHoldings, setUtMultipleHoldings] = useState<ParsedStatementHolding[] | null>(
     null
   );
-  // usdPerSgd: 1 SGD = x USD. Used to convert SGD cost input to USD on submit.
-  // Defaults to ~0.74 (≈ 1/1.35). Overwritten by the PDF parse response when available.
-  const [utUsdPerNative, setUtUsdPerNative] = useState<number>(1 / 1.35);
+  // usdPerNative: 1 unit of native currency = x USD. Overwritten by PDF parse when available.
+  const [utUsdPerNative, setUtUsdPerNative] = useState<number>(1 / USD_SGD_FALLBACK_RATE);
   const [utYahooSymbol, setUtYahooSymbol] = useState<string | null>(null);
 
   // Error state
@@ -342,7 +341,7 @@ export function PositionForm({
     ) {
       return portfolioSummary.totalValueSgd / portfolioSummary.totalValueUsd;
     }
-    return 1.35;
+    return USD_SGD_FALLBACK_RATE;
   }, [portfolioSummary]);
 
   // Currency the user is entering cost in. USD unless the asset is SGD-denominated
@@ -795,7 +794,7 @@ export function PositionForm({
     setQuantity(h.units.toString());
     setCostInputMode('total');
     // Prefill total cost in native currency when non-USD; store fx rate for later conversion
-    const usdPerNative = h.fxRateToUsd ?? (ccy === 'USD' ? 1 : 1 / 1.35);
+    const usdPerNative = h.fxRateToUsd ?? (ccy === 'USD' ? 1 : 1 / USD_SGD_FALLBACK_RATE);
     setUtUsdPerNative(usdPerNative);
     setTotalCost(ccy === 'USD' ? h.totalCostUsd.toFixed(2) : h.totalCostNative.toFixed(2));
     setStorageLocation(

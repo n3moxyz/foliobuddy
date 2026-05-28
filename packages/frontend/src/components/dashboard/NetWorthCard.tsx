@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
@@ -31,7 +32,7 @@ export function NetWorthCard({
     if (summary.totalValueUsd > 0 && summary.totalValueSgd > 0) {
       return summary.totalValueSgd / summary.totalValueUsd;
     }
-    return 1.35;
+    return USD_SGD_FALLBACK_RATE;
   }, [summary]);
 
   const convert = (usdValue: number | null | undefined) => {

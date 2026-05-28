@@ -21,11 +21,20 @@ import {
   mergeAdditionalBenchmark,
   getCurrentChange,
   DEFAULT_BENCHMARKS,
-  ADDITIONAL_COLORS,
   type BenchmarkConfig,
   type NormalizedDataPoint,
 } from '@/lib/benchmarkUtils';
-import { PORTFOLIO_LINE_COLOR, BRAND_COLORS } from '@/lib/chartColors';
+import {
+  PORTFOLIO_LINE_COLOR,
+  BRAND_COLORS,
+  ADDITIONAL_BENCHMARK_COLORS,
+} from '@/lib/chartColors';
+import {
+  getDateRange,
+  getDaysFromPeriod,
+  formatXAxisDate,
+  formatTooltipDate,
+} from '@/lib/chartUtils';
 import { Plus, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -36,76 +45,6 @@ interface RechartsLineDotProps {
   cy: number;
   index: number;
   value: number | undefined;
-}
-
-function getDateRange(period: TimePeriod): { from?: string; to?: string; days?: number } {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  switch (period) {
-    case '7D':
-      return { days: 7 };
-    case '1M':
-      return { days: 30 };
-    case '3M':
-      return { days: 90 };
-    case '1Y':
-      return { days: 365 };
-    case 'YTD': {
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      return { from: startOfYear.toISOString(), to: today.toISOString() };
-    }
-    case 'Max':
-      return {};
-    default:
-      return { days: 30 };
-  }
-}
-
-function getDaysFromPeriod(period: TimePeriod): number {
-  switch (period) {
-    case '7D':
-      return 7;
-    case '1M':
-      return 30;
-    case '3M':
-      return 90;
-    case '1Y':
-      return 365;
-    case 'YTD': {
-      const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      return Math.ceil((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
-    }
-    case 'Max':
-      return 365;
-    default:
-      return 30;
-  }
-}
-
-function formatXAxisDate(timestamp: string, totalDays: number): string {
-  const date = new Date(timestamp);
-  const day = date.getDate();
-  const month = date.toLocaleDateString('en-US', { month: 'short' });
-  const year = date.getFullYear();
-
-  if (totalDays <= 14) {
-    return `${day} ${month}`;
-  } else if (totalDays <= 60) {
-    return `${day} ${month}`;
-  } else {
-    return `${month} ${year}`;
-  }
-}
-
-function formatTooltipDate(timestamp: string): string {
-  const date = new Date(timestamp);
-  return date.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
 }
 
 export function BenchmarkComparisonChart() {
@@ -235,14 +174,14 @@ export function BenchmarkComparisonChart() {
   const addBenchmark = (coin: CoinSearchResult) => {
     if (additionalBenchmarks.length >= 3) return;
 
-    const colorIndex = additionalBenchmarks.length % ADDITIONAL_COLORS.length;
+    const colorIndex = additionalBenchmarks.length % ADDITIONAL_BENCHMARK_COLORS.length;
     setAdditionalBenchmarks((prev) => [
       ...prev,
       {
         id: coin.id,
         coingeckoId: coin.id,
         symbol: coin.symbol,
-        color: ADDITIONAL_COLORS[colorIndex],
+        color: ADDITIONAL_BENCHMARK_COLORS[colorIndex],
         enabled: true,
       },
     ]);

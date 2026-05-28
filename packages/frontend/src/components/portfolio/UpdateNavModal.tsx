@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useUpdateAssetNav } from '@/hooks/useAssets';
-import { getPriceAgeInfo, priceAgeClass } from '@/lib/utils';
+import { getPriceAgeInfo, priceAgeClass, formatPrice } from '@/lib/utils';
 import type { Asset } from '@/lib/types';
 import { ExternalLink } from 'lucide-react';
 
@@ -67,7 +67,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
           <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Stored USD price</span>
             <span className="font-mono">
-              {asset.currentPriceUsd !== null ? `$${asset.currentPriceUsd.toFixed(4)}` : '—'}{' '}
+              {formatPrice(asset.currentPriceUsd)}{' '}
               <span className={priceAgeClass(getPriceAgeInfo(asset.priceUpdatedAt).severity)}>
                 ({getPriceAgeInfo(asset.priceUpdatedAt).label})
               </span>

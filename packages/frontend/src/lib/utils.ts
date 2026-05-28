@@ -1,5 +1,8 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { AssetCategory, CategoryGroup, categoryGroup } from '@foliobuddy/shared';
+
+export { AssetCategory, CategoryGroup, categoryGroup };
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -157,27 +160,17 @@ export function getPnLColorClass(value: number | null | undefined): string {
 
 /** Returns true if the asset category is a stablecoin or cash equivalent */
 export function isStablecoinCategory(category: string | undefined | null): boolean {
-  return category === 'STABLECOIN' || category === 'CASH';
-}
-
-/** Category groups — keep in sync with backend `categoryGroup()` in constants.ts */
-export type CategoryGroup = 'crypto' | 'stables' | 'equities' | 'unit_trusts';
-
-export function categoryGroup(category: string | undefined | null): CategoryGroup {
-  if (category === 'STABLECOIN' || category === 'CASH') return 'stables';
-  if (category === 'EQUITY') return 'equities';
-  if (category === 'UNIT_TRUST') return 'unit_trusts';
-  return 'crypto';
+  return category === AssetCategory.STABLECOIN || category === AssetCategory.CASH;
 }
 
 /** True only for true crypto categories — excludes stables, equities, unit trusts */
 export function isCryptoCategory(category: string | undefined | null): boolean {
-  return categoryGroup(category) === 'crypto';
+  return categoryGroup(category) === CategoryGroup.CRYPTO;
 }
 
 /** True for market-risk assets — excludes stablecoins and cash equivalents */
 export function isMarketExposureCategory(category: string | undefined | null): boolean {
-  return categoryGroup(category) !== 'stables';
+  return categoryGroup(category) !== CategoryGroup.STABLES;
 }
 
 export type PriceAgeSeverity = 'fresh' | 'aging' | 'stale' | 'unknown';

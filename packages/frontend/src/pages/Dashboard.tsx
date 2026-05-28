@@ -9,6 +9,7 @@ import {
 } from '@/hooks/usePortfolio';
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
+import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import { formatDateTime, isMarketExposureCategory } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -53,12 +54,11 @@ export default function Dashboard() {
   }, [investors]);
   const selectedInvestors = manualSelectedInvestors ?? defaultSelectedInvestors;
 
-  // Calculate FX rate from summary
   const fxRate = useMemo(() => {
     if (totalValueUsd > 0 && totalValueSgd > 0) {
       return totalValueSgd / totalValueUsd;
     }
-    return 1.35; // Default fallback rate
+    return USD_SGD_FALLBACK_RATE;
   }, [totalValueUsd, totalValueSgd]);
 
   // Calculate stake multiplier based on selected investors

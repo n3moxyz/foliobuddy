@@ -6,6 +6,7 @@ import type { BulkImportTrade } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, AlertCircle, Loader2 } from 'lucide-react';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
+import { formatPrice } from '@/lib/utils';
 
 const TRADE_DIRECTIONS = new Set(['LONG', 'SHORT']);
 
@@ -136,12 +137,10 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
                 </span>
                 <span className="font-medium ml-2">{t.asset.symbol}</span>
                 <span className="text-muted-foreground ml-2">
-                  {t.quantity} @ ${t.entryPrice.toLocaleString()}
+                  {t.quantity} @ {formatPrice(t.entryPrice)}
                 </span>
                 {t.exitPrice && (
-                  <span className="text-muted-foreground ml-1">
-                    → ${t.exitPrice.toLocaleString()}
-                  </span>
+                  <span className="text-muted-foreground ml-1">→ {formatPrice(t.exitPrice)}</span>
                 )}
               </div>
             ))}
