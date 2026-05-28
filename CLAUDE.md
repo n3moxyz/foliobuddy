@@ -1,24 +1,10 @@
 # CLAUDE.md
 
-> **Self-Updating Rule**: This file is a living document. Claude should proactively update it when:
+> **Maintenance rules**:
 >
-> - New patterns, conventions, or architectural decisions are established
-> - New key files or directories are added
-> - Commands or workflows change
-> - Bugs/gotchas are discovered worth remembering
-> - Environment variables are added/removed
-
-> **Agent Instruction Sync**: Keep `CLAUDE.md` and `AGENTS.md` synchronized. When updating one, mirror the same project facts, workflows, and lessons into the other in the same change. The only expected differences are the file title and agent name (`Claude` vs `Codex`).
-
-> **FORET.md Maintenance**: After completing significant changes to this project, Claude MUST update `FORET.md` to reflect:
->
-> - New features or architectural changes (add to relevant sections)
-> - Bugs encountered and how they were fixed (add to "Lessons Learned the Hard Way" section)
-> - New patterns or best practices discovered (add to "Best Practices" section)
-> - Technology changes or additions (update tech stack discussion)
-> - Lessons learned (add to "What I'd Do Differently" or relevant section)
->
-> Keep the engaging, conversational tone. Use analogies where helpful. This is a learning document, not dry documentation.
+> - **Self-update**: Update this file when patterns, key files, commands, gotchas, or env vars change.
+> - **Sync with AGENTS.md**: Mirror changes to both files (only title + agent name differ).
+> - **FORET.md**: After significant changes, update `FORET.md` with new features, bugs/fixes, lessons, and tech changes. Keep the conversational, teaching tone.
 
 ## Project Overview
 
@@ -184,16 +170,7 @@ Captures portfolio state at points in time for performance tracking. Calculates 
 
 ### Snapshot Backfill Script
 
-`packages/backend/scripts/backfill-equity-snapshots.ts` — one-shot script for retroactively inserting positions into historical snapshots when a long-held position is entered mid-year. Prevents a vertical cliff in the Dashboard chart and restores the correct YTD anchor. Full pattern, gotchas, and Yahoo-fallback interpolation logic live in the script header — read it before running.
-
-```bash
-tsx scripts/backfill-equity-snapshots.ts --dry --user-id=<id>
-tsx scripts/backfill-equity-snapshots.ts --apply --user-id=<id>
-tsx scripts/backfill-equity-snapshots.ts --rollback <audit.json>
-DATABASE_URL="$PRODUCTION_DATABASE_URL" tsx scripts/backfill-equity-snapshots.ts --apply --user-id=<id>
-```
-
-**`BACKFILLS` is ephemeral — rewrite it per run.** Entries are additive deltas, not absolute states. Re-running with the same entries double-adds. Multiple entries on the same symbol (one fund across multiple brokers) are supported. Audit JSON in `scripts/audit-*.json` is gitignored; keep locally until backfill is confirmed stuck.
+`packages/backend/scripts/backfill-equity-snapshots.ts` — one-shot for retroactively inserting positions into historical snapshots when a long-held position is entered mid-year. Read the script header for usage flags (`--dry`/`--apply`/`--rollback`), the ephemeral `BACKFILLS` array semantics (additive deltas, not states), and Yahoo-fallback interpolation.
 
 ### Yahoo Search IP-Filter Workaround
 
@@ -316,9 +293,9 @@ Positions are grouped two-level: **Crypto/Equities/Cash** (primary, in `Portfoli
 
 ### Custody Positions ("Held for Others")
 
-Positions held on behalf of others (e.g., "bought BTC for Mum"). Uses `custodyOf String?` on Position — `null` = owned, non-null = custody. Custody positions are excluded from net worth, P&L, allocations, snapshots, and exposure. Backend: `portfolioService` and `snapshotService` filter `custodyOf: null`; `positions.ts` Zod schemas accept it as `z.string().nullable().optional()` (empty string → null).
+Positions held for others (e.g. "bought BTC for Mum"). `Position.custodyOf String?` — `null`=owned, non-null=custody. Custody excluded from net worth, P&L, allocations, snapshots, exposure. Backend services filter `custodyOf: null`; Zod schema is `z.string().nullable().optional()` (empty string → null).
 
-Frontend: `Portfolio.tsx` splits into owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default, reuses `PositionTable`). `CustodyCheckbox.tsx` (shared between create/edit) renders at the _bottom_ of every form variant just above submit, with name dropdown (existing names from positions + localStorage `foliobuddy-custody-names`, plus "Add new person"). Edit sends empty string to clear. `PositionImportTab.tsx` shows a purple banner when importing as custody; clipboard JSON in `PositionTable.tsx` includes `custodyOf` when set.
+Frontend: `Portfolio.tsx` splits owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default). `CustodyCheckbox.tsx` renders at the bottom of every form, with name dropdown (positions + localStorage `foliobuddy-custody-names` + "Add new person"). Edit sends empty string to clear. Clipboard JSON includes `custodyOf` when set.
 
 ### Cash Positions (Stablecoins + Fiat)
 
@@ -328,18 +305,18 @@ Cash storage depends on Type: stablecoins use **CEX** / **Onchain**; Cash (fiat)
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
-Equities cover two sub-types via a UI toggle (enums unchanged):
+Two sub-types via UI toggle (enums unchanged):
 
-- **Stock / ETF** (`equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`) — tickers priced via Yahoo Finance. ETFs belong here, not Unit Trust — they have live ticker prices.
-- **Unit Trust** (`equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`) — NAV tracked manually or via Yahoo statement parser.
+- **Stock / ETF**: `equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`. ETFs go here, not Unit Trust — they have live ticker prices.
+- **Unit Trust**: `equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`.
 
-**Form (`PositionForm.tsx`):** Category dropdown is Crypto / Cash / Equities. Equities shows a Stock/ETF vs Unit Trust segmented toggle (create only; edit infers from `asset.category`). For equities, Storage Type is replaced with a broker dropdown sourced from `BROKER_LOCATIONS` (FSMOne, Tiger, UOB Kay Hian, Others) — `storageType` stays `'BROKERAGE'`, dropdown drives `storageLocation`. Cost input currency follows `asset.nativeCurrency`: SGD tickers (`.SI`) and SGD unit trusts show SGD inputs (with USD conversion note). Backend always stores USD; conversion uses live FX rate from `portfolioSummary` (fallback 1.35). Edit mode converts stored USD back to SGD via `costInitialized` flag.
+**Form:** Category = Crypto / Cash / Equities. Equities shows Stock/ETF vs Unit Trust toggle (create only; edit infers from category). Storage replaced with broker dropdown (`BROKER_LOCATIONS`); `storageType` stays `'BROKERAGE'`. Cost currency follows `asset.nativeCurrency` — SGD tickers (`.SI`) and SGD unit trusts show SGD inputs with USD conversion note. Backend stores USD; FX from `portfolioSummary` (fallback 1.35). Edit converts stored USD → SGD via `costInitialized` flag.
 
-**Display:** `Portfolio.tsx` has one "Equities" section; `PositionTable` with `groupBy='equityType'` splits into Stock/ETF and Unit Trust subsections. `PositionRow.tsx` shows the broker name directly for BROKERAGE positions. **NAV-age badge** appears under the symbol for unit trusts OR manual-priced non-cash positions; color follows freshness via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d, red "Never updated" if null). Crypto/equity tickers and fiat cash skip the badge — live tickers refresh automatically, and cash should not show NAV language.
+**Display:** `PositionTable` with `groupBy='equityType'` splits Stock/ETF vs Unit Trust. **NAV-age badge** under symbol for unit trusts OR manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers and fiat cash skip the badge.
 
-**Statement upload (Unit Trust create form):** Dashed upload card is a `<label>` wrapping the file input — click or drag-drop a PDF works. Drag handlers on the label use `utDragOver` state to highlight `bg-primary/15`. Drop validates `application/pdf` / `.pdf` extension; same `handleUploadStatement` runs for both paths.
+**Statement upload:** Dashed card is a `<label>` wrapping the file input — click or drag-drop PDF works (`utDragOver` highlights). Validates `application/pdf`/`.pdf`.
 
-**Copy/Paste round-trip:** `PositionTable.formatPositionsForClipboard` includes `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` for non-coingecko assets so re-imported equities wire up Yahoo live prices. Bulk import schema accepts these as optional; honored only when creating a new Asset (defaults: `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`). Re-importing an existing symbol matches by symbol first.
+**Copy/Paste round-trip:** Clipboard includes `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` for non-coingecko assets. Bulk import honors these only when creating a new Asset (defaults: `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`); existing symbols match by symbol first.
 
 ### Position Edit Modes
 
@@ -357,19 +334,15 @@ Rules:
 
 ### Dashboard Charts
 
-- **Portfolio $ Value**: AreaChart (Recharts) with gradient fill under the line. Time period selector (7D/1M/3M/1Y/YTD/Max). Faint reference line at starting value. End-of-line value label. Centered loading indicator on period change (uses `isFetching` not `isLoading` to detect refetches).
-- **Portfolio % vs Benchmarks**: Normalized percentage chart comparing portfolio vs BTC/ETH. Faint 0% reference line. Benchmark normalization uses price at first portfolio timestamp as baseline (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching.
-- **Allocation donut charts**: 4 charts laid out responsively (`grid sm:grid-cols-2 lg:grid-cols-4`):
-  - **By Asset** — high-level buckets: Crypto / Equities / Cash. `bucketFor()` in `AllocationCharts.tsx` maps via `categoryGroup()`; both `EQUITY` and `UNIT_TRUST` fold into Equities, while `STABLECOIN` and `CASH` display as Cash.
-  - **By Detailed Asset** — crypto by individual symbol; Equities and Cash each shown as a single bundled wedge (protected from the "Other" rollup). Sub-2% crypto slices group into "Other" once 2+ of them (`OTHER_THRESHOLD_PCT = 2`).
-  - **By Storage** — CEX / Broker account / Bank / Onchain / Onchain Ledger.
-  - **Cash Breakdown** — by stablecoin/fiat symbol; only rendered when cash-equivalent positions exist.
-- Custody positions filtered out before allocations are computed (`positions.filter((p) => !p.custodyOf)` in `Dashboard.tsx`).
-- Inside each card: side legend (donut left, legend right) at sm/md (2-up); legend stacks below donut at lg+ (4-up) so labels stay readable in narrow cards (`flex-col sm:flex-row lg:flex-col`).
-- Center label shows top item's % and truncated name (>8 chars get ellipsis). Clickable legends toggle slices — percentages recalculate for visible items.
-- Hover on a pie slice shows `name · $value · %` on its own line directly under the card title (`min-h-[16px]` reserves space so the donut doesn't shift on hover/leave). Uses `formatCurrency(..., true)` compact mode. No Recharts Tooltip — removed to avoid overlap with legend.
-- Maximally distinct hues per slice, avoiding benchmark line colors. Colors come from `ASSET_COLORS` / `STORAGE_COLORS` / `STABLES_COLORS` in `lib/chartColors.ts`.
-- **Benchmark chart legend**: Portfolio line color is `#64748B` (slate gray) with matching color swatch dot — not the default `text-primary` indigo.
+- **Portfolio $ Value**: AreaChart (Recharts), gradient fill, time period selector (7D/1M/3M/1Y/YTD/Max), reference line at starting value, end-of-line label. Loading state uses `isFetching` to detect period-change refetches.
+- **Portfolio % vs Benchmarks**: Normalized % vs BTC/ETH. Benchmark baseline = price at first portfolio timestamp (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching. Portfolio line color `#64748B` (slate), not indigo.
+- **Allocation donuts** (4 charts, `grid sm:grid-cols-2 lg:grid-cols-4` in `AllocationCharts.tsx`):
+  - **By Asset**: Crypto / Equities / Cash buckets via `bucketFor()` → `categoryGroup()`.
+  - **By Detailed Asset**: crypto by symbol; Equities and Cash each one bundled wedge (protected from rollup). Sub-2% crypto slices group into "Other" once 2+ exist (`OTHER_THRESHOLD_PCT = 2`).
+  - **By Storage**: CEX / Broker account / Bank / Onchain / Onchain Ledger.
+  - **Cash Breakdown**: by stable/fiat symbol; only renders when cash positions exist.
+- Custody filtered out before allocations (`positions.filter((p) => !p.custodyOf)`).
+- Layout: legend right of donut at sm/md; below at lg+ (`flex-col sm:flex-row lg:flex-col`). Center label = top item's % + truncated name (>8 chars). Hover shows `name · $value · %` under card title; no Recharts Tooltip (overlaps legend). Colors from `lib/chartColors.ts`.
 
 ### Dashboard Investor Default
 
@@ -377,7 +350,7 @@ The dashboard investor filter should default to the primary owner investor (`isO
 
 ### Net Worth Card
 
-Borderless hero section (no Card wrapper) with merged stat metrics. Shows investor label in title: `Net Worth (Nemo)`. Net worth at `text-4xl sm:text-5xl font-bold tracking-tight`. YTD trend arrow inline. Desktop: `grid grid-cols-6 divide-x divide-border` for equal-width metric sections (YTD P&L, YTD Start, vs 30D ago, Exposure, Positions, Trades). Mobile: `grid grid-cols-2 gap-4`. All labels have `HelpTooltip`. Exposure uses the same market-risk formula as Portfolio: all owned non-stable/non-cash assets plus local perp exposure over total portfolio value. Exposure/Positions link to `/portfolio`, Trades links to `/trades`. Alternate currency in small text below. Key numeric values (net worth, P&L, cost basis, alt currency) use `useAnimatedNumber` hook for smooth counting transitions on value changes.
+Borderless hero with merged stats. Title shows investor label (`Net Worth (Nemo)`). Net worth at `text-4xl sm:text-5xl font-bold`. Desktop: `grid-cols-6 divide-x` (YTD P&L, YTD Start, vs 30D, Exposure, Positions, Trades); mobile: 2-col. All labels have `HelpTooltip`. Exposure = owned non-stable/non-cash + local perp exposure ÷ total. Key numeric values use `useAnimatedNumber` for smooth transitions.
 
 ### Performers Card
 
@@ -520,30 +493,7 @@ History page snapshot rows (AUTOMATIC source) are clickable anywhere to expand/c
 
 ## Design Context
 
-### Users
-
-Small circle — the creator plus a few friends/family tracking personal portfolios. Used across contexts: quick net-worth glances on mobile, deeper analysis sessions on desktop. Users are financially literate but not professional traders. They want to feel in control of their money without the tool getting in the way.
-
-### Brand Personality
-
-**Calm, confident, precise.** Like a Bloomberg terminal that went to a meditation retreat — trustworthy, no-nonsense, reassuring even when markets are red. The interface should project quiet competence.
-
-Three words: **Composed. Sharp. Trustworthy.**
-
-### Aesthetic Direction
-
-- **Visual tone**: Dark-mode-native, clean, keyboard-friendly. Inspired by Linear/Raycast (polish, speed, restraint) crossed with Dune Analytics/Zapper (data-density, crypto-native charts, dark themes).
-- **References**: Linear's spatial clarity + Dune's information density + Raycast's micro-interactions
-- **Anti-references**: NO generic SaaS dashboards (identical card grids, admin-panel energy). NO corporate finance tools (Excel-in-a-browser, gray everything, Bloomberg clone). The interface should feel _designed_, not generated.
-- **Theme**: Dark mode primary. Light mode available but dark is the default and the optimized experience.
-
-### Design Principles
-
-1. **Data speaks first** — Numbers, charts, and trends are the hero. Chrome and decoration get out of the way.
-2. **Quiet confidence** — Use restraint over flash. Subtle polish (spacing, type hierarchy, transitions) creates trust. No neon, no glow, no gratuitous gradients.
-3. **Density without clutter** — Show a lot of information clearly. Use hierarchy, grouping, and progressive disclosure instead of hiding data behind clicks.
-4. **Motion with purpose** — Animations confirm actions and orient the user. Never decorative, never slow.
-5. **Designed, not templated** — Every screen should feel intentionally crafted. Avoid patterns that scream "default shadcn/ui" or "AI-generated dashboard."
+See `.impeccable.md` at project root — source of truth for users, brand personality, aesthetic direction, and design principles. Dark mode primary; Linear/Raycast polish crossed with Dune data-density.
 
 ## Gotchas & Notes
 
