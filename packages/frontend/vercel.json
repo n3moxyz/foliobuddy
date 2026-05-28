@@ -4,7 +4,7 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://api.foliobuddy.xyz/api/:path*" },
-    { "source": "/socket.io/:path*", "destination": "https://api.foliobuddy.xyz/socket.io/:path*" },
+    { "source": "/socket.io/:path(.*)", "destination": "https://api.foliobuddy.xyz/socket.io/:path" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
