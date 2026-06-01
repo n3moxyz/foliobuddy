@@ -93,7 +93,12 @@ export function useDeleteAllPositions() {
   });
 }
 
-export function usePerformanceHistory(params?: { days?: number; from?: string; to?: string }) {
+export function usePerformanceHistory(params?: {
+  days?: number;
+  from?: string;
+  to?: string;
+  all?: boolean;
+}) {
   return useQuery({
     queryKey: ['portfolio', 'performance', params],
     queryFn: () => api.getPerformanceHistory(params),

@@ -48,6 +48,7 @@ vi.mock('../../services/snapshotService.js', () => ({
 }));
 
 // Import route after mocks
+const { snapshotService } = await import('../../services/snapshotService.js');
 const { default: snapshotsRouter } = await import('../../routes/snapshots.js');
 const app = createTestApp(snapshotsRouter, '/api/snapshots');
 
@@ -88,6 +89,28 @@ describe('GET /api/snapshots', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
+  });
+});
+
+describe('GET /api/snapshots/performance', () => {
+  it('defaults to the last 30 days when no range is provided', async () => {
+    vi.mocked(snapshotService.getPerformanceHistory).mockResolvedValue([]);
+
+    const res = await request(app).get('/api/snapshots/performance');
+
+    expect(res.status).toBe(200);
+    expect(snapshotService.getPerformanceHistory).toHaveBeenCalledWith('test-user-id', 30);
+    expect(snapshotService.getPerformanceHistoryByRange).not.toHaveBeenCalled();
+  });
+
+  it('returns all performance history when all=true is provided', async () => {
+    vi.mocked(snapshotService.getPerformanceHistoryByRange).mockResolvedValue([]);
+
+    const res = await request(app).get('/api/snapshots/performance?all=true');
+
+    expect(res.status).toBe(200);
+    expect(snapshotService.getPerformanceHistoryByRange).toHaveBeenCalledWith('test-user-id');
+    expect(snapshotService.getPerformanceHistory).not.toHaveBeenCalled();
   });
 });
 

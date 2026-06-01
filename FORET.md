@@ -1953,6 +1953,13 @@ Recently completed:
   - Layout: `grid sm:grid-cols-2 lg:grid-cols-4`. At lg+ the legend stacks below the donut so labels fit in narrow cards (`flex-col sm:flex-row lg:flex-col`)
   - Hover label moved to its own line directly under the card title with `min-h-[16px]` reserved — fixes the truncation/congestion in the title row and stops the donut shifting on hover/leave
   - Lesson: when adding a wider grid breakpoint inside cards that have donut + side legend, recheck whether legend labels still fit at the new column width before shipping. The intermediate "row of 4 with side legend" state truncated every label.
+- [x] **Max chart range fix:**
+  - `getDateRange('Max')` now sends an explicit `all=true` flag to `/snapshots/performance`, and the backend treats that as "all snapshots" instead of defaulting to 30 days.
+  - Lesson: an empty query object is not a mode when the route has defaults. Name the intent in the request, especially for dashboard range selectors where "Max" and "default" mean very different things.
+- [x] **Richer dev demo data for chart and allocation testing:**
+  - `/dev/demo` now seeds a longer all-time performance curve from 2024 through June 2026 and the mock `/snapshots/performance` endpoint filters by `days`, `from`, `to`, and `all=true`, so the Max selector can be tested against visibly older points.
+  - Seeded positions now cover crypto, equities, unit trust, stablecoins, USD/SGD cash, NFT/angel-style alternatives, CEX, DeFi/onchain, bank, brokerage, and custody. This gives the allocation donuts and Portfolio section grouping a better little workout.
+  - While validating, chart dot renderers got stable keys and portfolio collapsible headers were adjusted to keep tooltip/action buttons outside trigger buttons, clearing noisy React console warnings.
 
 ---
 

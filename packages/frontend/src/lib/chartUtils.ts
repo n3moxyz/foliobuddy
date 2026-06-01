@@ -4,6 +4,7 @@ export interface DateRange {
   from?: string;
   to?: string;
   days?: number;
+  all?: boolean;
 }
 
 export function getDateRange(period: TimePeriod): DateRange {
@@ -24,7 +25,7 @@ export function getDateRange(period: TimePeriod): DateRange {
       return { from: startOfYear.toISOString(), to: today.toISOString() };
     }
     case 'Max':
-      return {};
+      return { all: true };
     default:
       return { days: 30 };
   }

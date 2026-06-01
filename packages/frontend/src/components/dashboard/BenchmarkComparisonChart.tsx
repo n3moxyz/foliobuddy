@@ -24,11 +24,7 @@ import {
   type BenchmarkConfig,
   type NormalizedDataPoint,
 } from '@/lib/benchmarkUtils';
-import {
-  PORTFOLIO_LINE_COLOR,
-  BRAND_COLORS,
-  ADDITIONAL_BENCHMARK_COLORS,
-} from '@/lib/chartColors';
+import { PORTFOLIO_LINE_COLOR, BRAND_COLORS, ADDITIONAL_BENCHMARK_COLORS } from '@/lib/chartColors';
 import {
   getDateRange,
   getDaysFromPeriod,
@@ -436,9 +432,11 @@ export function BenchmarkComparisonChart() {
                   strokeWidth={2}
                   dot={(props: RechartsLineDotProps) => {
                     const { cx, cy, index, value } = props;
-                    if (index !== chartData.length - 1 || value == null) return <g />;
+                    if (index !== chartData.length - 1 || value == null) {
+                      return <g key={`portfolio-dot-${index}`} />;
+                    }
                     return (
-                      <g>
+                      <g key={`portfolio-dot-${index}`}>
                         <circle cx={cx} cy={cy} r={3} fill={PORTFOLIO_LINE_COLOR} />
                         <text
                           x={cx + 8}
@@ -465,9 +463,11 @@ export function BenchmarkComparisonChart() {
                     strokeWidth={2}
                     dot={(props: RechartsLineDotProps) => {
                       const { cx, cy, index, value } = props;
-                      if (index !== chartData.length - 1 || value == null) return <g />;
+                      if (index !== chartData.length - 1 || value == null) {
+                        return <g key={`btc-dot-${index}`} />;
+                      }
                       return (
-                        <g>
+                        <g key={`btc-dot-${index}`}>
                           <circle cx={cx} cy={cy} r={3} fill={BRAND_COLORS.btc} />
                           <text
                             x={cx + 8}
@@ -494,9 +494,11 @@ export function BenchmarkComparisonChart() {
                     strokeWidth={2}
                     dot={(props: RechartsLineDotProps) => {
                       const { cx, cy, index, value } = props;
-                      if (index !== chartData.length - 1 || value == null) return <g />;
+                      if (index !== chartData.length - 1 || value == null) {
+                        return <g key={`eth-dot-${index}`} />;
+                      }
                       return (
-                        <g>
+                        <g key={`eth-dot-${index}`}>
                           <circle cx={cx} cy={cy} r={3} fill={BRAND_COLORS.eth} />
                           <text
                             x={cx + 8}
@@ -526,9 +528,11 @@ export function BenchmarkComparisonChart() {
                       strokeWidth={2}
                       dot={(props: RechartsLineDotProps) => {
                         const { cx, cy, index, value } = props;
-                        if (index !== chartData.length - 1 || value == null) return <g />;
+                        if (index !== chartData.length - 1 || value == null) {
+                          return <g key={`${benchmark.id}-dot-${index}`} />;
+                        }
                         return (
-                          <g>
+                          <g key={`${benchmark.id}-dot-${index}`}>
                             <circle cx={cx} cy={cy} r={3} fill={benchmark.color} />
                             <text
                               x={cx + 8}

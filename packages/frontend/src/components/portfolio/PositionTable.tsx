@@ -333,6 +333,38 @@ export function PositionTable({
   );
 
   const tableClass = showAllColumns ? 'w-full min-w-[700px]' : 'table-fixed w-full';
+  const renderSectionTrigger = (
+    sectionId: string,
+    label: string,
+    helpContent: string,
+    count: number,
+    total: number
+  ) => (
+    <div className="mb-2 flex items-center gap-2">
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="group flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left"
+        >
+          <ChevronRight
+            className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
+              isExpanded(sectionId) ? 'rotate-90' : ''
+            }`}
+          />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide transition-colors group-hover:text-foreground">
+            {label}
+          </p>
+          <span className="text-xs text-muted-foreground">({count})</span>
+          {!isExpanded(sectionId) && (
+            <span className="ml-auto text-xs font-mono text-muted-foreground">
+              {formatCurrency(convertSub(total), currency, 0)}
+            </span>
+          )}
+        </button>
+      </CollapsibleTrigger>
+      <HelpTooltip content={helpContent} />
+    </div>
+  );
 
   return (
     <>
@@ -358,28 +390,13 @@ export function PositionTable({
 
         {cexPositions.length > 0 && (
           <Collapsible open={isExpanded(cexId)} onOpenChange={() => toggle(cexId)}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
-              >
-                <ChevronRight
-                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
-                    isExpanded(cexId) ? 'rotate-90' : ''
-                  }`}
-                />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
-                  CEX
-                  <HelpTooltip content="Centralized exchange — assets held on platforms like Binance or Coinbase" />
-                </p>
-                <span className="text-xs text-muted-foreground">({cexPositions.length})</span>
-                {!isExpanded(cexId) && (
-                  <span className="text-xs font-mono text-muted-foreground ml-auto">
-                    {formatCurrency(convertSub(cexTotal), currency, 0)}
-                  </span>
-                )}
-              </button>
-            </CollapsibleTrigger>
+            {renderSectionTrigger(
+              cexId,
+              'CEX',
+              'Centralized exchange — assets held on platforms like Binance or Coinbase',
+              cexPositions.length,
+              cexTotal
+            )}
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-x-auto">
                 <Table className={tableClass}>
@@ -393,28 +410,13 @@ export function PositionTable({
 
         {groupBy !== 'equityType' && brokeragePositions.length > 0 && (
           <Collapsible open={isExpanded(brokerageId)} onOpenChange={() => toggle(brokerageId)}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
-              >
-                <ChevronRight
-                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
-                    isExpanded(brokerageId) ? 'rotate-90' : ''
-                  }`}
-                />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
-                  Broker account
-                  <HelpTooltip content="Assets held in broker accounts or fund platforms" />
-                </p>
-                <span className="text-xs text-muted-foreground">({brokeragePositions.length})</span>
-                {!isExpanded(brokerageId) && (
-                  <span className="text-xs font-mono text-muted-foreground ml-auto">
-                    {formatCurrency(convertSub(brokerageTotal), currency, 0)}
-                  </span>
-                )}
-              </button>
-            </CollapsibleTrigger>
+            {renderSectionTrigger(
+              brokerageId,
+              'Broker account',
+              'Assets held in broker accounts or fund platforms',
+              brokeragePositions.length,
+              brokerageTotal
+            )}
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-x-auto">
                 <Table className={tableClass}>
@@ -428,28 +430,13 @@ export function PositionTable({
 
         {groupBy !== 'equityType' && bankPositions.length > 0 && (
           <Collapsible open={isExpanded(bankId)} onOpenChange={() => toggle(bankId)}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
-              >
-                <ChevronRight
-                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
-                    isExpanded(bankId) ? 'rotate-90' : ''
-                  }`}
-                />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
-                  Bank
-                  <HelpTooltip content="Cash held directly in bank accounts" />
-                </p>
-                <span className="text-xs text-muted-foreground">({bankPositions.length})</span>
-                {!isExpanded(bankId) && (
-                  <span className="text-xs font-mono text-muted-foreground ml-auto">
-                    {formatCurrency(convertSub(bankTotal), currency, 0)}
-                  </span>
-                )}
-              </button>
-            </CollapsibleTrigger>
+            {renderSectionTrigger(
+              bankId,
+              'Bank',
+              'Cash held directly in bank accounts',
+              bankPositions.length,
+              bankTotal
+            )}
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-x-auto">
                 <Table className={tableClass}>
@@ -463,28 +450,13 @@ export function PositionTable({
 
         {groupBy === 'equityType' && singlePositions.length > 0 && (
           <Collapsible open={isExpanded(singleId)} onOpenChange={() => toggle(singleId)}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
-              >
-                <ChevronRight
-                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
-                    isExpanded(singleId) ? 'rotate-90' : ''
-                  }`}
-                />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
-                  Stock / ETF
-                  <HelpTooltip content="Stocks and ETFs (e.g. AAPL, D05.SI, EWY) priced live via Yahoo Finance" />
-                </p>
-                <span className="text-xs text-muted-foreground">({singlePositions.length})</span>
-                {!isExpanded(singleId) && (
-                  <span className="text-xs font-mono text-muted-foreground ml-auto">
-                    {formatCurrency(convertSub(singleTotal), currency, 0)}
-                  </span>
-                )}
-              </button>
-            </CollapsibleTrigger>
+            {renderSectionTrigger(
+              singleId,
+              'Stock / ETF',
+              'Stocks and ETFs (e.g. AAPL, D05.SI, EWY) priced live via Yahoo Finance',
+              singlePositions.length,
+              singleTotal
+            )}
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-x-auto">
                 <Table className={tableClass}>
@@ -498,28 +470,13 @@ export function PositionTable({
 
         {groupBy === 'equityType' && fundPositions.length > 0 && (
           <Collapsible open={isExpanded(fundId)} onOpenChange={() => toggle(fundId)}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
-              >
-                <ChevronRight
-                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
-                    isExpanded(fundId) ? 'rotate-90' : ''
-                  }`}
-                />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
-                  Unit Trust
-                  <HelpTooltip content="Unit trusts and managed funds — NAV tracked per fund, often from broker statements" />
-                </p>
-                <span className="text-xs text-muted-foreground">({fundPositions.length})</span>
-                {!isExpanded(fundId) && (
-                  <span className="text-xs font-mono text-muted-foreground ml-auto">
-                    {formatCurrency(convertSub(fundTotal), currency, 0)}
-                  </span>
-                )}
-              </button>
-            </CollapsibleTrigger>
+            {renderSectionTrigger(
+              fundId,
+              'Unit Trust',
+              'Unit trusts and managed funds — NAV tracked per fund, often from broker statements',
+              fundPositions.length,
+              fundTotal
+            )}
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-x-auto">
                 <Table className={tableClass}>
@@ -533,28 +490,13 @@ export function PositionTable({
 
         {onchainPositions.length > 0 && (
           <Collapsible open={isExpanded(onchainId)} onOpenChange={() => toggle(onchainId)}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="w-full text-left flex items-center gap-2 cursor-pointer select-none group mb-2"
-              >
-                <ChevronRight
-                  className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
-                    isExpanded(onchainId) ? 'rotate-90' : ''
-                  }`}
-                />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
-                  Onchain
-                  <HelpTooltip content="Assets in your own wallets (not on an exchange)" />
-                </p>
-                <span className="text-xs text-muted-foreground">({onchainPositions.length})</span>
-                {!isExpanded(onchainId) && (
-                  <span className="text-xs font-mono text-muted-foreground ml-auto">
-                    {formatCurrency(convertSub(onchainTotal), currency, 0)}
-                  </span>
-                )}
-              </button>
-            </CollapsibleTrigger>
+            {renderSectionTrigger(
+              onchainId,
+              'Onchain',
+              'Assets in your own wallets (not on an exchange)',
+              onchainPositions.length,
+              onchainTotal
+            )}
             <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
               <div className="rounded-md border overflow-x-auto">
                 <Table className={tableClass}>

@@ -272,9 +272,9 @@ export const api = {
     request<PaginatedResponse<Snapshot>>(
       `/snapshots${buildQuery({ type: params?.type, source: params?.source, from: params?.from, to: params?.to, page: params?.page, limit: params?.limit })}`
     ),
-  getPerformanceHistory: (params?: { days?: number; from?: string; to?: string }) =>
+  getPerformanceHistory: (params?: { days?: number; from?: string; to?: string; all?: boolean }) =>
     request<PerformancePoint[]>(
-      `/snapshots/performance${buildQuery({ days: params?.days, from: params?.from, to: params?.to })}`
+      `/snapshots/performance${buildQuery({ days: params?.days, from: params?.from, to: params?.to, all: params?.all })}`
     ),
   getMonthlyReturns: (year?: number) =>
     request<MonthlyReturn[]>(`/snapshots/monthly${year ? `?year=${year}` : ''}`),

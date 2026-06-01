@@ -496,11 +496,9 @@ export default function Portfolio() {
 
       {!positionsLoading && custodyPositions.length > 0 && (
         <CollapsibleCard
-          title={
-            <>
-              Held for Others ({custodyPositions.length})
-              <HelpTooltip content="Positions you're holding on behalf of other people — these are excluded from your personal net worth and P&L" />
-            </>
+          title={`Held for Others (${custodyPositions.length})`}
+          titleHelp={
+            <HelpTooltip content="Positions you're holding on behalf of other people — these are excluded from your personal net worth and P&L" />
           }
           icon={<Users className="h-4 w-4 text-purple-500" />}
           accentColor="border-l-purple-500"

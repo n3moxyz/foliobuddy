@@ -226,7 +226,8 @@ All pages including Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. 
 - It mocks `/api/*` and `/api/v1/*` in the browser and restores the original `fetch` + token getter on unmount. Do not leave global network monkey-patches installed after navigating away.
 - It renders child routes only after the browser fetch mock is installed. If portfolio/dashboard queries run before the mock is ready, React Query caches empty real-backend responses and demo mode appears blank.
 - It now supports stateful in-browser portfolio CRUD for testing. Use `/dev/demo/portfolio` to validate add, edit, delete, and import UX without touching the real backend. The state resets on full refresh.
-- Demo seed data intentionally includes crypto, equities, stables, SGD cash, and custody positions so Dashboard allocation charts exercise all buckets. Keep each seeded `Position.assetId` and embedded `Position.asset` in sync; use the local `demoAsset(id)` helper instead of array indexes. The 4th Dashboard allocation chart appears only when stable/cash positions exist.
+- Demo seed data intentionally includes crypto, equities, unit trust, stablecoins, USD/SGD cash, NFT/angel-style alternatives, multiple storage types, and custody positions so Dashboard allocation charts and Portfolio grouping exercise all buckets. Keep each seeded `Position.assetId` and embedded `Position.asset` in sync; use the local `demoAsset(id)` helper instead of array indexes. The 4th Dashboard allocation chart appears only when stable/cash positions exist.
+- Demo performance history must honor `/snapshots/performance` query params (`days`, `from`, `to`, `all=true`) so range selector testing is meaningful. `Max` should visibly include older pre-1Y points.
 - Use it for responsive/UI checks and demo-mode interaction testing only. It must never point at production write APIs.
 
 ### React Doctor Quality Scan
@@ -336,6 +337,7 @@ Rules:
 ### Dashboard Charts
 
 - **Portfolio $ Value**: AreaChart (Recharts), gradient fill, time period selector (7D/1M/3M/1Y/YTD/Max), reference line at starting value, end-of-line label. Loading state uses `isFetching` to detect period-change refetches.
+- **Max chart range**: `getDateRange('Max')` must send `all=true` to `/snapshots/performance`; an empty query falls back to the backend's default 30-day window.
 - **Portfolio % vs Benchmarks**: Normalized % vs BTC/ETH. Benchmark baseline = price at first portfolio timestamp (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching. Portfolio line color `#64748B` (slate), not indigo.
 - **Allocation donuts** (4 charts, `grid sm:grid-cols-2 lg:grid-cols-4` in `AllocationCharts.tsx`):
   - **By Asset**: Crypto / Equities / Cash buckets via `bucketFor()` → `categoryGroup()`.

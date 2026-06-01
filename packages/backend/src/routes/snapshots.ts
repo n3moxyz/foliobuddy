@@ -80,10 +80,12 @@ router.get('/', async (req, res, next) => {
 
 router.get('/performance', async (req, res, next) => {
   try {
-    const { days, from, to } = req.query;
+    const { days, from, to, all } = req.query;
 
     let history;
-    if (from || to) {
+    if (all === 'true') {
+      history = await snapshotService.getPerformanceHistoryByRange(req.userId!);
+    } else if (from || to) {
       const fromDate = from ? new Date(from as string) : undefined;
       const toDate = to ? new Date(to as string) : undefined;
       history = await snapshotService.getPerformanceHistoryByRange(req.userId!, fromDate, toDate);

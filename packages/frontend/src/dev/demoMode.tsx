@@ -31,7 +31,7 @@ const History = lazy(() => import('@/pages/History'));
 const Investors = lazy(() => import('@/pages/Investors'));
 const Settings = lazy(() => import('@/pages/Settings'));
 
-const NOW = '2026-03-12T12:00:00.000Z';
+const NOW = '2026-06-02T12:00:00.000Z';
 
 const ASSET_DEFAULTS = {
   priceProvider: 'coingecko' as const,
@@ -85,6 +85,30 @@ function demoEquity(
   };
 }
 
+function demoManualAsset(
+  id: string,
+  symbol: string,
+  name: string,
+  currentPriceUsd: number,
+  category: Asset['category'],
+  nativeCurrency = 'USD',
+  exchange: string | null = null
+): Asset {
+  return {
+    ...ASSET_DEFAULTS,
+    id,
+    coingeckoId: null,
+    priceProvider: 'manual',
+    providerAssetId: null,
+    nativeCurrency,
+    exchange,
+    symbol,
+    name,
+    category,
+    currentPriceUsd,
+  };
+}
+
 const initialAssets: Asset[] = [
   demoCrypto('btc', 'bitcoin', 'BTC', 'Bitcoin', 81250),
   demoCrypto('eth', 'ethereum', 'ETH', 'Ethereum', 4320),
@@ -94,6 +118,7 @@ const initialAssets: Asset[] = [
   demoCrypto('hype', 'hyperliquid', 'HYPE', 'Hyperliquid', 31.2),
   demoCrypto('ip', 'story-protocol', 'IP', 'Story Protocol', 2.15),
   demoCrypto('usdc', 'usd-coin', 'USDC', 'USD Coin', 1, 'STABLECOIN'),
+  demoCrypto('usdt', 'tether', 'USDT', 'Tether', 1, 'STABLECOIN'),
   {
     ...ASSET_DEFAULTS,
     id: 'cash-sgd',
@@ -105,9 +130,20 @@ const initialAssets: Asset[] = [
     category: 'CASH',
     currentPriceUsd: 0.74,
   },
+  demoManualAsset('cash-usd', 'USD', 'Cash USD', 1, 'CASH'),
   demoEquity('voo', 'VOO', 'Vanguard S&P 500 ETF', 510.0, 'USD', 'NYSEARCA'),
   demoEquity('aapl', 'AAPL', 'Apple Inc.', 218.0, 'USD', 'NASDAQ'),
   demoEquity('d05-si', 'D05.SI', 'DBS Group Holdings', 22.94, 'SGD', 'SES'),
+  demoManualAsset(
+    'global-income-ut',
+    'UT-GI-SGD',
+    'Global Income Fund SGD',
+    1.182,
+    'UNIT_TRUST',
+    'SGD'
+  ),
+  demoManualAsset('angel-safe', 'ANGEL-AI', 'AI Infrastructure SAFE', 50000, 'ANGEL'),
+  demoManualAsset('nft-punk', 'PUNK-7614', 'CryptoPunk 7614', 12000, 'NFT'),
 ];
 
 function demoAsset(id: string): Asset {
@@ -166,6 +202,22 @@ const initialPositions: Position[] = [
     updatedAt: NOW,
   },
   {
+    id: 'pos-hype',
+    assetId: 'hype',
+    asset: demoAsset('hype'),
+    quantity: 950,
+    avgCostUsd: 24,
+    storageType: 'DEFI',
+    storageLocation: 'Hyperliquid',
+    notes: 'Perp venue native token',
+    custodyOf: null,
+    marketValueUsd: 29640,
+    unrealizedPnL: 6840,
+    unrealizedPnLPct: 30,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
     id: 'pos-usdc',
     assetId: 'usdc',
     asset: demoAsset('usdc'),
@@ -176,6 +228,22 @@ const initialPositions: Position[] = [
     notes: 'Dry powder',
     custodyOf: null,
     marketValueUsd: 24500,
+    unrealizedPnL: 0,
+    unrealizedPnLPct: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'pos-usdt',
+    assetId: 'usdt',
+    asset: demoAsset('usdt'),
+    quantity: 12000,
+    avgCostUsd: 1,
+    storageType: 'WALLET',
+    storageLocation: 'Base Safe',
+    notes: 'Onchain stablecoin reserve',
+    custodyOf: null,
+    marketValueUsd: 12000,
     unrealizedPnL: 0,
     unrealizedPnLPct: 0,
     createdAt: NOW,
@@ -194,6 +262,22 @@ const initialPositions: Position[] = [
     marketValueUsd: 13320,
     unrealizedPnL: 90,
     unrealizedPnLPct: 0.7,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'pos-cash-usd',
+    assetId: 'cash-usd',
+    asset: demoAsset('cash-usd'),
+    quantity: 8500,
+    avgCostUsd: 1,
+    storageType: 'BROKERAGE',
+    storageLocation: 'Interactive Brokers',
+    notes: 'USD settlement cash',
+    custodyOf: null,
+    marketValueUsd: 8500,
+    unrealizedPnL: 0,
+    unrealizedPnLPct: 0,
     createdAt: NOW,
     updatedAt: NOW,
   },
@@ -242,6 +326,54 @@ const initialPositions: Position[] = [
     marketValueUsd: 18352,
     unrealizedPnL: 2992,
     unrealizedPnLPct: 19.5,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'pos-global-income-ut',
+    assetId: 'global-income-ut',
+    asset: demoAsset('global-income-ut'),
+    quantity: 50000,
+    avgCostUsd: 1.03,
+    storageType: 'BROKERAGE',
+    storageLocation: 'UOB Kay Hian',
+    notes: 'Manual NAV unit trust',
+    custodyOf: null,
+    marketValueUsd: 59100,
+    unrealizedPnL: 7600,
+    unrealizedPnLPct: 14.8,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'pos-angel-safe',
+    assetId: 'angel-safe',
+    asset: demoAsset('angel-safe'),
+    quantity: 1,
+    avgCostUsd: 35000,
+    storageType: 'BROKERAGE',
+    storageLocation: 'Carta',
+    notes: 'Private angel allocation',
+    custodyOf: null,
+    marketValueUsd: 50000,
+    unrealizedPnL: 15000,
+    unrealizedPnLPct: 42.9,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'pos-nft-punk',
+    assetId: 'nft-punk',
+    asset: demoAsset('nft-punk'),
+    quantity: 1,
+    avgCostUsd: 18500,
+    storageType: 'WALLET',
+    storageLocation: 'Ledger Flex',
+    notes: 'Illiquid NFT mark',
+    custodyOf: null,
+    marketValueUsd: 12000,
+    unrealizedPnL: -6500,
+    unrealizedPnLPct: -35.1,
     createdAt: NOW,
     updatedAt: NOW,
   },
@@ -498,166 +630,305 @@ const tradeAnalytics: TradeAnalytics = {
 const snapshots: Snapshot[] = [
   {
     id: 'snap-1',
-    timestamp: '2026-03-01T13:00:00.000Z',
+    timestamp: '2024-08-01T13:00:00.000Z',
     snapshotType: 'MONTHLY',
     source: 'MANUAL',
-    totalValueUsd: 198400,
-    totalValueSgd: 266850,
-    usdSgdRate: 1.345,
-    totalCostBasis: 156250,
+    totalValueUsd: 180000,
+    totalValueSgd: 242478,
+    usdSgdRate: 1.3471,
+    totalCostBasis: 151000,
     monthlyReturn: 0,
-    ytdReturn: 26.9,
-    btcOutperform: 3.8,
-    ethOutperform: 0.5,
-    notes: 'Month-open rebalance',
+    ytdReturn: null,
+    btcOutperform: null,
+    ethOutperform: null,
+    notes: 'Imported opening balance',
   },
   {
     id: 'snap-2',
-    timestamp: '2026-03-10T13:00:00.000Z',
-    snapshotType: 'DAILY',
+    timestamp: '2025-07-01T13:00:00.000Z',
+    snapshotType: 'MONTHLY',
     source: 'AUTOMATIC',
-    totalValueUsd: 210400,
-    totalValueSgd: 283040,
-    usdSgdRate: 1.345,
-    totalCostBasis: 156250,
-    monthlyReturn: 4.2,
-    ytdReturn: 34.7,
-    btcOutperform: 5.4,
-    ethOutperform: -1.1,
+    totalValueUsd: 261400,
+    totalValueSgd: 352114,
+    usdSgdRate: 1.3471,
+    totalCostBasis: 211000,
+    monthlyReturn: 5.4,
+    ytdReturn: 14.7,
+    btcOutperform: 2.1,
+    ethOutperform: -3.4,
     notes: null,
   },
   {
     id: 'snap-3',
-    timestamp: '2026-03-11T13:00:00.000Z',
+    timestamp: '2026-01-05T13:00:00.000Z',
     snapshotType: 'DAILY',
     source: 'AUTOMATIC',
-    totalValueUsd: 218900,
-    totalValueSgd: 294072,
-    usdSgdRate: 1.3435,
-    totalCostBasis: 156250,
-    monthlyReturn: 8.4,
-    ytdReturn: 40.1,
-    btcOutperform: 8.1,
-    ethOutperform: 2.4,
+    totalValueUsd: 342600,
+    totalValueSgd: 461528,
+    usdSgdRate: 1.3471,
+    totalCostBasis: 271000,
+    monthlyReturn: 3.2,
+    ytdReturn: 0,
+    btcOutperform: 0.8,
+    ethOutperform: 1.4,
+    notes: null,
+  },
+  {
+    id: 'snap-4',
+    timestamp: '2026-05-05T13:00:00.000Z',
+    snapshotType: 'MONTHLY',
+    source: 'MANUAL',
+    totalValueUsd: 442800,
+    totalValueSgd: 596084,
+    usdSgdRate: 1.346,
+    totalCostBasis: 336000,
+    monthlyReturn: 6.6,
+    ytdReturn: 29.2,
+    btcOutperform: 4.9,
+    ethOutperform: -1.8,
+    notes: 'Added unit trust and cash buckets',
+  },
+  {
+    id: 'snap-5',
+    timestamp: '2026-05-26T13:00:00.000Z',
+    snapshotType: 'DAILY',
+    source: 'AUTOMATIC',
+    totalValueUsd: 481300,
+    totalValueSgd: 648407,
+    usdSgdRate: 1.3471,
+    totalCostBasis: 356000,
+    monthlyReturn: 11.1,
+    ytdReturn: 40.5,
+    btcOutperform: 7.1,
+    ethOutperform: 1.2,
+    notes: null,
+  },
+  {
+    id: 'snap-6',
+    timestamp: '2026-06-01T13:00:00.000Z',
+    snapshotType: 'DAILY',
+    source: 'AUTOMATIC',
+    totalValueUsd: 492800,
+    totalValueSgd: 663850,
+    usdSgdRate: 1.3471,
+    totalCostBasis: 361000,
+    monthlyReturn: 13.3,
+    ytdReturn: 43.8,
+    btcOutperform: 8.4,
+    ethOutperform: 2.6,
     notes: null,
   },
 ];
 
 const snapshotPositions: Record<string, SnapshotPosition[]> = {
-  'snap-2': [
+  'snap-5': [
     {
       id: 'sp-1',
-      snapshotId: 'snap-2',
+      snapshotId: 'snap-5',
       assetSymbol: 'BTC',
       quantity: 1.42,
       priceUsd: 80400,
       valueUsd: 114168,
-      allocation: 54.3,
+      allocation: 23.7,
       asset: demoAsset('btc'),
     },
     {
       id: 'sp-2',
-      snapshotId: 'snap-2',
+      snapshotId: 'snap-5',
       assetSymbol: 'ETH',
       quantity: 11.8,
       priceUsd: 4210,
       valueUsd: 49678,
-      allocation: 23.6,
+      allocation: 10.3,
       asset: demoAsset('eth'),
     },
     {
       id: 'sp-3',
-      snapshotId: 'snap-2',
-      assetSymbol: 'USDC',
-      quantity: 24500,
-      priceUsd: 1,
-      valueUsd: 24500,
-      allocation: 11.6,
-      asset: demoAsset('usdc'),
+      snapshotId: 'snap-5',
+      assetSymbol: 'UT-GI-SGD',
+      quantity: 50000,
+      priceUsd: 1.16,
+      valueUsd: 58000,
+      allocation: 12,
+      asset: demoAsset('global-income-ut'),
     },
   ],
-  'snap-3': [
+  'snap-6': [
     {
       id: 'sp-4',
-      snapshotId: 'snap-3',
+      snapshotId: 'snap-6',
       assetSymbol: 'BTC',
       quantity: 1.42,
       priceUsd: 81250,
       valueUsd: 115375,
-      allocation: 52.7,
+      allocation: 23.4,
       asset: demoAsset('btc'),
     },
     {
       id: 'sp-5',
-      snapshotId: 'snap-3',
+      snapshotId: 'snap-6',
       assetSymbol: 'ETH',
       quantity: 11.8,
       priceUsd: 4320,
       valueUsd: 50976,
-      allocation: 23.3,
+      allocation: 10.3,
       asset: demoAsset('eth'),
     },
     {
       id: 'sp-6',
-      snapshotId: 'snap-3',
+      snapshotId: 'snap-6',
       assetSymbol: 'SOL',
       quantity: 220,
       priceUsd: 178,
       valueUsd: 39160,
-      allocation: 17.9,
+      allocation: 7.9,
       asset: demoAsset('sol'),
+    },
+    {
+      id: 'sp-7',
+      snapshotId: 'snap-6',
+      assetSymbol: 'UT-GI-SGD',
+      quantity: 50000,
+      priceUsd: 1.182,
+      valueUsd: 59100,
+      allocation: 12,
+      asset: demoAsset('global-income-ut'),
+    },
+    {
+      id: 'sp-8',
+      snapshotId: 'snap-6',
+      assetSymbol: 'ANGEL-AI',
+      quantity: 1,
+      priceUsd: 50000,
+      valueUsd: 50000,
+      allocation: 10.1,
+      asset: demoAsset('angel-safe'),
+    },
+    {
+      id: 'sp-9',
+      snapshotId: 'snap-6',
+      assetSymbol: 'USDC',
+      quantity: 24500,
+      priceUsd: 1,
+      valueUsd: 24500,
+      allocation: 5,
+      asset: demoAsset('usdc'),
     },
   ],
 };
 
 const performance: PerformancePoint[] = [
   {
-    timestamp: '2026-02-12T13:00:00.000Z',
-    totalValueUsd: 168200,
-    totalValueSgd: 226230,
-    unrealizedPnL: 11950,
-    btcPrice: 72100,
-    ethPrice: 3320,
+    timestamp: '2024-08-01T13:00:00.000Z',
+    totalValueUsd: 180000,
+    totalValueSgd: 242478,
+    unrealizedPnL: 29000,
+    btcPrice: 61200,
+    ethPrice: 2860,
   },
   {
-    timestamp: '2026-02-19T13:00:00.000Z',
-    totalValueUsd: 176950,
-    totalValueSgd: 238018,
-    unrealizedPnL: 20700,
-    btcPrice: 74420,
-    ethPrice: 3510,
+    timestamp: '2024-11-15T13:00:00.000Z',
+    totalValueUsd: 195500,
+    totalValueSgd: 263358,
+    unrealizedPnL: 35500,
+    btcPrice: 68200,
+    ethPrice: 3160,
   },
   {
-    timestamp: '2026-02-26T13:00:00.000Z',
-    totalValueUsd: 189300,
-    totalValueSgd: 254805,
-    unrealizedPnL: 33050,
-    btcPrice: 76810,
+    timestamp: '2025-02-03T13:00:00.000Z',
+    totalValueUsd: 228000,
+    totalValueSgd: 307139,
+    unrealizedPnL: 42000,
+    btcPrice: 70300,
+    ethPrice: 3010,
+  },
+  {
+    timestamp: '2025-07-01T13:00:00.000Z',
+    totalValueUsd: 261400,
+    totalValueSgd: 352114,
+    unrealizedPnL: 50400,
+    btcPrice: 75800,
+    ethPrice: 3380,
+  },
+  {
+    timestamp: '2025-10-15T13:00:00.000Z',
+    totalValueUsd: 305800,
+    totalValueSgd: 411999,
+    unrealizedPnL: 61800,
+    btcPrice: 82400,
+    ethPrice: 3670,
+  },
+  {
+    timestamp: '2026-01-05T13:00:00.000Z',
+    totalValueUsd: 342600,
+    totalValueSgd: 461528,
+    unrealizedPnL: 71600,
+    btcPrice: 88700,
     ethPrice: 3890,
   },
   {
-    timestamp: '2026-03-05T13:00:00.000Z',
-    totalValueUsd: 202480,
-    totalValueSgd: 272337,
-    unrealizedPnL: 46230,
-    btcPrice: 79120,
-    ethPrice: 4075,
+    timestamp: '2026-02-03T13:00:00.000Z',
+    totalValueUsd: 371200,
+    totalValueSgd: 500047,
+    unrealizedPnL: 84200,
+    btcPrice: 92100,
+    ethPrice: 4120,
   },
   {
-    timestamp: '2026-03-10T13:00:00.000Z',
-    totalValueUsd: 210400,
-    totalValueSgd: 283040,
-    unrealizedPnL: 54150,
-    btcPrice: 80400,
+    timestamp: '2026-03-16T13:00:00.000Z',
+    totalValueUsd: 388900,
+    totalValueSgd: 523889,
+    unrealizedPnL: 92900,
+    btcPrice: 90400,
+    ethPrice: 4050,
+  },
+  {
+    timestamp: '2026-04-15T13:00:00.000Z',
+    totalValueUsd: 423600,
+    totalValueSgd: 570633,
+    unrealizedPnL: 103600,
+    btcPrice: 94800,
+    ethPrice: 4280,
+  },
+  {
+    timestamp: '2026-05-05T13:00:00.000Z',
+    totalValueUsd: 442800,
+    totalValueSgd: 596084,
+    unrealizedPnL: 106800,
+    btcPrice: 97200,
+    ethPrice: 4410,
+  },
+  {
+    timestamp: '2026-05-12T13:00:00.000Z',
+    totalValueUsd: 431200,
+    totalValueSgd: 580879,
+    unrealizedPnL: 95100,
+    btcPrice: 93500,
     ethPrice: 4210,
   },
   {
-    timestamp: '2026-03-11T13:00:00.000Z',
-    totalValueUsd: 218900,
-    totalValueSgd: 294072,
-    unrealizedPnL: 62650,
-    btcPrice: 81250,
-    ethPrice: 4320,
+    timestamp: '2026-05-19T13:00:00.000Z',
+    totalValueUsd: 466400,
+    totalValueSgd: 628227,
+    unrealizedPnL: 119400,
+    btcPrice: 99100,
+    ethPrice: 4540,
+  },
+  {
+    timestamp: '2026-05-26T13:00:00.000Z',
+    totalValueUsd: 481300,
+    totalValueSgd: 648407,
+    unrealizedPnL: 125300,
+    btcPrice: 100400,
+    ethPrice: 4680,
+  },
+  {
+    timestamp: '2026-06-01T13:00:00.000Z',
+    totalValueUsd: 492800,
+    totalValueSgd: 663850,
+    unrealizedPnL: 131800,
+    btcPrice: 101900,
+    ethPrice: 4760,
   },
 ];
 
@@ -944,6 +1215,31 @@ function filterTrades(url: URL) {
   return status ? trades.filter((trade) => trade.status === status) : trades;
 }
 
+function filterPerformance(url: URL) {
+  if (url.searchParams.get('all') === 'true') return performance;
+
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
+  if (from || to) {
+    const fromTime = from ? new Date(from).getTime() : Number.NEGATIVE_INFINITY;
+    const toTime = to ? new Date(to).getTime() : Number.POSITIVE_INFINITY;
+    return performance.filter((point) => {
+      const timestamp = new Date(point.timestamp).getTime();
+      return timestamp >= fromTime && timestamp <= toTime;
+    });
+  }
+
+  const days = Number.parseInt(url.searchParams.get('days') ?? '30', 10);
+  const windowDays = Number.isFinite(days) ? days : 30;
+  const endTime = new Date(NOW).getTime();
+  const startTime = endTime - windowDays * 24 * 60 * 60 * 1000;
+
+  return performance.filter((point) => {
+    const timestamp = new Date(point.timestamp).getTime();
+    return timestamp >= startTime && timestamp <= endTime;
+  });
+}
+
 function demoApiPath(url: URL) {
   return url.pathname.replace(/^\/api\/v1(?=\/|$)/, '/api');
 }
@@ -1002,7 +1298,8 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   if (path === '/api/trades/analytics' && method === 'GET') return json(tradeAnalytics);
   if (path === '/api/investors' && method === 'GET') return json(investors);
   if (path === '/api/snapshots' && method === 'GET') return json(snapshots);
-  if (path === '/api/snapshots/performance' && method === 'GET') return json(performance);
+  if (path === '/api/snapshots/performance' && method === 'GET')
+    return json(filterPerformance(url));
   if (path.startsWith('/api/snapshots/') && path.endsWith('/positions') && method === 'GET') {
     const id = path.split('/')[3];
     return json(snapshotPositions[id] ?? []);
