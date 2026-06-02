@@ -19,6 +19,9 @@ interface ChartData {
 
 type CategoryBucket = 'Crypto' | 'Equities' | 'Cash';
 
+const ALLOCATION_CHART_SKELETON_KEYS = ['asset', 'detailed', 'storage', 'cash'] as const;
+const ALLOCATION_LEGEND_SKELETON_KEYS = ['first', 'second', 'third', 'fourth'] as const;
+
 function bucketFor(category: string | undefined | null): CategoryBucket {
   const g = categoryGroup(category);
   if (g === 'stables') return 'Cash';
@@ -179,8 +182,8 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
   if (isLoading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
+        {ALLOCATION_CHART_SKELETON_KEYS.map((chartKey) => (
+          <Card key={chartKey}>
             <CardHeader className="pb-2">
               <Skeleton className="h-4 w-24" />
             </CardHeader>
@@ -188,8 +191,8 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
               <div className="flex gap-4 items-center">
                 <Skeleton className="h-[120px] w-[120px] rounded-full flex-shrink-0" />
                 <div className="flex-1 space-y-2">
-                  {Array.from({ length: 4 }).map((_, j) => (
-                    <div key={j} className="flex items-center gap-2">
+                  {ALLOCATION_LEGEND_SKELETON_KEYS.map((legendKey) => (
+                    <div key={`${chartKey}-${legendKey}`} className="flex items-center gap-2">
                       <Skeleton className="h-2.5 w-2.5 rounded-full" />
                       <Skeleton className="h-3 w-16" />
                       <Skeleton className="h-3 w-8 ml-auto" />
@@ -312,7 +315,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
                 return (
                   <button
                     key={item.name}
-                    className={`flex items-center gap-2 text-xs transition-colors cursor-pointer ${
+                    className={`flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ${
                       isHidden ? 'opacity-40 line-through text-muted-foreground' : ''
                     }`}
                     aria-pressed={!hidden.has(item.name)}

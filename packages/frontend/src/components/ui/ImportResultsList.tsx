@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export interface ImportResultItem {
   success: boolean;
-  label: string; // display identifier — symbol for positions/trades, timestamp for snapshots
+  label: string; // Display identifier, such as symbol for positions/trades or timestamp for snapshots.
   error?: string;
 }
 
@@ -24,9 +24,9 @@ export function ImportResultsList({ results, onDone }: ImportResultsListProps) {
     <div className="space-y-4">
       <div className="text-center py-4">
         {failCount === 0 ? (
-          <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
+          <CheckCircle2 className="h-12 w-12 text-profit mx-auto mb-2" />
         ) : (
-          <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
+          <AlertCircle className="h-12 w-12 text-warning mx-auto mb-2" />
         )}
         <p className="font-medium">
           {successCount} imported successfully
@@ -39,18 +39,16 @@ export function ImportResultsList({ results, onDone }: ImportResultsListProps) {
           <div
             key={`${result.label}-${result.success ? 'success' : 'fail'}-${result.error ?? ''}`}
             className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
-              result.success ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'
+              result.success ? 'bg-profit' : 'bg-loss'
             }`}
           >
             {result.success ? (
-              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-profit flex-shrink-0" />
             ) : (
-              <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+              <AlertCircle className="h-4 w-4 text-loss flex-shrink-0" />
             )}
             <span className="font-medium">{result.label}</span>
-            {result.error && (
-              <span className="text-red-600 dark:text-red-400 text-xs">{result.error}</span>
-            )}
+            {result.error && <span className="text-loss text-xs">{result.error}</span>}
           </div>
         ))}
       </div>

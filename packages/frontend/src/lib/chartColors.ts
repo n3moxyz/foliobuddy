@@ -1,26 +1,58 @@
-// Centralized chart color palette
-// BTC/ETH are brand colors — intentionally not theme-derived
+// Centralized chart color palette.
+// CSS variables keep charts aligned with light and dark themes.
+const chartColor = (token: string) => `oklch(var(${token}))`;
+
 export const BRAND_COLORS = {
-  btc: '#F7931A',
-  eth: '#627EEA',
+  btc: chartColor('--chart-btc'),
+  eth: chartColor('--chart-eth'),
 } as const;
 
-export const PORTFOLIO_LINE_COLOR = '#64748B';
+export const BRAND_FOREGROUND_COLORS = {
+  btc: chartColor('--chart-btc-foreground'),
+  eth: chartColor('--chart-eth-foreground'),
+} as const;
+
+export const PORTFOLIO_LINE_COLOR = chartColor('--chart-portfolio');
+export const PORTFOLIO_FOREGROUND_COLOR = chartColor('--chart-portfolio-foreground');
 
 export const ASSET_COLORS: string[] = [
-  '#BE185D',
-  '#1D4ED8',
-  '#059669',
-  '#A21CAF',
-  '#0891B2',
-  '#854D0E',
-  '#475569',
-  '#B91C1C',
-  '#4F46E5',
-  '#65A30D',
+  chartColor('--chart-asset-1'),
+  chartColor('--chart-asset-2'),
+  chartColor('--chart-asset-3'),
+  chartColor('--chart-asset-4'),
+  chartColor('--chart-asset-5'),
+  chartColor('--chart-asset-6'),
+  chartColor('--chart-asset-7'),
+  chartColor('--chart-asset-8'),
+  chartColor('--chart-asset-9'),
+  chartColor('--chart-asset-10'),
 ];
 
-export const STORAGE_COLORS: string[] = ['#16A34A', '#0284C7', '#7C3AED', '#BE185D', '#64748B'];
-export const STABLES_COLORS: string[] = ['#0369A1', '#16A34A', '#BE185D', '#854D0E', '#64748B'];
+export const STORAGE_COLORS: string[] = [
+  chartColor('--chart-storage-1'),
+  chartColor('--chart-storage-2'),
+  chartColor('--chart-storage-3'),
+  chartColor('--chart-storage-4'),
+  chartColor('--chart-storage-5'),
+];
+export const STABLES_COLORS: string[] = [
+  chartColor('--chart-cash-1'),
+  chartColor('--chart-cash-2'),
+  chartColor('--chart-cash-3'),
+  chartColor('--chart-cash-4'),
+  chartColor('--chart-cash-5'),
+];
 
-export const ADDITIONAL_BENCHMARK_COLORS: string[] = ['#14B8A6', '#EF4444', '#8B5CF6', '#F59E0B'];
+export const ADDITIONAL_BENCHMARK_COLORS: string[] = [
+  chartColor('--chart-benchmark-1'),
+  chartColor('--chart-benchmark-2'),
+  chartColor('--chart-benchmark-3'),
+  chartColor('--chart-benchmark-4'),
+];
+
+export const ADDITIONAL_BENCHMARK_FOREGROUND_COLORS: string[] = [
+  chartColor('--chart-benchmark-1-foreground'),
+  chartColor('--chart-benchmark-2-foreground'),
+  chartColor('--chart-benchmark-3-foreground'),
+  chartColor('--chart-benchmark-4-foreground'),
+];

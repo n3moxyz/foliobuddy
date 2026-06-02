@@ -24,7 +24,14 @@ import {
   type BenchmarkConfig,
   type NormalizedDataPoint,
 } from '@/lib/benchmarkUtils';
-import { PORTFOLIO_LINE_COLOR, BRAND_COLORS, ADDITIONAL_BENCHMARK_COLORS } from '@/lib/chartColors';
+import {
+  PORTFOLIO_LINE_COLOR,
+  PORTFOLIO_FOREGROUND_COLOR,
+  BRAND_COLORS,
+  BRAND_FOREGROUND_COLORS,
+  ADDITIONAL_BENCHMARK_COLORS,
+  ADDITIONAL_BENCHMARK_FOREGROUND_COLORS,
+} from '@/lib/chartColors';
 import {
   getDateRange,
   getDaysFromPeriod,
@@ -41,6 +48,12 @@ interface RechartsLineDotProps {
   cy: number;
   index: number;
   value: number | undefined;
+}
+
+const CHART_SKELETON_TICKS = ['start', 'early', 'middle', 'late', 'end'] as const;
+
+function benchmarkBackground(color: string) {
+  return `color-mix(in oklch, ${color} 16%, transparent)`;
 }
 
 export function BenchmarkComparisonChart() {
@@ -178,6 +191,7 @@ export function BenchmarkComparisonChart() {
         coingeckoId: coin.id,
         symbol: coin.symbol,
         color: ADDITIONAL_BENCHMARK_COLORS[colorIndex],
+        foregroundColor: ADDITIONAL_BENCHMARK_FOREGROUND_COLORS[colorIndex],
         enabled: true,
       },
     ]);
@@ -188,7 +202,13 @@ export function BenchmarkComparisonChart() {
   const periods: TimePeriod[] = ['7D', '1M', '3M', '1Y', 'YTD', 'Max'];
 
   const allBenchmarks = [
-    { id: 'portfolio', symbol: 'Portfolio', color: PORTFOLIO_LINE_COLOR, enabled: true },
+    {
+      id: 'portfolio',
+      symbol: 'Portfolio',
+      color: PORTFOLIO_LINE_COLOR,
+      foregroundColor: PORTFOLIO_FOREGROUND_COLOR,
+      enabled: true,
+    },
     ...benchmarks,
     ...additionalBenchmarks,
   ];
@@ -206,7 +226,7 @@ export function BenchmarkComparisonChart() {
                   key={p}
                   variant={period === p ? 'secondary' : 'ghost'}
                   size="sm"
-                  className={`h-8 px-3 rounded-none first:rounded-l-md last:rounded-r-md ${
+                  className={`h-11 px-3 rounded-none first:rounded-l-md last:rounded-r-md sm:h-8 ${
                     period === p ? '' : 'hover:bg-muted'
                   }`}
                   onClick={() => setPeriod(p)}
@@ -222,13 +242,15 @@ export function BenchmarkComparisonChart() {
           {benchmarks.map((benchmark) => (
             <Button
               key={benchmark.id}
-              variant={benchmark.enabled ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
-              className="h-7 text-xs"
+              className="h-11 text-xs sm:h-8"
               style={{
-                backgroundColor: benchmark.enabled ? benchmark.color : undefined,
+                backgroundColor: benchmark.enabled
+                  ? benchmarkBackground(benchmark.color)
+                  : undefined,
                 borderColor: benchmark.color,
-                color: benchmark.enabled ? 'hsl(var(--primary-foreground))' : benchmark.color,
+                color: benchmark.foregroundColor ?? benchmark.color,
               }}
               onClick={() => toggleBenchmark(benchmark.id)}
             >
@@ -248,13 +270,15 @@ export function BenchmarkComparisonChart() {
           {additionalBenchmarks.map((benchmark) => (
             <div key={benchmark.id} className="flex items-center">
               <Button
-                variant={benchmark.enabled ? 'default' : 'outline'}
+                variant="outline"
                 size="sm"
-                className="h-7 text-xs rounded-r-none"
+                className="h-11 text-xs rounded-r-none sm:h-8"
                 style={{
-                  backgroundColor: benchmark.enabled ? benchmark.color : undefined,
+                  backgroundColor: benchmark.enabled
+                    ? benchmarkBackground(benchmark.color)
+                    : undefined,
                   borderColor: benchmark.color,
-                  color: benchmark.enabled ? 'hsl(var(--primary-foreground))' : benchmark.color,
+                  color: benchmark.foregroundColor ?? benchmark.color,
                 }}
                 onClick={() => toggleAdditionalBenchmark(benchmark.id)}
               >
@@ -272,9 +296,13 @@ export function BenchmarkComparisonChart() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 px-1 rounded-l-none border-l-0"
-                style={{ borderColor: benchmark.color }}
+                className="h-11 w-11 px-0 rounded-l-none border-l-0 sm:h-8 sm:w-8"
+                style={{
+                  borderColor: benchmark.color,
+                  color: benchmark.foregroundColor ?? benchmark.color,
+                }}
                 onClick={() => removeAdditionalBenchmark(benchmark.id)}
+                aria-label={`Remove ${benchmark.symbol} benchmark`}
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -284,7 +312,7 @@ export function BenchmarkComparisonChart() {
           {additionalBenchmarks.length < 3 && (
             <Popover open={searchOpen} onOpenChange={setSearchOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-xs">
+                <Button variant="outline" size="sm" className="h-11 text-xs sm:h-8">
                   <Plus className="h-3 w-3 mr-1" />
                   Add
                 </Button>
@@ -308,7 +336,7 @@ export function BenchmarkComparisonChart() {
                       key={coin.id}
                       variant="ghost"
                       size="sm"
-                      className="w-full justify-start h-8 text-xs"
+                      className="min-h-10 w-full justify-start text-xs"
                       onClick={() => addBenchmark(coin)}
                     >
                       <span className="font-medium">{coin.symbol}</span>
@@ -350,8 +378,8 @@ export function BenchmarkComparisonChart() {
               <Skeleton className="h-3 w-10" />
             </div>
             <div className="flex justify-between px-2 mt-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-3 w-12" />
+              {CHART_SKELETON_TICKS.map((tick) => (
+                <Skeleton key={tick} className="h-3 w-12" />
               ))}
             </div>
           </div>
@@ -432,11 +460,12 @@ export function BenchmarkComparisonChart() {
                   strokeWidth={2}
                   dot={(props: RechartsLineDotProps) => {
                     const { cx, cy, index, value } = props;
+                    const dotKey = chartData[index]?.timestamp ?? `${cx}-${cy}`;
                     if (index !== chartData.length - 1 || value == null) {
-                      return <g key={`portfolio-dot-${index}`} />;
+                      return <g key={`portfolio-dot-${dotKey}`} />;
                     }
                     return (
-                      <g key={`portfolio-dot-${index}`}>
+                      <g key={`portfolio-dot-${dotKey}`}>
                         <circle cx={cx} cy={cy} r={3} fill={PORTFOLIO_LINE_COLOR} />
                         <text
                           x={cx + 8}
@@ -444,8 +473,7 @@ export function BenchmarkComparisonChart() {
                           fontSize={11}
                           dominantBaseline="middle"
                           fontWeight={500}
-                          fill="currentColor"
-                          opacity={0.7}
+                          fill={PORTFOLIO_FOREGROUND_COLOR}
                         >
                           {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
                         </text>
@@ -463,11 +491,12 @@ export function BenchmarkComparisonChart() {
                     strokeWidth={2}
                     dot={(props: RechartsLineDotProps) => {
                       const { cx, cy, index, value } = props;
+                      const dotKey = chartData[index]?.timestamp ?? `${cx}-${cy}`;
                       if (index !== chartData.length - 1 || value == null) {
-                        return <g key={`btc-dot-${index}`} />;
+                        return <g key={`btc-dot-${dotKey}`} />;
                       }
                       return (
-                        <g key={`btc-dot-${index}`}>
+                        <g key={`btc-dot-${dotKey}`}>
                           <circle cx={cx} cy={cy} r={3} fill={BRAND_COLORS.btc} />
                           <text
                             x={cx + 8}
@@ -475,7 +504,7 @@ export function BenchmarkComparisonChart() {
                             fontSize={11}
                             dominantBaseline="middle"
                             fontWeight={500}
-                            fill={BRAND_COLORS.btc}
+                            fill={BRAND_FOREGROUND_COLORS.btc}
                           >
                             {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
                           </text>
@@ -494,11 +523,12 @@ export function BenchmarkComparisonChart() {
                     strokeWidth={2}
                     dot={(props: RechartsLineDotProps) => {
                       const { cx, cy, index, value } = props;
+                      const dotKey = chartData[index]?.timestamp ?? `${cx}-${cy}`;
                       if (index !== chartData.length - 1 || value == null) {
-                        return <g key={`eth-dot-${index}`} />;
+                        return <g key={`eth-dot-${dotKey}`} />;
                       }
                       return (
-                        <g key={`eth-dot-${index}`}>
+                        <g key={`eth-dot-${dotKey}`}>
                           <circle cx={cx} cy={cy} r={3} fill={BRAND_COLORS.eth} />
                           <text
                             x={cx + 8}
@@ -506,7 +536,7 @@ export function BenchmarkComparisonChart() {
                             fontSize={11}
                             dominantBaseline="middle"
                             fontWeight={500}
-                            fill={BRAND_COLORS.eth}
+                            fill={BRAND_FOREGROUND_COLORS.eth}
                           >
                             {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
                           </text>
@@ -528,11 +558,12 @@ export function BenchmarkComparisonChart() {
                       strokeWidth={2}
                       dot={(props: RechartsLineDotProps) => {
                         const { cx, cy, index, value } = props;
+                        const dotKey = chartData[index]?.timestamp ?? `${cx}-${cy}`;
                         if (index !== chartData.length - 1 || value == null) {
-                          return <g key={`${benchmark.id}-dot-${index}`} />;
+                          return <g key={`${benchmark.id}-dot-${dotKey}`} />;
                         }
                         return (
-                          <g key={`${benchmark.id}-dot-${index}`}>
+                          <g key={`${benchmark.id}-dot-${dotKey}`}>
                             <circle cx={cx} cy={cy} r={3} fill={benchmark.color} />
                             <text
                               x={cx + 8}
@@ -540,7 +571,7 @@ export function BenchmarkComparisonChart() {
                               fontSize={11}
                               dominantBaseline="middle"
                               fontWeight={500}
-                              fill={benchmark.color}
+                              fill={benchmark.foregroundColor ?? benchmark.color}
                             >
                               {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
                             </text>

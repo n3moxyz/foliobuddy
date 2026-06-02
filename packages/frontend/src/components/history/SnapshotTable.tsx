@@ -35,6 +35,9 @@ interface SnapshotTableProps {
   onDelete: (snapshot: Snapshot) => void;
 }
 
+const SNAPSHOT_TABLE_HEADER_SKELETON_KEYS = ['date', 'value', 'source', 'notes'] as const;
+const SNAPSHOT_TABLE_ROW_SKELETON_KEYS = ['first', 'second', 'third', 'fourth'] as const;
+
 // Format a single snapshot for clipboard (same format as bulk export)
 function formatSnapshotForClipboard(snapshot: Snapshot) {
   return {
@@ -154,12 +157,12 @@ export function SnapshotTable({
       <div className="rounded-md border">
         <div className="p-4 space-y-3">
           <div className="flex gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-4 w-20" />
+            {SNAPSHOT_TABLE_HEADER_SKELETON_KEYS.map((key) => (
+              <Skeleton key={key} className="h-4 w-20" />
             ))}
           </div>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
+          {SNAPSHOT_TABLE_ROW_SKELETON_KEYS.map((key) => (
+            <Skeleton key={key} className="h-12 w-full" />
           ))}
         </div>
       </div>
@@ -206,20 +209,17 @@ export function SnapshotTable({
             </TableHeader>
             <TableBody>
               {showLiveRow && (
-                <TableRow className="bg-green-50 dark:bg-green-950/20">
+                <TableRow className="bg-profit">
                   <TableCell></TableCell>
                   <TableCell className="font-medium">{formatDate(liveRowTimestamp)}</TableCell>
                   <TableCell className="text-right font-mono">
-                    <div
-                      className="text-green-600 dark:text-green-400"
-                      title="Live portfolio value (snapshot at 9pm SGT)"
-                    >
+                    <div className="text-profit" title="Live portfolio value (snapshot at 9pm SGT)">
                       <div>{displayValue(liveValueUsd!)}</div>
                       <div className="text-xs">(Live)</div>
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                    <span className="flex items-center gap-1 text-xs text-profit">
                       <Clock className="h-3 w-3 animate-pulse" />
                       PENDING
                     </span>
@@ -333,7 +333,7 @@ export function SnapshotTable({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 touch-manipulation"
+                                  className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleCopySnapshot(snapshot);
@@ -341,7 +341,7 @@ export function SnapshotTable({
                                   aria-label="Copy snapshot"
                                 >
                                   {isCopied ? (
-                                    <Check className="h-4 w-4 text-green-500" />
+                                    <Check className="h-4 w-4 text-profit" />
                                   ) : (
                                     <Copy className="h-4 w-4" />
                                   )}
@@ -357,7 +357,7 @@ export function SnapshotTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 touch-manipulation"
+                            className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
                             onClick={(e) => {
                               e.stopPropagation();
                               onEdit(snapshot);
@@ -369,7 +369,7 @@ export function SnapshotTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            className="-mx-1 h-11 w-11 shrink-0 text-destructive touch-manipulation hover:text-destructive md:mx-0 md:h-8 md:w-8"
                             onClick={(e) => {
                               e.stopPropagation();
                               onDelete(snapshot);
@@ -401,7 +401,7 @@ export function SnapshotTable({
                                     onClick={() => handleCopyPositions(snapshot.id)}
                                   >
                                     {copiedPositionsId === snapshot.id ? (
-                                      <Check className="h-3 w-3 mr-1 text-green-500" />
+                                      <Check className="h-3 w-3 mr-1 text-profit" />
                                     ) : (
                                       <Copy className="h-3 w-3 mr-1" />
                                     )}

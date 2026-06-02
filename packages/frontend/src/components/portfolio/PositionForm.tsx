@@ -1396,7 +1396,7 @@ export function PositionForm({
                   {utMultipleHoldings && (
                     <div className="space-y-2 rounded-md border bg-muted/20 p-3">
                       <p className="text-sm font-medium">
-                        Multiple holdings found — pick one to auto-fill:
+                        Multiple holdings found. Pick one to auto-fill:
                       </p>
                       <div className="space-y-1">
                         {utMultipleHoldings.map((h) => (
@@ -1420,7 +1420,7 @@ export function PositionForm({
                   {utPrefilledFrom && !utMultipleHoldings && (
                     <div className="space-y-1">
                       <div className="rounded-md border border-emerald-500/30 bg-emerald-50 p-2 text-xs text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
-                        Pre-filled from {utPrefilledFrom} statement — please review before saving.
+                        Pre-filled from {utPrefilledFrom} statement. Please review before saving.
                       </div>
                       {utYahooSymbol && (
                         <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-primary">

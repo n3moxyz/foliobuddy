@@ -554,7 +554,7 @@ const trades: Trade[] = [
     status: 'CLOSED',
     realizedPnL: -5760,
     realizedPnLPct: -2.95,
-    notes: 'HYPE reversal — stopped out',
+    notes: 'HYPE reversal, stopped out',
     tags: 'hype,loss',
   },
   {

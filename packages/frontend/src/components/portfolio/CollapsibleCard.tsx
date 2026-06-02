@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CollapsibleCardProps {
   title: string | ReactNode;
@@ -28,12 +29,15 @@ export function CollapsibleCard({
 }: CollapsibleCardProps) {
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
-      <Card className={accentColor ? `border-l-2 ${accentColor}` : undefined}>
+      <Card className={cn(accentColor)}>
         <CardHeader className="py-3 px-4 hover:bg-muted/30 transition-colors select-none">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <CollapsibleTrigger asChild>
-                <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                <button
+                  type="button"
+                  className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left"
+                >
                   <ChevronRight
                     className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
                       isExpanded ? 'rotate-90' : ''

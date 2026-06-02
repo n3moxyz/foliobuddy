@@ -11,7 +11,7 @@
     --popover: 230 25% 99%;
     --popover-foreground: 234 40% 10%;
     --primary: 234 89% 55%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 230 20% 98%;
     --secondary: 230 25% 94%;
     --secondary-foreground: 234 40% 10%;
     --muted: 230 20% 94%;
@@ -19,17 +19,53 @@
     --accent: 230 20% 92%;
     --accent-foreground: 234 40% 10%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 230 20% 98%;
     --border: 230 20% 90%;
     --input: 230 20% 88%;
     --ring: 234 89% 55%;
     --radius: 0.375rem;
-    --profit: 160 84% 39%;
-    --loss: 0 72% 51%;
+    --profit: 160 84% 32%;
+    --profit-foreground: 160 84% 27%;
+    --loss: 0 72% 46%;
+    --loss-foreground: 0 72% 40%;
     --warning: 38 92% 50%;
     --warning-foreground: 38 92% 30%;
     --info: 217 91% 60%;
     --info-foreground: 217 91% 35%;
+    --chart-portfolio: 0.51 0.05 260;
+    --chart-portfolio-foreground: 0.39 0.05 260;
+    --chart-btc: 0.57 0.17 58;
+    --chart-btc-foreground: 0.42 0.15 58;
+    --chart-eth: 0.55 0.15 275;
+    --chart-eth-foreground: 0.44 0.15 275;
+    --chart-asset-1: 0.46 0.18 357;
+    --chart-asset-2: 0.49 0.16 257;
+    --chart-asset-3: 0.51 0.14 164;
+    --chart-asset-4: 0.5 0.17 312;
+    --chart-asset-5: 0.52 0.13 215;
+    --chart-asset-6: 0.48 0.12 75;
+    --chart-asset-7: 0.48 0.04 255;
+    --chart-asset-8: 0.49 0.16 28;
+    --chart-asset-9: 0.51 0.16 282;
+    --chart-asset-10: 0.5 0.14 128;
+    --chart-storage-1: 0.53 0.14 154;
+    --chart-storage-2: 0.52 0.13 230;
+    --chart-storage-3: 0.52 0.17 300;
+    --chart-storage-4: 0.47 0.18 357;
+    --chart-storage-5: 0.51 0.05 260;
+    --chart-cash-1: 0.47 0.13 230;
+    --chart-cash-2: 0.53 0.14 154;
+    --chart-cash-3: 0.47 0.18 357;
+    --chart-cash-4: 0.48 0.12 75;
+    --chart-cash-5: 0.51 0.05 260;
+    --chart-benchmark-1: 0.53 0.13 190;
+    --chart-benchmark-1-foreground: 0.39 0.12 190;
+    --chart-benchmark-2: 0.55 0.18 30;
+    --chart-benchmark-2-foreground: 0.43 0.16 30;
+    --chart-benchmark-3: 0.56 0.17 300;
+    --chart-benchmark-3-foreground: 0.44 0.16 300;
+    --chart-benchmark-4: 0.61 0.17 75;
+    --chart-benchmark-4-foreground: 0.43 0.14 75;
   }
 
   .dark {
@@ -40,7 +76,7 @@
     --popover: 234 22% 12%;
     --popover-foreground: 230 20% 93%;
     --primary: 234 89% 67%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 230 20% 98%;
     --secondary: 234 20% 16%;
     --secondary-foreground: 230 20% 93%;
     --muted: 234 18% 16%;
@@ -52,12 +88,48 @@
     --border: 234 18% 18%;
     --input: 234 18% 20%;
     --ring: 234 89% 67%;
-    --profit: 160 84% 55%;
-    --loss: 0 72% 65%;
+    --profit: 160 84% 62%;
+    --profit-foreground: 160 84% 66%;
+    --loss: 0 72% 68%;
+    --loss-foreground: 0 72% 72%;
     --warning: 38 92% 60%;
     --warning-foreground: 38 92% 80%;
     --info: 217 91% 70%;
     --info-foreground: 217 91% 80%;
+    --chart-portfolio: 0.7 0.04 260;
+    --chart-portfolio-foreground: 0.78 0.04 260;
+    --chart-btc: 0.75 0.17 64;
+    --chart-btc-foreground: 0.82 0.16 68;
+    --chart-eth: 0.72 0.14 275;
+    --chart-eth-foreground: 0.8 0.12 275;
+    --chart-asset-1: 0.71 0.16 357;
+    --chart-asset-2: 0.7 0.14 257;
+    --chart-asset-3: 0.7 0.13 164;
+    --chart-asset-4: 0.72 0.15 312;
+    --chart-asset-5: 0.72 0.12 215;
+    --chart-asset-6: 0.73 0.12 75;
+    --chart-asset-7: 0.68 0.04 255;
+    --chart-asset-8: 0.7 0.15 28;
+    --chart-asset-9: 0.72 0.15 282;
+    --chart-asset-10: 0.71 0.13 128;
+    --chart-storage-1: 0.72 0.13 154;
+    --chart-storage-2: 0.73 0.12 230;
+    --chart-storage-3: 0.73 0.16 300;
+    --chart-storage-4: 0.71 0.16 357;
+    --chart-storage-5: 0.7 0.04 260;
+    --chart-cash-1: 0.73 0.12 230;
+    --chart-cash-2: 0.72 0.13 154;
+    --chart-cash-3: 0.71 0.16 357;
+    --chart-cash-4: 0.73 0.12 75;
+    --chart-cash-5: 0.7 0.04 260;
+    --chart-benchmark-1: 0.72 0.12 190;
+    --chart-benchmark-1-foreground: 0.78 0.11 190;
+    --chart-benchmark-2: 0.72 0.16 30;
+    --chart-benchmark-2-foreground: 0.8 0.14 30;
+    --chart-benchmark-3: 0.73 0.15 300;
+    --chart-benchmark-3-foreground: 0.8 0.14 300;
+    --chart-benchmark-4: 0.76 0.16 75;
+    --chart-benchmark-4-foreground: 0.82 0.14 75;
   }
 }
 
@@ -89,21 +161,21 @@
   @apply bg-muted-foreground/40;
 }
 
-/* Profit/Loss colors — includes arrow indicators for colorblind a11y */
+/* Profit/Loss colors include arrow indicators for colorblind a11y */
 .text-profit {
-  @apply text-emerald-600 dark:text-emerald-400;
+  color: hsl(var(--profit-foreground));
 }
 
 .text-loss {
-  @apply text-red-600 dark:text-red-400;
+  color: hsl(var(--loss-foreground));
 }
 
 .bg-profit {
-  @apply bg-emerald-100 dark:bg-emerald-900/30;
+  background-color: hsl(var(--profit) / 0.12);
 }
 
 .bg-loss {
-  @apply bg-red-100 dark:bg-red-900/30;
+  background-color: hsl(var(--loss) / 0.12);
 }
 
 /* Skeleton shimmer for loading states */

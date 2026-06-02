@@ -56,7 +56,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="w-[calc(100%-2rem)] max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Update NAV {asset ? `— ${asset.symbol}` : ''}</DialogTitle>
+          <DialogTitle>Update NAV{asset ? `: ${asset.symbol}` : ''}</DialogTitle>
           <DialogDescription>
             {asset
               ? `Log the latest NAV in ${asset.nativeCurrency}. We'll convert to USD using the current FX rate.`

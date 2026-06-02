@@ -66,7 +66,7 @@
 - `src/components/trades/tradeLensModels.ts` - Pure aggregation helpers for ticker dossiers and monthly reviews
 - `src/components/portfolio/positionClipboard.ts` - Shared portfolio copy-to-clipboard JSON formatter
 - `src/components/portfolio/positionOptions.ts` - Shared storage location option lists (CEX, onchain, broker, bank) used by position forms
-- `src/lib/chartColors.ts` - Centralized chart color constants (brand, portfolio line, allocation palettes)
+- `src/lib/chartColors.ts` - Centralized theme-aware chart color constants backed by OKLCH CSS variables in `index.css`
 - `src/lib/chartUtils.ts` - Time-period date helpers (`getDateRange`, `formatXAxisDate`, `formatTooltipDate`) shared between PortfolioChart and BenchmarkComparisonChart
 - `react-doctor.config.json` - Root-level React Doctor triage policy. Keeps the scan focused on actionable regressions after known React 18/Radix/shadcn and design-opinion rules were reviewed.
 
@@ -236,6 +236,8 @@ React Doctor can be used as an advisory frontend audit for React accessibility, 
 
 The root `react-doctor.config.json` intentionally suppresses reviewed scanner noise: React 19 migration advice that conflicts with the current React 18 + shadcn/Radix stack, broad design-opinion checks that do not match FolioBuddy's established UI rules, and large architectural refactor nudges that would be risky without a feature reason. Do not add suppressions for new accessibility, keyboard, ownership, render-correctness, or data-integrity findings without documenting why they are false positives.
 
+Known advisory: React Doctor may flag `apiMockReady` in `src/dev/demoMode.tsx` as "updated but never read". It is read to gate rendering until the browser fetch mock is installed, so this is a false positive unless the demo boot flow changes.
+
 ### Ownership Checks on Mutations
 
 For protected backend resources, update/delete routes must filter by both `id` and `req.userId!`, not just `id`. Reads already did this in many places; writes now need to follow the same rule consistently to prevent cross-user mutation if an ID is guessed.
@@ -253,7 +255,7 @@ Delete mutations in `usePortfolio`, `useTrades`, `useSnapshots` use optimistic u
 All pages follow iOS HIG-inspired responsive patterns:
 
 - **Column toggle**: Portfolio and Trades tables have a mobile-only "All columns" / "Compact" toggle. Compact hides secondary columns (`hidden md:table-cell`), expanded shows all with horizontal scroll (`overflow-x-auto` + `min-w-[700px]`).
-- **Touch targets**: All interactive elements use `touch-manipulation` CSS and minimum 44px hit areas (`h-8 w-8` buttons).
+- **Touch targets**: Shared `Button` sizes provide 44px hit areas on mobile (`default`, `sm`, and `icon`) and compact back down at `sm+`/`md+` where density matters. Dense row actions must include `shrink-0` so flex/table cells do not squeeze 44px mobile buttons narrower. Sortable table headers, allocation legends, and `HelpTooltip` also need 44px mobile hit areas even when the visible icon/text stays small.
 - **Responsive headers**: Page headers stack vertically on mobile (`flex-col gap-3 sm:flex-row`). Secondary actions move to `DropdownMenu` overflow menus.
 - **Dialog safety**: Dialogs use `w-[calc(100%-2rem)]` for viewport margins and `max-h-[85vh] overflow-y-auto` for scroll.
 
@@ -291,7 +293,7 @@ Borderless hero section (matching Dashboard's Net Worth pattern). Total Value at
 
 ### Portfolio Section Headers
 
-Positions are grouped two-level: **Crypto/Equities/Cash** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, amber for Equities, green for Cash, purple for Custody).
+Positions are grouped two-level: **Crypto/Equities/Cash** (primary, in `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, in `PositionTable`). `CollapsibleCard` accepts `icon` and `accentColor` props for visual differentiation (blue for Crypto, amber for Equities, green for Cash, purple for Custody). Accent classes must use full hairline borders plus subtle background tints (for example `border-blue-500/40 bg-blue-500/5`), not colored side stripes.
 
 ### Custody Positions ("Held for Others")
 
@@ -338,14 +340,14 @@ Rules:
 
 - **Portfolio $ Value**: AreaChart (Recharts), gradient fill, time period selector (7D/1M/3M/1Y/YTD/Max), reference line at starting value, end-of-line label. Loading state uses `isFetching` to detect period-change refetches.
 - **Max chart range**: `getDateRange('Max')` must send `all=true` to `/snapshots/performance`; an empty query falls back to the backend's default 30-day window.
-- **Portfolio % vs Benchmarks**: Normalized % vs BTC/ETH. Benchmark baseline = price at first portfolio timestamp (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching. Portfolio line color `#64748B` (slate), not indigo.
+- **Portfolio % vs Benchmarks**: Normalized % vs BTC/ETH. Benchmark baseline = price at first portfolio timestamp (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching. Portfolio line color comes from `PORTFOLIO_LINE_COLOR` in `chartColors.ts`, not an inline hex or primary/indigo token.
 - **Allocation donuts** (4 charts, `grid sm:grid-cols-2 lg:grid-cols-4` in `AllocationCharts.tsx`):
   - **By Asset**: Crypto / Equities / Cash buckets via `bucketFor()` → `categoryGroup()`.
   - **By Detailed Asset**: crypto by symbol; Equities and Cash each one bundled wedge (protected from rollup). Sub-2% crypto slices group into "Other" once 2+ exist (`OTHER_THRESHOLD_PCT = 2`).
   - **By Storage**: CEX / Broker account / Bank / Onchain / Onchain Ledger.
   - **Cash Breakdown**: by stable/fiat symbol; only renders when cash positions exist.
 - Custody filtered out before allocations (`positions.filter((p) => !p.custodyOf)`).
-- Layout: legend right of donut at sm/md; below at lg+ (`flex-col sm:flex-row lg:flex-col`). Center label = top item's % + truncated name (>8 chars). Hover shows `name · $value · %` under card title; no Recharts Tooltip (overlaps legend). Colors from `lib/chartColors.ts`.
+- Layout: legend right of donut at sm/md; below at lg+ (`flex-col sm:flex-row lg:flex-col`). Center label = top item's % + truncated name (>8 chars). Hover shows `name · $value · %` under card title; no Recharts Tooltip (overlaps legend). Colors from `lib/chartColors.ts`. Legend toggle buttons are real controls, so keep their mobile hit area at 44px even though the visual row stays compact.
 
 ### Dashboard Investor Default
 
@@ -390,11 +392,11 @@ All pages MUST use the same header pattern for visual consistency when switching
 
 - **Color palette**: Indigo-tinted neutrals (not stock shadcn/ui grays) — `--primary: 234 89% 55%` (light), `234 89% 67%` (dark)
 - **Fonts**: Plus Jakarta Sans (body/headings) + JetBrains Mono (tabular numbers) — loaded via Google Fonts in `index.html`
-- **Profit/loss colors**: Emerald green (`text-profit`) and red (`text-loss`) — backed by CSS custom properties `--profit`/`--loss` in `index.css` (both `:root` and `.dark`). Also `--warning` and `--info` tokens available
-- **Chart colors**: Centralized in `src/lib/chartColors.ts` — `BRAND_COLORS` (BTC/ETH), `PORTFOLIO_LINE_COLOR`, `ASSET_COLORS`, `STORAGE_COLORS`, `STABLES_COLORS`. Always use these constants instead of inline hex in chart components
+- **Profit/loss colors**: Emerald green (`text-profit`) and red (`text-loss`) — backed by contrast-safe CSS custom properties `--profit`/`--profit-foreground` and `--loss`/`--loss-foreground` in `index.css` (both `:root` and `.dark`). Also `--warning` and `--info` tokens available
+- **Chart colors**: Centralized in `src/lib/chartColors.ts` — `BRAND_COLORS` (BTC/ETH), `BRAND_FOREGROUND_COLORS`, `PORTFOLIO_LINE_COLOR`, `PORTFOLIO_FOREGROUND_COLOR`, `ASSET_COLORS`, `STORAGE_COLORS`, `STABLES_COLORS`, and benchmark palettes. These are OKLCH CSS-variable colors (`oklch(var(--chart-...))`), so use constants instead of inline hex in chart components.
 - **Skeleton loading**: CSS shimmer animation via `.skeleton` class — used on all pages and chart components
 - **HelpTooltip**: `?` icon tooltips on domain-specific finance terms (YTD Start, Exposure, CEX, Onchain, etc.). Controlled open state with tap-to-toggle for touch devices. `stopPropagation` on pointer events prevents CollapsibleCard toggle when tapping help icons.
-- **Sidebar**: Linear-style active state — `bg-primary/10 text-primary font-semibold border-r-2 border-primary`. Desktop sidebar can collapse to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed` in localStorage); mobile remains a full-width drawer with labels.
+- **Sidebar**: Linear-style active state — `border border-primary/30 bg-primary/10 text-primary font-semibold` with no side-stripe accent. Desktop sidebar can collapse to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed` in localStorage); mobile remains a full-width drawer with labels.
 - **Scrollbars**: Thin 6px with transparent track, rounded thumb
 - **Empty states**: Icon + heading + descriptive text + action CTA (Portfolio, Trades, History)
 - **Design context**: `.impeccable.md` at project root — brand personality, aesthetic direction, design principles

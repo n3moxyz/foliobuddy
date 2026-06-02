@@ -41,7 +41,7 @@ export function SortableHeader({
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className={`inline-flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors w-full ${align === 'right' ? 'justify-end' : ''}`}
+        className={`inline-flex min-h-11 min-w-11 w-full cursor-pointer items-center gap-1 transition-colors hover:text-foreground md:min-h-0 ${align === 'right' ? 'justify-end' : ''}`}
       >
         <span>{label}</span>
         {isActive ? (

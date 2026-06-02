@@ -55,6 +55,9 @@ import { HelpTooltip } from '@/components/ui/HelpTooltip';
 const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
 const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
 const PERP_EXPOSURE_INPUT_ID = 'perp-exposure-input';
+const PORTFOLIO_SUMMARY_SKELETON_KEYS = ['total', 'exposure', 'positions', 'pnl', 'cash'] as const;
+const PORTFOLIO_SECTION_SKELETON_KEYS = ['primary', 'secondary'] as const;
+const PORTFOLIO_ROW_SKELETON_KEYS = ['first', 'second', 'third'] as const;
 
 interface SectionConfig {
   id: string;
@@ -74,21 +77,21 @@ const SECTION_CONFIG: SectionConfig[] = [
       p.asset.category !== 'UNIT_TRUST' &&
       !isStablecoinCategory(p.asset.category),
     icon: <Coins className="h-4 w-4 text-blue-500" />,
-    accentColor: 'border-l-blue-500',
+    accentColor: 'border-blue-500/40 bg-blue-500/5',
   },
   {
     id: 'equities',
     label: 'Equities',
     filter: (p) => p.asset.category === 'EQUITY' || p.asset.category === 'UNIT_TRUST',
     icon: <LineChart className="h-4 w-4 text-amber-500" />,
-    accentColor: 'border-l-amber-500',
+    accentColor: 'border-amber-500/40 bg-amber-500/5',
   },
   {
     id: 'cash',
     label: 'Cash',
     filter: (p) => isStablecoinCategory(p.asset.category),
     icon: <Banknote className="h-4 w-4 text-green-500" />,
-    accentColor: 'border-l-green-500',
+    accentColor: 'border-green-500/40 bg-green-500/5',
   },
 ];
 
@@ -218,7 +221,7 @@ export default function Portfolio() {
             disabled={!positions || positions.length === 0}
           >
             {copiedAll ? (
-              <Check className="h-4 w-4 mr-1 text-green-500" />
+              <Check className="h-4 w-4 mr-1 text-profit" />
             ) : (
               <Copy className="h-4 w-4 mr-1" />
             )}
@@ -302,7 +305,7 @@ export default function Portfolio() {
             <div className="pr-4">
               <div className="flex items-center gap-1">
                 <p className="text-muted-foreground text-sm">YTD Start</p>
-                <HelpTooltip content="Your total cost basis — how much you invested" />
+                <HelpTooltip content="Your total cost basis: how much you invested" />
               </div>
               <p className="font-medium tabular-nums">
                 {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
@@ -342,7 +345,7 @@ export default function Portfolio() {
             <div>
               <div className="flex items-center gap-1">
                 <p className="text-muted-foreground text-sm">YTD Start</p>
-                <HelpTooltip content="Your total cost basis — how much you invested" />
+                <HelpTooltip content="Your total cost basis: how much you invested" />
               </div>
               <p className="font-medium tabular-nums">
                 {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
@@ -383,15 +386,15 @@ export default function Portfolio() {
       {positionsLoading && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="py-3 px-4">
+            {PORTFOLIO_SUMMARY_SKELETON_KEYS.map((key) => (
+              <div key={key} className="py-3 px-4">
                 <Skeleton className="h-3 w-16 mb-2" />
                 <Skeleton className="h-6 w-24" />
               </div>
             ))}
           </div>
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-md border p-4 space-y-3">
+          {PORTFOLIO_SECTION_SKELETON_KEYS.map((sectionKey) => (
+            <div key={sectionKey} className="rounded-md border p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Skeleton className="h-4 w-4 rounded-full" />
                 <Skeleton className="h-4 w-24" />
@@ -400,8 +403,8 @@ export default function Portfolio() {
                 </div>
               </div>
               <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, j) => (
-                  <Skeleton key={j} className="h-10 w-full" />
+                {PORTFOLIO_ROW_SKELETON_KEYS.map((rowKey) => (
+                  <Skeleton key={`${sectionKey}-${rowKey}`} className="h-10 w-full" />
                 ))}
               </div>
             </div>
@@ -462,7 +465,7 @@ export default function Portfolio() {
                       </span>
                       <span className="text-xs text-muted-foreground">
                         Perp:
-                        <HelpTooltip content="Open perpetual futures position size — adds to your crypto exposure calculation" />{' '}
+                        <HelpTooltip content="Open perpetual futures position size: adds to your crypto exposure calculation" />{' '}
                         {formatCurrency(convertValue(perpExposure), currency, 0)}
                       </span>
                     </>
@@ -470,7 +473,7 @@ export default function Portfolio() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                    className="h-11 text-xs text-muted-foreground hover:text-foreground sm:h-8"
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePerpEdit();
@@ -498,10 +501,10 @@ export default function Portfolio() {
         <CollapsibleCard
           title={`Held for Others (${custodyPositions.length})`}
           titleHelp={
-            <HelpTooltip content="Positions you're holding on behalf of other people — these are excluded from your personal net worth and P&L" />
+            <HelpTooltip content="Positions you're holding on behalf of other people. These are excluded from your personal net worth and P&L" />
           }
           icon={<Users className="h-4 w-4 text-purple-500" />}
-          accentColor="border-l-purple-500"
+          accentColor="border-purple-500/40 bg-purple-500/5"
           isExpanded={isExpanded('custody')}
           onToggle={() => toggle('custody')}
           headerRight={

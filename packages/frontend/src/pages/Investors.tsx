@@ -35,6 +35,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 
 const EMPTY_INVESTORS: Investor[] = [];
+const INVESTOR_TABLE_HEADER_SKELETON_KEYS = [
+  'name',
+  'stake',
+  'capital',
+  'value',
+  'return',
+] as const;
+const INVESTOR_TABLE_ROW_SKELETON_KEYS = ['first', 'second', 'third'] as const;
 
 // Helper to format stake percentage with up to 5 decimal places (trimming trailing zeros)
 function formatStakePercentage(value: number): string {
@@ -141,12 +149,12 @@ export default function Investors() {
           {isLoading ? (
             <div className="space-y-3">
               <div className="flex gap-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-4 w-20" />
+                {INVESTOR_TABLE_HEADER_SKELETON_KEYS.map((key) => (
+                  <Skeleton key={key} className="h-4 w-20" />
                 ))}
               </div>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
+              {INVESTOR_TABLE_ROW_SKELETON_KEYS.map((key) => (
+                <Skeleton key={key} className="h-10 w-full" />
               ))}
             </div>
           ) : investors && investors.length > 0 ? (
@@ -206,7 +214,7 @@ export default function Investors() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 touch-manipulation"
+                            className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
                             onClick={() => setEditInvestor(investor)}
                             aria-label="Edit investor"
                           >
@@ -215,7 +223,7 @@ export default function Investors() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive touch-manipulation"
+                            className="-mx-1 h-11 w-11 shrink-0 text-destructive touch-manipulation hover:text-destructive md:mx-0 md:h-8 md:w-8"
                             onClick={() => setDeleteInvestor(investor)}
                             aria-label="Delete investor"
                           >
@@ -466,11 +474,11 @@ function InvestorForm({
             />
             {isOwner && suggestedStake !== stakeValue && (
               <p className="text-xs text-muted-foreground">
-                Suggested (balancing): {formatStakePercentage(suggestedStake)}% —{' '}
+                Suggested (balancing): {formatStakePercentage(suggestedStake)}%,{' '}
                 <button
                   type="button"
                   onClick={handleUseSuggested}
-                  className="text-red-500 hover:text-red-600 hover:underline"
+                  className="text-primary hover:underline"
                 >
                   Use this
                 </button>

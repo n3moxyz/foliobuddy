@@ -1960,6 +1960,13 @@ Recently completed:
   - `/dev/demo` now seeds a longer all-time performance curve from 2024 through June 2026 and the mock `/snapshots/performance` endpoint filters by `days`, `from`, `to`, and `all=true`, so the Max selector can be tested against visibly older points.
   - Seeded positions now cover crypto, equities, unit trust, stablecoins, USD/SGD cash, NFT/angel-style alternatives, CEX, DeFi/onchain, bank, brokerage, and custody. This gives the allocation donuts and Portfolio section grouping a better little workout.
   - While validating, chart dot renderers got stable keys and portfolio collapsible headers were adjusted to keep tooltip/action buttons outside trigger buttons, clearing noisy React console warnings.
+- [x] **Impeccable audit cleanup pass:**
+  - Chart colors moved from literal hex strings to theme-aware OKLCH CSS variables, with separate foreground tokens for benchmark labels and chips. The charts still feel like FolioBuddy, but now the palette belongs to the design system instead of each component freelancing.
+  - Profit/loss colors now use contrast-safe foreground tokens, and import/live-row success states reuse those semantic classes instead of hard-coded green/red utilities.
+  - The old colored side-stripe accents are gone. Portfolio sections and sidebar active state now use full hairline borders plus subtle surface tints, which keeps the affordance without the banned stripe pattern.
+  - Mobile hit areas were hardened across shared buttons, help tooltips, sortable table headers, allocation legends, and dense row actions. The sneaky bit: a `w-11` class can still render narrower inside a flex/table cell unless the button also has `shrink-0`.
+  - React Doctor is back to a 99/100 advisory score with only the known demo-mode `apiMockReady` false positive. The previous array-index key warnings were cleaned up with named skeleton keys and timestamp-based chart dot keys.
+  - Lesson: verify touch targets from rendered bounding boxes, not from class names. The class can say 44px while layout says "nice try."
 
 ---
 

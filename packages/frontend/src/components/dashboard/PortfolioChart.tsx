@@ -31,6 +31,8 @@ interface RechartsAreaDotProps {
   index: number;
 }
 
+const CHART_SKELETON_TICKS = ['start', 'early', 'middle', 'late', 'end'] as const;
+
 export function PortfolioChart({
   currency = 'USD',
   fxRate = 1,
@@ -169,7 +171,7 @@ export function PortfolioChart({
                   key={p}
                   variant={period === p ? 'secondary' : 'ghost'}
                   size="sm"
-                  className={`h-8 px-3 rounded-none first:rounded-l-md last:rounded-r-md ${
+                  className={`h-11 px-3 rounded-none first:rounded-l-md last:rounded-r-md sm:h-8 ${
                     period === p ? '' : 'hover:bg-muted'
                   }`}
                   onClick={() => setPeriod(p)}
@@ -190,8 +192,8 @@ export function PortfolioChart({
               <Skeleton className="h-3 w-10" />
             </div>
             <div className="flex justify-between px-2 mt-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-3 w-12" />
+              {CHART_SKELETON_TICKS.map((tick) => (
+                <Skeleton key={tick} className="h-3 w-12" />
               ))}
             </div>
           </div>
@@ -276,9 +278,11 @@ export function PortfolioChart({
                   fill="url(#portfolioGradient)"
                   dot={(props: RechartsAreaDotProps) => {
                     const { cx, cy, index } = props;
-                    if (index !== chartData.length - 1) return <g key={`portfolio-dot-${index}`} />;
+                    const dotKey = chartData[index]?.timestamp ?? `${cx}-${cy}`;
+                    if (index !== chartData.length - 1)
+                      return <g key={`portfolio-dot-${dotKey}`} />;
                     return (
-                      <g key={`portfolio-dot-${index}`}>
+                      <g key={`portfolio-dot-${dotKey}`}>
                         <circle cx={cx} cy={cy} r={3} fill={PORTFOLIO_LINE_COLOR} />
                         <text
                           x={cx + 8}

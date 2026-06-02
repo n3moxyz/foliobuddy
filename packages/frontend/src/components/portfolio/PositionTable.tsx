@@ -344,7 +344,7 @@ export function PositionTable({
       <CollapsibleTrigger asChild>
         <button
           type="button"
-          className="group flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left"
+          className="group flex min-h-11 min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left"
         >
           <ChevronRight
             className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
@@ -373,7 +373,7 @@ export function PositionTable({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 text-xs text-muted-foreground touch-manipulation"
+            className="h-11 text-xs text-muted-foreground touch-manipulation"
             onClick={() => setShowAllColumns(!showAllColumns)}
           >
             {showAllColumns ? (
@@ -393,7 +393,7 @@ export function PositionTable({
             {renderSectionTrigger(
               cexId,
               'CEX',
-              'Centralized exchange — assets held on platforms like Binance or Coinbase',
+              'Centralized exchange: assets held on platforms like Binance or Coinbase',
               cexPositions.length,
               cexTotal
             )}
@@ -473,7 +473,7 @@ export function PositionTable({
             {renderSectionTrigger(
               fundId,
               'Unit Trust',
-              'Unit trusts and managed funds — NAV tracked per fund, often from broker statements',
+              'Unit trusts and managed funds: NAV tracked per fund, often from broker statements',
               fundPositions.length,
               fundTotal
             )}
@@ -700,7 +700,7 @@ export function PositionTable({
                   }}
                 >
                   {copiedId === viewPosition.id ? (
-                    <Check className="h-3.5 w-3.5 mr-1 text-green-500" />
+                    <Check className="h-3.5 w-3.5 mr-1 text-profit" />
                   ) : (
                     <Copy className="h-3.5 w-3.5 mr-1" />
                   )}

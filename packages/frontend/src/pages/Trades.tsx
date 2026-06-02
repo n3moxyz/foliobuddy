@@ -113,6 +113,9 @@ async function copyTradeToClipboard(trade: Trade): Promise<boolean> {
   }
 }
 
+const TRADE_TABLE_HEADER_SKELETON_KEYS = ['asset', 'side', 'entry', 'exit', 'pnl'] as const;
+const TRADE_TABLE_ROW_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth'] as const;
+
 export default function Trades() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -583,7 +586,6 @@ function TradeTapeSection({
   );
 }
 
-
 function formatTradeTags(tags: string | null): string | null {
   if (!tags) return null;
   try {
@@ -679,12 +681,12 @@ function TradeTable({
       <div className="rounded-md border">
         <div className="p-4 space-y-3">
           <div className="flex gap-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-4 w-20" />
+            {TRADE_TABLE_HEADER_SKELETON_KEYS.map((key) => (
+              <Skeleton key={key} className="h-4 w-20" />
             ))}
           </div>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
+          {TRADE_TABLE_ROW_SKELETON_KEYS.map((key) => (
+            <Skeleton key={key} className="h-10 w-full" />
           ))}
         </div>
       </div>
@@ -712,7 +714,7 @@ function TradeTable({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 text-xs text-muted-foreground touch-manipulation"
+          className="h-11 text-xs text-muted-foreground touch-manipulation"
           onClick={() => setShowAllColumns(!showAllColumns)}
         >
           {showAllColumns ? (
@@ -820,10 +822,7 @@ function TradeTable({
                     tabIndex={0}
                     aria-label={`View ${trade.asset.symbol} ${trade.direction} trade`}
                     onKeyDown={(e) => {
-                      if (
-                        e.currentTarget === e.target &&
-                        (e.key === 'Enter' || e.key === ' ')
-                      ) {
+                      if (e.currentTarget === e.target && (e.key === 'Enter' || e.key === ' ')) {
                         e.preventDefault();
                         handleView(trade);
                       }
@@ -899,7 +898,7 @@ function TradeTable({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 touch-manipulation"
+                          className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
                           onClick={() => handleCopy(trade)}
                           title="Copy trade"
                           aria-label="Copy trade"
@@ -913,7 +912,7 @@ function TradeTable({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 touch-manipulation"
+                          className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
                           onClick={() => onEdit(trade)}
                           title="Edit trade"
                           aria-label="Edit trade"
@@ -923,7 +922,7 @@ function TradeTable({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive touch-manipulation"
+                          className="-mx-1 h-11 w-11 shrink-0 text-destructive touch-manipulation hover:text-destructive md:mx-0 md:h-8 md:w-8"
                           onClick={() => onDelete(trade)}
                           title="Delete trade"
                           aria-label="Delete trade"
@@ -1028,7 +1027,9 @@ function TradeTable({
                 {viewTrade.realizedPnL !== null ? (
                   <p className={`font-mono font-medium ${getPnLColorClass(viewTrade.realizedPnL)}`}>
                     {formatCurrency(viewTrade.realizedPnL, 'USD', 0)}
-                    <span className="text-xs ml-1">({formatPercent(viewTrade.realizedPnLPct)})</span>
+                    <span className="text-xs ml-1">
+                      ({formatPercent(viewTrade.realizedPnLPct)})
+                    </span>
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">Open trade</p>

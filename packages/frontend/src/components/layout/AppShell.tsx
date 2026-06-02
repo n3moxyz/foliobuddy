@@ -154,7 +154,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             </span>
           </Link>
           <button
-            className="lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-md lg:hidden"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close navigation menu"
           >
@@ -175,10 +175,10 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
                   key={item.name}
                   to={targetHref}
                   className={cn(
-                    'flex items-center justify-between px-3 py-3 rounded-md text-sm transition-colors touch-manipulation',
+                    'flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation',
                     sidebarCollapsed && 'lg:h-11 lg:justify-center lg:px-0',
                     isActive
-                      ? 'bg-primary/10 text-primary font-semibold border-r-2 border-primary'
+                      ? 'border-primary/30 bg-primary/10 text-primary font-semibold'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground font-medium'
                   )}
                   onClick={() => setSidebarOpen(false)}
@@ -223,9 +223,9 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
           sidebarCollapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64'
         )}
       >
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur px-3 sm:h-16 sm:gap-4 sm:px-4 lg:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-3 sm:h-16 sm:gap-4 sm:px-4 lg:px-6">
           <button
-            className="lg:hidden p-2 -ml-2 touch-manipulation"
+            className="-ml-3 flex h-11 w-11 items-center justify-center rounded-md touch-manipulation lg:hidden"
             onClick={() => setSidebarOpen(true)}
             aria-label="Open navigation menu"
           >
@@ -237,7 +237,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             onClick={toggleSidebarCollapsed}
             aria-label={sidebarCollapsed ? 'Expand navigation panel' : 'Collapse navigation panel'}
             title={sidebarCollapsed ? 'Expand navigation panel' : 'Collapse navigation panel'}
-            className="hidden h-9 w-9 -ml-2 touch-manipulation lg:inline-flex"
+            className="hidden h-11 w-11 -ml-3 touch-manipulation lg:inline-flex"
           >
             <SidebarToggleIcon className="h-4 w-4" />
           </Button>
@@ -248,7 +248,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             variant="outline"
             size="sm"
             onClick={toggleCurrency}
-            className="font-mono h-9 min-w-[3rem] touch-manipulation"
+            className="h-11 min-w-[3.25rem] font-mono touch-manipulation"
           >
             {currency}
           </Button>
@@ -259,7 +259,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             onClick={cycleTheme}
             title={`Theme: ${theme}`}
             aria-label={`Change theme (current: ${theme})`}
-            className="h-9 w-9 touch-manipulation"
+            className="h-11 w-11 touch-manipulation"
           >
             <ThemeIcon className="h-4 w-4" />
           </Button>
@@ -276,7 +276,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             onClick={handleRefreshPrices}
             disabled={refreshing}
             aria-label="Refresh prices"
-            className="hidden sm:inline-flex h-9 w-9"
+            className="hidden h-11 w-11 sm:inline-flex"
           >
             <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
           </Button>
@@ -286,7 +286,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
             size="icon"
             onClick={handleExport}
             aria-label="Export data"
-            className="hidden sm:inline-flex h-9 w-9"
+            className="hidden h-11 w-11 sm:inline-flex"
           >
             <Download className="h-4 w-4" />
           </Button>
@@ -296,7 +296,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
               <Button
                 variant="ghost"
                 size="icon"
-                className="sm:hidden h-9 w-9 touch-manipulation"
+                className="h-11 w-11 touch-manipulation sm:hidden"
                 aria-label="More actions"
               >
                 <MoreVertical className="h-4 w-4" />
@@ -322,7 +322,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
 
           {demoMode ? (
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
               aria-label="Demo user"
               title="Demo mode"
             >
@@ -333,7 +333,7 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
               afterSignOutUrl="/"
               appearance={{
                 elements: {
-                  avatarBox: 'h-8 w-8',
+                  avatarBox: 'h-11 w-11',
                 },
               }}
             />

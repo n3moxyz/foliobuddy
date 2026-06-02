@@ -155,13 +155,13 @@ export const PositionRow = React.memo(function PositionRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 touch-manipulation"
+            className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
             onClick={(e) => onCopy(position, e)}
             title="Copy position"
             aria-label="Copy position"
           >
             {copiedId === position.id ? (
-              <Check className="h-4 w-4 text-green-500" />
+              <Check className="h-4 w-4 text-profit" />
             ) : (
               <Copy className="h-4 w-4" />
             )}
@@ -170,7 +170,7 @@ export const PositionRow = React.memo(function PositionRow({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 touch-manipulation"
+              className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
               onClick={() => onUpdateNav(position)}
               title="Update NAV"
               aria-label="Update NAV"
@@ -181,7 +181,7 @@ export const PositionRow = React.memo(function PositionRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 touch-manipulation"
+            className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
             onClick={() => onEdit(position)}
             aria-label="Edit position"
           >
@@ -190,7 +190,7 @@ export const PositionRow = React.memo(function PositionRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 touch-manipulation"
+            className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
             onClick={() => onDelete(position)}
             aria-label="Delete position"
           >

@@ -50,7 +50,7 @@ export function CustodyCheckbox({
       />
       <div className="flex-1 min-w-0">
         <label htmlFor={id} className="block text-sm font-medium cursor-pointer leading-tight">
-          Custody — held for someone else
+          Custody: held for someone else
         </label>
         {showDescription && (
           <p className="mt-1 text-xs text-muted-foreground leading-tight">

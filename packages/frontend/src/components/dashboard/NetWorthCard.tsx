@@ -117,7 +117,7 @@ export function NetWorthCard({
               {formatPercent(change30d.pct)}
             </p>
           ) : (
-            <p className="font-medium tabular-nums text-muted-foreground">—</p>
+            <p className="font-medium tabular-nums text-muted-foreground">N/A</p>
           )}
         </div>
         <Link to="/portfolio" className="px-4 hover:text-primary transition-colors">
@@ -126,7 +126,7 @@ export function NetWorthCard({
             <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash, including perps" />
           </div>
           <p className="font-medium tabular-nums">
-            {exposurePct !== undefined ? `${exposurePct.toFixed(1)}%` : '—'}
+            {exposurePct !== undefined ? `${exposurePct.toFixed(1)}%` : 'N/A'}
           </p>
         </Link>
         <Link to="/portfolio" className="px-4 hover:text-primary transition-colors">

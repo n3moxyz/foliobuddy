@@ -1,5 +1,5 @@
 import type { PerformancePoint, BenchmarkHistoricalData } from './api';
-import { BRAND_COLORS } from './chartColors';
+import { BRAND_COLORS, BRAND_FOREGROUND_COLORS } from './chartColors';
 
 export interface NormalizedDataPoint {
   timestamp: string;
@@ -15,12 +15,27 @@ export interface BenchmarkConfig {
   coingeckoId: string;
   symbol: string;
   color: string;
+  foregroundColor?: string;
   enabled: boolean;
 }
 
 export const DEFAULT_BENCHMARKS: BenchmarkConfig[] = [
-  { id: 'btc', coingeckoId: 'bitcoin', symbol: 'BTC', color: BRAND_COLORS.btc, enabled: true },
-  { id: 'eth', coingeckoId: 'ethereum', symbol: 'ETH', color: BRAND_COLORS.eth, enabled: true },
+  {
+    id: 'btc',
+    coingeckoId: 'bitcoin',
+    symbol: 'BTC',
+    color: BRAND_COLORS.btc,
+    foregroundColor: BRAND_FOREGROUND_COLORS.btc,
+    enabled: true,
+  },
+  {
+    id: 'eth',
+    coingeckoId: 'ethereum',
+    symbol: 'ETH',
+    color: BRAND_COLORS.eth,
+    foregroundColor: BRAND_FOREGROUND_COLORS.eth,
+    enabled: true,
+  },
 ];
 
 /**

@@ -16,7 +16,7 @@ export function HelpTooltip({ content }: HelpTooltipProps) {
           <button
             type="button"
             aria-label="Help"
-            className="inline-flex items-center justify-center align-middle ml-1 touch-manipulation"
+            className="-my-3 -ml-2 -mr-3 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full align-middle touch-manipulation hover:bg-muted/50"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -24,7 +24,7 @@ export function HelpTooltip({ content }: HelpTooltipProps) {
             }}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help" />
+            <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/70" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">
