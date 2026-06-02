@@ -1176,17 +1176,23 @@ function createImportedPosition(position: BulkImportPosition) {
   });
 }
 
-function benchmarkHistory(id: string): BenchmarkHistoricalData {
+function benchmarkHistory(id: string, provider: 'coingecko' | 'yahoo' = 'coingecko'): BenchmarkHistoricalData {
+  const normalizedId = id.toUpperCase();
   const starts: Record<string, number> = {
     bitcoin: 72100,
     ethereum: 3320,
     chainlink: 19,
     hyperliquid: 8,
     solana: 152,
+    '^GSPC': 5100,
+    SPY: 510,
+    QQQ: 440,
   };
-  const start = starts[id] ?? 100;
+  const start = starts[id] ?? starts[normalizedId] ?? 100;
   return {
-    coingeckoId: id,
+    coingeckoId: provider === 'coingecko' ? id : undefined,
+    provider,
+    providerAssetId: id,
     days: 30,
     data: performance.map((point, index) => ({
       timestamp: new Date(point.timestamp).getTime(),
@@ -1311,7 +1317,9 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   if (path === '/api/prices/refresh' && method === 'POST')
     return json({ updated: getCurrentPrices().length, errors: 0 });
   if (path.startsWith('/api/prices/historical/') && method === 'GET') {
-    return json(benchmarkHistory(path.split('/').pop() ?? 'benchmark'));
+    const provider = url.searchParams.get('provider') === 'yahoo' ? 'yahoo' : 'coingecko';
+    const providerAssetId = decodeURIComponent(path.split('/').pop() ?? 'benchmark');
+    return json(benchmarkHistory(providerAssetId, provider));
   }
   if (path === '/api/assets' && method === 'GET') return json(demoAssets);
   if (path === '/api/assets' && method === 'POST') {
@@ -1348,6 +1356,13 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
 
     if (category === 'EQUITY' || provider === 'yahoo') {
       const equities = [
+        {
+          providerAssetId: '^GSPC',
+          symbol: 'SPX',
+          name: 'S&P 500 Index',
+          exchange: 'Yahoo Finance',
+          nativeCurrency: 'USD',
+        },
         {
           symbol: 'D05.SI',
           name: 'DBS Group Holdings Ltd',
@@ -1410,10 +1425,16 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
         },
         { symbol: 'QQQ', name: 'Invesco QQQ Trust', exchange: 'NasdaqGM', nativeCurrency: 'USD' },
       ]
-        .filter((e) => !q || e.symbol.toLowerCase().includes(q) || e.name.toLowerCase().includes(q))
+        .filter(
+          (e) =>
+            !q ||
+            e.symbol.toLowerCase().includes(q) ||
+            e.name.toLowerCase().includes(q) ||
+            e.providerAssetId?.toLowerCase().includes(q)
+        )
         .map((e) => ({
-          id: e.symbol,
-          providerAssetId: e.symbol,
+          id: e.providerAssetId ?? e.symbol,
+          providerAssetId: e.providerAssetId ?? e.symbol,
           provider: 'yahoo',
           symbol: e.symbol,
           name: e.name,

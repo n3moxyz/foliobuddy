@@ -489,7 +489,9 @@ export interface BulkImportTrade {
 }
 
 export interface BenchmarkHistoricalData {
-  coingeckoId: string;
+  coingeckoId?: string;
+  provider?: ProviderName;
+  providerAssetId?: string;
   days: number;
   data: Array<{ timestamp: number; price: number }>;
 }

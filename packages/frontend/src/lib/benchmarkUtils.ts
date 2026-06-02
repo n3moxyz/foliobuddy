@@ -1,4 +1,4 @@
-import type { PerformancePoint, BenchmarkHistoricalData } from './api';
+import type { BenchmarkHistoricalData, PerformancePoint, ProviderName } from './api';
 import { BRAND_COLORS, BRAND_FOREGROUND_COLORS } from './chartColors';
 
 export interface NormalizedDataPoint {
@@ -12,7 +12,8 @@ export interface NormalizedDataPoint {
 
 export interface BenchmarkConfig {
   id: string;
-  coingeckoId: string;
+  provider: ProviderName;
+  providerAssetId: string;
   symbol: string;
   color: string;
   foregroundColor?: string;
@@ -22,7 +23,8 @@ export interface BenchmarkConfig {
 export const DEFAULT_BENCHMARKS: BenchmarkConfig[] = [
   {
     id: 'btc',
-    coingeckoId: 'bitcoin',
+    provider: 'coingecko',
+    providerAssetId: 'bitcoin',
     symbol: 'BTC',
     color: BRAND_COLORS.btc,
     foregroundColor: BRAND_FOREGROUND_COLORS.btc,
@@ -30,7 +32,8 @@ export const DEFAULT_BENCHMARKS: BenchmarkConfig[] = [
   },
   {
     id: 'eth',
-    coingeckoId: 'ethereum',
+    provider: 'coingecko',
+    providerAssetId: 'ethereum',
     symbol: 'ETH',
     color: BRAND_COLORS.eth,
     foregroundColor: BRAND_FOREGROUND_COLORS.eth,

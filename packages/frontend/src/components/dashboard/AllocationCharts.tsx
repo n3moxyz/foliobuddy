@@ -1,8 +1,15 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { formatNumber, formatCurrency, isStablecoinCategory, categoryGroup } from '@/lib/utils';
+import { formatNumber, formatCurrency, categoryGroup } from '@/lib/utils';
 import { ASSET_COLORS, STORAGE_COLORS, STABLES_COLORS } from '@/lib/chartColors';
 import type { Position } from '@/lib/types';
 
@@ -18,9 +25,16 @@ interface ChartData {
 }
 
 type CategoryBucket = 'Crypto' | 'Equities' | 'Cash';
+type DetailedAssetFilter = 'all' | CategoryBucket;
 
 const ALLOCATION_CHART_SKELETON_KEYS = ['asset', 'detailed', 'storage', 'cash'] as const;
 const ALLOCATION_LEGEND_SKELETON_KEYS = ['first', 'second', 'third', 'fourth'] as const;
+const DETAILED_ASSET_FILTER_OPTIONS: Array<{ value: DetailedAssetFilter; label: string }> = [
+  { value: 'all', label: 'All' },
+  { value: 'Crypto', label: 'Crypto' },
+  { value: 'Cash', label: 'Cash' },
+  { value: 'Equities', label: 'Equities' },
+];
 
 function bucketFor(category: string | undefined | null): CategoryBucket {
   const g = categoryGroup(category);
@@ -29,155 +43,183 @@ function bucketFor(category: string | undefined | null): CategoryBucket {
   return 'Crypto';
 }
 
+function mapToChartData(map: Map<string, number>, total: number): ChartData[] {
+  return Array.from(map.entries())
+    .filter(([, value]) => value > 0)
+    .map(([name, value]) => ({
+      name,
+      value,
+      percentage: total > 0 ? (value / total) * 100 : 0,
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function groupSmallDetailedSlices(data: ChartData[]): ChartData[] {
+  const OTHER_THRESHOLD_PCT = 2;
+  const isProtected = (name: string) => name === 'Cash' || name === 'Equities';
+  const smallSlices = data.filter(
+    (d) => d.percentage < OTHER_THRESHOLD_PCT && !isProtected(d.name)
+  );
+
+  if (smallSlices.length < 2) return data;
+
+  return [
+    ...data.filter((d) => d.percentage >= OTHER_THRESHOLD_PCT || isProtected(d.name)),
+    {
+      name: 'Other',
+      value: smallSlices.reduce((sum, d) => sum + d.value, 0),
+      percentage: smallSlices.reduce((sum, d) => sum + d.percentage, 0),
+    },
+  ];
+}
+
 export function AllocationCharts({ positions, isLoading }: AllocationChartsProps) {
   // Track hidden items for each chart
   const [hiddenCategory, setHiddenCategory] = useState<Set<string>>(new Set());
   const [hiddenDetailed, setHiddenDetailed] = useState<Set<string>>(new Set());
   const [hiddenStorage, setHiddenStorage] = useState<Set<string>>(new Set());
   const [hiddenCash, setHiddenCash] = useState<Set<string>>(new Set());
+  const [detailedFilter, setDetailedFilter] = useState<DetailedAssetFilter>('all');
   const [hoveredSlice, setHoveredSlice] = useState<Record<string, number | null>>({});
 
   // Calculate all allocations from positions
-  const { categoryAllocation, detailedAllocation, storageAllocation, cashAllocation } =
-    useMemo(() => {
-      if (!positions || positions.length === 0) {
-        return {
-          categoryAllocation: [],
-          detailedAllocation: [],
-          storageAllocation: [],
-          cashAllocation: [],
-        };
+  const {
+    categoryAllocation,
+    detailedAllocation,
+    detailedByBucket,
+    storageAllocation,
+    cashAllocation,
+    totals,
+  } = useMemo(() => {
+    if (!positions || positions.length === 0) {
+      return {
+        categoryAllocation: [],
+        detailedAllocation: [],
+        detailedByBucket: {
+          Crypto: [],
+          Cash: [],
+          Equities: [],
+        },
+        storageAllocation: [],
+        cashAllocation: [],
+        totals: {
+          portfolio: 0,
+          crypto: 0,
+          cash: 0,
+          equities: 0,
+        },
+      };
+    }
+
+    const total = positions.reduce((sum, p) => sum + (p.marketValueUsd || 0), 0);
+
+    // High-level category allocation: Crypto / Equities / Cash
+    const categoryMap = new Map<CategoryBucket, number>([
+      ['Crypto', 0],
+      ['Equities', 0],
+      ['Cash', 0],
+    ]);
+
+    positions.forEach((p) => {
+      const bucket = bucketFor(p.asset.category);
+      categoryMap.set(bucket, (categoryMap.get(bucket) || 0) + (p.marketValueUsd || 0));
+    });
+
+    const categoryData: ChartData[] = Array.from(categoryMap.entries())
+      .filter(([, v]) => v > 0)
+      .map(([name, value]) => ({
+        name,
+        value,
+        percentage: total > 0 ? (value / total) * 100 : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    // Detailed asset allocation: crypto by symbol, equities + cash bundled
+    const detailedMap = new Map<string, number>();
+    const cryptoMap = new Map<string, number>();
+    const cashMap = new Map<string, number>();
+    const equitiesMap = new Map<string, number>();
+    let cryptoTotal = 0;
+    let cashTotal = 0;
+    let equitiesTotal = 0;
+
+    positions.forEach((p) => {
+      const value = p.marketValueUsd || 0;
+      const bucket = bucketFor(p.asset.category);
+      if (bucket === 'Cash') {
+        cashTotal += value;
+        cashMap.set(p.asset.symbol, (cashMap.get(p.asset.symbol) || 0) + value);
+      } else if (bucket === 'Equities') {
+        equitiesTotal += value;
+        equitiesMap.set(p.asset.symbol, (equitiesMap.get(p.asset.symbol) || 0) + value);
+      } else {
+        cryptoTotal += value;
+        const symbol = p.asset.symbol;
+        detailedMap.set(symbol, (detailedMap.get(symbol) || 0) + value);
+        cryptoMap.set(symbol, (cryptoMap.get(symbol) || 0) + value);
+      }
+    });
+
+    if (cashTotal > 0) detailedMap.set('Cash', cashTotal);
+    if (equitiesTotal > 0) detailedMap.set('Equities', equitiesTotal);
+
+    const rawDetailed = mapToChartData(detailedMap, total);
+    const detailedData = groupSmallDetailedSlices(rawDetailed);
+    const cryptoDetailedData = groupSmallDetailedSlices(mapToChartData(cryptoMap, cryptoTotal));
+    const cashDetailedData = mapToChartData(cashMap, cashTotal);
+    const equitiesDetailedData = mapToChartData(equitiesMap, equitiesTotal);
+
+    // Storage allocation: CEX, Broker account, Bank, Onchain, Onchain Ledger
+    const storageMap = new Map<string, number>();
+
+    positions.forEach((p) => {
+      const value = p.marketValueUsd || 0;
+      let storageLabel: string;
+
+      if (p.storageType === 'CEX') {
+        storageLabel = 'CEX';
+      } else if (p.storageType === 'BROKERAGE') {
+        storageLabel = 'Broker account';
+      } else if (p.storageType === 'BANK') {
+        storageLabel = 'Bank';
+      } else if (p.storageLocation?.toLowerCase().includes('ledger')) {
+        storageLabel = 'Onchain Ledger';
+      } else {
+        storageLabel = 'Onchain';
       }
 
-      const total = positions.reduce((sum, p) => sum + (p.marketValueUsd || 0), 0);
+      storageMap.set(storageLabel, (storageMap.get(storageLabel) || 0) + value);
+    });
 
-      // High-level category allocation: Crypto / Equities / Cash
-      const categoryMap = new Map<CategoryBucket, number>([
-        ['Crypto', 0],
-        ['Equities', 0],
-        ['Cash', 0],
-      ]);
+    const storageData: ChartData[] = Array.from(storageMap.entries())
+      .map(([name, value]) => ({
+        name,
+        value,
+        percentage: total > 0 ? (value / total) * 100 : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
 
-      positions.forEach((p) => {
-        const bucket = bucketFor(p.asset.category);
-        categoryMap.set(bucket, (categoryMap.get(bucket) || 0) + (p.marketValueUsd || 0));
-      });
+    // Cash by type
+    const cashData = cashDetailedData;
 
-      const categoryData: ChartData[] = Array.from(categoryMap.entries())
-        .filter(([, v]) => v > 0)
-        .map(([name, value]) => ({
-          name,
-          value,
-          percentage: total > 0 ? (value / total) * 100 : 0,
-        }))
-        .sort((a, b) => b.value - a.value);
-
-      // Detailed asset allocation: crypto by symbol, equities + cash bundled
-      const detailedMap = new Map<string, number>();
-      let cashTotal = 0;
-      let equitiesTotal = 0;
-
-      positions.forEach((p) => {
-        const value = p.marketValueUsd || 0;
-        const bucket = bucketFor(p.asset.category);
-        if (bucket === 'Cash') {
-          cashTotal += value;
-        } else if (bucket === 'Equities') {
-          equitiesTotal += value;
-        } else {
-          const symbol = p.asset.symbol;
-          detailedMap.set(symbol, (detailedMap.get(symbol) || 0) + value);
-        }
-      });
-
-      if (cashTotal > 0) detailedMap.set('Cash', cashTotal);
-      if (equitiesTotal > 0) detailedMap.set('Equities', equitiesTotal);
-
-      const rawDetailed: ChartData[] = Array.from(detailedMap.entries())
-        .map(([name, value]) => ({
-          name,
-          value,
-          percentage: total > 0 ? (value / total) * 100 : 0,
-        }))
-        .sort((a, b) => b.value - a.value);
-
-      // Group sub-2% crypto slices into "Other" once there are 2+ of them.
-      // Cash and Equities are protected — always shown as their own wedge.
-      const OTHER_THRESHOLD_PCT = 2;
-      const isProtected = (name: string) => name === 'Cash' || name === 'Equities';
-      const smallSlices = rawDetailed.filter(
-        (d) => d.percentage < OTHER_THRESHOLD_PCT && !isProtected(d.name)
-      );
-      const detailedData: ChartData[] =
-        smallSlices.length >= 2
-          ? [
-              ...rawDetailed.filter(
-                (d) => d.percentage >= OTHER_THRESHOLD_PCT || isProtected(d.name)
-              ),
-              {
-                name: 'Other',
-                value: smallSlices.reduce((sum, d) => sum + d.value, 0),
-                percentage: smallSlices.reduce((sum, d) => sum + d.percentage, 0),
-              },
-            ]
-          : rawDetailed;
-
-      // Storage allocation: CEX, Broker account, Bank, Onchain, Onchain Ledger
-      const storageMap = new Map<string, number>();
-
-      positions.forEach((p) => {
-        const value = p.marketValueUsd || 0;
-        let storageLabel: string;
-
-        if (p.storageType === 'CEX') {
-          storageLabel = 'CEX';
-        } else if (p.storageType === 'BROKERAGE') {
-          storageLabel = 'Broker account';
-        } else if (p.storageType === 'BANK') {
-          storageLabel = 'Bank';
-        } else if (p.storageLocation?.toLowerCase().includes('ledger')) {
-          storageLabel = 'Onchain Ledger';
-        } else {
-          storageLabel = 'Onchain';
-        }
-
-        storageMap.set(storageLabel, (storageMap.get(storageLabel) || 0) + value);
-      });
-
-      const storageData: ChartData[] = Array.from(storageMap.entries())
-        .map(([name, value]) => ({
-          name,
-          value,
-          percentage: total > 0 ? (value / total) * 100 : 0,
-        }))
-        .sort((a, b) => b.value - a.value);
-
-      // Cash by type
-      const cashMap = new Map<string, number>();
-
-      positions.forEach((p) => {
-        if (isStablecoinCategory(p.asset.category)) {
-          const value = p.marketValueUsd || 0;
-          const symbol = p.asset.symbol;
-          cashMap.set(symbol, (cashMap.get(symbol) || 0) + value);
-        }
-      });
-
-      const cashData: ChartData[] = Array.from(cashMap.entries())
-        .map(([name, value]) => ({
-          name,
-          value,
-          percentage: cashTotal > 0 ? (value / cashTotal) * 100 : 0,
-        }))
-        .sort((a, b) => b.value - a.value);
-
-      return {
-        categoryAllocation: categoryData,
-        detailedAllocation: detailedData,
-        storageAllocation: storageData,
-        cashAllocation: cashData,
-      };
-    }, [positions]);
+    return {
+      categoryAllocation: categoryData,
+      detailedAllocation: detailedData,
+      detailedByBucket: {
+        Crypto: cryptoDetailedData,
+        Cash: cashDetailedData,
+        Equities: equitiesDetailedData,
+      },
+      storageAllocation: storageData,
+      cashAllocation: cashData,
+      totals: {
+        portfolio: total,
+        crypto: cryptoTotal,
+        cash: cashTotal,
+        equities: equitiesTotal,
+      },
+    };
+  }, [positions]);
 
   if (isLoading) {
     return (
@@ -225,12 +267,20 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     setHidden(newHidden);
   };
 
+  const handleDetailedFilterChange = (value: string) => {
+    setDetailedFilter(value as DetailedAssetFilter);
+    setHiddenDetailed(new Set());
+    setHoveredSlice((prev) => ({ ...prev, 'By Detailed Asset': null }));
+  };
+
   const renderPieChart = (
     data: ChartData[],
     colors: string[],
     hidden: Set<string>,
     setHidden: React.Dispatch<React.SetStateAction<Set<string>>>,
-    title: string
+    title: string,
+    totalValue: number,
+    headerControl?: React.ReactNode
   ) => {
     const filteredData = data.filter((d) => !hidden.has(d.name));
     const visibleTotal = filteredData.reduce((sum, d) => sum + d.value, 0);
@@ -242,19 +292,29 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     return (
       <Card className="flex-1">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">{title}</CardTitle>
-          <div className="text-xs text-muted-foreground tabular-nums truncate min-h-[16px]">
-            {(() => {
-              const hIdx = hoveredSlice[title];
-              if (hIdx == null || !visibleData[hIdx]) return null;
-              const hovered = visibleData[hIdx];
-              return (
-                <>
-                  {hovered.name} &middot; {formatCurrency(hovered.value, 'USD', true)} &middot;{' '}
-                  {formatNumber(hovered.displayPercentage, 1)}%
-                </>
-              );
-            })()}
+          <div className="flex min-h-8 items-center">
+            <CardTitle className="min-w-0 truncate text-base">
+              {title}{' '}
+              <span className="text-sm font-medium text-muted-foreground tabular-nums">
+                ({formatCurrency(totalValue, 'USD', true)})
+              </span>
+            </CardTitle>
+          </div>
+          <div className="flex min-h-11 items-center gap-2 sm:min-h-6">
+            <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground tabular-nums">
+              {(() => {
+                const hIdx = hoveredSlice[title];
+                if (hIdx == null || !visibleData[hIdx]) return null;
+                const hovered = visibleData[hIdx];
+                return (
+                  <>
+                    {hovered.name} &middot; {formatCurrency(hovered.value, 'USD', true)} &middot;{' '}
+                    {formatNumber(hovered.displayPercentage, 1)}%
+                  </>
+                );
+              })()}
+            </div>
+            {headerControl && <div className="shrink-0">{headerControl}</div>}
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -343,6 +403,35 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     );
   };
 
+  const selectedDetailedAllocation =
+    detailedFilter === 'all' ? detailedAllocation : detailedByBucket[detailedFilter];
+  const selectedDetailedTotal =
+    detailedFilter === 'all'
+      ? totals.portfolio
+      : detailedFilter === 'Crypto'
+        ? totals.crypto
+        : detailedFilter === 'Cash'
+          ? totals.cash
+          : totals.equities;
+  const selectedDetailedColors = detailedFilter === 'Cash' ? STABLES_COLORS : ASSET_COLORS;
+  const detailedHeaderControl = (
+    <Select value={detailedFilter} onValueChange={handleDetailedFilterChange}>
+      <SelectTrigger
+        aria-label="Detailed asset category"
+        className="h-11 w-[88px] border-0 bg-transparent px-1 text-xs text-muted-foreground shadow-none hover:bg-muted/40 focus:ring-1 focus:ring-ring focus:ring-offset-0 sm:h-6 sm:w-[78px] [&>svg]:h-3 [&>svg]:w-3"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {DETAILED_ASSET_FILTER_OPTIONS.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {renderPieChart(
@@ -350,24 +439,35 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         ASSET_COLORS,
         hiddenCategory,
         setHiddenCategory,
-        'By Asset'
+        'By Asset',
+        totals.portfolio
       )}
       {renderPieChart(
-        detailedAllocation,
-        ASSET_COLORS,
+        selectedDetailedAllocation,
+        selectedDetailedColors,
         hiddenDetailed,
         setHiddenDetailed,
-        'By Detailed Asset'
+        'By Detailed Asset',
+        selectedDetailedTotal,
+        detailedHeaderControl
       )}
       {renderPieChart(
         storageAllocation,
         STORAGE_COLORS,
         hiddenStorage,
         setHiddenStorage,
-        'By Storage'
+        'By Storage',
+        totals.portfolio
       )}
       {cashAllocation.length > 0 &&
-        renderPieChart(cashAllocation, STABLES_COLORS, hiddenCash, setHiddenCash, 'Cash Breakdown')}
+        renderPieChart(
+          cashAllocation,
+          STABLES_COLORS,
+          hiddenCash,
+          setHiddenCash,
+          'Cash Breakdown',
+          totals.cash
+        )}
     </div>
   );
 }

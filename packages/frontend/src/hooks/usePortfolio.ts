@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { CreatePositionData, Position } from '@/lib/types';
+import type { CreatePositionData, Position, ProviderName } from '@/lib/types';
 
 export function usePositions() {
   return useQuery({
@@ -112,11 +112,16 @@ export function useInvestors() {
   });
 }
 
-export function useBenchmarkHistory(coingeckoId: string, days: number, enabled = true) {
+export function useBenchmarkHistory(
+  provider: ProviderName,
+  providerAssetId: string,
+  days: number,
+  enabled = true
+) {
   return useQuery({
-    queryKey: ['benchmark', 'history', coingeckoId, days],
-    queryFn: () => api.getBenchmarkHistory(coingeckoId, days),
-    enabled: enabled && !!coingeckoId,
+    queryKey: ['benchmark', 'history', provider, providerAssetId, days],
+    queryFn: () => api.getBenchmarkHistory({ provider, providerAssetId, days }),
+    enabled: enabled && !!providerAssetId,
     staleTime: 5 * 60 * 1000,
   });
 }

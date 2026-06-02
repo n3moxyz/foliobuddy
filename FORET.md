@@ -1868,6 +1868,9 @@ Features I want to add:
 
 Recently completed:
 
+- [x] **Provider-aware dashboard benchmarks:** the Portfolio % vs Benchmarks chart can now add TradFi/index lines as well as crypto. BTC/ETH still use CoinGecko, while custom benchmarks store `provider` + `providerAssetId`; SPX is a first-class preset backed by Yahoo `^GSPC`, with SPY/QQQ available as ETF examples. Demo mode mocks both the search result and price history, so `/dev/demo` is useful for checking the flow without a backend. Lesson: a benchmark is really a price series, not a coin. Once the UI thought in providers, SPX stopped being a weird exception.
+- [x] **Allocation chart title totals:** the four dashboard donut cards now show compact USD totals in the title. Portfolio-wide donuts show total owned value, while Cash Breakdown shows total cash value and includes both fiat cash and stablecoins.
+- [x] **Detailed allocation category drilldown:** the By Detailed Asset donut now has an `All / Crypto / Cash / Equities` selector. All preserves the old overview, while category selections switch to symbol-level breakdowns inside that bucket. Lesson: the same chart can stay overview-friendly by default and still answer "what exactly is inside this bucket?" without adding another card.
 - [x] Cash taxonomy refresh: the old Stables add-position flow is now Cash, with Type = USDT/USDC/USDe/FDUSD/DAI/Cash (fiat), storage support for Broker account and Bank, shared broker options with Equities, and Cash-labeled portfolio/dashboard groupings
 - [x] Exposure calculation widened from crypto-only to total market-risk exposure: all owned non-stable/non-cash assets plus local perps, excluding custody
 - [x] Local-only `/dev/demo` route for authenticated UI testing with mocked API responses; lazy-loaded in dev so mock data does not ship to production bundles

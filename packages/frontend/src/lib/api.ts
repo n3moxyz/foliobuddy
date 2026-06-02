@@ -306,8 +306,17 @@ export const api = {
   getCurrentPrices: () => request<AssetPrice[]>('/prices/current'),
   refreshPrices: () =>
     request<{ updated: number; errors: number }>('/prices/refresh', { method: 'POST' }),
-  getBenchmarkHistory: (coingeckoId: string, days: number) =>
-    request<BenchmarkHistoricalData>(`/prices/historical/${coingeckoId}?days=${days}`),
+  getBenchmarkHistory: (params: {
+    provider?: ProviderName;
+    providerAssetId: string;
+    days: number;
+  }) =>
+    request<BenchmarkHistoricalData>(
+      `/prices/historical/${encodeURIComponent(params.providerAssetId)}${buildQuery({
+        days: params.days,
+        provider: params.provider,
+      })}`
+    ),
 
   // FX
   getFxRates: () => request<FxRate[]>('/fx/rates'),

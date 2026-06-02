@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { priceService } from '../services/priceService.js';
+import { AppError } from '../middleware/errorHandler.js';
+import type { ProviderName } from '../services/providers/types.js';
 
 const router = Router();
 
@@ -67,19 +69,30 @@ router.get('/history/:assetId', async (req, res, next) => {
   }
 });
 
-// GET /api/prices/historical/:coingeckoId - Get historical prices from CoinGecko
-router.get('/historical/:coingeckoId', async (req, res, next) => {
+// GET /api/prices/historical/:providerAssetId - Get historical prices from a price provider
+router.get('/historical/:providerAssetId', async (req, res, next) => {
   try {
-    const { coingeckoId } = req.params;
+    const { providerAssetId } = req.params;
     const days = parseInt(req.query.days as string) || 30;
+    const providerParam = typeof req.query.provider === 'string' ? req.query.provider : 'coingecko';
 
     // Cap at 365 days to avoid excessive API load
     const cappedDays = Math.min(days, 365);
+    if (providerParam !== 'coingecko' && providerParam !== 'yahoo') {
+      throw new AppError('Historical benchmark provider must be coingecko or yahoo', 400);
+    }
 
-    const data = await priceService.getHistoricalPrices(coingeckoId, cappedDays);
+    const provider = providerParam as ProviderName;
+    const history = await priceService.getAssetHistory(provider, providerAssetId, cappedDays);
+    const data = history.map((point) => ({
+      timestamp: point.timestamp,
+      price: point.priceUsd,
+    }));
 
     res.json({
-      coingeckoId,
+      coingeckoId: provider === 'coingecko' ? providerAssetId : undefined,
+      provider,
+      providerAssetId,
       days: cappedDays,
       data,
     });

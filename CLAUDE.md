@@ -340,14 +340,14 @@ Rules:
 
 - **Portfolio $ Value**: AreaChart (Recharts), gradient fill, time period selector (7D/1M/3M/1Y/YTD/Max), reference line at starting value, end-of-line label. Loading state uses `isFetching` to detect period-change refetches.
 - **Max chart range**: `getDateRange('Max')` must send `all=true` to `/snapshots/performance`; an empty query falls back to the backend's default 30-day window.
-- **Portfolio % vs Benchmarks**: Normalized % vs BTC/ETH. Benchmark baseline = price at first portfolio timestamp (not first CoinGecko price). Binary search + dynamic threshold for timestamp matching. Portfolio line color comes from `PORTFOLIO_LINE_COLOR` in `chartColors.ts`, not an inline hex or primary/indigo token.
+- **Portfolio % vs Benchmarks**: Normalized % vs BTC/ETH plus provider-aware custom benchmarks. Custom benchmarks store `provider` + `providerAssetId` so crypto can use CoinGecko and TradFi/index benchmarks can use Yahoo (SPX preset uses Yahoo `^GSPC`; SPY/QQQ are ETF examples). Benchmark baseline = price at first portfolio timestamp (not first provider price). Binary search + dynamic threshold for timestamp matching. Portfolio line color comes from `PORTFOLIO_LINE_COLOR` in `chartColors.ts`, not an inline hex or primary/indigo token.
 - **Allocation donuts** (4 charts, `grid sm:grid-cols-2 lg:grid-cols-4` in `AllocationCharts.tsx`):
   - **By Asset**: Crypto / Equities / Cash buckets via `bucketFor()` → `categoryGroup()`.
-  - **By Detailed Asset**: crypto by symbol; Equities and Cash each one bundled wedge (protected from rollup). Sub-2% crypto slices group into "Other" once 2+ exist (`OTHER_THRESHOLD_PCT = 2`).
+  - **By Detailed Asset**: default "All" view shows crypto by symbol while Equities and Cash each remain bundled wedges (protected from rollup). The card has an inline category dropdown matching Add Position's category labels (`All`, `Crypto`, `Cash`, `Equities`); selecting a category switches to that category's symbol-level breakdown and total. Crypto/all views group sub-2% crypto slices into "Other" once 2+ exist (`OTHER_THRESHOLD_PCT = 2`).
   - **By Storage**: CEX / Broker account / Bank / Onchain / Onchain Ledger.
   - **Cash Breakdown**: by stable/fiat symbol; only renders when cash positions exist.
 - Custody filtered out before allocations (`positions.filter((p) => !p.custodyOf)`).
-- Layout: legend right of donut at sm/md; below at lg+ (`flex-col sm:flex-row lg:flex-col`). Center label = top item's % + truncated name (>8 chars). Hover shows `name · $value · %` under card title; no Recharts Tooltip (overlaps legend). Colors from `lib/chartColors.ts`. Legend toggle buttons are real controls, so keep their mobile hit area at 44px even though the visual row stays compact.
+- Layout: legend right of donut at sm/md; below at lg+ (`flex-col sm:flex-row lg:flex-col`). Card titles show compact USD totals in parentheses; By Asset / By Detailed Asset / By Storage use total owned portfolio value, Cash Breakdown uses total cash value. Center label = top item's % + truncated name (>8 chars). Hover shows `name · $value · %` under card title; no Recharts Tooltip (overlaps legend). Colors from `lib/chartColors.ts`. Legend toggle buttons are real controls, so keep their mobile hit area at 44px even though the visual row stays compact.
 
 ### Dashboard Investor Default
 

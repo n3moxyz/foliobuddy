@@ -244,7 +244,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       logger.info(`[Yahoo] search via lookup for "${query}": ${quotes.length} quotes`);
     }
 
-    const allowedTypes = new Set(['EQUITY', 'ETF']);
+    const allowedTypes = new Set(['EQUITY', 'ETF', 'INDEX']);
     const upperQuery = query.toUpperCase();
     const results: ProviderSearchResult[] = quotes
       .filter((q) => {
@@ -265,7 +265,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       // actually wants. Heuristic: exact symbol match > no-suffix > has-suffix.
       .sort((a, b) => rankSymbol(upperQuery, a.symbol) - rankSymbol(upperQuery, b.symbol));
 
-    // Fallback: if search didn't return an exact-symbol ETF/equity (common for
+    // Fallback: if search didn't return an exact-symbol ETF/equity/index (common for
     // US ETFs when our droplet is in SG — Yahoo's search geolocates by source
     // IP and filters out NYSE listings), try a direct quote lookup. quote()
     // isn't IP-filtered and resolves deterministic tickers like QQQ/EWY/SPY.
@@ -293,7 +293,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       const q = (await yahooFinance.quote(symbol)) as QuoteLike | null;
       if (!q || !q.symbol || !q.quoteType) return null;
       const type = q.quoteType.toUpperCase();
-      if (type !== 'EQUITY' && type !== 'ETF') return null;
+      if (type !== 'EQUITY' && type !== 'ETF' && type !== 'INDEX') return null;
       const currency = (q.currency ?? this.inferCurrencyFromSymbol(q.symbol)).toUpperCase();
       if (!this.isSupportedCurrency(currency)) return null;
       return {

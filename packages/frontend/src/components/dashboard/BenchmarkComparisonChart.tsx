@@ -14,8 +14,8 @@ import { Button } from '@/components/ui/button';
 import { useQueries } from '@tanstack/react-query';
 import { usePerformanceHistory, useBenchmarkHistory } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
-import type { CoinSearchResult, TimePeriod } from '@/lib/types';
-import { useSearchCoins } from '@/hooks/useAssets';
+import type { ProviderName, ProviderSearchResult, TimePeriod } from '@/lib/types';
+import { useSearchAssets } from '@/hooks/useAssets';
 import {
   normalizePerformanceHistory,
   mergeAdditionalBenchmark,
@@ -52,8 +52,55 @@ interface RechartsLineDotProps {
 
 const CHART_SKELETON_TICKS = ['start', 'early', 'middle', 'late', 'end'] as const;
 
+type BenchmarkSearchResult = Pick<
+  ProviderSearchResult,
+  'id' | 'provider' | 'providerAssetId' | 'symbol' | 'name' | 'exchange' | 'nativeCurrency' | 'rank'
+>;
+
+const TRADFI_BENCHMARK_PRESETS: BenchmarkSearchResult[] = [
+  {
+    id: '^GSPC',
+    provider: 'yahoo',
+    providerAssetId: '^GSPC',
+    symbol: 'SPX',
+    name: 'S&P 500 Index',
+    exchange: 'Yahoo Finance',
+    nativeCurrency: 'USD',
+    rank: null,
+  },
+  {
+    id: 'SPY',
+    provider: 'yahoo',
+    providerAssetId: 'SPY',
+    symbol: 'SPY',
+    name: 'SPDR S&P 500 ETF Trust',
+    exchange: 'NYSEArca',
+    nativeCurrency: 'USD',
+    rank: null,
+  },
+  {
+    id: 'QQQ',
+    provider: 'yahoo',
+    providerAssetId: 'QQQ',
+    symbol: 'QQQ',
+    name: 'Invesco QQQ Trust',
+    exchange: 'NasdaqGM',
+    nativeCurrency: 'USD',
+    rank: null,
+  },
+];
+
 function benchmarkBackground(color: string) {
   return `color-mix(in oklch, ${color} 16%, transparent)`;
+}
+
+function benchmarkIdentity(provider: ProviderName, providerAssetId: string) {
+  return `${provider}:${providerAssetId.toUpperCase()}`;
+}
+
+function chartDataKey(provider: ProviderName, providerAssetId: string) {
+  const safeId = providerAssetId.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return `benchmark-${provider}-${safeId || 'asset'}`.toLowerCase();
 }
 
 export function BenchmarkComparisonChart() {
@@ -63,7 +110,13 @@ export function BenchmarkComparisonChart() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: rawSearchResults, isLoading: isSearching } = useSearchCoins(searchQuery);
+  const { data: cryptoSearchResults, isLoading: cryptoSearching } = useSearchAssets(searchQuery, {
+    provider: 'coingecko',
+  });
+  const { data: tradfiSearchResults, isLoading: tradfiSearching } = useSearchAssets(searchQuery, {
+    provider: 'yahoo',
+  });
+  const isSearching = cryptoSearching || tradfiSearching;
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const days = useMemo(() => getDaysFromPeriod(period), [period]);
@@ -77,26 +130,36 @@ export function BenchmarkComparisonChart() {
   const btcEnabled = benchmarks.find((b) => b.id === 'btc')?.enabled ?? false;
   const ethEnabled = benchmarks.find((b) => b.id === 'eth')?.enabled ?? false;
   const { data: btcData, isFetching: btcFetching } = useBenchmarkHistory(
+    'coingecko',
     'bitcoin',
     days,
     btcEnabled
   );
   const { data: ethData, isFetching: ethFetching } = useBenchmarkHistory(
+    'coingecko',
     'ethereum',
     days,
     ethEnabled
   );
-  const isBenchmarkFetching =
-    perfFetching || (btcEnabled && btcFetching) || (ethEnabled && ethFetching);
 
   const additionalQueries = useQueries({
     queries: additionalBenchmarks.map((b) => ({
-      queryKey: ['benchmark', 'history', b.coingeckoId, days],
-      queryFn: () => api.getBenchmarkHistory(b.coingeckoId, days),
+      queryKey: ['benchmark', 'history', b.provider, b.providerAssetId, days],
+      queryFn: () =>
+        api.getBenchmarkHistory({
+          provider: b.provider,
+          providerAssetId: b.providerAssetId,
+          days,
+        }),
       enabled: b.enabled,
       staleTime: 5 * 60 * 1000,
     })),
   });
+  const isBenchmarkFetching =
+    perfFetching ||
+    (btcEnabled && btcFetching) ||
+    (ethEnabled && ethFetching) ||
+    additionalQueries.some((query) => query.isFetching);
 
   // Calculate the date range span in days
   const dataSpanDays = useMemo(() => {
@@ -172,24 +235,38 @@ export function BenchmarkComparisonChart() {
 
   // Filter out already added benchmarks from search results
   const searchResults = useMemo(() => {
-    if (!rawSearchResults) return [];
+    const trimmedQuery = searchQuery.trim().toLowerCase();
+    if (trimmedQuery.length < 1) return [];
     const existingIds = new Set([
-      ...benchmarks.map((b) => b.coingeckoId),
-      ...additionalBenchmarks.map((b) => b.coingeckoId),
+      ...benchmarks.map((b) => benchmarkIdentity(b.provider, b.providerAssetId)),
+      ...additionalBenchmarks.map((b) => benchmarkIdentity(b.provider, b.providerAssetId)),
     ]);
-    return rawSearchResults.filter((r) => !existingIds.has(r.id)).slice(0, 5);
-  }, [rawSearchResults, benchmarks, additionalBenchmarks]);
+    const presetMatches = TRADFI_BENCHMARK_PRESETS.filter((benchmark) => {
+      const haystack = `${benchmark.symbol} ${benchmark.name} ${benchmark.providerAssetId}`;
+      return haystack.toLowerCase().includes(trimmedQuery);
+    });
+    const seen = new Set<string>();
+    return [...presetMatches, ...(tradfiSearchResults ?? []), ...(cryptoSearchResults ?? [])]
+      .filter((result) => {
+        const identity = benchmarkIdentity(result.provider, result.providerAssetId);
+        if (existingIds.has(identity) || seen.has(identity)) return false;
+        seen.add(identity);
+        return true;
+      })
+      .slice(0, 8);
+  }, [searchQuery, cryptoSearchResults, tradfiSearchResults, benchmarks, additionalBenchmarks]);
 
-  const addBenchmark = (coin: CoinSearchResult) => {
+  const addBenchmark = (candidate: BenchmarkSearchResult) => {
     if (additionalBenchmarks.length >= 3) return;
 
     const colorIndex = additionalBenchmarks.length % ADDITIONAL_BENCHMARK_COLORS.length;
     setAdditionalBenchmarks((prev) => [
       ...prev,
       {
-        id: coin.id,
-        coingeckoId: coin.id,
-        symbol: coin.symbol,
+        id: chartDataKey(candidate.provider, candidate.providerAssetId),
+        provider: candidate.provider,
+        providerAssetId: candidate.providerAssetId,
+        symbol: candidate.symbol.toUpperCase(),
         color: ADDITIONAL_BENCHMARK_COLORS[colorIndex],
         foregroundColor: ADDITIONAL_BENCHMARK_FOREGROUND_COLORS[colorIndex],
         enabled: true,
@@ -319,7 +396,7 @@ export function BenchmarkComparisonChart() {
               </PopoverTrigger>
               <PopoverContent className="w-[calc(100vw-2rem)] max-w-64 p-2">
                 <Input
-                  placeholder="Search coins..."
+                  placeholder="Search coins, ETFs, indexes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8"
@@ -331,16 +408,21 @@ export function BenchmarkComparisonChart() {
                   {!isSearching && searchResults.length === 0 && searchQuery.length >= 1 && (
                     <div className="text-sm text-muted-foreground p-2">No results</div>
                   )}
-                  {searchResults.map((coin) => (
+                  {searchResults.map((candidate) => (
                     <Button
-                      key={coin.id}
+                      key={benchmarkIdentity(candidate.provider, candidate.providerAssetId)}
                       variant="ghost"
                       size="sm"
-                      className="min-h-10 w-full justify-start text-xs"
-                      onClick={() => addBenchmark(coin)}
+                      className="min-h-10 w-full justify-start gap-2 text-xs"
+                      onClick={() => addBenchmark(candidate)}
                     >
-                      <span className="font-medium">{coin.symbol}</span>
-                      <span className="ml-2 text-muted-foreground truncate">{coin.name}</span>
+                      <span className="font-medium">{candidate.symbol.toUpperCase()}</span>
+                      <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
+                        {candidate.name}
+                      </span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {candidate.provider === 'yahoo' ? 'TradFi' : 'Crypto'}
+                      </span>
                     </Button>
                   ))}
                 </div>
