@@ -29,7 +29,7 @@ describe('DEFAULT_BENCHMARKS', () => {
       {
         id: 'spx',
         provider: 'yahoo',
-        providerAssetId: '^GSPC',
+        providerAssetId: 'SPY',
         symbol: 'SPX',
         enabled: true,
       },

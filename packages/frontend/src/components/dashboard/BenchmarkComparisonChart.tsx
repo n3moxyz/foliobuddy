@@ -21,6 +21,7 @@ import {
   mergeAdditionalBenchmark,
   getCurrentChange,
   DEFAULT_BENCHMARKS,
+  SPX_PROVIDER_ASSET_ID,
   type BenchmarkConfig,
   type NormalizedDataPoint,
 } from '@/lib/benchmarkUtils';
@@ -59,9 +60,9 @@ const TRADFI_BENCHMARK_PRESETS: BenchmarkSearchResult[] = [
   {
     id: '^GSPC',
     provider: 'yahoo',
-    providerAssetId: '^GSPC',
+    providerAssetId: SPX_PROVIDER_ASSET_ID,
     symbol: 'SPX',
-    name: 'S&P 500 Index',
+    name: 'S&P 500 benchmark',
     exchange: 'Yahoo Finance',
     nativeCurrency: 'USD',
     rank: null,
@@ -93,6 +94,9 @@ function benchmarkBackground(color: string) {
 }
 
 function benchmarkIdentity(provider: ProviderName, providerAssetId: string) {
+  if (provider === 'yahoo' && providerAssetId.toUpperCase() === '^GSPC') {
+    return `${provider}:${SPX_PROVIDER_ASSET_ID}`;
+  }
   return `${provider}:${providerAssetId.toUpperCase()}`;
 }
 
@@ -250,14 +254,22 @@ export function BenchmarkComparisonChart() {
   const addBenchmark = (candidate: BenchmarkSearchResult) => {
     if (additionalBenchmarks.length >= 3) return;
 
+    const providerAssetId =
+      candidate.provider === 'yahoo' && candidate.providerAssetId.toUpperCase() === '^GSPC'
+        ? SPX_PROVIDER_ASSET_ID
+        : candidate.providerAssetId;
+    const symbol =
+      candidate.provider === 'yahoo' && candidate.providerAssetId.toUpperCase() === '^GSPC'
+        ? 'SPX'
+        : candidate.symbol.toUpperCase();
     const colorIndex = (additionalBenchmarks.length + 1) % ADDITIONAL_BENCHMARK_COLORS.length;
     setAdditionalBenchmarks((prev) => [
       ...prev,
       {
-        id: chartDataKey(candidate.provider, candidate.providerAssetId),
+        id: chartDataKey(candidate.provider, providerAssetId),
         provider: candidate.provider,
-        providerAssetId: candidate.providerAssetId,
-        symbol: candidate.symbol.toUpperCase(),
+        providerAssetId,
+        symbol,
         color: ADDITIONAL_BENCHMARK_COLORS[colorIndex],
         foregroundColor: ADDITIONAL_BENCHMARK_FOREGROUND_COLORS[colorIndex],
         enabled: true,

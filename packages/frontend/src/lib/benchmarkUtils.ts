@@ -26,6 +26,8 @@ export interface BenchmarkConfig {
   enabled: boolean;
 }
 
+export const SPX_PROVIDER_ASSET_ID = 'SPY';
+
 export const DEFAULT_BENCHMARKS: BenchmarkConfig[] = [
   {
     id: 'btc',
@@ -48,7 +50,7 @@ export const DEFAULT_BENCHMARKS: BenchmarkConfig[] = [
   {
     id: 'spx',
     provider: 'yahoo',
-    providerAssetId: '^GSPC',
+    providerAssetId: SPX_PROVIDER_ASSET_ID,
     symbol: 'SPX',
     color: ADDITIONAL_BENCHMARK_COLORS[0],
     foregroundColor: ADDITIONAL_BENCHMARK_FOREGROUND_COLORS[0],
