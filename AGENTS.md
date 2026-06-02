@@ -62,10 +62,11 @@
 - `src/stores/` - Zustand stores
 - `src/components/ui/skeleton.tsx` - Shimmer skeleton loading component (CSS-based animation)
 - `src/components/ui/HelpTooltip.tsx` - Contextual ? icon tooltip for domain-specific terms
+- `src/components/ui/creatable-select.tsx` - Reusable Radix Select wrapper with a "+ Add new ..." row and inline add controls
 - `src/components/trades/TradeLensViews.tsx` - Ticker and monthly trade review lens UI
 - `src/components/trades/tradeLensModels.ts` - Pure aggregation helpers for ticker dossiers and monthly reviews
 - `src/components/portfolio/positionClipboard.ts` - Shared portfolio copy-to-clipboard JSON formatter
-- `src/components/portfolio/positionOptions.ts` - Shared storage location option lists (CEX, onchain, broker, bank) used by position forms
+- `src/components/portfolio/positionOptions.ts` - Shared storage location option lists (CEX, onchain, broker, bank) plus localStorage-backed custom option helpers used by position forms
 - `src/lib/chartColors.ts` - Centralized theme-aware chart color constants backed by OKLCH CSS variables in `index.css`
 - `src/lib/chartUtils.ts` - Time-period date helpers (`getDateRange`, `formatXAxisDate`, `formatTooltipDate`) shared between PortfolioChart and BenchmarkComparisonChart
 - `react-doctor.config.json` - Root-level React Doctor triage policy. Keeps the scan focused on actionable regressions after known React 18/Radix/shadcn and design-opinion rules were reviewed.
@@ -301,11 +302,15 @@ Positions held for others (e.g. "bought BTC for Mum"). `Position.custodyOf Strin
 
 Frontend: `Portfolio.tsx` splits owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default). `CustodyCheckbox.tsx` renders at the bottom of every form, with name dropdown (positions + localStorage `foliobuddy-custody-names` + "Add new person"). Edit sends empty string to clear. Clipboard JSON includes `custodyOf` when set.
 
+### Creatable Storage Location Dropdowns
+
+Storage location dropdowns no longer use a generic "Others" option. CEX exchanges, onchain wallets, brokers, and banks use `CreatableSelect` with a "+ Add new ..." row. Added options persist in localStorage under `foliobuddy-storage-location-options`, bucketed by storage type (`CEX`, `WALLET`, `BROKERAGE`, `BANK`), and are merged with defaults via `positionOptions.ts`. Keep fixed domain selects fixed (Category, storage type, fiat currency, trade direction, theme); only free-text location-style dropdowns should be creatable. Radix Select can emit a trailing empty value after the create row closes, so creatable dropdown `onValueChange` handlers must ignore empty values.
+
 ### Cash Positions (Stablecoins + Fiat)
 
 The former Stables add-position category is labeled **Cash**. In `PositionForm.tsx`, Cash shows a **Type** dropdown with USDT, USDC, USDe, FDUSD, DAI, and **Cash (fiat)**. Cash (fiat) reveals a **Currency** dropdown (`USD`, `SGD`, `GBP`) that defaults to USD and creates/reuses a `CASH` asset with that currency symbol. SGD is priced from the current USD/SGD summary rate at creation; USD and GBP use simple manual prices for now. All fiat cash assets use `priceProvider='manual'`. Portfolio rows show the asset symbol on top and the subtitle simply as `Cash` for all cash-equivalent assets (not `Cash USD` / `Cash SGD` or long stablecoin names).
 
-Cash storage depends on Type: stablecoins use **CEX** / **Onchain**; Cash (fiat) uses **Broker account** / **Bank**. Broker account locations use the same `BROKER_LOCATIONS` array as the Equities broker dropdown in `positionOptions.ts` (FSMOne, Tiger, UOB Kay Hian, Others), so changing the broker list updates both flows. Bank locations are DBS, Trust+, SCB, UOB, Citi, Others.
+Cash storage depends on Type: stablecoins use **CEX** / **Onchain**; Cash (fiat) uses **Broker account** / **Bank**. Broker account locations use the same `BROKER_LOCATIONS` defaults as the Equities broker dropdown in `positionOptions.ts` (FSMOne, Tiger, UOB Kay Hian), and users can persist new broker/bank/exchange/wallet options from the dropdown itself.
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
@@ -314,7 +319,7 @@ Two sub-types via UI toggle (enums unchanged):
 - **Stock / ETF**: `equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`. ETFs go here, not Unit Trust — they have live ticker prices.
 - **Unit Trust**: `equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`.
 
-**Form:** Category = Crypto / Cash / Equities. Equities shows Stock/ETF vs Unit Trust toggle (create only; edit infers from category). Storage replaced with broker dropdown (`BROKER_LOCATIONS`); `storageType` stays `'BROKERAGE'`. Cost currency follows `asset.nativeCurrency` — SGD tickers (`.SI`) and SGD unit trusts show SGD inputs with USD conversion note. Backend stores USD; FX from `portfolioSummary` (fallback 1.35). Edit converts stored USD → SGD via `costInitialized` flag.
+**Form:** Category = Crypto / Cash / Equities. Equities shows Stock/ETF vs Unit Trust toggle (create only; edit infers from category). Storage replaced with creatable broker dropdown (`BROKER_LOCATIONS` defaults + localStorage custom options); `storageType` stays `'BROKERAGE'`. Cost currency follows `asset.nativeCurrency` — SGD tickers (`.SI`) and SGD unit trusts show SGD inputs with USD conversion note. Backend stores USD; FX from `portfolioSummary` (fallback 1.35). Edit converts stored USD → SGD via `costInitialized` flag.
 
 **Display:** `PositionTable` with `groupBy='equityType'` splits Stock/ETF vs Unit Trust. **NAV-age badge** under symbol for unit trusts OR manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers and fiat cash skip the badge.
 

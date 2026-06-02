@@ -33,15 +33,16 @@ import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 import { CustodyCheckbox } from './CustodyCheckbox';
+import { CreatableSelect } from '@/components/ui/creatable-select';
 import { formatNumber, isStablecoinCategory } from '@/lib/utils';
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
 import {
-  BROKER_LOCATIONS,
   CRYPTO_STORAGE_TYPES,
   FIAT_CASH_STORAGE_TYPES,
   locationLabelForStorageType,
   locationOptionsForStorageType,
+  saveLocationOptionForStorageType,
 } from './positionOptions';
 
 const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
@@ -226,24 +227,10 @@ export function PositionForm({
   // SGD values match the FX rate used on submit.
   const costInitializedRef = useRef(false);
   const [storageType, setStorageType] = useState(position?.storageType || 'CEX');
-  const [storageLocation, setStorageLocation] = useState(() => {
-    if (!position?.storageLocation) return '';
-    const loc = position.storageLocation;
-    const options = locationOptionsForStorageType(position.storageType);
-    if (!options.slice(0, -1).includes(loc)) {
-      return 'Others';
-    }
-    return loc;
-  });
-  const [customLocation, setCustomLocation] = useState(() => {
-    if (!position?.storageLocation) return '';
-    const loc = position.storageLocation;
-    const options = locationOptionsForStorageType(position.storageType);
-    if (!options.slice(0, -1).includes(loc)) {
-      return loc;
-    }
-    return '';
-  });
+  const [storageLocation, setStorageLocation] = useState(position?.storageLocation || '');
+  const [addingStorageLocation, setAddingStorageLocation] = useState(false);
+  const [newStorageLocation, setNewStorageLocation] = useState('');
+  const [storageLocationOptionsVersion, setStorageLocationOptionsVersion] = useState(0);
   const [isCustody, setIsCustody] = useState(!!position?.custodyOf);
   const [custodyOf, setCustodyOf] = useState(position?.custodyOf || '');
   const [addingNewName, setAddingNewName] = useState(false);
@@ -274,7 +261,8 @@ export function PositionForm({
     setError(null);
     setStorageType(nextCategory === 'equity' ? 'BROKERAGE' : DEFAULT_STABLECOIN_STORAGE_TYPE);
     setStorageLocation('');
-    setCustomLocation('');
+    setAddingStorageLocation(false);
+    setNewStorageLocation('');
   };
 
   const handleCategoryChange = (value: string) => {
@@ -302,7 +290,8 @@ export function PositionForm({
     setStorageType(value);
     if (!isEditing) {
       setStorageLocation('');
-      setCustomLocation('');
+      setAddingStorageLocation(false);
+      setNewStorageLocation('');
     }
   };
 
@@ -695,7 +684,8 @@ export function PositionForm({
     if (cashTypeId === FIAT_CASH_TYPE_ID) {
       setStorageType(DEFAULT_FIAT_CASH_STORAGE_TYPE);
       setStorageLocation('');
-      setCustomLocation('');
+      setAddingStorageLocation(false);
+      setNewStorageLocation('');
       const asset = await ensureFiatCashAsset(selectedFiatCurrency);
       if (!asset) {
         setSelectedCashTypeId('');
@@ -708,7 +698,8 @@ export function PositionForm({
 
     setStorageType(DEFAULT_STABLECOIN_STORAGE_TYPE);
     setStorageLocation('');
-    setCustomLocation('');
+    setAddingStorageLocation(false);
+    setNewStorageLocation('');
 
     const existingAsset = assets?.find((a) => a.coingeckoId === cashTypeId);
     if (existingAsset) {
@@ -748,12 +739,36 @@ export function PositionForm({
     }
   }, [mode]);
 
-  const locationOptions = locationOptionsForStorageType(storageType);
+  const locationOptions = useMemo(
+    () =>
+      locationOptionsForStorageType(storageType, storageLocation ? [storageLocation] : undefined),
+    [storageType, storageLocation, storageLocationOptionsVersion]
+  );
   const storageTypeOptions =
     category === 'cash' && selectedCashTypeId === FIAT_CASH_TYPE_ID
       ? FIAT_CASH_STORAGE_TYPES
       : CRYPTO_STORAGE_TYPES;
   const storageLocationLabel = locationLabelForStorageType(storageType);
+
+  const handleStartAddingStorageLocation = () => {
+    setAddingStorageLocation(true);
+    setNewStorageLocation('');
+  };
+
+  const handleAddStorageLocation = () => {
+    const option = saveLocationOptionForStorageType(storageType, newStorageLocation);
+    if (!option) return null;
+
+    setAddingStorageLocation(false);
+    setNewStorageLocation('');
+    setStorageLocationOptionsVersion((version) => version + 1);
+    return option;
+  };
+
+  const handleCancelStorageLocation = () => {
+    setAddingStorageLocation(false);
+    setNewStorageLocation('');
+  };
 
   const handleCustodySave = () => {
     if (isCustody && custodyOf.trim()) {
@@ -797,13 +812,16 @@ export function PositionForm({
     const usdPerNative = h.fxRateToUsd ?? (ccy === 'USD' ? 1 : 1 / USD_SGD_FALLBACK_RATE);
     setUtUsdPerNative(usdPerNative);
     setTotalCost(ccy === 'USD' ? h.totalCostUsd.toFixed(2) : h.totalCostNative.toFixed(2));
-    setStorageLocation(
-      broker.includes('UOB')
-        ? 'UOB Kay Hian'
-        : /FSM|fundsupermart|iFAST/i.test(broker)
-          ? 'FSMOne'
-          : 'Others'
-    );
+    const parsedStorageLocation = broker.includes('UOB')
+      ? 'UOB Kay Hian'
+      : /FSM|fundsupermart|iFAST/i.test(broker)
+        ? 'FSMOne'
+        : broker.trim();
+    setStorageLocation(parsedStorageLocation);
+    if (parsedStorageLocation) {
+      saveLocationOptionForStorageType('BROKERAGE', parsedStorageLocation);
+      setStorageLocationOptionsVersion((version) => version + 1);
+    }
     setUtPrefilledFrom(broker);
     setUtMultipleHoldings(null);
     setUtYahooSymbol(h.yahooSymbol ?? null);
@@ -935,8 +953,6 @@ export function PositionForm({
       const totalCostUsd =
         utNativeCurrency === 'USD' ? costNumInput : costNumInput * utUsdPerNative;
 
-      const finalStorageLocation = storageLocation === 'Others' ? customLocation : storageLocation;
-
       try {
         const newAsset = await createUnitTrust.mutateAsync({
           symbol: utSymbol.trim().toUpperCase(),
@@ -958,7 +974,7 @@ export function PositionForm({
           quantity: qtyNum,
           avgCostUsd: qtyNum > 0 ? totalCostUsd / qtyNum : 0,
           storageType: 'BROKERAGE',
-          storageLocation: finalStorageLocation || undefined,
+          storageLocation: storageLocation || undefined,
           notes: notes.trim() || undefined,
           custodyOf: isCustody ? custodyOf.trim() || 'Someone' : undefined,
         });
@@ -969,9 +985,6 @@ export function PositionForm({
       }
       return;
     }
-
-    // Determine final storage location value
-    const finalStorageLocation = storageLocation === 'Others' ? customLocation : storageLocation;
 
     // Convert equity-SGD input to USD before persisting (backend stores USD).
     // Applies to both create and edit (single stocks and unit trusts).
@@ -985,7 +998,7 @@ export function PositionForm({
       quantity: parseFloat(quantity),
       avgCostUsd: finalAvgCostUsd,
       storageType: storageType as 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE',
-      storageLocation: finalStorageLocation || undefined,
+      storageLocation: storageLocation || undefined,
       notes: notes.trim() || undefined,
       custodyOf: isCustody ? custodyOf.trim() || 'Someone' : isEditing ? '' : undefined,
     };
@@ -1774,34 +1787,26 @@ export function PositionForm({
                   Storage Type
                 </Label>
                 {category === 'equity' ? (
-                  <>
-                    <Select
-                      value={storageLocation}
-                      onValueChange={(v) => {
-                        setStorageLocation(v);
-                        if (v !== 'Others') setCustomLocation('');
-                      }}
-                    >
-                      <SelectTrigger id="pos-storage-type">
-                        <SelectValue placeholder="Select broker" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BROKER_LOCATIONS.map((loc) => (
-                          <SelectItem key={loc} value={loc}>
-                            {loc}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {storageLocation === 'Others' && (
-                      <Input
-                        value={customLocation}
-                        onChange={(e) => setCustomLocation(e.target.value)}
-                        placeholder="Enter custom broker..."
-                        className="mt-2"
-                      />
-                    )}
-                  </>
+                  <CreatableSelect
+                    id="pos-storage-type"
+                    value={storageLocation}
+                    options={locationOptions}
+                    placeholder="Select broker"
+                    addLabel="+ Add new broker"
+                    inputPlaceholder="Enter broker name..."
+                    inputLabel="New broker name"
+                    adding={addingStorageLocation}
+                    inputValue={newStorageLocation}
+                    onValueChange={(value) => {
+                      if (!value) return;
+                      setStorageLocation(value);
+                      handleCancelStorageLocation();
+                    }}
+                    onStartAdding={handleStartAddingStorageLocation}
+                    onInputChange={setNewStorageLocation}
+                    onAdd={handleAddStorageLocation}
+                    onCancel={handleCancelStorageLocation}
+                  />
                 ) : (
                   <Select
                     value={storageType}
@@ -1827,36 +1832,26 @@ export function PositionForm({
                   <Label htmlFor="pos-storage-location" className="text-sm">
                     {storageLocationLabel}
                   </Label>
-                  <Select
+                  <CreatableSelect
+                    id="pos-storage-location"
                     value={storageLocation}
-                    onValueChange={(v) => {
-                      setStorageLocation(v);
-                      if (v !== 'Others') {
-                        setCustomLocation('');
-                      }
+                    options={locationOptions}
+                    placeholder={`Select ${storageLocationLabel.toLowerCase()}`}
+                    addLabel={`+ Add new ${storageLocationLabel.toLowerCase()}`}
+                    inputPlaceholder={`Enter ${storageLocationLabel.toLowerCase()} name...`}
+                    inputLabel={`New ${storageLocationLabel.toLowerCase()} name`}
+                    adding={addingStorageLocation}
+                    inputValue={newStorageLocation}
+                    onValueChange={(value) => {
+                      if (!value) return;
+                      setStorageLocation(value);
+                      handleCancelStorageLocation();
                     }}
-                  >
-                    <SelectTrigger id="pos-storage-location">
-                      <SelectValue placeholder={`Select ${storageLocationLabel.toLowerCase()}`} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locationOptions.map((loc) => (
-                        <SelectItem key={loc} value={loc}>
-                          {loc}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Custom location input when "Others" is selected */}
-                  {storageLocation === 'Others' && (
-                    <Input
-                      value={customLocation}
-                      onChange={(e) => setCustomLocation(e.target.value)}
-                      placeholder={`Enter custom ${storageLocationLabel.toLowerCase()}...`}
-                      className="mt-2"
-                    />
-                  )}
+                    onStartAdding={handleStartAddingStorageLocation}
+                    onInputChange={setNewStorageLocation}
+                    onAdd={handleAddStorageLocation}
+                    onCancel={handleCancelStorageLocation}
+                  />
                 </div>
               )}
 
@@ -1881,7 +1876,6 @@ export function PositionForm({
                 </div>
               )}
 
-              {/* Validation Error Display */}
               {validationError && (
                 <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
                   {validationError}
@@ -1901,8 +1895,8 @@ export function PositionForm({
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   type="submit"
-                  disabled={isLoading}
                   className={!isFormValid && !isLoading ? 'opacity-50 cursor-not-allowed' : ''}
+                  disabled={isLoading}
                 >
                   {isLoading ? 'Saving...' : isEditing ? 'Update Position' : 'Add Position'}
                 </Button>
