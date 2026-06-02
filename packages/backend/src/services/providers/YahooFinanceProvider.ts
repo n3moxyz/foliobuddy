@@ -23,6 +23,7 @@ const HISTORICAL_CACHE_MAX_ENTRIES = 50;
 const SEARCH_CACHE_DURATION_MS = 10 * 60 * 1000;
 const BATCH_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 8000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Lower rank = higher in results. Exact match first, then primary listings
 // (no exchange suffix), then cross-listings like EWY.SN or AAPL.BA.
@@ -44,7 +45,7 @@ type YahooSearchItem = {
   exchDisp?: string;
 };
 
-type YahooChartResponse = {
+type RawYahooChartResponse = {
   chart: {
     result?: Array<{
       meta: { currency?: string; regularMarketPrice?: number };
@@ -53,6 +54,15 @@ type YahooChartResponse = {
     }>;
     error: unknown;
   };
+};
+
+type YahooFinanceChartResult = {
+  meta?: { currency?: string };
+  quotes?: Array<{
+    date: Date | string | number;
+    close: number | null;
+    adjclose?: number | null;
+  }>;
 };
 
 export class YahooFinanceProvider implements AssetPriceProvider {
@@ -364,9 +374,57 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     const cached = this.historicalCache.get(cacheKey);
     if (cached) return cached;
 
+    const libPoints = await this.getHistoricalPricesViaLibrary(providerAssetId, days);
+    if (libPoints.length > 0) {
+      this.historicalCache.set(cacheKey, libPoints);
+      return libPoints;
+    }
+
+    const rawPoints = await this.getHistoricalPricesViaRawChart(providerAssetId, days);
+    this.historicalCache.set(cacheKey, rawPoints);
+    return rawPoints;
+  }
+
+  private async getHistoricalPricesViaLibrary(
+    providerAssetId: string,
+    days: number
+  ): Promise<ProviderHistoricalPoint[]> {
+    const period2 = new Date();
+    const period1 = new Date(period2.getTime() - Math.max(days, 1) * DAY_MS);
+
+    try {
+      const result = (await yahooFinance.chart(providerAssetId, {
+        period1,
+        period2,
+        interval: '1d',
+        includePrePost: false,
+        return: 'array',
+      })) as YahooFinanceChartResult;
+
+      const currency = result.meta?.currency?.toUpperCase() ?? 'USD';
+      const usdSgd = await this.getUsdSgdRate();
+      return this.chartQuotesToHistoricalPoints(
+        providerAssetId,
+        result.quotes ?? [],
+        currency,
+        usdSgd
+      );
+    } catch (err) {
+      logger.warn(
+        `[Yahoo] chart() history failed for ${providerAssetId}:`,
+        err instanceof Error ? err.message : err
+      );
+      return [];
+    }
+  }
+
+  private async getHistoricalPricesViaRawChart(
+    providerAssetId: string,
+    days: number
+  ): Promise<ProviderHistoricalPoint[]> {
     const range = this.daysToRange(days);
     const url = `${YAHOO_CHART_URL}/${encodeURIComponent(providerAssetId)}?range=${range}&interval=1d&includePrePost=false`;
-    const data = await this.fetchJson<YahooChartResponse>(url);
+    const data = await this.fetchJson<RawYahooChartResponse>(url);
     const result = data?.chart?.result?.[0];
     if (!result || !result.timestamp || !result.indicators?.quote?.[0]?.close) {
       logger.warn(`[Yahoo] No chart data for ${providerAssetId}`);
@@ -391,8 +449,35 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       points.push({ timestamp: timestamps[i] * 1000, priceUsd, nativePrice });
     }
 
-    this.historicalCache.set(cacheKey, points);
     return points;
+  }
+
+  private chartQuotesToHistoricalPoints(
+    providerAssetId: string,
+    quotes: NonNullable<YahooFinanceChartResult['quotes']>,
+    currency: string,
+    usdSgd: number
+  ): ProviderHistoricalPoint[] {
+    if (!this.isSupportedCurrency(currency)) {
+      logger.warn(`[Yahoo] No USD conversion support for ${providerAssetId} currency ${currency}`);
+      return [];
+    }
+
+    const points: ProviderHistoricalPoint[] = [];
+    for (const quote of quotes) {
+      const nativePrice = quote.close ?? quote.adjclose;
+      if (nativePrice === null || nativePrice === undefined) continue;
+
+      const date = quote.date instanceof Date ? quote.date : new Date(quote.date);
+      const timestamp = date.getTime();
+      if (Number.isNaN(timestamp)) continue;
+
+      const priceUsd = this.toUsd(nativePrice, currency, usdSgd);
+      if (priceUsd === null) continue;
+      points.push({ timestamp, priceUsd, nativePrice });
+    }
+
+    return points.sort((a, b) => a.timestamp - b.timestamp);
   }
 
   private daysToRange(days: number): string {

@@ -1,5 +1,10 @@
-import type { BenchmarkHistoricalData, PerformancePoint, ProviderName } from './api';
-import { BRAND_COLORS, BRAND_FOREGROUND_COLORS } from './chartColors';
+import type { BenchmarkHistoricalData, PerformancePoint, ProviderName } from './types';
+import {
+  BRAND_COLORS,
+  BRAND_FOREGROUND_COLORS,
+  ADDITIONAL_BENCHMARK_COLORS,
+  ADDITIONAL_BENCHMARK_FOREGROUND_COLORS,
+} from './chartColors';
 
 export interface NormalizedDataPoint {
   timestamp: string;
@@ -7,6 +12,7 @@ export interface NormalizedDataPoint {
   portfolio?: number;
   btc?: number;
   eth?: number;
+  spx?: number;
   [key: string]: number | string | Date | undefined;
 }
 
@@ -39,6 +45,15 @@ export const DEFAULT_BENCHMARKS: BenchmarkConfig[] = [
     foregroundColor: BRAND_FOREGROUND_COLORS.eth,
     enabled: true,
   },
+  {
+    id: 'spx',
+    provider: 'yahoo',
+    providerAssetId: '^GSPC',
+    symbol: 'SPX',
+    color: ADDITIONAL_BENCHMARK_COLORS[0],
+    foregroundColor: ADDITIONAL_BENCHMARK_FOREGROUND_COLORS[0],
+    enabled: true,
+  },
 ];
 
 /**
@@ -53,7 +68,7 @@ function normalizeToPercentChange(values: number[]): number[] {
 
 /**
  * Convert performance history to normalized % change data
- * Only handles portfolio data - BTC/ETH are fetched separately from CoinGecko API
+ * Only handles portfolio data - benchmark series are fetched separately from their providers.
  */
 export function normalizePerformanceHistory(
   performanceData: PerformancePoint[]

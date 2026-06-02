@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useQueries } from '@tanstack/react-query';
-import { usePerformanceHistory, useBenchmarkHistory } from '@/hooks/usePortfolio';
+import { usePerformanceHistory } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
 import type { ProviderName, ProviderSearchResult, TimePeriod } from '@/lib/types';
 import { useSearchAssets } from '@/hooks/useAssets';
@@ -27,8 +27,6 @@ import {
 import {
   PORTFOLIO_LINE_COLOR,
   PORTFOLIO_FOREGROUND_COLOR,
-  BRAND_COLORS,
-  BRAND_FOREGROUND_COLORS,
   ADDITIONAL_BENCHMARK_COLORS,
   ADDITIONAL_BENCHMARK_FOREGROUND_COLORS,
 } from '@/lib/chartColors';
@@ -127,21 +125,19 @@ export function BenchmarkComparisonChart() {
     isFetching: perfFetching,
   } = usePerformanceHistory(dateRange);
 
-  const btcEnabled = benchmarks.find((b) => b.id === 'btc')?.enabled ?? false;
-  const ethEnabled = benchmarks.find((b) => b.id === 'eth')?.enabled ?? false;
-  const { data: btcData, isFetching: btcFetching } = useBenchmarkHistory(
-    'coingecko',
-    'bitcoin',
-    days,
-    btcEnabled
-  );
-  const { data: ethData, isFetching: ethFetching } = useBenchmarkHistory(
-    'coingecko',
-    'ethereum',
-    days,
-    ethEnabled
-  );
-
+  const benchmarkQueries = useQueries({
+    queries: benchmarks.map((b) => ({
+      queryKey: ['benchmark', 'history', b.provider, b.providerAssetId, days],
+      queryFn: () =>
+        api.getBenchmarkHistory({
+          provider: b.provider,
+          providerAssetId: b.providerAssetId,
+          days,
+        }),
+      enabled: b.enabled,
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
   const additionalQueries = useQueries({
     queries: additionalBenchmarks.map((b) => ({
       queryKey: ['benchmark', 'history', b.provider, b.providerAssetId, days],
@@ -157,8 +153,7 @@ export function BenchmarkComparisonChart() {
   });
   const isBenchmarkFetching =
     perfFetching ||
-    (btcEnabled && btcFetching) ||
-    (ethEnabled && ethFetching) ||
+    benchmarkQueries.some((query) => query.isFetching) ||
     additionalQueries.some((query) => query.isFetching);
 
   // Calculate the date range span in days
@@ -176,17 +171,15 @@ export function BenchmarkComparisonChart() {
     // Start with portfolio data only (ignore btcPrice/ethPrice from snapshots)
     let normalized = normalizePerformanceHistory(performanceData);
 
-    // Merge BTC from CoinGecko API
-    if (btcData && btcEnabled) {
-      normalized = mergeAdditionalBenchmark(normalized, btcData, 'btc');
-    }
+    // Merge default benchmarks
+    benchmarks.forEach((benchmark, index) => {
+      const queryResult = benchmarkQueries[index];
+      if (queryResult?.data && benchmark.enabled) {
+        normalized = mergeAdditionalBenchmark(normalized, queryResult.data, benchmark.id);
+      }
+    });
 
-    // Merge ETH from CoinGecko API
-    if (ethData && ethEnabled) {
-      normalized = mergeAdditionalBenchmark(normalized, ethData, 'eth');
-    }
-
-    // Merge additional benchmarks
+    // Merge custom benchmarks
     additionalBenchmarks.forEach((benchmark, index) => {
       const queryResult = additionalQueries[index];
       if (queryResult?.data && benchmark.enabled) {
@@ -202,10 +195,8 @@ export function BenchmarkComparisonChart() {
     }));
   }, [
     performanceData,
-    btcData,
-    ethData,
-    btcEnabled,
-    ethEnabled,
+    benchmarks,
+    benchmarkQueries,
     additionalBenchmarks,
     additionalQueries,
     dataSpanDays,
@@ -259,7 +250,7 @@ export function BenchmarkComparisonChart() {
   const addBenchmark = (candidate: BenchmarkSearchResult) => {
     if (additionalBenchmarks.length >= 3) return;
 
-    const colorIndex = additionalBenchmarks.length % ADDITIONAL_BENCHMARK_COLORS.length;
+    const colorIndex = (additionalBenchmarks.length + 1) % ADDITIONAL_BENCHMARK_COLORS.length;
     setAdditionalBenchmarks((prev) => [
       ...prev,
       {
@@ -565,71 +556,7 @@ export function BenchmarkComparisonChart() {
                   connectNulls
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
-                {benchmarks.find((b) => b.id === 'btc')?.enabled && (
-                  <Line
-                    type="monotone"
-                    dataKey="btc"
-                    stroke={BRAND_COLORS.btc}
-                    strokeWidth={2}
-                    dot={(props: RechartsLineDotProps) => {
-                      const { cx, cy, index, value } = props;
-                      const dotKey = chartData[index]?.timestamp ?? `${cx}-${cy}`;
-                      if (index !== chartData.length - 1 || value == null) {
-                        return <g key={`btc-dot-${dotKey}`} />;
-                      }
-                      return (
-                        <g key={`btc-dot-${dotKey}`}>
-                          <circle cx={cx} cy={cy} r={3} fill={BRAND_COLORS.btc} />
-                          <text
-                            x={cx + 8}
-                            y={cy}
-                            fontSize={11}
-                            dominantBaseline="middle"
-                            fontWeight={500}
-                            fill={BRAND_FOREGROUND_COLORS.btc}
-                          >
-                            {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
-                          </text>
-                        </g>
-                      );
-                    }}
-                    connectNulls
-                    activeDot={{ r: 4, strokeWidth: 0 }}
-                  />
-                )}
-                {benchmarks.find((b) => b.id === 'eth')?.enabled && (
-                  <Line
-                    type="monotone"
-                    dataKey="eth"
-                    stroke={BRAND_COLORS.eth}
-                    strokeWidth={2}
-                    dot={(props: RechartsLineDotProps) => {
-                      const { cx, cy, index, value } = props;
-                      const dotKey = chartData[index]?.timestamp ?? `${cx}-${cy}`;
-                      if (index !== chartData.length - 1 || value == null) {
-                        return <g key={`eth-dot-${dotKey}`} />;
-                      }
-                      return (
-                        <g key={`eth-dot-${dotKey}`}>
-                          <circle cx={cx} cy={cy} r={3} fill={BRAND_COLORS.eth} />
-                          <text
-                            x={cx + 8}
-                            y={cy}
-                            fontSize={11}
-                            dominantBaseline="middle"
-                            fontWeight={500}
-                            fill={BRAND_FOREGROUND_COLORS.eth}
-                          >
-                            {`${value >= 0 ? '+' : ''}${value.toFixed(1)}%`}
-                          </text>
-                        </g>
-                      );
-                    }}
-                    connectNulls
-                    activeDot={{ r: 4, strokeWidth: 0 }}
-                  />
-                )}
-                {additionalBenchmarks
+                {[...benchmarks, ...additionalBenchmarks]
                   .filter((b) => b.enabled)
                   .map((benchmark) => (
                     <Line
