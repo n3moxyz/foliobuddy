@@ -6,6 +6,7 @@ import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import {
   Table,
@@ -503,13 +504,11 @@ function InvestorForm({
 
       <div className="space-y-2">
         <Label htmlFor="capital">Capital at Start of Year (USD)</Label>
-        <Input
+        <FormattedNumberInput
           id="capital"
-          type="number"
-          step="0.01"
           min="0"
           value={initialCapital}
-          onChange={(e) => setInitialCapital(e.target.value)}
+          onValueChange={setInitialCapital}
           placeholder="Optional"
         />
         <p className="text-xs text-muted-foreground">Used to calculate YTD returns</p>

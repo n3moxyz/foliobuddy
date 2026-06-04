@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateManualSnapshot, useUpdateSnapshot } from '@/hooks/useSnapshots';
@@ -99,12 +100,10 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                 {inputCurrency === 'USD' ? '$' : 'S$'}
               </span>
-              <Input
+              <FormattedNumberInput
                 id="totalValue"
-                type="number"
-                step="any"
                 value={totalValue}
-                onChange={(e) => setTotalValue(e.target.value)}
+                onValueChange={setTotalValue}
                 placeholder="0.00"
                 className="pl-9"
                 required
@@ -232,12 +231,10 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                   {inputCurrency === 'USD' ? '$' : 'S$'}
                 </span>
-                <Input
+                <FormattedNumberInput
                   id="totalValue"
-                  type="number"
-                  step="any"
                   value={totalValue}
-                  onChange={(e) => setTotalValue(e.target.value)}
+                  onValueChange={setTotalValue}
                   placeholder="0.00"
                   className="pl-9"
                   required

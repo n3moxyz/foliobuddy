@@ -63,6 +63,7 @@
 - `src/components/ui/skeleton.tsx` - Shimmer skeleton loading component (CSS-based animation)
 - `src/components/ui/HelpTooltip.tsx` - Contextual ? icon tooltip for domain-specific terms
 - `src/components/ui/creatable-select.tsx` - Reusable Radix Select wrapper with a "+ Add new ..." row and inline add controls
+- `src/components/ui/formatted-number-input.tsx` - Reusable finance amount input that displays thousands separators while storing raw numeric strings
 - `src/components/trades/TradeLensViews.tsx` - Ticker and monthly trade review lens UI
 - `src/components/trades/tradeLensModels.ts` - Pure aggregation helpers for ticker dossiers and monthly reviews
 - `src/components/portfolio/positionClipboard.ts` - Shared portfolio copy-to-clipboard JSON formatter
@@ -273,6 +274,10 @@ All pages follow iOS HIG-inspired responsive patterns:
 | >= $1,000   | 0        | $67,200         |
 
 Use `formatCurrency` (with explicit decimals or compact mode) for totals, sizes, and P&L — those don't need magnitude-aware decimals.
+
+### Formatted Amount Inputs
+
+Use `FormattedNumberInput` for editable money, quantity, unit, NAV, capital, and exposure amount fields. It renders `10000` as `10,000` while keeping component state as the raw string (`"10000"`) so existing `parseFloat()` calculations and API payloads stay safe. Do not use raw `type="number"` for finance amount entry unless the field needs native min/max semantics like bounded percentages.
 
 ### Trades Review Lenses
 

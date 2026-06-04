@@ -46,7 +46,7 @@ import {
   LineChart,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
 import type { Position } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -449,39 +449,37 @@ export default function Portfolio() {
                     )}
                   </>
                 )}
-                <span className="text-sm font-semibold text-muted-foreground">
-                  {formatCurrency(convertValue(section.total), currency, 0)}
-                </span>
-              </div>
-            }
-            headerExtra={
-              section.id === 'cash' ? (
-                <div className="flex items-center justify-end gap-2 mt-1">
-                  {perpExposure > 0 && (
-                    <>
-                      <span className="text-xs text-muted-foreground">
-                        Available:{' '}
-                        {formatCurrency(convertValue(section.total - perpExposure), currency, 0)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Perp:
-                        <HelpTooltip content="Open perpetual futures position size: adds to your crypto exposure calculation" />{' '}
-                        {formatCurrency(convertValue(perpExposure), currency, 0)}
-                      </span>
-                    </>
-                  )}
+                {section.id === 'cash' && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-11 text-xs text-muted-foreground hover:text-foreground sm:h-8"
+                    className="h-9 shrink-0 text-xs text-muted-foreground hover:text-foreground sm:h-8"
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePerpEdit();
                     }}
                   >
                     <Pencil className="h-3 w-3 mr-1" />
-                    {perpExposure > 0 ? 'Edit' : 'Add Perp'}
+                    {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
                   </Button>
+                )}
+                <span className="text-sm font-semibold text-muted-foreground">
+                  {formatCurrency(convertValue(section.total), currency, 0)}
+                </span>
+              </div>
+            }
+            headerExtra={
+              section.id === 'cash' && perpExposure > 0 ? (
+                <div className="flex items-center justify-end gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground">
+                    Available:{' '}
+                    {formatCurrency(convertValue(section.total - perpExposure), currency, 0)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Perp:
+                    <HelpTooltip content="Open perpetual futures position size: adds to your crypto exposure calculation" />{' '}
+                    {formatCurrency(convertValue(perpExposure), currency, 0)}
+                  </span>
                 </div>
               ) : undefined
             }
@@ -559,11 +557,10 @@ export default function Portfolio() {
               <label htmlFor={PERP_EXPOSURE_INPUT_ID} className="text-sm">
                 Position Size (USD)
               </label>
-              <Input
+              <FormattedNumberInput
                 id={PERP_EXPOSURE_INPUT_ID}
-                type="number"
                 value={perpInput}
-                onChange={(e) => setPerpInput(e.target.value)}
+                onValueChange={setPerpInput}
                 onKeyDown={handlePerpKeyDown}
                 placeholder="0"
               />

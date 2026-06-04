@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -1210,13 +1211,11 @@ export function PositionForm({
                 <Label htmlFor="additionalQuantity" className="text-sm">
                   {deltaMode === 'add' ? 'Additional Quantity' : 'Reduce Quantity'}
                 </Label>
-                <Input
+                <FormattedNumberInput
                   id="additionalQuantity"
-                  type="number"
-                  step="any"
                   value={additionalQuantity}
-                  onChange={(e) => {
-                    setAdditionalQuantity(e.target.value);
+                  onValueChange={(value) => {
+                    setAdditionalQuantity(value);
                     setValidationError(null);
                   }}
                   placeholder="0.00"
@@ -1277,17 +1276,15 @@ export function PositionForm({
                       <Label htmlFor="additionalTotalCost" className="text-sm">
                         Total Cost ({costCurrency})
                       </Label>
-                      <Input
+                      <FormattedNumberInput
                         id="additionalTotalCost"
-                        type="number"
-                        step="any"
                         value={
                           additionalCostInputMode === 'total'
                             ? additionalTotalCost
                             : calculatedAdditionalTotalCost
                         }
-                        onChange={(e) => {
-                          setAdditionalTotalCost(e.target.value);
+                        onValueChange={(value) => {
+                          setAdditionalTotalCost(value);
                           setValidationError(null);
                         }}
                         placeholder="0.00"
@@ -1300,17 +1297,15 @@ export function PositionForm({
                       <Label htmlFor="additionalAvgCost" className="text-sm">
                         Average Cost ({costCurrency})
                       </Label>
-                      <Input
+                      <FormattedNumberInput
                         id="additionalAvgCost"
-                        type="number"
-                        step="any"
                         value={
                           additionalCostInputMode === 'avg'
                             ? additionalAvgCostInput
                             : calculatedAdditionalAvgCost
                         }
-                        onChange={(e) => {
-                          setAdditionalAvgCostInput(e.target.value);
+                        onValueChange={(value) => {
+                          setAdditionalAvgCostInput(value);
                           setValidationError(null);
                         }}
                         placeholder="0.00"
@@ -1647,12 +1642,10 @@ export function PositionForm({
                       <Label htmlFor="ut-nav" className="text-sm">
                         NAV ({utNativeCurrency})
                       </Label>
-                      <Input
+                      <FormattedNumberInput
                         id="ut-nav"
-                        type="number"
-                        step="any"
                         value={utNav}
-                        onChange={(e) => setUtNav(e.target.value)}
+                        onValueChange={setUtNav}
                         placeholder="1.234"
                         required
                       />
@@ -1784,13 +1777,11 @@ export function PositionForm({
                         : 'Shares'
                       : 'Quantity'}
                 </Label>
-                <Input
+                <FormattedNumberInput
                   id="quantity"
-                  type="number"
-                  step="any"
                   value={quantity}
-                  onChange={(e) => {
-                    setQuantity(e.target.value);
+                  onValueChange={(value) => {
+                    setQuantity(value);
                     setValidationError(null);
                   }}
                   placeholder="0.00"
@@ -1843,12 +1834,10 @@ export function PositionForm({
                       <Label htmlFor="totalCost" className="text-sm">
                         Total Cost ({costCurrency})
                       </Label>
-                      <Input
+                      <FormattedNumberInput
                         id="totalCost"
-                        type="number"
-                        step="any"
                         value={costInputMode === 'total' ? totalCost : calculatedTotalCost}
-                        onChange={(e) => setTotalCost(e.target.value)}
+                        onValueChange={setTotalCost}
                         placeholder="0.00"
                         disabled={costInputMode !== 'total'}
                         className={costInputMode !== 'total' ? 'bg-muted' : ''}
@@ -1858,12 +1847,10 @@ export function PositionForm({
                       <Label htmlFor="avgCost" className="text-sm">
                         Average Cost ({costCurrency})
                       </Label>
-                      <Input
+                      <FormattedNumberInput
                         id="avgCost"
-                        type="number"
-                        step="any"
                         value={costInputMode === 'avg' ? avgCostInput : calculatedAvgCost}
-                        onChange={(e) => setAvgCostInput(e.target.value)}
+                        onValueChange={setAvgCostInput}
                         placeholder="0.00"
                         disabled={costInputMode !== 'avg'}
                         className={costInputMode !== 'avg' ? 'bg-muted' : ''}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { useCreateTrade, useUpdateTrade } from '@/hooks/useTrades';
@@ -151,12 +152,10 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="entryPrice">Entry Price</Label>
-              <Input
+              <FormattedNumberInput
                 id="entryPrice"
-                type="number"
-                step="any"
                 value={entryPrice}
-                onChange={(e) => setEntryPrice(e.target.value)}
+                onValueChange={setEntryPrice}
                 placeholder="0.00"
                 required
               />
@@ -176,12 +175,10 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="exitPrice">Exit Price (Optional)</Label>
-              <Input
+              <FormattedNumberInput
                 id="exitPrice"
-                type="number"
-                step="any"
                 value={exitPrice}
-                onChange={(e) => setExitPrice(e.target.value)}
+                onValueChange={setExitPrice}
                 placeholder="Leave empty for open trade"
               />
             </div>
@@ -198,12 +195,10 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="quantity">Quantity</Label>
-            <Input
+            <FormattedNumberInput
               id="quantity"
-              type="number"
-              step="any"
               value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
+              onValueChange={setQuantity}
               placeholder="0.00"
               required
             />

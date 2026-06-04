@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -92,12 +93,10 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
                 </a>
               )}
             </div>
-            <Input
+            <FormattedNumberInput
               id="nav-price"
-              type="number"
-              step="any"
               value={nav}
-              onChange={(e) => setNav(e.target.value)}
+              onValueChange={setNav}
               placeholder="1.234"
               required
             />
