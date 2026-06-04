@@ -34,6 +34,7 @@ import { Plus, Pencil, Trash2, Crown, Users as UsersIcon } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
+import { PageActionHeader } from '@/components/layout/PageActionHeader';
 
 const EMPTY_INVESTORS: Investor[] = [];
 const INVESTOR_TABLE_HEADER_SKELETON_KEYS = [
@@ -97,18 +98,16 @@ export default function Investors() {
 
   return (
     <div className="space-y-6">
-      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Investors</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage investor stakes and track their returns
-          </p>
-        </div>
-        <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          Add Investor
-        </Button>
-      </div>
+      <PageActionHeader
+        title="Investors"
+        subtitle="Manage investor stakes and track their returns"
+        actions={
+          <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Investor
+          </Button>
+        }
+      />
 
       <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
         <div>

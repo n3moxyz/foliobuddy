@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { SnapshotForm } from '@/components/history/SnapshotForm';
 import { SnapshotTable } from '@/components/history/SnapshotTable';
+import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import { Plus, Trash2, Copy, Check, MoreVertical } from 'lucide-react';
 import {
   DropdownMenu,
@@ -116,61 +117,61 @@ export default function History() {
 
   return (
     <div className="space-y-6">
-      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Snapshot History</h1>
-          <p className="text-sm text-muted-foreground">Track your portfolio value over time</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={handleCopyCompletedSnapshots}
-            disabled={!allSnapshots || allSnapshots.length === 0}
-          >
-            {copiedAll ? (
-              <Check className="h-4 w-4 mr-1 text-profit" />
-            ) : (
-              <Copy className="h-4 w-4 mr-1" />
-            )}
-            {copiedAll ? 'Copied!' : 'Copy All'}
-          </Button>
-          <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Snapshot
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="touch-manipulation"
-                aria-label="More options"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={handleCopyCompletedSnapshots}
-                disabled={!allSnapshots || allSnapshots.length === 0}
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy All
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => setShowDeleteAllConfirm(true)}
-                disabled={!allSnapshots || allSnapshots.length === 0}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete All
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+      <PageActionHeader
+        title="Snapshot History"
+        subtitle="Track your portfolio value over time"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex"
+              onClick={handleCopyCompletedSnapshots}
+              disabled={!allSnapshots || allSnapshots.length === 0}
+            >
+              {copiedAll ? (
+                <Check className="h-4 w-4 mr-1 text-profit" />
+              ) : (
+                <Copy className="h-4 w-4 mr-1" />
+              )}
+              {copiedAll ? 'Copied!' : 'Copy All'}
+            </Button>
+            <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add Snapshot
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="touch-manipulation"
+                  aria-label="More options"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleCopyCompletedSnapshots}
+                  disabled={!allSnapshots || allSnapshots.length === 0}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy All
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={!allSnapshots || allSnapshots.length === 0}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete All
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        }
+      />
 
       <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
         <div>

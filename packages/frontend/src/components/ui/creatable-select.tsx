@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,8 @@ export function CreatableSelect({
   onAdd,
   onCancel,
 }: CreatableSelectProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const handleAdd = () => {
     const createdOption = onAdd();
     if (createdOption) {
@@ -58,6 +61,7 @@ export function CreatableSelect({
         onValueChange={(nextValue) => {
           if (nextValue === CREATE_OPTION_VALUE) {
             onStartAdding();
+            window.setTimeout(() => inputRef.current?.focus(), 0);
             return;
           }
 
@@ -83,6 +87,7 @@ export function CreatableSelect({
       {adding && (
         <div className="flex gap-2">
           <Input
+            ref={inputRef}
             value={inputValue}
             onChange={(event) => onInputChange(event.target.value)}
             onKeyDown={(event) => {
@@ -96,7 +101,6 @@ export function CreatableSelect({
             }}
             placeholder={inputPlaceholder}
             aria-label={inputLabel}
-            autoFocus
           />
           <Button type="button" size="sm" onClick={handleAdd} disabled={!inputValue.trim()}>
             <Plus className="mr-1 h-3.5 w-3.5" />

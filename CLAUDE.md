@@ -32,7 +32,7 @@
 - **UI**: shadcn/ui + Radix UI + Tailwind CSS 3.4
 - **Charts**: Recharts
 - **Fonts**: Plus Jakarta Sans (body) + JetBrains Mono (numbers) via Google Fonts
-- **Design System**: `.impeccable.md` at project root for design context
+- **Design System**: `PRODUCT.md` at project root for impeccable design context
 
 ## Key Files
 
@@ -64,6 +64,7 @@
 - `src/components/ui/HelpTooltip.tsx` - Contextual ? icon tooltip for domain-specific terms
 - `src/components/ui/creatable-select.tsx` - Reusable Radix Select wrapper with a "+ Add new ..." row and inline add controls
 - `src/components/ui/formatted-number-input.tsx` - Reusable finance amount input that displays thousands separators while storing raw numeric strings
+- `src/components/layout/PageActionHeader.tsx` - Sticky page title/action header used by high-scroll data pages so Add/Log buttons remain reachable
 - `src/components/trades/TradeLensViews.tsx` - Ticker and monthly trade review lens UI
 - `src/components/trades/tradeLensModels.ts` - Pure aggregation helpers for ticker dossiers and monthly reviews
 - `src/components/portfolio/positionClipboard.ts` - Shared portfolio copy-to-clipboard JSON formatter
@@ -393,6 +394,7 @@ All pages MUST use the same header pattern for visual consistency when switching
 - **Title**: `text-2xl font-bold` (no responsive upsizing like `sm:text-3xl`)
 - **Subtitle**: `text-sm text-muted-foreground` (no `sm:text-base`)
 - **Buttons**: `size="sm"` with `mr-1` icon spacing
+- **Data pages with Add/Log actions**: use `PageActionHeader` so the action row sticks below the app shell (`top-14 sm:top-16`) while scrolling. Keep the sticky region to the title/actions row, not the full stats/summary block.
 
 ### Destructive Actions in Headers
 
@@ -400,7 +402,7 @@ All pages MUST use the same header pattern for visual consistency when switching
 
 ### Design System & Visual Identity
 
-- **Color palette**: Indigo-tinted neutrals (not stock shadcn/ui grays) — `--primary: 234 89% 55%` (light), `234 89% 67%` (dark)
+- **Color palette**: Indigo-tinted neutrals (not stock shadcn/ui grays) — `--primary: 234 89% 55%` (light), `234 89% 62%` (dark, AA-safe with `--primary-foreground`)
 - **Fonts**: Plus Jakarta Sans (body/headings) + JetBrains Mono (tabular numbers) — loaded via Google Fonts in `index.html`
 - **Profit/loss colors**: Emerald green (`text-profit`) and red (`text-loss`) — backed by contrast-safe CSS custom properties `--profit`/`--profit-foreground` and `--loss`/`--loss-foreground` in `index.css` (both `:root` and `.dark`). Also `--warning` and `--info` tokens available
 - **Chart colors**: Centralized in `src/lib/chartColors.ts` — `BRAND_COLORS` (BTC/ETH), `BRAND_FOREGROUND_COLORS`, `PORTFOLIO_LINE_COLOR`, `PORTFOLIO_FOREGROUND_COLOR`, `ASSET_COLORS`, `STORAGE_COLORS`, `STABLES_COLORS`, and benchmark palettes. These are OKLCH CSS-variable colors (`oklch(var(--chart-...))`), so use constants instead of inline hex in chart components.
@@ -409,7 +411,7 @@ All pages MUST use the same header pattern for visual consistency when switching
 - **Sidebar**: Linear-style active state — `border border-primary/30 bg-primary/10 text-primary font-semibold` with no side-stripe accent. Desktop sidebar can collapse to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed` in localStorage); mobile remains a full-width drawer with labels.
 - **Scrollbars**: Thin 6px with transparent track, rounded thumb
 - **Empty states**: Icon + heading + descriptive text + action CTA (Portfolio, Trades, History)
-- **Design context**: `.impeccable.md` at project root — brand personality, aesthetic direction, design principles
+- **Design context**: `PRODUCT.md` at project root — brand personality, aesthetic direction, design principles
 
 ## Environment Variables
 
@@ -495,7 +497,7 @@ History page snapshot rows (AUTOMATIC source) are clickable anywhere to expand/c
 
 ## Design Context
 
-See `.impeccable.md` at project root — source of truth for users, brand personality, aesthetic direction, and design principles. Dark mode primary; Linear/Raycast polish crossed with Dune data-density.
+See `PRODUCT.md` at project root — source of truth for users, brand personality, aesthetic direction, and design principles. Dark mode primary; Linear/Raycast polish crossed with Dune data-density.
 
 ## Gotchas & Notes
 

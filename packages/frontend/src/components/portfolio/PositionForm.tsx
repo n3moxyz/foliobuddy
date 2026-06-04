@@ -1078,13 +1078,12 @@ export function PositionForm({
     <div className="space-y-3">
       {/* Mode Selection (Add New vs Import) */}
       {!isEditing && (
-        <div className="flex border-b mb-2" role="tablist">
+        <div className="flex border-b mb-2">
           <button
             type="button"
-            role="tab"
-            aria-selected={mode === 'add'}
+            aria-pressed={mode === 'add'}
             onClick={() => setMode('add')}
-            className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'add'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -1094,10 +1093,9 @@ export function PositionForm({
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={mode === 'import'}
+            aria-pressed={mode === 'import'}
             onClick={() => setMode('import')}
-            className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'import'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -1131,13 +1129,12 @@ export function PositionForm({
         /* Add New Mode */
         <form onSubmit={handleSubmit} className="space-y-3">
           {isEditing && (
-            <div className="flex border-b mb-2" role="tablist">
+            <div className="flex border-b mb-2">
               <button
                 type="button"
-                role="tab"
-                aria-selected={editMode === 'edit'}
+                aria-pressed={editMode === 'edit'}
                 onClick={() => setEditMode('edit')}
-                className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
                   editMode === 'edit'
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -1147,10 +1144,9 @@ export function PositionForm({
               </button>
               <button
                 type="button"
-                role="tab"
-                aria-selected={editMode === 'delta'}
+                aria-pressed={editMode === 'delta'}
                 onClick={() => setEditMode('delta')}
-                className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
                   editMode === 'delta'
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground'

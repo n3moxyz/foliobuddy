@@ -15,6 +15,7 @@ import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboa
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { PositionForm } from '@/components/portfolio/PositionForm';
 import { UpdateNavModal } from '@/components/portfolio/UpdateNavModal';
+import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import {
   Dialog,
   DialogContent,
@@ -199,86 +200,86 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-6">
-      <div className="animate-fade-in-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Portfolio</h1>
-          <p className="text-sm text-muted-foreground">{positions?.length ?? 0} positions</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={async () => {
-              if (positions && positions.length > 0) {
-                const success = await copyPositionsToClipboard(positions);
-                if (success) {
-                  setCopiedAll(true);
-                  setTimeout(() => setCopiedAll(false), 2000);
-                }
-              }
-            }}
-            disabled={!positions || positions.length === 0}
-          >
-            {copiedAll ? (
-              <Check className="h-4 w-4 mr-1 text-profit" />
-            ) : (
-              <Copy className="h-4 w-4 mr-1" />
-            )}
-            {copiedAll ? 'Copied!' : 'Copy All'}
-          </Button>
-          <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Position
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="touch-manipulation"
-                aria-label="More options"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="sm:hidden"
-                onClick={async () => {
-                  if (positions && positions.length > 0) {
-                    const success = await copyPositionsToClipboard(positions);
-                    if (success) {
-                      setCopiedAll(true);
-                      setTimeout(() => setCopiedAll(false), 2000);
-                    }
+      <PageActionHeader
+        title="Portfolio"
+        subtitle={`${positions?.length ?? 0} positions`}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex"
+              onClick={async () => {
+                if (positions && positions.length > 0) {
+                  const success = await copyPositionsToClipboard(positions);
+                  if (success) {
+                    setCopiedAll(true);
+                    setTimeout(() => setCopiedAll(false), 2000);
                   }
-                }}
-                disabled={!positions || positions.length === 0}
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy All
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => setShowDeleteAllConfirm(true)}
-                disabled={!positions || positions.length === 0}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete All
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open(api.exportPositionsCsv(), '_blank')}>
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open(api.exportExcel(), '_blank')}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export Excel
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+                }
+              }}
+              disabled={!positions || positions.length === 0}
+            >
+              {copiedAll ? (
+                <Check className="h-4 w-4 mr-1 text-profit" />
+              ) : (
+                <Copy className="h-4 w-4 mr-1" />
+              )}
+              {copiedAll ? 'Copied!' : 'Copy All'}
+            </Button>
+            <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add Position
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="touch-manipulation"
+                  aria-label="More options"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="sm:hidden"
+                  onClick={async () => {
+                    if (positions && positions.length > 0) {
+                      const success = await copyPositionsToClipboard(positions);
+                      if (success) {
+                        setCopiedAll(true);
+                        setTimeout(() => setCopiedAll(false), 2000);
+                      }
+                    }
+                  }}
+                  disabled={!positions || positions.length === 0}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy All
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={!positions || positions.length === 0}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete All
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open(api.exportPositionsCsv(), '_blank')}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open(api.exportExcel(), '_blank')}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        }
+      />
 
       {summary && (
         <div className="pb-6 mb-2 border-b">
@@ -531,6 +532,9 @@ export default function Portfolio() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Position</DialogTitle>
+            <DialogDescription className="sr-only">
+              Create a portfolio position manually or import positions from JSON.
+            </DialogDescription>
           </DialogHeader>
           <PositionForm
             onSuccess={() => setShowAddForm(false)}
