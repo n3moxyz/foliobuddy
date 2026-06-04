@@ -528,6 +528,9 @@ export function PositionTable({
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Position</DialogTitle>
+            <DialogDescription className="sr-only">
+              Edit totals or add and reduce the selected position.
+            </DialogDescription>
           </DialogHeader>
           {editPosition && (
             <PositionForm position={editPosition} onSuccess={() => setEditPosition(null)} />

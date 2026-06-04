@@ -1784,7 +1784,7 @@ This workflow got better once we stopped pretending every edit is the same kind 
 - `Edit Totals` is for corrections
 - `Add/Reduce Position` is for the normal "I bought more" or "I trimmed some" flow
 
-`Add` asks for quantity plus total cost, then recalculates weighted average cost automatically. `Reduce` only asks for quantity and removes cost basis using the current average cost. The preview also moved from a loose inline display to a proper Old/New comparison table, because financial UI should make deltas obvious without making you squint.
+`Add` asks for quantity plus either total cost or average cost, mirroring the create-position flow and deriving the other field live. Then it recalculates weighted average cost automatically. `Reduce` only asks for quantity and removes cost basis using the current average cost. The preview also moved from a loose inline display to a proper Old/New comparison table, because financial UI should make deltas obvious without making you squint.
 
 ### Real-Time WebSocket Updates
 

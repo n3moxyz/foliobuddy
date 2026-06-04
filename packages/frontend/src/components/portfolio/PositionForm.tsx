@@ -102,6 +102,7 @@ interface PositionFormProps {
 type CategoryType = 'crypto' | 'cash' | 'equity';
 type EquityMode = 'single' | 'fund';
 type FormMode = 'add' | 'import';
+type CostInputMode = 'total' | 'avg';
 type PositionStorageType = 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE';
 
 type ImportedPosition = BulkImportPosition;
@@ -214,7 +215,7 @@ export function PositionForm({
 
   // Form fields
   const [quantity, setQuantity] = useState(position?.quantity?.toString() || '');
-  const [costInputMode, setCostInputMode] = useState<'total' | 'avg'>('total');
+  const [costInputMode, setCostInputMode] = useState<CostInputMode>('total');
   const [totalCost, setTotalCost] = useState(() => {
     if (position?.quantity && position?.avgCostUsd) {
       return (position.quantity * position.avgCostUsd).toString();
@@ -246,7 +247,9 @@ export function PositionForm({
   }, [existingCustodyNames, custodyNamesVersion]);
   const [notes, setNotes] = useState(position?.notes || '');
   const [additionalQuantity, setAdditionalQuantity] = useState('');
+  const [additionalCostInputMode, setAdditionalCostInputMode] = useState<CostInputMode>('total');
   const [additionalTotalCost, setAdditionalTotalCost] = useState('');
+  const [additionalAvgCostInput, setAdditionalAvgCostInput] = useState('');
 
   const resetAssetEntryState = (nextCategory: CategoryType) => {
     setAssetId('');
@@ -472,10 +475,37 @@ export function PositionForm({
   // Final avg cost for form submission
   const avgCostUsd = costInputMode === 'total' ? calculatedAvgCost : avgCostInput;
 
+  const calculatedAdditionalAvgCost = useMemo(() => {
+    if (additionalCostInputMode === 'total') {
+      const qty = parseFloat(additionalQuantity);
+      const total = parseFloat(additionalTotalCost);
+      if (qty > 0 && Number.isFinite(total) && total >= 0) {
+        return (total / qty).toFixed(2);
+      }
+      return '';
+    }
+    return additionalAvgCostInput;
+  }, [additionalQuantity, additionalTotalCost, additionalCostInputMode, additionalAvgCostInput]);
+
+  const calculatedAdditionalTotalCost = useMemo(() => {
+    if (additionalCostInputMode === 'avg') {
+      const qty = parseFloat(additionalQuantity);
+      const avg = parseFloat(additionalAvgCostInput);
+      if (qty > 0 && Number.isFinite(avg) && avg >= 0) {
+        return (qty * avg).toFixed(2);
+      }
+      return '';
+    }
+    return additionalTotalCost;
+  }, [additionalQuantity, additionalAvgCostInput, additionalCostInputMode, additionalTotalCost]);
+
+  const additionalCostInput =
+    additionalCostInputMode === 'total' ? additionalTotalCost : calculatedAdditionalTotalCost;
+
   const addPreview = useMemo(() => {
     if (!position || editMode !== 'delta') return null;
     const deltaQty = parseFloat(additionalQuantity);
-    const rawDeltaCost = parseFloat(additionalTotalCost);
+    const rawDeltaCost = parseFloat(additionalCostInput);
     const deltaCostAddUsd = costCurrency === 'SGD' ? rawDeltaCost / fxSgdPerUsd : rawDeltaCost;
     const deltaCost = deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
     if (!(deltaQty > 0) || !(deltaCost >= 0)) return null;
@@ -500,7 +530,7 @@ export function PositionForm({
     position,
     editMode,
     additionalQuantity,
-    additionalTotalCost,
+    additionalCostInput,
     deltaMode,
     costCurrency,
     fxSgdPerUsd,
@@ -860,7 +890,7 @@ export function PositionForm({
       const deltaQty = parseFloat(additionalQuantity);
       // In add mode the user enters cost in costCurrency — convert to USD for persistence.
       // In reduce mode we shrink basis at current avg cost (already USD), no conversion needed.
-      const deltaCostInput = parseFloat(additionalTotalCost);
+      const deltaCostInput = parseFloat(additionalCostInput);
       const deltaCostAddUsd =
         costCurrency === 'SGD' ? deltaCostInput / fxSgdPerUsd : deltaCostInput;
       const deltaCost = deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
@@ -871,7 +901,7 @@ export function PositionForm({
       }
 
       if (deltaMode === 'add' && !(deltaCost >= 0)) {
-        setValidationError(`Please enter a valid ${deltaMode} total cost`);
+        setValidationError(`Please enter a valid ${deltaMode} cost`);
         return;
       }
 
@@ -1195,22 +1225,101 @@ export function PositionForm({
               </div>
 
               {deltaMode === 'add' ? (
-                <div className="space-y-1">
-                  <Label htmlFor="additionalTotalCost" className="text-sm">
-                    Additional Total Cost ({costCurrency})
-                  </Label>
-                  <Input
-                    id="additionalTotalCost"
-                    type="number"
-                    step="any"
-                    value={additionalTotalCost}
-                    onChange={(e) => {
-                      setAdditionalTotalCost(e.target.value);
-                      setValidationError(null);
-                    }}
-                    placeholder="0.00"
-                    required
-                  />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-muted-foreground">Enter:</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="additionalCostMode"
+                        checked={additionalCostInputMode === 'total'}
+                        onChange={() => {
+                          setAdditionalCostInputMode('total');
+                          setValidationError(null);
+                        }}
+                        className="w-3.5 h-3.5 accent-primary"
+                      />
+                      <span
+                        className={
+                          additionalCostInputMode === 'total'
+                            ? 'font-medium'
+                            : 'text-muted-foreground'
+                        }
+                      >
+                        Total Cost
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="additionalCostMode"
+                        checked={additionalCostInputMode === 'avg'}
+                        onChange={() => {
+                          setAdditionalCostInputMode('avg');
+                          setValidationError(null);
+                        }}
+                        className="w-3.5 h-3.5 accent-primary"
+                      />
+                      <span
+                        className={
+                          additionalCostInputMode === 'avg'
+                            ? 'font-medium'
+                            : 'text-muted-foreground'
+                        }
+                      >
+                        Avg Cost
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="additionalTotalCost" className="text-sm">
+                        Total Cost ({costCurrency})
+                      </Label>
+                      <Input
+                        id="additionalTotalCost"
+                        type="number"
+                        step="any"
+                        value={
+                          additionalCostInputMode === 'total'
+                            ? additionalTotalCost
+                            : calculatedAdditionalTotalCost
+                        }
+                        onChange={(e) => {
+                          setAdditionalTotalCost(e.target.value);
+                          setValidationError(null);
+                        }}
+                        placeholder="0.00"
+                        disabled={additionalCostInputMode !== 'total'}
+                        className={additionalCostInputMode !== 'total' ? 'bg-muted' : ''}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="additionalAvgCost" className="text-sm">
+                        Average Cost ({costCurrency})
+                      </Label>
+                      <Input
+                        id="additionalAvgCost"
+                        type="number"
+                        step="any"
+                        value={
+                          additionalCostInputMode === 'avg'
+                            ? additionalAvgCostInput
+                            : calculatedAdditionalAvgCost
+                        }
+                        onChange={(e) => {
+                          setAdditionalAvgCostInput(e.target.value);
+                          setValidationError(null);
+                        }}
+                        placeholder="0.00"
+                        disabled={additionalCostInputMode !== 'avg'}
+                        className={additionalCostInputMode !== 'avg' ? 'bg-muted' : ''}
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
