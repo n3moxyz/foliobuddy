@@ -411,7 +411,7 @@ All pages MUST use the same header pattern for visual consistency when switching
 - **Sidebar**: Linear-style active state — `border border-primary/30 bg-primary/10 text-primary font-semibold` with no side-stripe accent. Desktop sidebar can collapse to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed` in localStorage); mobile remains a full-width drawer with labels.
 - **Scrollbars**: Thin 6px with transparent track, rounded thumb
 - **Empty states**: Icon + heading + descriptive text + action CTA (Portfolio, Trades, History)
-- **Design context**: `PRODUCT.md` at project root — brand personality, aesthetic direction, design principles
+- **Design context**: `PRODUCT.md` at project root — brand personality, aesthetic direction, design principles. Current `impeccable` uses `PRODUCT.md` for strategic context and optional `DESIGN.md` for visual-system details; legacy `.impeccable.md` was auto-migrated, so do not recreate or maintain both files.
 
 ## Environment Variables
 
@@ -497,7 +497,7 @@ History page snapshot rows (AUTOMATIC source) are clickable anywhere to expand/c
 
 ## Design Context
 
-See `PRODUCT.md` at project root — source of truth for users, brand personality, aesthetic direction, and design principles. Dark mode primary; Linear/Raycast polish crossed with Dune data-density.
+See `PRODUCT.md` at project root — source of truth for users, brand personality, aesthetic direction, and design principles. Dark mode primary; Linear/Raycast polish crossed with Dune data-density. Legacy `.impeccable.md` has been migrated to `PRODUCT.md`; if an old tool asks for `.impeccable.md`, point it at `PRODUCT.md` instead of creating a second source of truth.
 
 ## Gotchas & Notes
 

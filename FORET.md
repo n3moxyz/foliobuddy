@@ -1975,6 +1975,9 @@ Recently completed:
   - Mobile hit areas were hardened across shared buttons, help tooltips, sortable table headers, allocation legends, and dense row actions. The sneaky bit: a `w-11` class can still render narrower inside a flex/table cell unless the button also has `shrink-0`.
   - React Doctor is back to a 99/100 advisory score with only the known demo-mode `apiMockReady` false positive. The previous array-index key warnings were cleaned up with named skeleton keys and timestamp-based chart dot keys.
   - Lesson: verify touch targets from rendered bounding boxes, not from class names. The class can say 44px while layout says "nice try."
+- [x] **Impeccable context migration documented:**
+  - Current impeccable reads `PRODUCT.md` for strategic context and optional `DESIGN.md` for visual-system details. The older `.impeccable.md` file was a legacy format, not a separate Claude-only source of truth.
+  - AGENTS/CLAUDE now say not to recreate or maintain both files. If an old tool asks for `.impeccable.md`, point it at `PRODUCT.md` or update that tool; symlinks add Windows/Git friction without much benefit here.
 
 ---
 
