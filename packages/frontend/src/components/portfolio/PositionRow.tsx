@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   formatCurrency,
   formatNumber,
@@ -21,6 +22,32 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
   BANK: 'Bank',
   BROKERAGE: 'Broker account',
 };
+
+function UnitTrustBadge() {
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="inline-flex h-5 shrink-0 cursor-default items-center rounded-sm border border-warning/35 bg-warning/10 px-1.5 text-[10px] font-semibold leading-none text-warning outline-none ring-offset-background transition-colors hover:border-warning/50 hover:bg-warning/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Unit Trust"
+            tabIndex={0}
+            onClick={(event) => event.stopPropagation()}
+          >
+            UT
+          </span>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          sideOffset={6}
+          className="border-warning/25 bg-background/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-lg shadow-black/20 backdrop-blur supports-[backdrop-filter]:bg-background/90"
+        >
+          Unit Trust
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 interface PositionRowProps {
   position: Position;
@@ -93,11 +120,7 @@ export const PositionRow = React.memo(function PositionRow({
         <div className="truncate">
           <div className="flex min-w-0 items-center gap-1.5">
             <p className="truncate text-sm font-medium">{position.asset.symbol}</p>
-            {showUnitTrustBadge && isUnitTrust && (
-              <span className="shrink-0 rounded-sm border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-warning">
-                Unit Trust
-              </span>
-            )}
+            {showUnitTrustBadge && isUnitTrust && <UnitTrustBadge />}
           </div>
           <p className="text-xs text-muted-foreground truncate">{assetNameLabel}</p>
           {ageInfo && (
