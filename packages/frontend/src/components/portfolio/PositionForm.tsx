@@ -41,6 +41,7 @@ import type { ParsedStatementHolding } from '@/lib/types';
 import {
   CRYPTO_STORAGE_TYPES,
   FIAT_CASH_STORAGE_TYPES,
+  customLocationOptionsForStorageType,
   deleteLocationOptionForStorageType,
   locationLabelForStorageType,
   locationOptionsForStorageType,
@@ -234,7 +235,7 @@ export function PositionForm({
   const [storageLocation, setStorageLocation] = useState(position?.storageLocation || '');
   const [addingStorageLocation, setAddingStorageLocation] = useState(false);
   const [newStorageLocation, setNewStorageLocation] = useState('');
-  const [storageLocationOptionsVersion, setStorageLocationOptionsVersion] = useState(0);
+  const [, setStorageLocationOptionsVersion] = useState(0);
   const [isCustody, setIsCustody] = useState(!!position?.custodyOf);
   const [custodyOf, setCustodyOf] = useState(position?.custodyOf || '');
   const [addingNewName, setAddingNewName] = useState(false);
@@ -772,16 +773,31 @@ export function PositionForm({
     }
   }, [mode]);
 
-  const locationOptions = useMemo(
-    () =>
-      locationOptionsForStorageType(storageType, storageLocation ? [storageLocation] : undefined),
-    [storageType, storageLocation, storageLocationOptionsVersion]
+  const locationOptions = locationOptionsForStorageType(
+    storageType,
+    storageLocation ? [storageLocation] : undefined
+  );
+  const editableLocationOptions = new Set(
+    customLocationOptionsForStorageType(storageType).map((option) => option.toLocaleLowerCase())
   );
   const storageTypeOptions =
     category === 'cash' && selectedCashTypeId === FIAT_CASH_TYPE_ID
       ? FIAT_CASH_STORAGE_TYPES
       : CRYPTO_STORAGE_TYPES;
   const storageLocationLabel = locationLabelForStorageType(storageType);
+
+  useEffect(() => {
+    if (isEditing || category !== 'cash') return;
+
+    const isFiatCash = selectedCashTypeId === FIAT_CASH_TYPE_ID;
+    const validStorageTypes = isFiatCash ? FIAT_CASH_STORAGE_TYPES : CRYPTO_STORAGE_TYPES;
+    if (validStorageTypes.some((type) => type.value === storageType)) return;
+
+    setStorageType(isFiatCash ? DEFAULT_FIAT_CASH_STORAGE_TYPE : DEFAULT_STABLECOIN_STORAGE_TYPE);
+    setStorageLocation('');
+    setAddingStorageLocation(false);
+    setNewStorageLocation('');
+  }, [category, isEditing, selectedCashTypeId, storageType]);
 
   const handleStartAddingStorageLocation = () => {
     setAddingStorageLocation(true);
@@ -867,7 +883,7 @@ export function PositionForm({
     setUtUsdPerNative(usdPerNative);
     setTotalCost(ccy === 'USD' ? h.totalCostUsd.toFixed(2) : h.totalCostNative.toFixed(2));
     const parsedStorageLocation = broker.includes('UOB')
-      ? 'UOB Kay Hian'
+      ? 'UOB KH'
       : /FSM|fundsupermart|iFAST/i.test(broker)
         ? 'FSMOne'
         : broker.trim();
@@ -1924,6 +1940,9 @@ export function PositionForm({
                     onEditOption={handleEditStorageLocation}
                     onDeleteOption={handleDeleteStorageLocation}
                     onClearValue={handleClearStorageLocation}
+                    isOptionEditable={(option) =>
+                      editableLocationOptions.has(option.toLocaleLowerCase())
+                    }
                   />
                 ) : (
                   <Select
@@ -1972,6 +1991,9 @@ export function PositionForm({
                     onEditOption={handleEditStorageLocation}
                     onDeleteOption={handleDeleteStorageLocation}
                     onClearValue={handleClearStorageLocation}
+                    isOptionEditable={(option) =>
+                      editableLocationOptions.has(option.toLocaleLowerCase())
+                    }
                   />
                 </div>
               )}

@@ -1,17 +1,13 @@
 export const CEX_LOCATIONS = ['Binance', 'Bybit', 'Coinbase'];
 export const ONCHAIN_LOCATIONS = ['Ledger', 'Metamask', 'Rabby', 'SOL wallet'];
-export const BROKER_LOCATIONS = ['FSMOne', 'Tiger', 'UOB Kay Hian'];
-export const BANK_LOCATIONS = ['DBS', 'Trust+', 'SCB', 'UOB', 'Citi'];
+export const BROKER_LOCATIONS = ['FSMOne', 'IBKR', 'Tiger', 'UOB KH'];
+export const BANK_LOCATIONS = ['Citi', 'DBS', 'SCB', 'Trust+', 'UOB'];
 
 export const CUSTOM_LOCATION_OPTIONS_KEY = 'foliobuddy-storage-location-options';
 
 type LocationStorageBucket = 'CEX' | 'WALLET' | 'BROKERAGE' | 'BANK';
 type StoredLocationOptions = Partial<Record<LocationStorageBucket, string[]>> & {
-  __managedBuckets?: LocationStorageBucket[];
-};
-type StoredLocationOptionsState = {
-  options: Partial<Record<LocationStorageBucket, string[]>>;
-  managedBuckets: LocationStorageBucket[];
+  __managedBuckets?: unknown;
 };
 
 const LOCATION_STORAGE_BUCKETS: LocationStorageBucket[] = ['CEX', 'WALLET', 'BROKERAGE', 'BANK'];
@@ -62,15 +58,13 @@ function mergeLocationOptions(...groups: string[][]): string[] {
   return options;
 }
 
-function isLocationStorageBucket(value: unknown): value is LocationStorageBucket {
-  return (
-    typeof value === 'string' &&
-    LOCATION_STORAGE_BUCKETS.includes(value as LocationStorageBucket)
-  );
+function findLocationOption(options: string[], value: string): string | undefined {
+  const key = normalizeLocationOption(value).toLocaleLowerCase();
+  return options.find((option) => option.toLocaleLowerCase() === key);
 }
 
-function readStoredLocationOptions(): StoredLocationOptionsState {
-  const emptyState: StoredLocationOptionsState = { options: {}, managedBuckets: [] };
+function readStoredLocationOptions(): Partial<Record<LocationStorageBucket, string[]>> {
+  const emptyState: Partial<Record<LocationStorageBucket, string[]>> = {};
   if (typeof localStorage === 'undefined') return emptyState;
 
   try {
@@ -78,41 +72,33 @@ function readStoredLocationOptions(): StoredLocationOptionsState {
     if (!stored) return emptyState;
 
     const parsed = JSON.parse(stored) as StoredLocationOptions;
-    const options: StoredLocationOptionsState['options'] = {};
+    const options: Partial<Record<LocationStorageBucket, string[]>> = {};
     LOCATION_STORAGE_BUCKETS.forEach((bucket) => {
       if (Array.isArray(parsed[bucket])) {
         options[bucket] = mergeLocationOptions(parsed[bucket] ?? []);
       }
     });
 
-    return {
-      options,
-      managedBuckets: Array.isArray(parsed.__managedBuckets)
-        ? parsed.__managedBuckets.filter(isLocationStorageBucket)
-        : [],
-    };
+    return options;
   } catch {
     return emptyState;
   }
 }
 
-function writeStoredLocationOptions(state: StoredLocationOptionsState) {
+function writeStoredLocationOptions(
+  optionsByBucket: Partial<Record<LocationStorageBucket, string[]>>
+) {
   if (typeof localStorage === 'undefined') return;
 
   try {
     const payload: StoredLocationOptions = {};
 
     LOCATION_STORAGE_BUCKETS.forEach((bucket) => {
-      const options = mergeLocationOptions(state.options[bucket] ?? []);
+      const options = mergeLocationOptions(optionsByBucket[bucket] ?? []);
       if (options.length > 0) {
         payload[bucket] = options;
       }
     });
-
-    const managedBuckets = state.managedBuckets.filter(isLocationStorageBucket);
-    if (managedBuckets.length > 0) {
-      payload.__managedBuckets = managedBuckets;
-    }
 
     if (Object.keys(payload).length === 0) {
       localStorage.removeItem(CUSTOM_LOCATION_OPTIONS_KEY);
@@ -125,23 +111,11 @@ function writeStoredLocationOptions(state: StoredLocationOptionsState) {
   }
 }
 
-function isManagedBucket(state: StoredLocationOptionsState, bucket: LocationStorageBucket): boolean {
-  return state.managedBuckets.includes(bucket);
-}
-
-function writeManagedBucketOptions(bucket: LocationStorageBucket, options: string[]) {
-  const storedOptions = readStoredLocationOptions();
-  const managedBuckets = isManagedBucket(storedOptions, bucket)
-    ? storedOptions.managedBuckets
-    : [...storedOptions.managedBuckets, bucket];
-
-  writeStoredLocationOptions({
-    options: {
-      ...storedOptions.options,
-      [bucket]: mergeLocationOptions(options),
-    },
-    managedBuckets,
-  });
+function customOptionsForBucket(bucket: LocationStorageBucket): string[] {
+  const defaults = defaultLocationsForBucket(bucket);
+  return mergeLocationOptions(readStoredLocationOptions()[bucket] ?? []).filter(
+    (option) => !findLocationOption(defaults, option)
+  );
 }
 
 export function locationOptionsForStorageType(
@@ -149,14 +123,15 @@ export function locationOptionsForStorageType(
   extraOptions: string[] = []
 ): string[] {
   const bucket = bucketForStorageType(storageType);
-  const storedOptions = readStoredLocationOptions();
-  const bucketOptions = storedOptions.options[bucket] ?? [];
+  const customOptions = customOptionsForBucket(bucket);
 
-  if (isManagedBucket(storedOptions, bucket)) {
-    return mergeLocationOptions(bucketOptions, extraOptions);
-  }
+  return mergeLocationOptions(defaultLocationsForBucket(bucket), customOptions, extraOptions);
+}
 
-  return mergeLocationOptions(defaultLocationsForBucket(bucket), bucketOptions, extraOptions);
+export function customLocationOptionsForStorageType(
+  storageType: string | null | undefined
+): string[] {
+  return customOptionsForBucket(bucketForStorageType(storageType));
 }
 
 export function saveLocationOptionForStorageType(
@@ -173,19 +148,11 @@ export function saveLocationOptionForStorageType(
 
   const bucket = bucketForStorageType(storageType);
   const storedOptions = readStoredLocationOptions();
-  const nextOptions = isManagedBucket(storedOptions, bucket)
-    ? mergeLocationOptions(storedOptions.options[bucket] ?? [], [option])
-    : mergeLocationOptions(storedOptions.options[bucket] ?? [], [option]).sort((a, b) =>
-        a.localeCompare(b)
-      );
+  const nextOptions = mergeLocationOptions(customOptionsForBucket(bucket), [option]).sort((a, b) =>
+    a.localeCompare(b)
+  );
 
-  writeStoredLocationOptions({
-    ...storedOptions,
-    options: {
-      ...storedOptions.options,
-      [bucket]: nextOptions,
-    },
-  });
+  writeStoredLocationOptions({ ...storedOptions, [bucket]: nextOptions });
 
   return option;
 }
@@ -200,24 +167,23 @@ export function renameLocationOptionForStorageType(
   if (!currentOption || !nextOption) return null;
 
   const bucket = bucketForStorageType(storageType);
-  const currentOptions = locationOptionsForStorageType(storageType);
+  const storedOptions = readStoredLocationOptions();
+  const customOptions = customOptionsForBucket(bucket);
   const currentKey = currentOption.toLocaleLowerCase();
 
-  if (!currentOptions.some((option) => option.toLocaleLowerCase() === currentKey)) {
-    return null;
-  }
+  if (!customOptions.some((option) => option.toLocaleLowerCase() === currentKey)) return null;
 
+  const defaultMatch = findLocationOption(defaultLocationsForBucket(bucket), nextOption);
+  const existingCustom = findLocationOption(customOptions, nextOption);
   const nextOptions = mergeLocationOptions(
-    currentOptions.map((option) =>
-      option.toLocaleLowerCase() === currentKey ? nextOption : option
-    )
-  );
-  writeManagedBucketOptions(bucket, nextOptions);
+    customOptions
+      .filter((option) => option.toLocaleLowerCase() !== currentKey)
+      .concat(defaultMatch || existingCustom ? [] : [nextOption])
+  ).sort((a, b) => a.localeCompare(b));
 
-  return (
-    nextOptions.find((option) => option.toLocaleLowerCase() === nextOption.toLocaleLowerCase()) ??
-    nextOption
-  );
+  writeStoredLocationOptions({ ...storedOptions, [bucket]: nextOptions });
+
+  return defaultMatch ?? existingCustom ?? nextOption;
 }
 
 export function deleteLocationOptionForStorageType(
@@ -229,14 +195,15 @@ export function deleteLocationOptionForStorageType(
 
   const bucket = bucketForStorageType(storageType);
   const optionKey = option.toLocaleLowerCase();
-  const currentOptions = locationOptionsForStorageType(storageType);
+  const storedOptions = readStoredLocationOptions();
+  const currentOptions = customOptionsForBucket(bucket);
   const nextOptions = currentOptions.filter(
     (currentOption) => currentOption.toLocaleLowerCase() !== optionKey
   );
 
   if (nextOptions.length === currentOptions.length) return false;
 
-  writeManagedBucketOptions(bucket, nextOptions);
+  writeStoredLocationOptions({ ...storedOptions, [bucket]: nextOptions });
   return true;
 }
 

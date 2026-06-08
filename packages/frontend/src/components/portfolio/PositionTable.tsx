@@ -420,7 +420,7 @@ export function PositionTable({
           activeSortKey={sortState.sortKey}
           sortDirection={sortState.sortDirection}
           onSort={sortState.onSort}
-          align="right"
+          align="left"
           style={{ width: '9%' }}
           className={HIDDEN_MOBILE}
         />

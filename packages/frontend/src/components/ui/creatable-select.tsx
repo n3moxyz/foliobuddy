@@ -30,6 +30,7 @@ interface CreatableSelectProps {
   onEditOption?: (currentValue: string, nextValue: string) => string | null | void;
   onDeleteOption?: (value: string) => boolean | void;
   onClearValue?: () => void;
+  isOptionEditable?: (value: string) => boolean;
 }
 
 export function CreatableSelect({
@@ -50,6 +51,7 @@ export function CreatableSelect({
   onEditOption,
   onDeleteOption,
   onClearValue,
+  isOptionEditable,
 }: CreatableSelectProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -82,10 +84,7 @@ export function CreatableSelect({
     window.setTimeout(() => inputRef.current?.focus(), 0);
   };
 
-  const handleStartEditing = (
-    event: MouseEvent<HTMLButtonElement>,
-    option: string
-  ) => {
+  const handleStartEditing = (event: MouseEvent<HTMLButtonElement>, option: string) => {
     stopOptionAction(event);
     onCancel();
     setEditingOption(option);
@@ -120,10 +119,7 @@ export function CreatableSelect({
     handleCancelEditing();
   };
 
-  const handleDeleteOption = (
-    event: MouseEvent<HTMLButtonElement>,
-    option: string
-  ) => {
+  const handleDeleteOption = (event: MouseEvent<HTMLButtonElement>, option: string) => {
     stopOptionAction(event);
     const deleted = onDeleteOption?.(option);
     if (deleted === false) return;
@@ -159,45 +155,49 @@ export function CreatableSelect({
           </span>
         </SelectTrigger>
         <SelectContent>
-          {options.map((option) => (
-            <div key={option} className="relative">
-              <SelectItem value={option} className={canManageOptions ? 'pr-20' : undefined}>
-                <span className="block truncate">{option}</span>
-              </SelectItem>
-              {canManageOptions && (
-                <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-                  {onEditOption && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onPointerDown={stopOptionAction}
-                      onClick={(event) => handleStartEditing(event, option)}
-                      aria-label={`Edit ${option}`}
-                      title={`Edit ${option}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {onDeleteOption && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onPointerDown={stopOptionAction}
-                      onClick={(event) => handleDeleteOption(event, option)}
-                      aria-label={`Delete ${option}`}
-                      title={`Delete ${option}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+          {options.map((option) => {
+            const isEditable = canManageOptions && (isOptionEditable?.(option) ?? true);
+
+            return (
+              <div key={option} className="relative">
+                <SelectItem value={option} className={isEditable ? 'pr-20' : undefined}>
+                  <span className="block truncate">{option}</span>
+                </SelectItem>
+                {isEditable && (
+                  <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+                    {onEditOption && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onPointerDown={stopOptionAction}
+                        onClick={(event) => handleStartEditing(event, option)}
+                        aria-label={`Edit ${option}`}
+                        title={`Edit ${option}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {onDeleteOption && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onPointerDown={stopOptionAction}
+                        onClick={(event) => handleDeleteOption(event, option)}
+                        aria-label={`Delete ${option}`}
+                        title={`Delete ${option}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {options.length > 0 && <SelectSeparator />}
           <SelectItem value={CREATE_OPTION_VALUE}>{addLabel}</SelectItem>
         </SelectContent>
@@ -249,7 +249,12 @@ export function CreatableSelect({
             placeholder={inputPlaceholder}
             aria-label={`Edit ${editingOption} name`}
           />
-          <Button type="button" size="sm" onClick={handleSaveEdit} disabled={!editInputValue.trim()}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSaveEdit}
+            disabled={!editInputValue.trim()}
+          >
             Save
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={handleCancelEditing}>

@@ -94,7 +94,7 @@ export const PositionRow = React.memo(function PositionRow({
           <div className="flex min-w-0 items-center gap-1.5">
             <p className="truncate text-sm font-medium">{position.asset.symbol}</p>
             {showUnitTrustBadge && isUnitTrust && (
-              <span className="shrink-0 rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
+              <span className="shrink-0 rounded-sm border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-warning">
                 Unit Trust
               </span>
             )}
@@ -141,17 +141,19 @@ export const PositionRow = React.memo(function PositionRow({
           <p className="text-xs">{formatPercent(position.unrealizedPnLPct)}</p>
         </div>
       </TableCell>
-      <TableCell className={`text-right ${HIDDEN_MOBILE}`}>
-        <div className="truncate">
+      <TableCell className={`text-left ${HIDDEN_MOBILE}`}>
+        <div className="min-w-0">
           {position.storageType === 'BROKERAGE' ? (
-            <p className="text-sm truncate">{position.storageLocation || 'Broker account'}</p>
+            <p className="max-w-[9rem] whitespace-normal break-words text-sm leading-snug">
+              {position.storageLocation || 'Broker account'}
+            </p>
           ) : (
             <>
-              <p className="text-sm">
+              <p className="max-w-[9rem] whitespace-normal break-words text-sm leading-snug">
                 {STORAGE_TYPE_LABELS[position.storageType] || position.storageType}
               </p>
               {position.storageLocation && (
-                <p className="text-xs text-muted-foreground italic truncate">
+                <p className="mt-0.5 max-w-[9rem] whitespace-normal break-words text-xs italic leading-snug text-muted-foreground">
                   {position.storageLocation}
                 </p>
               )}
