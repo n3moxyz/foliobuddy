@@ -6,7 +6,15 @@ export const BANK_LOCATIONS = ['DBS', 'Trust+', 'SCB', 'UOB', 'Citi'];
 export const CUSTOM_LOCATION_OPTIONS_KEY = 'foliobuddy-storage-location-options';
 
 type LocationStorageBucket = 'CEX' | 'WALLET' | 'BROKERAGE' | 'BANK';
-type StoredLocationOptions = Partial<Record<LocationStorageBucket, string[]>>;
+type StoredLocationOptions = Partial<Record<LocationStorageBucket, string[]>> & {
+  __managedBuckets?: LocationStorageBucket[];
+};
+type StoredLocationOptionsState = {
+  options: Partial<Record<LocationStorageBucket, string[]>>;
+  managedBuckets: LocationStorageBucket[];
+};
+
+const LOCATION_STORAGE_BUCKETS: LocationStorageBucket[] = ['CEX', 'WALLET', 'BROKERAGE', 'BANK'];
 
 export const CRYPTO_STORAGE_TYPES = [
   { value: 'CEX', label: 'CEX' },
@@ -54,35 +62,86 @@ function mergeLocationOptions(...groups: string[][]): string[] {
   return options;
 }
 
-function readStoredLocationOptions(): StoredLocationOptions {
-  if (typeof localStorage === 'undefined') return {};
+function isLocationStorageBucket(value: unknown): value is LocationStorageBucket {
+  return (
+    typeof value === 'string' &&
+    LOCATION_STORAGE_BUCKETS.includes(value as LocationStorageBucket)
+  );
+}
+
+function readStoredLocationOptions(): StoredLocationOptionsState {
+  const emptyState: StoredLocationOptionsState = { options: {}, managedBuckets: [] };
+  if (typeof localStorage === 'undefined') return emptyState;
 
   try {
     const stored = localStorage.getItem(CUSTOM_LOCATION_OPTIONS_KEY);
-    if (!stored) return {};
+    if (!stored) return emptyState;
 
     const parsed = JSON.parse(stored) as StoredLocationOptions;
+    const options: StoredLocationOptionsState['options'] = {};
+    LOCATION_STORAGE_BUCKETS.forEach((bucket) => {
+      if (Array.isArray(parsed[bucket])) {
+        options[bucket] = mergeLocationOptions(parsed[bucket] ?? []);
+      }
+    });
+
     return {
-      CEX: Array.isArray(parsed.CEX) ? mergeLocationOptions(parsed.CEX) : undefined,
-      WALLET: Array.isArray(parsed.WALLET) ? mergeLocationOptions(parsed.WALLET) : undefined,
-      BROKERAGE: Array.isArray(parsed.BROKERAGE)
-        ? mergeLocationOptions(parsed.BROKERAGE)
-        : undefined,
-      BANK: Array.isArray(parsed.BANK) ? mergeLocationOptions(parsed.BANK) : undefined,
+      options,
+      managedBuckets: Array.isArray(parsed.__managedBuckets)
+        ? parsed.__managedBuckets.filter(isLocationStorageBucket)
+        : [],
     };
   } catch {
-    return {};
+    return emptyState;
   }
 }
 
-function writeStoredLocationOptions(options: StoredLocationOptions) {
+function writeStoredLocationOptions(state: StoredLocationOptionsState) {
   if (typeof localStorage === 'undefined') return;
 
   try {
-    localStorage.setItem(CUSTOM_LOCATION_OPTIONS_KEY, JSON.stringify(options));
+    const payload: StoredLocationOptions = {};
+
+    LOCATION_STORAGE_BUCKETS.forEach((bucket) => {
+      const options = mergeLocationOptions(state.options[bucket] ?? []);
+      if (options.length > 0) {
+        payload[bucket] = options;
+      }
+    });
+
+    const managedBuckets = state.managedBuckets.filter(isLocationStorageBucket);
+    if (managedBuckets.length > 0) {
+      payload.__managedBuckets = managedBuckets;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      localStorage.removeItem(CUSTOM_LOCATION_OPTIONS_KEY);
+      return;
+    }
+
+    localStorage.setItem(CUSTOM_LOCATION_OPTIONS_KEY, JSON.stringify(payload));
   } catch {
     // localStorage may be unavailable in privacy-restricted browser contexts.
   }
+}
+
+function isManagedBucket(state: StoredLocationOptionsState, bucket: LocationStorageBucket): boolean {
+  return state.managedBuckets.includes(bucket);
+}
+
+function writeManagedBucketOptions(bucket: LocationStorageBucket, options: string[]) {
+  const storedOptions = readStoredLocationOptions();
+  const managedBuckets = isManagedBucket(storedOptions, bucket)
+    ? storedOptions.managedBuckets
+    : [...storedOptions.managedBuckets, bucket];
+
+  writeStoredLocationOptions({
+    options: {
+      ...storedOptions.options,
+      [bucket]: mergeLocationOptions(options),
+    },
+    managedBuckets,
+  });
 }
 
 export function locationOptionsForStorageType(
@@ -90,9 +149,14 @@ export function locationOptionsForStorageType(
   extraOptions: string[] = []
 ): string[] {
   const bucket = bucketForStorageType(storageType);
-  const customOptions = readStoredLocationOptions()[bucket] ?? [];
+  const storedOptions = readStoredLocationOptions();
+  const bucketOptions = storedOptions.options[bucket] ?? [];
 
-  return mergeLocationOptions(defaultLocationsForBucket(bucket), customOptions, extraOptions);
+  if (isManagedBucket(storedOptions, bucket)) {
+    return mergeLocationOptions(bucketOptions, extraOptions);
+  }
+
+  return mergeLocationOptions(defaultLocationsForBucket(bucket), bucketOptions, extraOptions);
 }
 
 export function saveLocationOptionForStorageType(
@@ -109,16 +173,71 @@ export function saveLocationOptionForStorageType(
 
   const bucket = bucketForStorageType(storageType);
   const storedOptions = readStoredLocationOptions();
-  const nextOptions = mergeLocationOptions(storedOptions[bucket] ?? [], [option]).sort((a, b) =>
-    a.localeCompare(b)
-  );
+  const nextOptions = isManagedBucket(storedOptions, bucket)
+    ? mergeLocationOptions(storedOptions.options[bucket] ?? [], [option])
+    : mergeLocationOptions(storedOptions.options[bucket] ?? [], [option]).sort((a, b) =>
+        a.localeCompare(b)
+      );
 
   writeStoredLocationOptions({
     ...storedOptions,
-    [bucket]: nextOptions,
+    options: {
+      ...storedOptions.options,
+      [bucket]: nextOptions,
+    },
   });
 
   return option;
+}
+
+export function renameLocationOptionForStorageType(
+  storageType: string | null | undefined,
+  currentValue: string,
+  nextValue: string
+): string | null {
+  const currentOption = normalizeLocationOption(currentValue);
+  const nextOption = normalizeLocationOption(nextValue);
+  if (!currentOption || !nextOption) return null;
+
+  const bucket = bucketForStorageType(storageType);
+  const currentOptions = locationOptionsForStorageType(storageType);
+  const currentKey = currentOption.toLocaleLowerCase();
+
+  if (!currentOptions.some((option) => option.toLocaleLowerCase() === currentKey)) {
+    return null;
+  }
+
+  const nextOptions = mergeLocationOptions(
+    currentOptions.map((option) =>
+      option.toLocaleLowerCase() === currentKey ? nextOption : option
+    )
+  );
+  writeManagedBucketOptions(bucket, nextOptions);
+
+  return (
+    nextOptions.find((option) => option.toLocaleLowerCase() === nextOption.toLocaleLowerCase()) ??
+    nextOption
+  );
+}
+
+export function deleteLocationOptionForStorageType(
+  storageType: string | null | undefined,
+  value: string
+): boolean {
+  const option = normalizeLocationOption(value);
+  if (!option) return false;
+
+  const bucket = bucketForStorageType(storageType);
+  const optionKey = option.toLocaleLowerCase();
+  const currentOptions = locationOptionsForStorageType(storageType);
+  const nextOptions = currentOptions.filter(
+    (currentOption) => currentOption.toLocaleLowerCase() !== optionKey
+  );
+
+  if (nextOptions.length === currentOptions.length) return false;
+
+  writeManagedBucketOptions(bucket, nextOptions);
+  return true;
 }
 
 export function locationLabelForStorageType(storageType: string | null | undefined): string {

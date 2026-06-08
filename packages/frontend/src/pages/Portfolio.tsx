@@ -8,6 +8,7 @@ import {
   getPnLColorClass,
   isMarketExposureCategory,
   isStablecoinCategory,
+  cn,
 } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PositionTable } from '@/components/portfolio/PositionTable';
@@ -59,6 +60,8 @@ const PERP_EXPOSURE_INPUT_ID = 'perp-exposure-input';
 const PORTFOLIO_SUMMARY_SKELETON_KEYS = ['total', 'exposure', 'positions', 'pnl', 'cash'] as const;
 const PORTFOLIO_SECTION_SKELETON_KEYS = ['primary', 'secondary'] as const;
 const PORTFOLIO_ROW_SKELETON_KEYS = ['first', 'second', 'third'] as const;
+const EQUITY_GROUP_BY_KEY = 'foliobuddy-equity-group-by';
+type EquityGroupBy = 'broker' | 'equityType';
 
 interface SectionConfig {
   id: string;
@@ -96,6 +99,22 @@ const SECTION_CONFIG: SectionConfig[] = [
   },
 ];
 
+function loadEquityGroupBy(): EquityGroupBy {
+  try {
+    return localStorage.getItem(EQUITY_GROUP_BY_KEY) === 'equityType' ? 'equityType' : 'broker';
+  } catch {
+    return 'broker';
+  }
+}
+
+function saveEquityGroupBy(value: EquityGroupBy) {
+  try {
+    localStorage.setItem(EQUITY_GROUP_BY_KEY, value);
+  } catch {
+    // localStorage may be unavailable in privacy-restricted browser contexts.
+  }
+}
+
 export default function Portfolio() {
   const { currency } = useCurrencyStore();
   const { data: positions, isLoading: positionsLoading } = usePositions();
@@ -105,6 +124,7 @@ export default function Portfolio() {
   const [navAsset, setNavAsset] = useState<Position['asset'] | null>(null);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [equityGroupBy, setEquityGroupBy] = useState<EquityGroupBy>(loadEquityGroupBy);
 
   // Perp exposure state (migrates from legacy key on first load)
   const [perpExposure, setPerpExposure] = useState(() => {
@@ -152,6 +172,42 @@ export default function Portfolio() {
       setEditingPerp(false);
     }
   };
+
+  const handleEquityGroupByChange = (value: EquityGroupBy) => {
+    setEquityGroupBy(value);
+    saveEquityGroupBy(value);
+  };
+
+  const renderEquityGroupToggle = () => (
+    <div
+      className="inline-flex min-h-11 shrink-0 items-center rounded-md border bg-background p-0.5 sm:min-h-9"
+      role="group"
+      aria-label="Equities grouping"
+    >
+      {[
+        { value: 'broker' as const, label: 'By Broker' },
+        { value: 'equityType' as const, label: 'By Type' },
+      ].map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={equityGroupBy === option.value}
+          onClick={(event) => {
+            event.stopPropagation();
+            handleEquityGroupByChange(option.value);
+          }}
+          className={cn(
+            'min-h-10 rounded-sm px-3 text-xs font-medium transition-colors touch-manipulation sm:min-h-8',
+            equityGroupBy === option.value
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
 
   const { isExpanded, toggle } = useCollapsibleState();
 
@@ -464,6 +520,7 @@ export default function Portfolio() {
                     {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
                   </Button>
                 )}
+                {section.id === 'equities' && renderEquityGroupToggle()}
                 <span className="text-sm font-semibold text-muted-foreground">
                   {formatCurrency(convertValue(section.total), currency, 0)}
                 </span>
@@ -490,7 +547,7 @@ export default function Portfolio() {
               currency={currency}
               fxRate={fxRate}
               sectionPrefix={section.id}
-              groupBy={section.id === 'equities' ? 'equityType' : 'storage'}
+              groupBy={section.id === 'equities' ? equityGroupBy : 'storage'}
               onUpdateNav={section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined}
             />
           </CollapsibleCard>

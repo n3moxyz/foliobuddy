@@ -33,6 +33,7 @@ interface PositionRowProps {
   onDelete: (position: Position) => void;
   onCopy: (position: Position, e: React.MouseEvent) => void;
   onUpdateNav?: (position: Position) => void;
+  showUnitTrustBadge?: boolean;
 }
 
 export const PositionRow = React.memo(function PositionRow({
@@ -46,6 +47,7 @@ export const PositionRow = React.memo(function PositionRow({
   onDelete,
   onCopy,
   onUpdateNav,
+  showUnitTrustBadge = false,
 }: PositionRowProps) {
   // Helper to convert USD values to selected currency
   const convert = (usdValue: number | null | undefined) => {
@@ -89,7 +91,14 @@ export const PositionRow = React.memo(function PositionRow({
     >
       <TableCell>
         <div className="truncate">
-          <p className="font-medium text-sm">{position.asset.symbol}</p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="truncate text-sm font-medium">{position.asset.symbol}</p>
+            {showUnitTrustBadge && isUnitTrust && (
+              <span className="shrink-0 rounded-sm border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
+                Unit Trust
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground truncate">{assetNameLabel}</p>
           {ageInfo && (
             <p

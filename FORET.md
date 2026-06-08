@@ -1978,6 +1978,14 @@ Recently completed:
 - [x] **Impeccable context migration documented:**
   - Current impeccable reads `PRODUCT.md` for strategic context and optional `DESIGN.md` for visual-system details. The older `.impeccable.md` file was a legacy format, not a separate Claude-only source of truth.
   - AGENTS/CLAUDE now say not to recreate or maintain both files. If an old tool asks for `.impeccable.md`, point it at `PRODUCT.md` or update that tool; symlinks add Windows/Git friction without much benefit here.
+- [x] **Editable storage location menus:**
+  - Broker, exchange, wallet, and bank dropdowns now show row-level pencil/trash controls next to saved options, so defaults like FSMOne, Tiger, UOB Kay Hian, and Binance can be renamed or removed from the menu without touching existing positions.
+  - `positionOptions.ts` now distinguishes old custom-only localStorage arrays from managed buckets via `__managedBuckets`. That means legacy "I added Kraken" storage still merges with defaults, but once a default is edited/deleted, the saved bucket list becomes authoritative and the removed default stays removed.
+  - Lesson: defaults are not the same as user preferences. The moment a user edits a default list, store their full chosen list, not just a diff that the app might accidentally merge back into existence later.
+- [x] **Equities grouped by broker:**
+  - The Equities card now defaults to grouping positions by broker/fund platform, with a persisted `By Broker` / `By Type` header toggle for switching back to the Stock/ETF vs Unit Trust split.
+  - Unit trusts stay inside their broker group and carry a small `Unit Trust` badge, so the broker view answers "what do I hold at each place?" without hiding the fund type.
+  - Lesson: when a table has dynamic group counts, do not call sorting hooks inside a loop. Use one shared sort state for the grouped view, then regroup the sorted rows by stable broker keys.
 
 ---
 

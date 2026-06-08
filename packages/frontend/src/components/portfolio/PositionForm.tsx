@@ -41,8 +41,10 @@ import type { ParsedStatementHolding } from '@/lib/types';
 import {
   CRYPTO_STORAGE_TYPES,
   FIAT_CASH_STORAGE_TYPES,
+  deleteLocationOptionForStorageType,
   locationLabelForStorageType,
   locationOptionsForStorageType,
+  renameLocationOptionForStorageType,
   saveLocationOptionForStorageType,
 } from './positionOptions';
 
@@ -799,6 +801,27 @@ export function PositionForm({
   const handleCancelStorageLocation = () => {
     setAddingStorageLocation(false);
     setNewStorageLocation('');
+  };
+
+  const handleEditStorageLocation = (currentValue: string, nextValue: string) => {
+    const option = renameLocationOptionForStorageType(storageType, currentValue, nextValue);
+    if (!option) return null;
+
+    setStorageLocationOptionsVersion((version) => version + 1);
+    return option;
+  };
+
+  const handleDeleteStorageLocation = (value: string) => {
+    const deleted = deleteLocationOptionForStorageType(storageType, value);
+    if (!deleted) return false;
+
+    setStorageLocationOptionsVersion((version) => version + 1);
+    return true;
+  };
+
+  const handleClearStorageLocation = () => {
+    setStorageLocation('');
+    handleCancelStorageLocation();
   };
 
   const handleCustodySave = () => {
@@ -1898,6 +1921,9 @@ export function PositionForm({
                     onInputChange={setNewStorageLocation}
                     onAdd={handleAddStorageLocation}
                     onCancel={handleCancelStorageLocation}
+                    onEditOption={handleEditStorageLocation}
+                    onDeleteOption={handleDeleteStorageLocation}
+                    onClearValue={handleClearStorageLocation}
                   />
                 ) : (
                   <Select
@@ -1943,6 +1969,9 @@ export function PositionForm({
                     onInputChange={setNewStorageLocation}
                     onAdd={handleAddStorageLocation}
                     onCancel={handleCancelStorageLocation}
+                    onEditOption={handleEditStorageLocation}
+                    onDeleteOption={handleDeleteStorageLocation}
+                    onClearValue={handleClearStorageLocation}
                   />
                 </div>
               )}

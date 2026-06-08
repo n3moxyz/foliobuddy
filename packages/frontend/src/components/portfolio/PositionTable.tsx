@@ -39,6 +39,19 @@ import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboa
 
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
+type PositionGroupBy = 'storage' | 'equityType' | 'broker';
+
+interface BrokerGroupMeta {
+  id: string;
+  key: string;
+  label: string;
+  count: number;
+  total: number;
+}
+
+interface BrokerGroup extends BrokerGroupMeta {
+  positions: Position[];
+}
 
 interface PositionTableProps {
   positions: Position[];
@@ -50,8 +63,9 @@ interface PositionTableProps {
    * How to sub-group rows inside the card:
    * - 'storage' (default): CEX / Broker account / Bank / Onchain — used for crypto/cash/custody
    * - 'equityType': Single / Fund-level (by asset.category) — used for Equities
+   * - 'broker': individual broker/fund platform names — used for Equities
    */
-  groupBy?: 'storage' | 'equityType';
+  groupBy?: PositionGroupBy;
 }
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
@@ -72,6 +86,30 @@ const POSITION_COLUMNS: Record<string, ColumnConfig<Position>> = {
   pnl: { accessor: (p) => p.unrealizedPnL, type: 'number' },
   storage: { accessor: (p) => `${p.storageType}-${p.storageLocation || ''}`, type: 'string' },
 };
+
+function sortPositionsByMarketValue(a: Position, b: Position) {
+  return (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
+}
+
+function brokerLabelForPosition(position: Position): string {
+  const location = position.storageLocation?.trim();
+  if (location) return location;
+  if (position.storageType === 'BROKERAGE') return 'Broker account';
+  return STORAGE_TYPE_LABELS[position.storageType] || position.storageType || 'Storage';
+}
+
+function brokerKeyForPosition(position: Position): string {
+  return brokerLabelForPosition(position).toLocaleLowerCase();
+}
+
+function slugifySectionLabel(label: string) {
+  return (
+    label
+      .toLocaleLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'storage'
+  );
+}
 
 export function PositionTable({
   positions,
@@ -148,16 +186,16 @@ export function PositionTable({
       }
     });
 
-    cex.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
-    brokerage.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
-    bank.sort((a, b) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0));
+    cex.sort(sortPositionsByMarketValue);
+    brokerage.sort(sortPositionsByMarketValue);
+    bank.sort(sortPositionsByMarketValue);
 
     // Ledger positions sort to the top; ties break by market value
     onchain.sort((a, b) => {
       const aIsLedger = a.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
       const bIsLedger = b.storageLocation?.toLowerCase().includes('ledger') ? 1 : 0;
       if (aIsLedger !== bIsLedger) return bIsLedger - aIsLedger;
-      return (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
+      return sortPositionsByMarketValue(a, b);
     });
 
     return {
@@ -189,9 +227,8 @@ export function PositionTable({
       if (pos.asset.category === 'UNIT_TRUST') fund.push(pos);
       else single.push(pos);
     });
-    const byMv = (a: Position, b: Position) => (b.marketValueUsd ?? 0) - (a.marketValueUsd ?? 0);
-    single.sort(byMv);
-    fund.sort(byMv);
+    single.sort(sortPositionsByMarketValue);
+    fund.sort(sortPositionsByMarketValue);
     return {
       defaultSingle: single,
       defaultFund: fund,
@@ -204,6 +241,64 @@ export function PositionTable({
   const fundSort = useTableSort(defaultFund, POSITION_COLUMNS);
   const singlePositions = singleSort.sortedItems;
   const fundPositions = fundSort.sortedItems;
+
+  const { defaultBrokerPositions, brokerGroupMeta } = useMemo(() => {
+    const groupsByKey = new Map<
+      string,
+      { key: string; label: string; positions: Position[]; total: number }
+    >();
+
+    positions.forEach((position) => {
+      const key = brokerKeyForPosition(position);
+      const existingGroup = groupsByKey.get(key);
+      if (existingGroup) {
+        existingGroup.positions.push(position);
+        existingGroup.total += position.marketValueUsd || 0;
+        return;
+      }
+
+      groupsByKey.set(key, {
+        key,
+        label: brokerLabelForPosition(position),
+        positions: [position],
+        total: position.marketValueUsd || 0,
+      });
+    });
+
+    const groups = Array.from(groupsByKey.values()).sort((a, b) => {
+      const totalComparison = b.total - a.total;
+      if (totalComparison !== 0) return totalComparison;
+      return a.label.localeCompare(b.label);
+    });
+
+    groups.forEach((group) => group.positions.sort(sortPositionsByMarketValue));
+
+    return {
+      defaultBrokerPositions: groups.flatMap((group) => group.positions),
+      brokerGroupMeta: groups.map((group) => ({
+        id: `${sectionPrefix ? `${sectionPrefix}-` : ''}broker-${slugifySectionLabel(group.label)}`,
+        key: group.key,
+        label: group.label,
+        count: group.positions.length,
+        total: group.total,
+      })),
+    };
+  }, [positions, sectionPrefix]);
+
+  const brokerSort = useTableSort(defaultBrokerPositions, POSITION_COLUMNS);
+  const brokerGroups = useMemo(() => {
+    const groupsByKey = new Map<string, BrokerGroup>(
+      brokerGroupMeta.map((group) => [group.key, { ...group, positions: [] }])
+    );
+
+    brokerSort.sortedItems.forEach((position) => {
+      groupsByKey.get(brokerKeyForPosition(position))?.positions.push(position);
+    });
+
+    return brokerGroupMeta
+      .map((group) => groupsByKey.get(group.key))
+      .filter((group): group is BrokerGroup => !!group && group.positions.length > 0);
+  }, [brokerGroupMeta, brokerSort.sortedItems]);
 
   const convertSub = (usdValue: number) => {
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
@@ -243,7 +338,10 @@ export function PositionTable({
   const handleView = useCallback((position: Position) => setViewPosition(position), []);
   const handleEdit = useCallback((position: Position) => setEditPosition(position), []);
 
-  const renderPositionRow = (position: Position) => {
+  const renderPositionRow = (
+    position: Position,
+    options: { showUnitTrustBadge?: boolean } = {}
+  ) => {
     return (
       <PositionRow
         key={position.id}
@@ -257,6 +355,7 @@ export function PositionTable({
         onDelete={handleDeleteClick}
         onCopy={handleCopy}
         onUpdateNav={onUpdateNav}
+        showUnitTrustBadge={options.showUnitTrustBadge}
       />
     );
   };
@@ -366,6 +465,44 @@ export function PositionTable({
     </div>
   );
 
+  const renderPositionSection = ({
+    id,
+    label,
+    helpContent,
+    positions: sectionPositions,
+    total,
+    sortState,
+    showUnitTrustBadge = false,
+  }: {
+    id: string;
+    label: string;
+    helpContent: string;
+    positions: Position[];
+    total: number;
+    sortState: {
+      sortKey: string | null;
+      sortDirection: SortDirection;
+      onSort: (key: string) => void;
+    };
+    showUnitTrustBadge?: boolean;
+  }) => (
+    <Collapsible key={id} open={isExpanded(id)} onOpenChange={() => toggle(id)}>
+      {renderSectionTrigger(id, label, helpContent, sectionPositions.length, total)}
+      <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
+        <div className="rounded-md border overflow-x-auto">
+          <Table className={tableClass}>
+            {renderTableHeader(sortState)}
+            <TableBody>
+              {sectionPositions.map((position) =>
+                renderPositionRow(position, { showUnitTrustBadge })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+
   return (
     <>
       <div className="space-y-4">
@@ -388,125 +525,85 @@ export function PositionTable({
           </Button>
         </div>
 
-        {cexPositions.length > 0 && (
-          <Collapsible open={isExpanded(cexId)} onOpenChange={() => toggle(cexId)}>
-            {renderSectionTrigger(
-              cexId,
-              'CEX',
-              'Centralized exchange: assets held on platforms like Binance or Coinbase',
-              cexPositions.length,
-              cexTotal
-            )}
-            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-              <div className="rounded-md border overflow-x-auto">
-                <Table className={tableClass}>
-                  {renderTableHeader(cexSort)}
-                  <TableBody>{cexPositions.map(renderPositionRow)}</TableBody>
-                </Table>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+        {groupBy === 'storage' &&
+          cexPositions.length > 0 &&
+          renderPositionSection({
+            id: cexId,
+            label: 'CEX',
+            helpContent: 'Centralized exchange: assets held on platforms like Binance or Coinbase',
+            positions: cexPositions,
+            total: cexTotal,
+            sortState: cexSort,
+          })}
 
-        {groupBy !== 'equityType' && brokeragePositions.length > 0 && (
-          <Collapsible open={isExpanded(brokerageId)} onOpenChange={() => toggle(brokerageId)}>
-            {renderSectionTrigger(
-              brokerageId,
-              'Broker account',
-              'Assets held in broker accounts or fund platforms',
-              brokeragePositions.length,
-              brokerageTotal
-            )}
-            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-              <div className="rounded-md border overflow-x-auto">
-                <Table className={tableClass}>
-                  {renderTableHeader(brokerageSort)}
-                  <TableBody>{brokeragePositions.map(renderPositionRow)}</TableBody>
-                </Table>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+        {groupBy === 'storage' &&
+          brokeragePositions.length > 0 &&
+          renderPositionSection({
+            id: brokerageId,
+            label: 'Broker account',
+            helpContent: 'Assets held in broker accounts or fund platforms',
+            positions: brokeragePositions,
+            total: brokerageTotal,
+            sortState: brokerageSort,
+          })}
 
-        {groupBy !== 'equityType' && bankPositions.length > 0 && (
-          <Collapsible open={isExpanded(bankId)} onOpenChange={() => toggle(bankId)}>
-            {renderSectionTrigger(
-              bankId,
-              'Bank',
-              'Cash held directly in bank accounts',
-              bankPositions.length,
-              bankTotal
-            )}
-            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-              <div className="rounded-md border overflow-x-auto">
-                <Table className={tableClass}>
-                  {renderTableHeader(bankSort)}
-                  <TableBody>{bankPositions.map(renderPositionRow)}</TableBody>
-                </Table>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+        {groupBy === 'storage' &&
+          bankPositions.length > 0 &&
+          renderPositionSection({
+            id: bankId,
+            label: 'Bank',
+            helpContent: 'Cash held directly in bank accounts',
+            positions: bankPositions,
+            total: bankTotal,
+            sortState: bankSort,
+          })}
 
-        {groupBy === 'equityType' && singlePositions.length > 0 && (
-          <Collapsible open={isExpanded(singleId)} onOpenChange={() => toggle(singleId)}>
-            {renderSectionTrigger(
-              singleId,
-              'Stock / ETF',
-              'Stocks and ETFs (e.g. AAPL, D05.SI, EWY) priced live via Yahoo Finance',
-              singlePositions.length,
-              singleTotal
-            )}
-            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-              <div className="rounded-md border overflow-x-auto">
-                <Table className={tableClass}>
-                  {renderTableHeader(singleSort)}
-                  <TableBody>{singlePositions.map(renderPositionRow)}</TableBody>
-                </Table>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+        {groupBy === 'equityType' &&
+          singlePositions.length > 0 &&
+          renderPositionSection({
+            id: singleId,
+            label: 'Stock / ETF',
+            helpContent: 'Stocks and ETFs (e.g. AAPL, D05.SI, EWY) priced live via Yahoo Finance',
+            positions: singlePositions,
+            total: singleTotal,
+            sortState: singleSort,
+          })}
 
-        {groupBy === 'equityType' && fundPositions.length > 0 && (
-          <Collapsible open={isExpanded(fundId)} onOpenChange={() => toggle(fundId)}>
-            {renderSectionTrigger(
-              fundId,
-              'Unit Trust',
+        {groupBy === 'equityType' &&
+          fundPositions.length > 0 &&
+          renderPositionSection({
+            id: fundId,
+            label: 'Unit Trust',
+            helpContent:
               'Unit trusts and managed funds: NAV tracked per fund, often from broker statements',
-              fundPositions.length,
-              fundTotal
-            )}
-            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-              <div className="rounded-md border overflow-x-auto">
-                <Table className={tableClass}>
-                  {renderTableHeader(fundSort)}
-                  <TableBody>{fundPositions.map(renderPositionRow)}</TableBody>
-                </Table>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+            positions: fundPositions,
+            total: fundTotal,
+            sortState: fundSort,
+          })}
 
-        {onchainPositions.length > 0 && (
-          <Collapsible open={isExpanded(onchainId)} onOpenChange={() => toggle(onchainId)}>
-            {renderSectionTrigger(
-              onchainId,
-              'Onchain',
-              'Assets in your own wallets (not on an exchange)',
-              onchainPositions.length,
-              onchainTotal
-            )}
-            <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-              <div className="rounded-md border overflow-x-auto">
-                <Table className={tableClass}>
-                  {renderTableHeader(onchainSort)}
-                  <TableBody>{onchainPositions.map(renderPositionRow)}</TableBody>
-                </Table>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+        {groupBy === 'broker' &&
+          brokerGroups.map((brokerGroup) =>
+            renderPositionSection({
+              id: brokerGroup.id,
+              label: brokerGroup.label,
+              helpContent: 'Positions held at this broker or fund platform',
+              positions: brokerGroup.positions,
+              total: brokerGroup.total,
+              sortState: brokerSort,
+              showUnitTrustBadge: true,
+            })
+          )}
+
+        {groupBy === 'storage' &&
+          onchainPositions.length > 0 &&
+          renderPositionSection({
+            id: onchainId,
+            label: 'Onchain',
+            helpContent: 'Assets in your own wallets (not on an exchange)',
+            positions: onchainPositions,
+            total: onchainTotal,
+            sortState: onchainSort,
+          })}
 
         {positions.length === 0 && (
           <div className="rounded-md border overflow-hidden">

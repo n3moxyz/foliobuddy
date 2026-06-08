@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   CUSTOM_LOCATION_OPTIONS_KEY,
+  deleteLocationOptionForStorageType,
   locationOptionsForStorageType,
+  renameLocationOptionForStorageType,
   saveLocationOptionForStorageType,
 } from '../positionOptions';
 
@@ -37,5 +39,43 @@ describe('position storage location options', () => {
       'Interactive Brokers'
     );
     expect(localStorage.getItem(CUSTOM_LOCATION_OPTIONS_KEY)).toBeNull();
+  });
+
+  it('persists edits to default options as the managed bucket list', () => {
+    expect(renameLocationOptionForStorageType('BROKERAGE', 'Tiger', 'IBKR')).toBe('IBKR');
+
+    expect(locationOptionsForStorageType('BROKERAGE')).toEqual([
+      'FSMOne',
+      'IBKR',
+      'UOB Kay Hian',
+    ]);
+
+    const stored = JSON.parse(localStorage.getItem(CUSTOM_LOCATION_OPTIONS_KEY) ?? '{}');
+    expect(stored.BROKERAGE).toEqual(['FSMOne', 'IBKR', 'UOB Kay Hian']);
+    expect(stored.__managedBuckets).toEqual(['BROKERAGE']);
+  });
+
+  it('persists deletes to default options as the managed bucket list', () => {
+    expect(deleteLocationOptionForStorageType('CEX', 'Binance')).toBe(true);
+
+    expect(locationOptionsForStorageType('CEX')).toEqual(['Bybit', 'Coinbase']);
+
+    const stored = JSON.parse(localStorage.getItem(CUSTOM_LOCATION_OPTIONS_KEY) ?? '{}');
+    expect(stored.CEX).toEqual(['Bybit', 'Coinbase']);
+    expect(stored.__managedBuckets).toEqual(['CEX']);
+  });
+
+  it('keeps legacy custom-only lists merged with defaults until a bucket is managed', () => {
+    localStorage.setItem(CUSTOM_LOCATION_OPTIONS_KEY, JSON.stringify({ CEX: ['Kraken'] }));
+
+    expect(locationOptionsForStorageType('CEX')).toEqual([
+      'Binance',
+      'Bybit',
+      'Coinbase',
+      'Kraken',
+    ]);
+
+    expect(deleteLocationOptionForStorageType('CEX', 'Bybit')).toBe(true);
+    expect(locationOptionsForStorageType('CEX')).toEqual(['Binance', 'Coinbase', 'Kraken']);
   });
 });
