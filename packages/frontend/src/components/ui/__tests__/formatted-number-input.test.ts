@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatNumberInputValue, sanitizeNumberInput } from '../formatted-number-input';
+import { formatNumberInputValue, sanitizeNumberInput } from '../formatted-number-input-utils';
 
 describe('formatted number input helpers', () => {
   it('adds thousands separators while preserving decimals', () => {

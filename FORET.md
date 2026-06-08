@@ -1985,6 +1985,11 @@ Recently completed:
   - Shared Radix `SelectContent` now lets the popper viewport size to option content and sit above dialog layers, fixing dropdown menus that looked open but were visually clipped behind the next form fields.
   - `positionOptions.ts` now ignores the old `__managedBuckets` flag and treats localStorage as custom-only again, so defaults always merge back in while user-added entries remain manageable.
   - Lesson: if a list contains product defaults and user customizations, keep those concepts separate in storage and UI. Otherwise a convenience edit affordance can accidentally make the product's vocabulary mutable.
+- [x] **No-mistakes baseline cleanup:**
+  - Demo mode still installs the browser fetch mock before rendering child routes, but the readiness flag now flips on a short timer after installation. That keeps React Query from racing the mock while satisfying the `set-state-in-effect` lint rule.
+  - `FormattedNumberInput` moved its pure sanitize/format helpers into `formatted-number-input-utils.ts`, so the component file only exports the component and Fast Refresh stops complaining.
+  - `@foliobuddy/shared` now has a lightweight `build` script (`tsc --noEmit`), so the root workspace build no longer fails on the source-only shared package after backend/frontend have already built.
+  - Repo-wide Prettier was applied as a separate hygiene sweep, and `scripts:check` now uses a portable Node wrapper that still runs `bash -n` when Bash exists but skips cleanly on Windows without a WSL distro. Lesson: formatting debt is harmless until a gate asks the whole repo to be clean, then suddenly it becomes everybody's chore.
 - [x] **Equities grouped by broker:**
   - The Equities card now defaults to grouping positions by broker/fund platform, with a persisted `By Broker` / `By Type` header toggle for switching back to the Stock/ETF vs Unit Trust split.
   - Unit trusts stay inside their broker group and carry a small `Unit Trust` badge, so the broker view answers "what do I hold at each place?" without hiding the fund type.

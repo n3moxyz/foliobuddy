@@ -1176,7 +1176,10 @@ function createImportedPosition(position: BulkImportPosition) {
   });
 }
 
-function benchmarkHistory(id: string, provider: 'coingecko' | 'yahoo' = 'coingecko'): BenchmarkHistoricalData {
+function benchmarkHistory(
+  id: string,
+  provider: 'coingecko' | 'yahoo' = 'coingecko'
+): BenchmarkHistoricalData {
   const normalizedId = id.toUpperCase();
   const starts: Record<string, number> = {
     bitcoin: 72100,
@@ -1603,8 +1606,12 @@ function DemoPages() {
   });
   useLayoutEffect(() => {
     const cleanup = installDemoApiMock();
-    setApiMockReady(true);
-    return cleanup ?? undefined;
+    const readyTimer = window.setTimeout(() => setApiMockReady(true), 0);
+
+    return () => {
+      window.clearTimeout(readyTimer);
+      cleanup?.();
+    };
   }, []);
 
   if (!apiMockReady) {

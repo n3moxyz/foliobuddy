@@ -64,6 +64,7 @@
 - `src/components/ui/HelpTooltip.tsx` - Contextual ? icon tooltip for domain-specific terms
 - `src/components/ui/creatable-select.tsx` - Reusable Radix Select wrapper with a "+ Add new ..." row and inline add controls
 - `src/components/ui/formatted-number-input.tsx` - Reusable finance amount input that displays thousands separators while storing raw numeric strings
+- `src/components/ui/formatted-number-input-utils.ts` - Pure sanitize/format helpers for formatted number inputs; kept separate so Fast Refresh treats the component file cleanly
 - `src/components/layout/PageActionHeader.tsx` - Sticky page title/action header used by high-scroll data pages so Add/Log buttons remain reachable
 - `src/components/trades/TradeLensViews.tsx` - Ticker and monthly trade review lens UI
 - `src/components/trades/tradeLensModels.ts` - Pure aggregation helpers for ticker dossiers and monthly reviews
@@ -114,9 +115,10 @@ cd packages/frontend && npm run dev
 ```bash
 # Root (monorepo)
 npm install              # Install all dependencies
+npm run build            # Build/type-check all workspaces (backend, frontend, shared)
 npm run format           # Format all files with Prettier
 npm run format:check     # Check formatting + shell script syntax without writing
-npm run scripts:check    # Syntax-check root shell scripts with bash -n
+npm run scripts:check    # Syntax-check root shell scripts with bash -n when Bash is available; skips cleanly on Windows without WSL
 
 # Local Database
 npm run db:local         # Start local Postgres (Docker, port 5433)
@@ -227,7 +229,7 @@ All pages including Dashboard are lazy-loaded with `React.lazy()` + `Suspense`. 
 
 - It must stay **dev-only**. `App.tsx` lazy-loads it only when `import.meta.env.DEV` is true so the mock payload does not ship in production bundles.
 - It mocks `/api/*` and `/api/v1/*` in the browser and restores the original `fetch` + token getter on unmount. Do not leave global network monkey-patches installed after navigating away.
-- It renders child routes only after the browser fetch mock is installed. If portfolio/dashboard queries run before the mock is ready, React Query caches empty real-backend responses and demo mode appears blank.
+- It renders child routes only after the browser fetch mock is installed. If portfolio/dashboard queries run before the mock is ready, React Query caches empty real-backend responses and demo mode appears blank. `DemoPages` installs the mock in `useLayoutEffect`, then flips readiness on a short timer to satisfy React's `set-state-in-effect` lint while preserving the ordering.
 - It now supports stateful in-browser portfolio CRUD for testing. Use `/dev/demo/portfolio` to validate add, edit, delete, and import UX without touching the real backend. The state resets on full refresh.
 - Demo seed data intentionally includes crypto, equities, unit trust, stablecoins, USD/SGD cash, NFT/angel-style alternatives, multiple storage types, and custody positions so Dashboard allocation charts and Portfolio grouping exercise all buckets. Keep each seeded `Position.assetId` and embedded `Position.asset` in sync; use the local `demoAsset(id)` helper instead of array indexes. The 4th Dashboard allocation chart appears only when stable/cash positions exist.
 - Demo performance history must honor `/snapshots/performance` query params (`days`, `from`, `to`, `all=true`) so range selector testing is meaningful. `Max` should visibly include older pre-1Y points.
@@ -239,7 +241,7 @@ React Doctor can be used as an advisory frontend audit for React accessibility, 
 
 The root `react-doctor.config.json` intentionally suppresses reviewed scanner noise: React 19 migration advice that conflicts with the current React 18 + shadcn/Radix stack, broad design-opinion checks that do not match FolioBuddy's established UI rules, and large architectural refactor nudges that would be risky without a feature reason. Do not add suppressions for new accessibility, keyboard, ownership, render-correctness, or data-integrity findings without documenting why they are false positives.
 
-Known advisory: React Doctor may flag `apiMockReady` in `src/dev/demoMode.tsx` as "updated but never read". It is read to gate rendering until the browser fetch mock is installed, so this is a false positive unless the demo boot flow changes.
+Known advisory: React Doctor may flag `apiMockReady` in `src/dev/demoMode.tsx` as "updated but never read". It is read to gate rendering until the browser fetch mock is installed, and readiness is intentionally delayed until after mock installation, so this is a false positive unless the demo boot flow changes.
 
 ### Ownership Checks on Mutations
 

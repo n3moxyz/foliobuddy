@@ -4,6 +4,9 @@
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit"
+  },
   "main": "./src/types.ts",
   "types": "./src/types.ts"
 }

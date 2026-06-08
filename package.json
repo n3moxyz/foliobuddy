@@ -16,7 +16,7 @@
     "db:seed": "npm run db:seed --workspace=@foliobuddy/backend",
     "format": "prettier --ignore-unknown --write \"*.{json,ts,js,yml,yaml}\" \"e2e/**/*\" \"scripts/**/*\" \"packages/**/*.{ts,tsx,js,jsx,json,css,html,yml,yaml}\"",
     "format:check": "prettier --ignore-unknown --check \"*.{json,ts,js,yml,yaml}\" \"e2e/**/*\" \"scripts/**/*\" \"packages/**/*.{ts,tsx,js,jsx,json,css,html,yml,yaml}\" && npm run scripts:check",
-    "scripts:check": "bash -n scripts/*.sh",
+    "scripts:check": "node scripts/check-shell-scripts.mjs",
     "db:local": "docker compose up -d",
     "db:local:stop": "docker compose down",
     "db:sync": "bash scripts/sync-db.sh"
