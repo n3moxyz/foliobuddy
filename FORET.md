@@ -1994,6 +1994,10 @@ Recently completed:
   - The Equities card now defaults to grouping positions by broker/fund platform, with a persisted `By Broker` / `By Type` header toggle for switching back to the Stock/ETF vs Unit Trust split.
   - Unit trusts stay inside their broker group and carry a small `Unit Trust` badge, so the broker view answers "what do I hold at each place?" without hiding the fund type.
   - Lesson: when a table has dynamic group counts, do not call sorting hooks inside a loop. Use one shared sort state for the grouped view, then regroup the sorted rows by stable broker keys.
+- [x] **Portfolio numbers refresh on tab focus:**
+  - Dashboard, Portfolio, performer, performance-history, and benchmark queries now opt into React Query focus/reconnect refetches while the global default remains calm for the rest of the app.
+  - This means stale money figures pull fresh calculations when Chrome regains focus, even if the WebSocket path was disconnected or missed an update.
+  - Lesson: real-time push is lovely, but portfolio software also needs a boring recovery path for the moment a user returns to a sleepy browser tab.
 
 ---
 

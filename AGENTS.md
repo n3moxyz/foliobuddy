@@ -200,7 +200,7 @@ Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. 
 
 ### React Query + Zustand Split
 
-- React Query: Server state (positions, trades, snapshots). No global `refetchInterval` — data refreshes on mount and manual invalidation only. `refetchOnWindowFocus: false` to avoid surprise refetches
+- React Query: Server state (positions, trades, snapshots). No global `refetchInterval`; global `refetchOnWindowFocus` stays `false` to avoid surprise refetches. Money-sensitive portfolio queries in `usePortfolio.ts` opt into `refetchOnWindowFocus` + `refetchOnReconnect` so stale dashboard/portfolio figures refresh when Chrome regains focus, in addition to mount, manual invalidation, and WebSocket updates.
 - Zustand: Client state (currency preference)
 
 ### Structured Logging

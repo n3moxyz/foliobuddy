@@ -2,10 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { CreatePositionData, Position, ProviderName } from '@/lib/types';
 
+const portfolioFocusRefreshOptions = {
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+} as const;
+
 export function usePositions() {
   return useQuery({
     queryKey: ['positions'],
     queryFn: api.getPositions,
+    ...portfolioFocusRefreshOptions,
   });
 }
 
@@ -13,6 +19,7 @@ export function usePortfolioSummary() {
   return useQuery({
     queryKey: ['portfolio', 'summary'],
     queryFn: api.getPositionSummary,
+    ...portfolioFocusRefreshOptions,
   });
 }
 
@@ -20,6 +27,7 @@ export function useTopPerformers(limit = 5) {
   return useQuery({
     queryKey: ['portfolio', 'performers', 'top', limit],
     queryFn: () => api.getTopPerformers(limit),
+    ...portfolioFocusRefreshOptions,
   });
 }
 
@@ -27,6 +35,7 @@ export function useWorstPerformers(limit = 5) {
   return useQuery({
     queryKey: ['portfolio', 'performers', 'worst', limit],
     queryFn: () => api.getWorstPerformers(limit),
+    ...portfolioFocusRefreshOptions,
   });
 }
 
@@ -102,6 +111,7 @@ export function usePerformanceHistory(params?: {
   return useQuery({
     queryKey: ['portfolio', 'performance', params],
     queryFn: () => api.getPerformanceHistory(params),
+    ...portfolioFocusRefreshOptions,
   });
 }
 
@@ -123,5 +133,6 @@ export function useBenchmarkHistory(
     queryFn: () => api.getBenchmarkHistory({ provider, providerAssetId, days }),
     enabled: enabled && !!providerAssetId,
     staleTime: 5 * 60 * 1000,
+    ...portfolioFocusRefreshOptions,
   });
 }

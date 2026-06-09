@@ -1,5 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { focusManager } from '@tanstack/react-query';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '@/lib/api';
 import {
   usePositions,
@@ -13,6 +14,11 @@ import type { Position } from '@/lib/types';
 vi.mock('@/lib/api', () => ({
   api: {
     getPositions: vi.fn(),
+    getPositionSummary: vi.fn(),
+    getTopPerformers: vi.fn(),
+    getWorstPerformers: vi.fn(),
+    getPerformanceHistory: vi.fn(),
+    getBenchmarkHistory: vi.fn(),
     createPosition: vi.fn(),
     updatePosition: vi.fn(),
     deletePosition: vi.fn(),
@@ -40,6 +46,10 @@ describe('usePortfolio hooks', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    focusManager.setFocused(undefined);
+  });
+
   it('returns positions from successful fetch', async () => {
     const positions = [{ id: 'p1', quantity: 1 }] as Position[];
     vi.mocked(api.getPositions).mockResolvedValue(positions);
@@ -50,6 +60,30 @@ describe('usePortfolio hooks', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(positions);
+  });
+
+  it('refetches stale portfolio data when the window regains focus', async () => {
+    const firstPositions = [{ id: 'p1', quantity: 1 }] as Position[];
+    const refreshedPositions = [{ id: 'p1', quantity: 2 }] as Position[];
+    vi.mocked(api.getPositions)
+      .mockResolvedValueOnce(firstPositions)
+      .mockResolvedValueOnce(refreshedPositions);
+
+    const queryClient = createTestQueryClient();
+    const wrapper = createQueryClientWrapper(queryClient);
+    const { result } = renderHook(() => usePositions(), { wrapper });
+
+    await waitFor(() => expect(result.current.data).toEqual(firstPositions));
+
+    act(() => {
+      focusManager.setFocused(false);
+    });
+    act(() => {
+      focusManager.setFocused(true);
+    });
+
+    await waitFor(() => expect(api.getPositions).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.data).toEqual(refreshedPositions));
   });
 
   it('calls createPosition API on create mutation', async () => {
