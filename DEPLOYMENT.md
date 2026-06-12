@@ -4,12 +4,12 @@
 
 ## Hosts
 
-| Component | Host | URL |
-|---|---|---|
-| Frontend | Static app host | https://foliobuddy.xyz |
-| Backend  | Node API host | https://api.foliobuddy.xyz |
-| Database | PostgreSQL | Private network |
-| DB backups | Private object storage | Daily / weekly / monthly |
+| Component  | Host                   | URL                        |
+| ---------- | ---------------------- | -------------------------- |
+| Frontend   | Static app host        | https://foliobuddy.xyz     |
+| Backend    | Node API host          | https://api.foliobuddy.xyz |
+| Database   | PostgreSQL             | Private network            |
+| DB backups | Private object storage | Daily / weekly / monthly   |
 
 Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `main` (touching `packages/backend/**`). Frontend via Vercel's GitHub integration on every push.
 
@@ -17,25 +17,25 @@ Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `mai
 
 ### Vercel (frontend)
 
-| Name | Value | Notes |
-|---|---|---|
-| `VITE_API_URL` | `/api/v1` | MUST include `/v1`. Rewrite in `vercel.json` forwards `/api/*` → `api.foliobuddy.xyz/api/*`. |
-| `VITE_WS_BACKEND_URL` | `https://api.foliobuddy.xyz` | Direct — Vercel doesn't proxy WebSockets. |
-| `VITE_CLERK_PUBLISHABLE_KEY` | Set privately | Use the publishable key for the same Clerk instance as the backend secret key. |
-| `VITE_SENTRY_DSN` | (optional) | Leave unset to disable. |
+| Name                         | Value                        | Notes                                                                                        |
+| ---------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `VITE_API_URL`               | `/api/v1`                    | MUST include `/v1`. Rewrite in `vercel.json` forwards `/api/*` → `api.foliobuddy.xyz/api/*`. |
+| `VITE_WS_BACKEND_URL`        | `https://api.foliobuddy.xyz` | Direct — Vercel doesn't proxy WebSockets.                                                    |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Set privately                | Use the publishable key for the same Clerk instance as the backend secret key.               |
+| `VITE_SENTRY_DSN`            | (optional)                   | Leave unset to disable.                                                                      |
 
 ### Backend host
 
-| Name | Value | Notes |
-|---|---|---|
-| `DATABASE_URL` | Set privately | Production PostgreSQL connection string. |
-| `CLERK_SECRET_KEY` | Set privately | Must match frontend's publishable key instance. |
-| `ADMIN_USER_IDS` | Set privately | Comma-separated Clerk user IDs allowed to edit/delete global Asset catalog records. Unset → no one passes the admin guard. |
-| `ALLOWED_ORIGINS` | `https://foliobuddy.xyz,http://localhost:4000` | Exact origin matching — no wildcards. |
-| `RATE_LIMIT_MAX` | (unset → 200) | Override only for load testing. |
-| `SENTRY_DSN` | (optional) | |
-| `NODE_ENV` | `production` | Required — gates the scheduler jobs (price/snapshot crons). |
-| `PORT` | `4001` | |
+| Name               | Value                                          | Notes                                                                                                                      |
+| ------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`     | Set privately                                  | Production PostgreSQL connection string.                                                                                   |
+| `CLERK_SECRET_KEY` | Set privately                                  | Must match frontend's publishable key instance.                                                                            |
+| `ADMIN_USER_IDS`   | Set privately                                  | Comma-separated Clerk user IDs allowed to edit/delete global Asset catalog records. Unset → no one passes the admin guard. |
+| `ALLOWED_ORIGINS`  | `https://foliobuddy.xyz,http://localhost:4000` | Exact origin matching — no wildcards.                                                                                      |
+| `RATE_LIMIT_MAX`   | (unset → 200)                                  | Override only for load testing.                                                                                            |
+| `SENTRY_DSN`       | (optional)                                     |                                                                                                                            |
+| `NODE_ENV`         | `production`                                   | Required — gates the scheduler jobs (price/snapshot crons).                                                                |
+| `PORT`             | `4001`                                         |                                                                                                                            |
 
 ## Post-deploy smoke check
 
