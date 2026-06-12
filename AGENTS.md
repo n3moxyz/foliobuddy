@@ -59,6 +59,7 @@
 - `src/components/` - Reusable UI components
 - `src/hooks/` - React Query hooks (usePortfolio, useTrades, etc.) + `useAnimatedNumber` (rAF-based number ticker)
 - `src/hooks/__tests__/` - Hook unit tests (vitest + React Testing Library)
+- `src/test/setup.ts` - Vitest setup: jest-dom matchers plus an in-memory `localStorage` mock cleared after each test so localStorage-backed helpers cannot leak state between tests
 - `src/lib/api.ts` - API client methods (305 lines, methods only)
 - `src/lib/types.ts` - Frontend type definitions (347 lines, extracted from api.ts)
 - `src/stores/` - Zustand stores
@@ -257,6 +258,8 @@ Root `package.json` intentionally overrides `exceljs`'s transitive `uuid` depend
 
 For protected backend resources, update/delete routes must filter by both `id` and `req.userId!`, not just `id`. Reads already did this in many places; writes now need to follow the same rule consistently to prevent cross-user mutation if an ID is guessed.
 
+Global Asset catalog rows are shared across users, so they follow split rules instead (guards in `src/lib/authorization.ts`): `PUT`/`DELETE /assets/:id` require an admin user from `ADMIN_USER_IDS`, and per-user flows (`POST /assets/:id/refresh-price`, `PATCH /assets/:id/nav`) return 403 unless the authenticated user actually holds the asset. `GET /assets/:id` includes only the current user's positions.
+
 ### WebSocket CORS
 
 Socket.io origin validation should use exact origin matching (`origin === allowed`) just like the Express CORS middleware. Never use prefix matching for trusted origins.
@@ -360,6 +363,7 @@ Rules:
 - `Reduce` asks for quantity only and removes cost basis using the current average cost, so average cost stays unchanged unless the position goes to zero
 - Custody changes made from either edit tab must persist
 - The confirmation preview uses an Old/New comparison table for quantity, avg cost, and total cost
+- Both the preview and the submitted update go through the shared `applyPositionDelta()` helper (via `positionFormMath.ts`) — do not hand-roll cost-basis arithmetic in the form
 
 ### Dashboard Charts
 
@@ -523,7 +527,7 @@ See `PRODUCT.md` at project root — source of truth for users, brand personalit
 - Position P&L should display as percentage for clarity
 - Bulk import endpoints skip price fetching (`skipPriceFetch: true`) to avoid rate limiting - scheduler updates prices within 1 minute
 - Backend `LOG_LEVEL` env var controls logging verbosity (default: `info` in prod, `debug` in dev)
-- GitHub Actions CI runs type checking and format checking on push/PR
+- GitHub Actions CI runs type checking, the full test suite (`npm test`), the frontend build, and `npm run format:check` (formatting + shell script syntax + domain constant parity) on push/PR
 - Sentry backend captures only unexpected 500-level errors (Zod 400s and AppErrors < 500 are skipped)
 - `console.error` crashes when inspecting ZodError objects in Node — integration tests must mock the logger
 - vitest `exclude: ['dist/**']` prevents duplicate test runs after `npm run build`

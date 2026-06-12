@@ -30,6 +30,7 @@ Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `mai
 |---|---|---|
 | `DATABASE_URL` | Set privately | Production PostgreSQL connection string. |
 | `CLERK_SECRET_KEY` | Set privately | Must match frontend's publishable key instance. |
+| `ADMIN_USER_IDS` | Set privately | Comma-separated Clerk user IDs allowed to edit/delete global Asset catalog records. Unset → no one passes the admin guard. |
 | `ALLOWED_ORIGINS` | `https://foliobuddy.xyz,http://localhost:4000` | Exact origin matching — no wildcards. |
 | `RATE_LIMIT_MAX` | (unset → 200) | Override only for load testing. |
 | `SENTRY_DSN` | (optional) | |
