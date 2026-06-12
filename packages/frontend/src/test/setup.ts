@@ -1,6 +1,11 @@
 import '@testing-library/jest-dom/vitest';
+import { afterEach } from 'vitest';
 
 const localStorageStore = new Map<string, string>();
+
+afterEach(() => {
+  localStorageStore.clear();
+});
 
 Object.defineProperty(globalThis, 'localStorage', {
   value: {

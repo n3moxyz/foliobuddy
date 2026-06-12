@@ -27,6 +27,6 @@ export async function requireUserHoldsAsset(userId: string, assetId: string): Pr
   });
 
   if (!position) {
-    throw new AppError('Asset not found', 404);
+    throw new AppError('You do not hold this asset', 403);
   }
 }
