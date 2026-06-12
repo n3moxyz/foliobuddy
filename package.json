@@ -6,17 +6,24 @@
   "workspaces": [
     "packages/*"
   ],
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
+  },
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm run dev --workspace=@foliobuddy/backend",
     "dev:frontend": "npm run dev --workspace=@foliobuddy/frontend",
+    "test": "npm run test --workspace=@foliobuddy/backend && npm run test --workspace=@foliobuddy/frontend",
     "test:e2e": "playwright test",
     "build": "npm run build --workspaces",
     "db:migrate": "npm run db:migrate --workspace=@foliobuddy/backend",
     "db:seed": "npm run db:seed --workspace=@foliobuddy/backend",
     "format": "prettier --ignore-unknown --write \"*.{json,ts,js,yml,yaml}\" \"e2e/**/*\" \"scripts/**/*\" \"packages/**/*.{ts,tsx,js,jsx,json,css,html,yml,yaml}\"",
-    "format:check": "prettier --ignore-unknown --check \"*.{json,ts,js,yml,yaml}\" \"e2e/**/*\" \"scripts/**/*\" \"packages/**/*.{ts,tsx,js,jsx,json,css,html,yml,yaml}\" && npm run scripts:check",
+    "format:check": "prettier --ignore-unknown --check \"*.{json,ts,js,yml,yaml}\" \"e2e/**/*\" \"scripts/**/*\" \"packages/**/*.{ts,tsx,js,jsx,json,css,html,yml,yaml}\" && npm run scripts:check && npm run domain:check",
     "scripts:check": "node scripts/check-shell-scripts.mjs",
+    "domain:check": "node scripts/check-domain-constants.mjs",
     "db:local": "docker compose up -d",
     "db:local:stop": "docker compose down",
     "db:sync": "bash scripts/sync-db.sh"
@@ -24,6 +31,7 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "concurrently": "^8.2.2",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "typescript": "^5.3.3"
   }
 }

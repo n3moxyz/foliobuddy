@@ -37,17 +37,15 @@ jobs:
         run: npx tsc --noEmit
         working-directory: packages/frontend
 
-      - name: Run backend tests
-        run: npx vitest run
-        working-directory: packages/backend
+      - name: Run tests
+        run: npm test
 
       - name: Build frontend
         run: npm run build
         working-directory: packages/frontend
 
       - name: Check formatting
-        # TODO: remove `|| true` once 55 pre-existing format issues are fixed.
-        run: npx prettier --check "packages/**/*.{ts,tsx,js,jsx,json,css}" || true
+        run: npm run format:check
 
       - name: Verify workspace deps are declared
         # Catches missing workspace dependencies that local npm install would

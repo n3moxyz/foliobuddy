@@ -11,6 +11,7 @@ const mockPrisma = {
     findUnique: vi.fn(),
     findFirst: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
     deleteMany: vi.fn(),
   },
 };
@@ -230,5 +231,60 @@ describe('DELETE /api/positions/:id', () => {
     expect(mockPrisma.position.deleteMany).toHaveBeenCalledWith({
       where: { id: 'position-1', userId: 'test-user-id' },
     });
+  });
+});
+
+describe('PUT /api/positions/:id', () => {
+  it('recalculates value fields from the new asset when assetId changes', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        assetId: 'asset-1',
+        quantity: 1,
+        avgCostUsd: 50,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 50 }),
+      })
+    );
+    mockPrisma.asset.findUnique.mockResolvedValue(
+      mockAsset({
+        id: 'asset-2',
+        symbol: 'ETH',
+        currentPriceUsd: 100,
+      })
+    );
+    mockPrisma.position.update.mockImplementation(async ({ data }) =>
+      mockPosition({
+        id: 'position-1',
+        assetId: data.assetId,
+        quantity: data.quantity,
+        avgCostUsd: data.avgCostUsd,
+        marketValueUsd: data.marketValueUsd,
+        unrealizedPnL: data.unrealizedPnL,
+        unrealizedPnLPct: data.unrealizedPnLPct,
+      })
+    );
+
+    const res = await request(app).put('/api/positions/position-1').send({
+      assetId: 'asset-2',
+      quantity: 10,
+      avgCostUsd: 80,
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.asset.findUnique).toHaveBeenCalledWith({
+      where: { id: 'asset-2' },
+    });
+    expect(mockPrisma.position.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'position-1' },
+        data: expect.objectContaining({
+          assetId: 'asset-2',
+          quantity: 10,
+          avgCostUsd: 80,
+          marketValueUsd: 1000,
+          unrealizedPnL: 200,
+          unrealizedPnLPct: 25,
+        }),
+      })
+    );
   });
 });
