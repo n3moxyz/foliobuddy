@@ -157,7 +157,8 @@ describe('POST /api/assets/:id/refresh-price', () => {
 
     const res = await request(app).post('/api/assets/asset-1/refresh-price');
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('You do not hold this asset');
     expect(mockPrisma.position.findFirst).toHaveBeenCalledWith({
       where: { userId: 'test-user-id', assetId: 'asset-1' },
       select: { id: true },
@@ -175,7 +176,8 @@ describe('PATCH /api/assets/:id/nav', () => {
       .patch('/api/assets/asset-1/nav')
       .send({ navPrice: 1.25, asOfDate: '2026-04-20T00:00:00.000Z' });
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('You do not hold this asset');
     expect(mockPrisma.priceHistory.upsert).not.toHaveBeenCalled();
     expect(mockPriceService.updatePositionValues).not.toHaveBeenCalled();
   });

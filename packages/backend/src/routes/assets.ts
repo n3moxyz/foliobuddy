@@ -562,11 +562,7 @@ router.patch('/:id/nav', async (req, res, next) => {
       throw new AppError('NAV updates only apply to manually-priced assets', 400);
     }
 
-    const position = await prisma.position.findFirst({
-      where: { userId: req.userId!, assetId: asset.id },
-      select: { id: true },
-    });
-    if (!position) throw new AppError('Asset not found', 404);
+    await requireUserHoldsAsset(req.userId!, asset.id);
 
     const converted = await navToUsd(data.navPrice, asset.nativeCurrency);
     const timestamp = data.asOfDate ? new Date(data.asOfDate) : new Date();
