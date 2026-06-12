@@ -9,8 +9,9 @@ import {
   AssetCategory,
   PriceProvider,
   USD_SGD_FALLBACK_RATE,
-  categoryGroup,
 } from '../lib/constants.js';
+import { externalProviderCategoryError } from '../lib/domain.js';
+import { requireAdminUser, requireUserHoldsAsset } from '../lib/authorization.js';
 import type { ProviderName } from '../services/providers/types.js';
 import { parseUobKhStatement } from '../services/statementParsers/uobKayHian.js';
 import { parseFsmOneStatement } from '../services/statementParsers/fsmOne.js';
@@ -138,7 +139,9 @@ router.get('/:id', async (req, res, next) => {
     const asset = await prisma.asset.findUnique({
       where: { id: req.params.id },
       include: {
-        positions: true,
+        positions: {
+          where: { userId: req.userId! },
+        },
         priceHistory: {
           orderBy: { timestamp: 'desc' },
           take: 30,
@@ -255,12 +258,9 @@ router.post('/from-provider', async (req, res, next) => {
     // Equities live in categoryGroup 'equities'; reject mismatched provider/category
     // combinations early so we don't end up with a Yahoo-keyed row that the refresh
     // loop then fails to update.
-    const group = categoryGroup(data.category);
-    if (data.provider === 'yahoo' && group !== 'equities' && group !== 'unit_trusts') {
-      throw new AppError('Yahoo provider only supports EQUITY and UNIT_TRUST categories', 400);
-    }
-    if (data.provider === 'manual' && group !== 'unit_trusts') {
-      throw new AppError('Manual provider only supports UNIT_TRUST category', 400);
+    const providerCategoryError = externalProviderCategoryError(data.provider, data.category);
+    if (providerCategoryError) {
+      throw new AppError(providerCategoryError, 400);
     }
 
     const existing = await prisma.asset.findFirst({
@@ -330,6 +330,7 @@ router.post('/from-provider', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
+    requireAdminUser(req.userId);
     const data = updateAssetSchema.parse(req.body);
 
     const asset = await prisma.asset.update({
@@ -348,6 +349,7 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
+    requireAdminUser(req.userId);
     const positions = await prisma.position.findMany({
       where: { assetId: req.params.id },
     });
@@ -379,6 +381,8 @@ router.post('/:id/refresh-price', async (req, res, next) => {
     if (!asset.providerAssetId) {
       throw new AppError('Asset is not wired to a price provider', 400);
     }
+
+    await requireUserHoldsAsset(req.userId!, asset.id);
 
     const provider = asset.priceProvider as ProviderName;
     if (provider === 'manual') {

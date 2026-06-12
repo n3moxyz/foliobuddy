@@ -9,6 +9,7 @@ import type {
   ProviderName,
   ProviderSearchResult,
 } from './providers/types.js';
+import { calculatePositionValue } from '../lib/domain.js';
 
 type RefreshResult = {
   updated: number;
@@ -210,13 +211,13 @@ class PriceService {
     const updates = positions
       .filter((p) => p.asset.currentPriceUsd != null)
       .map((p) => {
-        const marketValue = p.quantity * (p.asset.currentPriceUsd as number);
-        const costBasis = p.quantity * p.avgCostUsd;
-        const unrealizedPnL = marketValue - costBasis;
-        const unrealizedPnLPct = costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
         return prisma.position.update({
           where: { id: p.id },
-          data: { marketValueUsd: marketValue, unrealizedPnL, unrealizedPnLPct },
+          data: calculatePositionValue({
+            quantity: p.quantity,
+            avgCostUsd: p.avgCostUsd,
+            currentPriceUsd: p.asset.currentPriceUsd,
+          }),
         });
       });
     if (updates.length === 0) return;

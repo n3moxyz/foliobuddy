@@ -1998,6 +1998,15 @@ Recently completed:
   - Dashboard, Portfolio, performer, performance-history, and benchmark queries now opt into React Query focus/reconnect refetches while the global default remains calm for the rest of the app.
   - This means stale money figures pull fresh calculations when Chrome regains focus, even if the WebSocket path was disconnected or missed an update.
   - Lesson: real-time push is lovely, but portfolio software also needs a boring recovery path for the moment a user returns to a sleepy browser tab.
+- [x] **Money rules and asset catalog guardrails:**
+  - Core position value math and add/reduce cost-basis math now live in pure helpers instead of being hand-calculated inside route/form code. The frontend `PositionForm` uses `positionFormMath.ts` for display previews and the shared `applyPositionDelta()` helper for submit-time updates; the backend uses its local `domain.ts` copy for persisted value/P&L fields.
+  - Generic global Asset catalog edit/delete routes now require `ADMIN_USER_IDS`, while user-level NAV/refresh flows require the authenticated user to actually hold the asset. `GET /assets/:id` also filters included positions to the current user, because assets are global but holdings are private.
+  - CI now treats formatting as a real gate again and runs a TypeScript-parser-based `domain:check` so duplicated backend/shared constants cannot quietly drift.
+  - Lesson: portfolio apps need the browser to be helpful, but the durable money rules and ownership boundaries should be boring, centralized, and tested.
+- [x] **Dependency audit cleanup:**
+  - The npm audit pass upgraded Vite to 8.0.16, `node-cron` to 4.2.1, and removed the stale `@types/node-cron` shim because v4 ships declarations through package exports.
+  - ExcelJS stayed on 4.4.0, but root `package.json` now overrides its transitive `uuid` dependency to 11.1.1. That is safer than npm's `audit fix --force` suggestion, which would downgrade ExcelJS to 3.4.0 just to escape the advisory range.
+  - Lesson: audit output is a triage queue, not a script to obey blindly. Prefer small, explainable upgrades and verify the affected code path instead of accepting force fixes that change product behavior.
 
 ---
 

@@ -20,7 +20,7 @@ import {
   useCreateUnitTrust,
 } from '@/hooks/useAssets';
 import { useCreatePosition, useUpdatePosition, usePortfolioSummary } from '@/hooks/usePortfolio';
-import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
+import { USD_SGD_FALLBACK_RATE, applyPositionDelta } from '@foliobuddy/shared';
 import { api } from '@/lib/api';
 import type {
   Asset,
@@ -48,6 +48,15 @@ import {
   renameLocationOptionForStorageType,
   saveLocationOptionForStorageType,
 } from './positionOptions';
+import {
+  buildPositionDeltaPreview,
+  calculateAverageCostInput,
+  calculateNonNegativeAverageCostInput,
+  calculateNonNegativeTotalCostInput,
+  calculateTotalCostInput,
+  toUsdCost,
+  type CostInputMode,
+} from './positionFormMath';
 
 const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
 const LEGACY_CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
@@ -106,7 +115,6 @@ interface PositionFormProps {
 type CategoryType = 'crypto' | 'cash' | 'equity';
 type EquityMode = 'single' | 'fund';
 type FormMode = 'add' | 'import';
-type CostInputMode = 'total' | 'avg';
 type PositionStorageType = 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE';
 
 type ImportedPosition = BulkImportPosition;
@@ -453,54 +461,32 @@ export function PositionForm({
 
   // Calculate the derived cost value based on input mode
   const calculatedAvgCost = useMemo(() => {
-    if (costInputMode === 'total') {
-      const qty = parseFloat(quantity);
-      const total = parseFloat(totalCost);
-      if (qty > 0 && total > 0) {
-        return (total / qty).toFixed(2);
-      }
-      return '';
-    }
-    return avgCostInput;
+    return calculateAverageCostInput(costInputMode, quantity, totalCost, avgCostInput);
   }, [quantity, totalCost, costInputMode, avgCostInput]);
 
   const calculatedTotalCost = useMemo(() => {
-    if (costInputMode === 'avg') {
-      const qty = parseFloat(quantity);
-      const avg = parseFloat(avgCostInput);
-      if (qty > 0 && avg > 0) {
-        return (qty * avg).toFixed(2);
-      }
-      return '';
-    }
-    return totalCost;
+    return calculateTotalCostInput(costInputMode, quantity, avgCostInput, totalCost);
   }, [quantity, avgCostInput, costInputMode, totalCost]);
 
   // Final avg cost for form submission
   const avgCostUsd = costInputMode === 'total' ? calculatedAvgCost : avgCostInput;
 
   const calculatedAdditionalAvgCost = useMemo(() => {
-    if (additionalCostInputMode === 'total') {
-      const qty = parseFloat(additionalQuantity);
-      const total = parseFloat(additionalTotalCost);
-      if (qty > 0 && Number.isFinite(total) && total >= 0) {
-        return (total / qty).toFixed(2);
-      }
-      return '';
-    }
-    return additionalAvgCostInput;
+    return calculateNonNegativeAverageCostInput(
+      additionalCostInputMode,
+      additionalQuantity,
+      additionalTotalCost,
+      additionalAvgCostInput
+    );
   }, [additionalQuantity, additionalTotalCost, additionalCostInputMode, additionalAvgCostInput]);
 
   const calculatedAdditionalTotalCost = useMemo(() => {
-    if (additionalCostInputMode === 'avg') {
-      const qty = parseFloat(additionalQuantity);
-      const avg = parseFloat(additionalAvgCostInput);
-      if (qty > 0 && Number.isFinite(avg) && avg >= 0) {
-        return (qty * avg).toFixed(2);
-      }
-      return '';
-    }
-    return additionalTotalCost;
+    return calculateNonNegativeTotalCostInput(
+      additionalCostInputMode,
+      additionalQuantity,
+      additionalAvgCostInput,
+      additionalTotalCost
+    );
   }, [additionalQuantity, additionalAvgCostInput, additionalCostInputMode, additionalTotalCost]);
 
   const additionalCostInput =
@@ -508,28 +494,15 @@ export function PositionForm({
 
   const addPreview = useMemo(() => {
     if (!position || editMode !== 'delta') return null;
-    const deltaQty = parseFloat(additionalQuantity);
-    const rawDeltaCost = parseFloat(additionalCostInput);
-    const deltaCostAddUsd = costCurrency === 'SGD' ? rawDeltaCost / fxSgdPerUsd : rawDeltaCost;
-    const deltaCost = deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
-    if (!(deltaQty > 0) || !(deltaCost >= 0)) return null;
-
-    const currentTotalCost = position.quantity * position.avgCostUsd;
-    const multiplier = deltaMode === 'add' ? 1 : -1;
-    const nextQuantity = position.quantity + deltaQty * multiplier;
-    const nextTotalCost = currentTotalCost + deltaCost * multiplier;
-    if (nextQuantity < 0 || nextTotalCost < 0) return null;
-    const nextAvgCost = nextQuantity > 0 ? nextTotalCost / nextQuantity : 0;
-
-    const rate = costCurrency === 'SGD' ? fxSgdPerUsd : 1;
-    return {
+    return buildPositionDeltaPreview({
       currentQuantity: position.quantity,
-      currentAvgCost: position.avgCostUsd * rate,
-      currentTotalCost: currentTotalCost * rate,
-      nextQuantity,
-      nextAvgCost: nextAvgCost * rate,
-      nextTotalCost: nextTotalCost * rate,
-    };
+      currentAvgCostUsd: position.avgCostUsd,
+      deltaQuantity: additionalQuantity,
+      deltaTotalCostInput: additionalCostInput,
+      mode: deltaMode,
+      costCurrency,
+      fxSgdPerUsd,
+    });
   }, [
     position,
     editMode,
@@ -931,43 +904,38 @@ export function PositionForm({
       // In add mode the user enters cost in costCurrency — convert to USD for persistence.
       // In reduce mode we shrink basis at current avg cost (already USD), no conversion needed.
       const deltaCostInput = parseFloat(additionalCostInput);
-      const deltaCostAddUsd =
-        costCurrency === 'SGD' ? deltaCostInput / fxSgdPerUsd : deltaCostInput;
-      const deltaCost = deltaMode === 'reduce' ? deltaQty * position.avgCostUsd : deltaCostAddUsd;
+      const deltaCostAddUsd = toUsdCost(deltaCostInput, costCurrency, fxSgdPerUsd);
 
       if (!(deltaQty > 0)) {
         setValidationError(`Please enter a valid ${deltaMode} quantity`);
         return;
       }
 
-      if (deltaMode === 'add' && !(deltaCost >= 0)) {
+      if (deltaMode === 'add' && !(deltaCostAddUsd >= 0)) {
         setValidationError(`Please enter a valid ${deltaMode} cost`);
         return;
       }
 
-      const currentTotalCost = position.quantity * position.avgCostUsd;
-      const multiplier = deltaMode === 'add' ? 1 : -1;
-      const nextQuantity = position.quantity + deltaQty * multiplier;
-      const nextTotalCost = currentTotalCost + deltaCost * multiplier;
-
-      if (nextQuantity < 0) {
-        setValidationError('You cannot reduce below zero quantity');
+      let deltaResult;
+      try {
+        deltaResult = applyPositionDelta({
+          currentQuantity: position.quantity,
+          currentAvgCostUsd: position.avgCostUsd,
+          deltaQuantity: deltaQty,
+          mode: deltaMode,
+          deltaTotalCostUsd: deltaMode === 'add' ? deltaCostAddUsd : undefined,
+        });
+      } catch (err) {
+        setValidationError(err instanceof Error ? err.message : 'Invalid position change');
         return;
       }
-
-      if (nextTotalCost < 0) {
-        setValidationError('You cannot reduce more cost basis than the position has');
-        return;
-      }
-
-      const nextAvgCost = nextQuantity > 0 ? nextTotalCost / nextQuantity : 0;
 
       try {
         await updatePosition.mutateAsync({
           id: position.id,
           data: {
-            quantity: nextQuantity,
-            avgCostUsd: nextAvgCost,
+            quantity: deltaResult.nextQuantity,
+            avgCostUsd: deltaResult.nextAvgCostUsd,
             custodyOf: isCustody ? custodyOf.trim() || 'Someone' : '',
           },
         });

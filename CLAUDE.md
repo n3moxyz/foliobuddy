@@ -19,13 +19,13 @@
 - **Database**: PostgreSQL (private production host, local via Docker)
 - **ORM**: Prisma 5.10
 - **Auth**: Clerk
-- **Scheduling**: node-cron
+- **Scheduling**: node-cron 4
 - **Validation**: Zod
 
 ### Frontend (`packages/frontend/`)
 
 - **Framework**: React 18 + TypeScript
-- **Build**: Vite 5
+- **Build**: Vite 8
 - **Routing**: React Router v6
 - **Server State**: TanStack React Query
 - **Client State**: Zustand
@@ -44,6 +44,8 @@
 - `src/middleware/` - Auth and error handling
 - `src/lib/` - Shared utilities (constants, logger, pagination, tradePnL, sentry, TTLCache)
 - `src/lib/constants.ts` - Domain enums (AssetCategory, StorageType, TradeDirection, TradeStatus, SnapshotType, SnapshotSource)
+- `src/lib/domain.ts` - Backend-owned copy of core financial/domain helpers (position value math, add/reduce cost-basis math, external provider/category compatibility)
+- `src/lib/authorization.ts` - Admin and user-asset ownership guards for global asset catalog routes
 - `src/lib/TTLCache.ts` - Generic TTL cache with LRU eviction (used by priceService)
 - `src/__tests__/` - Unit + integration tests (vitest)
 - `src/__tests__/routes/` - Route integration tests (supertest + mocked Prisma)
@@ -70,13 +72,14 @@
 - `src/components/trades/tradeLensModels.ts` - Pure aggregation helpers for ticker dossiers and monthly reviews
 - `src/components/portfolio/positionClipboard.ts` - Shared portfolio copy-to-clipboard JSON formatter
 - `src/components/portfolio/positionOptions.ts` - Shared storage location option lists (CEX, onchain, broker, bank) plus localStorage-backed custom option helpers used by position forms
+- `src/components/portfolio/positionFormMath.ts` - Pure PositionForm cost and add/reduce preview helpers backed by shared domain math
 - `src/lib/chartColors.ts` - Centralized theme-aware chart color constants backed by OKLCH CSS variables in `index.css`
 - `src/lib/chartUtils.ts` - Time-period date helpers (`getDateRange`, `formatXAxisDate`, `formatTooltipDate`) shared between PortfolioChart and BenchmarkComparisonChart
 - `react-doctor.config.json` - Root-level React Doctor triage policy. Keeps the scan focused on actionable regressions after known React 18/Radix/shadcn and design-opinion rules were reviewed.
 
 ### Shared
 
-- `packages/shared/src/types.ts` - Cross-package type definitions, domain enums (`AssetCategory`, `StorageType`, `TradeStatus`, etc.), `categoryGroup()`, `USD_SGD_FALLBACK_RATE`, `MAX_POSITIONS_PER_CATEGORY`. Frontend is the only consumer at runtime — see Gotchas re: backend Docker isolation.
+- `packages/shared/src/types.ts` - Cross-package type definitions, domain enums (`AssetCategory`, `StorageType`, `TradeStatus`, etc.), `categoryGroup()`, core position math helpers, `USD_SGD_FALLBACK_RATE`, `MAX_POSITIONS_PER_CATEGORY`. Frontend is the only consumer at runtime — see Gotchas re: backend Docker isolation.
 
 ### E2E
 
@@ -115,10 +118,13 @@ cd packages/frontend && npm run dev
 ```bash
 # Root (monorepo)
 npm install              # Install all dependencies
+npm audit                # Check dependency advisories; should report 0 vulnerabilities
+npm test                 # Run backend + frontend unit/integration tests
 npm run build            # Build/type-check all workspaces (backend, frontend, shared)
 npm run format           # Format all files with Prettier
-npm run format:check     # Check formatting + shell script syntax without writing
+npm run format:check     # Check formatting, shell script syntax, and domain constant parity without writing
 npm run scripts:check    # Syntax-check root shell scripts with bash -n when Bash is available; skips cleanly on Windows without WSL
+npm run domain:check     # Verify backend domain constants mirror shared constants
 
 # Local Database
 npm run db:local         # Start local Postgres (Docker, port 5433)
@@ -242,6 +248,10 @@ React Doctor can be used as an advisory frontend audit for React accessibility, 
 The root `react-doctor.config.json` intentionally suppresses reviewed scanner noise: React 19 migration advice that conflicts with the current React 18 + shadcn/Radix stack, broad design-opinion checks that do not match FolioBuddy's established UI rules, and large architectural refactor nudges that would be risky without a feature reason. Do not add suppressions for new accessibility, keyboard, ownership, render-correctness, or data-integrity findings without documenting why they are false positives.
 
 Known advisory: React Doctor may flag `apiMockReady` in `src/dev/demoMode.tsx` as "updated but never read". It is read to gate rendering until the browser fetch mock is installed, and readiness is intentionally delayed until after mock installation, so this is a false positive unless the demo boot flow changes.
+
+### Dependency Audit Notes
+
+Root `package.json` intentionally overrides `exceljs`'s transitive `uuid` dependency to `11.1.1`. ExcelJS 4.4 still declares `uuid@^8.3.0`, which npm audit flags via `GHSA-w5hq-g745-h8pq`; the code path ExcelJS uses is `v4()`, which is stable on uuid 11. Do not replace this with `npm audit fix --force` because npm's suggested ExcelJS fix is a major downgrade to 3.4.0. Keep `npm audit` clean after dependency updates.
 
 ### Ownership Checks on Mutations
 
@@ -426,6 +436,7 @@ DATABASE_URL=              # Local: postgresql://dev:dev@localhost:5433/example_
 PRODUCTION_DATABASE_URL=   # Optional private DB mirror source; never commit a real value
 PORT=4001                  # Backend port (DO NOT use 3001 — that's reserved for other projects)
 CLERK_SECRET_KEY=          # Clerk backend key
+ADMIN_USER_IDS=            # Comma-separated Clerk user IDs allowed to edit/delete global Asset catalog records
 ALLOWED_ORIGINS=http://localhost:4000
 RATE_LIMIT_MAX=10000       # Local dev override (production defaults to 200)
 SENTRY_DSN=                # Optional — error tracking (skipped if empty)

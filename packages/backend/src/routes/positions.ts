@@ -13,6 +13,7 @@ import {
   CATEGORIES_IN_GROUP,
   CategoryGroup,
 } from '../lib/constants.js';
+import { calculatePositionValue } from '../lib/domain.js';
 
 const router = Router();
 
@@ -171,11 +172,11 @@ router.post('/bulk', async (req, res, next) => {
           }
         }
 
-        const marketValueUsd = asset.currentPriceUsd ? pos.quantity * asset.currentPriceUsd : null;
-        const costBasis = pos.quantity * pos.avgCostUsd;
-        const unrealizedPnL = marketValueUsd !== null ? marketValueUsd - costBasis : null;
-        const unrealizedPnLPct =
-          costBasis > 0 && unrealizedPnL !== null ? (unrealizedPnL / costBasis) * 100 : null;
+        const valueFields = calculatePositionValue({
+          quantity: pos.quantity,
+          avgCostUsd: pos.avgCostUsd,
+          currentPriceUsd: asset.currentPriceUsd,
+        });
 
         await prisma.position.create({
           data: {
@@ -187,9 +188,7 @@ router.post('/bulk', async (req, res, next) => {
             storageLocation: pos.storageLocation?.trim() || null,
             notes: pos.notes || null,
             custodyOf: pos.custodyOf?.trim() || null,
-            marketValueUsd,
-            unrealizedPnL,
-            unrealizedPnLPct,
+            ...valueFields,
           },
         });
 
@@ -265,11 +264,11 @@ router.post('/', async (req, res, next) => {
       );
     }
 
-    const marketValueUsd = asset.currentPriceUsd ? data.quantity * asset.currentPriceUsd : null;
-    const costBasis = data.quantity * data.avgCostUsd;
-    const unrealizedPnL = marketValueUsd !== null ? marketValueUsd - costBasis : null;
-    const unrealizedPnLPct =
-      costBasis > 0 && unrealizedPnL !== null ? (unrealizedPnL / costBasis) * 100 : null;
+    const valueFields = calculatePositionValue({
+      quantity: data.quantity,
+      avgCostUsd: data.avgCostUsd,
+      currentPriceUsd: asset.currentPriceUsd,
+    });
 
     const storageLocation = data.storageLocation?.trim() || null;
     const custodyOf = data.custodyOf?.trim() || null;
@@ -284,9 +283,7 @@ router.post('/', async (req, res, next) => {
         storageLocation,
         notes: data.notes,
         custodyOf,
-        marketValueUsd,
-        unrealizedPnL,
-        unrealizedPnLPct,
+        ...valueFields,
       },
       include: {
         asset: true,
@@ -315,15 +312,24 @@ router.put('/:id', async (req, res, next) => {
       throw new AppError('Position not found', 404);
     }
 
+    let valueAsset = existing.asset;
+    if (data.assetId && data.assetId !== existing.assetId) {
+      const nextAsset = await prisma.asset.findUnique({
+        where: { id: data.assetId },
+      });
+      if (!nextAsset) {
+        throw new AppError('Asset not found', 404);
+      }
+      valueAsset = nextAsset;
+    }
+
     const quantity = data.quantity ?? existing.quantity;
     const avgCostUsd = data.avgCostUsd ?? existing.avgCostUsd;
-    const price = existing.asset.currentPriceUsd;
-
-    const marketValueUsd = price ? quantity * price : null;
-    const costBasis = quantity * avgCostUsd;
-    const unrealizedPnL = marketValueUsd !== null ? marketValueUsd - costBasis : null;
-    const unrealizedPnLPct =
-      costBasis > 0 && unrealizedPnL !== null ? (unrealizedPnL / costBasis) * 100 : null;
+    const valueFields = calculatePositionValue({
+      quantity,
+      avgCostUsd,
+      currentPriceUsd: valueAsset.currentPriceUsd,
+    });
 
     const updateData = {
       ...data,
@@ -336,9 +342,7 @@ router.put('/:id', async (req, res, next) => {
       where: { id: req.params.id },
       data: {
         ...updateData,
-        marketValueUsd,
-        unrealizedPnL,
-        unrealizedPnLPct,
+        ...valueFields,
       },
       include: {
         asset: true,

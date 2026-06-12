@@ -31,7 +31,11 @@ export function errorHandler(err: Error, req: Request, res: Response, next: Next
   }
 
   // Prisma errors
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+  const PrismaClientKnownRequestError = Prisma.PrismaClientKnownRequestError;
+  if (
+    typeof PrismaClientKnownRequestError === 'function' &&
+    err instanceof PrismaClientKnownRequestError
+  ) {
     switch (err.code) {
       case 'P2002':
         return res.status(409).json({

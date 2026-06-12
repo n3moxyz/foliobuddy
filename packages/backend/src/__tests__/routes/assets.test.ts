@@ -11,7 +11,7 @@ const mockPrisma = {
     update: vi.fn(),
   },
   fxRate: { findUnique: vi.fn() },
-  position: { findFirst: vi.fn() },
+  position: { findFirst: vi.fn(), findMany: vi.fn() },
   priceHistory: {
     create: vi.fn(),
     upsert: vi.fn(),
@@ -66,6 +66,7 @@ function mockManualAsset(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  delete process.env.ADMIN_USER_IDS;
   mockPriceService.updatePositionValues.mockResolvedValue(undefined);
 });
 
@@ -112,6 +113,56 @@ describe('POST /api/assets', () => {
         priceUpdatedAt: expect.any(Date),
       }),
     });
+  });
+});
+
+describe('GET /api/assets/:id', () => {
+  it('filters included positions to the authenticated user', async () => {
+    mockPrisma.asset.findUnique.mockResolvedValue(mockManualAsset({ positions: [] }));
+
+    const res = await request(app).get('/api/assets/asset-1');
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.asset.findUnique).toHaveBeenCalledWith({
+      where: { id: 'asset-1' },
+      include: {
+        positions: {
+          where: { userId: 'test-user-id' },
+        },
+        priceHistory: {
+          orderBy: { timestamp: 'desc' },
+          take: 30,
+        },
+      },
+    });
+  });
+});
+
+describe('PUT /api/assets/:id', () => {
+  it('requires admin access for global catalog edits', async () => {
+    const res = await request(app).put('/api/assets/asset-1').send({ name: 'Renamed' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('Admin access required');
+    expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/assets/:id/refresh-price', () => {
+  it('rejects refresh when the user does not hold the asset', async () => {
+    mockPrisma.asset.findUnique.mockResolvedValue(
+      mockManualAsset({ priceProvider: 'yahoo', providerAssetId: 'AAPL' })
+    );
+    mockPrisma.position.findFirst.mockResolvedValue(null);
+
+    const res = await request(app).post('/api/assets/asset-1/refresh-price');
+
+    expect(res.status).toBe(404);
+    expect(mockPrisma.position.findFirst).toHaveBeenCalledWith({
+      where: { userId: 'test-user-id', assetId: 'asset-1' },
+      select: { id: true },
+    });
+    expect(mockPriceService.getProvider).not.toHaveBeenCalled();
   });
 });
 
