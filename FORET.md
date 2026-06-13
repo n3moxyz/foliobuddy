@@ -2001,8 +2001,17 @@ Recently completed:
 - [x] **Money rules and asset catalog guardrails:**
   - Core position value math and add/reduce cost-basis math now live in pure helpers instead of being hand-calculated inside route/form code. The frontend `PositionForm` uses `positionFormMath.ts` for display previews and the shared `applyPositionDelta()` helper for submit-time updates; the backend uses its local `domain.ts` copy for persisted value/P&L fields.
   - Generic global Asset catalog edit/delete routes now require `ADMIN_USER_IDS`, while user-level NAV/refresh flows require the authenticated user to actually hold the asset. `GET /assets/:id` also filters included positions to the current user, because assets are global but holdings are private.
+  - Production boot now warns when `ADMIN_USER_IDS` is empty. That keeps the secure default (403 for global catalog writes) while making a missing deploy env var visible in logs instead of silently surprising the operator.
   - CI now treats formatting as a real gate again and runs a TypeScript-parser-based `domain:check` so duplicated backend/shared constants cannot quietly drift.
   - Lesson: portfolio apps need the browser to be helpful, but the durable money rules and ownership boundaries should be boring, centralized, and tested.
+- [x] **Scheduler/WebSocket reliability coverage:**
+  - `scheduler.test.ts` now pins the price-refresh fanout path: refresh provider prices, broadcast the global price update, recalculate changed positions, then send portfolio updates only to users holding changed assets.
+  - `socketService.test.ts` pins the two backend event contracts (`prices:updated` and `portfolio:updated`) without needing a live Socket.io server.
+  - Lesson: real-time features deserve boring unit coverage around the event contract and fanout criteria. The browser can miss a push; the backend should at least be predictable about what it emits.
+- [x] **PositionForm extraction pass:**
+  - The 2k-line `PositionForm.tsx` gave up its add/reduce editor, cost-basis inputs, storage-location inputs, and shared form union types to small focused files: `PositionDeltaEditor.tsx`, `PositionCostFields.tsx`, `PositionStorageFields.tsx`, and `positionFormTypes.ts`.
+  - The parent still owns API mutations, submit validation, and cross-field state. The extracted pieces are intentionally dumb renderers with typed callbacks, which keeps the refactor safe and leaves a clearer path for future form slicing.
+  - Lesson: split the UI surface before splitting the state machine. Once the visual chunks are named, the next extraction has somewhere obvious to land.
 - [x] **Dependency audit cleanup:**
   - The npm audit pass upgraded Vite to 8.0.16, `node-cron` to 4.2.1, and removed the stale `@types/node-cron` shim because v4 ships declarations through package exports.
   - ExcelJS stayed on 4.4.0, but root `package.json` now overrides its transitive `uuid` dependency to 11.1.1. That is safer than npm's `audit fix --force` suggestion, which would downgrade ExcelJS to 3.4.0 just to escape the advisory range.

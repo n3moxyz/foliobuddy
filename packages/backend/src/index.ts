@@ -34,6 +34,7 @@ import {
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX_REQUESTS,
 } from './lib/constants.js';
+import { warnOnMissingProductionConfig } from './lib/startupChecks.js';
 
 import { initSentry } from './lib/sentry.js';
 
@@ -42,6 +43,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 initSentry();
+warnOnMissingProductionConfig();
 
 const app = express();
 const server = createServer(app);

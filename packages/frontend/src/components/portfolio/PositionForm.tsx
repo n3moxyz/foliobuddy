@@ -34,10 +34,12 @@ import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 import { CustodyCheckbox } from './CustodyCheckbox';
-import { CreatableSelect } from '@/components/ui/creatable-select';
 import { formatNumber, isStablecoinCategory } from '@/lib/utils';
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
+import { PositionCostFields } from './PositionCostFields';
+import { PositionDeltaEditor } from './PositionDeltaEditor';
+import { PositionStorageFields } from './PositionStorageFields';
 import {
   CRYPTO_STORAGE_TYPES,
   FIAT_CASH_STORAGE_TYPES,
@@ -57,6 +59,8 @@ import {
   toUsdCost,
   type CostInputMode,
 } from './positionFormMath';
+import type { CategoryType, EquityMode, FormMode, PositionStorageType } from './positionFormTypes';
+import type { PositionDeltaMode } from '@foliobuddy/shared';
 
 const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
 const LEGACY_CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
@@ -112,11 +116,6 @@ interface PositionFormProps {
   existingCustodyNames?: string[];
 }
 
-type CategoryType = 'crypto' | 'cash' | 'equity';
-type EquityMode = 'single' | 'fund';
-type FormMode = 'add' | 'import';
-type PositionStorageType = 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE';
-
 type ImportedPosition = BulkImportPosition;
 
 // Custom order: USDT, USDC, USDe, FDUSD, DAI
@@ -155,7 +154,7 @@ export function PositionForm({
 }: PositionFormProps) {
   const [mode, setMode] = useState<FormMode>('add');
   const [editMode, setEditMode] = useState<'edit' | 'delta'>('edit');
-  const [deltaMode, setDeltaMode] = useState<'add' | 'reduce'>('add');
+  const [deltaMode, setDeltaMode] = useState<PositionDeltaMode>('add');
   const queryClient = useQueryClient();
   const isEditing = !!position;
 
@@ -239,7 +238,9 @@ export function PositionForm({
   // For SGD-denominated edits we wait for portfolioSummary so the displayed
   // SGD values match the FX rate used on submit.
   const costInitializedRef = useRef(false);
-  const [storageType, setStorageType] = useState(position?.storageType || 'CEX');
+  const [storageType, setStorageType] = useState<PositionStorageType>(
+    (position?.storageType as PositionStorageType | undefined) || 'CEX'
+  );
   const [storageLocation, setStorageLocation] = useState(position?.storageLocation || '');
   const [addingStorageLocation, setAddingStorageLocation] = useState(false);
   const [newStorageLocation, setNewStorageLocation] = useState('');
@@ -1165,231 +1166,39 @@ export function PositionForm({
           )}
 
           {isEditing && editMode === 'delta' && position ? (
-            <>
-              <div className="rounded-md border bg-muted/30 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{position.asset.symbol}</p>
-                    <p className="text-sm text-muted-foreground">{position.asset.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Current quantity</p>
-                    <p className="font-mono text-sm">
-                      {isStablecoinCategory(position.asset.category)
-                        ? formatNumber(position.quantity, 0)
-                        : formatNumber(position.quantity, 4)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeltaMode('add')}
-                  className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-                    deltaMode === 'add'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {deltaMode === 'add' && <Check className="h-4 w-4" />}
-                  Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeltaMode('reduce')}
-                  className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-                    deltaMode === 'reduce'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {deltaMode === 'reduce' && <Check className="h-4 w-4" />}
-                  Reduce
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="additionalQuantity" className="text-sm">
-                  {deltaMode === 'add' ? 'Additional Quantity' : 'Reduce Quantity'}
-                </Label>
-                <FormattedNumberInput
-                  id="additionalQuantity"
-                  value={additionalQuantity}
-                  onValueChange={(value) => {
-                    setAdditionalQuantity(value);
-                    setValidationError(null);
-                  }}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              {deltaMode === 'add' ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-muted-foreground">Enter:</span>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="additionalCostMode"
-                        checked={additionalCostInputMode === 'total'}
-                        onChange={() => {
-                          setAdditionalCostInputMode('total');
-                          setValidationError(null);
-                        }}
-                        className="w-3.5 h-3.5 accent-primary"
-                      />
-                      <span
-                        className={
-                          additionalCostInputMode === 'total'
-                            ? 'font-medium'
-                            : 'text-muted-foreground'
-                        }
-                      >
-                        Total Cost
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="additionalCostMode"
-                        checked={additionalCostInputMode === 'avg'}
-                        onChange={() => {
-                          setAdditionalCostInputMode('avg');
-                          setValidationError(null);
-                        }}
-                        className="w-3.5 h-3.5 accent-primary"
-                      />
-                      <span
-                        className={
-                          additionalCostInputMode === 'avg'
-                            ? 'font-medium'
-                            : 'text-muted-foreground'
-                        }
-                      >
-                        Avg Cost
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="additionalTotalCost" className="text-sm">
-                        Total Cost ({costCurrency})
-                      </Label>
-                      <FormattedNumberInput
-                        id="additionalTotalCost"
-                        value={
-                          additionalCostInputMode === 'total'
-                            ? additionalTotalCost
-                            : calculatedAdditionalTotalCost
-                        }
-                        onValueChange={(value) => {
-                          setAdditionalTotalCost(value);
-                          setValidationError(null);
-                        }}
-                        placeholder="0.00"
-                        disabled={additionalCostInputMode !== 'total'}
-                        className={additionalCostInputMode !== 'total' ? 'bg-muted' : ''}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="additionalAvgCost" className="text-sm">
-                        Average Cost ({costCurrency})
-                      </Label>
-                      <FormattedNumberInput
-                        id="additionalAvgCost"
-                        value={
-                          additionalCostInputMode === 'avg'
-                            ? additionalAvgCostInput
-                            : calculatedAdditionalAvgCost
-                        }
-                        onValueChange={(value) => {
-                          setAdditionalAvgCostInput(value);
-                          setValidationError(null);
-                        }}
-                        placeholder="0.00"
-                        disabled={additionalCostInputMode !== 'avg'}
-                        className={additionalCostInputMode !== 'avg' ? 'bg-muted' : ''}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
-                  Cost basis will be reduced automatically using the current average cost.
-                </div>
-              )}
-
-              {addPreview && (
-                <div className="rounded-md border bg-muted/20 p-3">
-                  <div className="grid grid-cols-[64px_1fr_1fr_1fr] gap-x-4 gap-y-2 text-sm">
-                    <div />
-                    <div className="text-right text-xs text-muted-foreground">Quantity</div>
-                    <div className="text-right text-xs text-muted-foreground">Avg Cost</div>
-                    <div className="text-right text-xs text-muted-foreground">Total Cost</div>
-
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Old
-                    </div>
-                    <div className="text-right font-mono text-muted-foreground">
-                      {isStablecoinCategory(position.asset.category)
-                        ? formatNumber(addPreview.currentQuantity, 0)
-                        : formatNumber(addPreview.currentQuantity, 4)}
-                    </div>
-                    <div className="text-right font-mono text-muted-foreground">
-                      {addPreview.currentAvgCost.toFixed(addPreview.currentAvgCost >= 1000 ? 0 : 2)}
-                    </div>
-                    <div className="text-right font-mono text-muted-foreground">
-                      {addPreview.currentTotalCost.toFixed(0)}
-                    </div>
-
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-primary">
-                      New
-                    </div>
-                    <div className="text-right font-mono font-medium text-primary">
-                      {isStablecoinCategory(position.asset.category)
-                        ? formatNumber(addPreview.nextQuantity, 0)
-                        : formatNumber(addPreview.nextQuantity, 4)}
-                    </div>
-                    <div className="text-right font-mono font-medium text-primary">
-                      {addPreview.nextAvgCost.toFixed(addPreview.nextAvgCost >= 1000 ? 0 : 2)}
-                    </div>
-                    <div className="text-right font-mono font-medium text-primary">
-                      {addPreview.nextTotalCost.toFixed(0)}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {error && (
-                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                  {error}
-                </div>
-              )}
-
-              {validationError && (
-                <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
-                  {validationError}
-                </div>
-              )}
-
-              <div className="pt-3 border-t border-border/60">{custodyCheckbox}</div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading
-                    ? 'Saving...'
-                    : deltaMode === 'add'
-                      ? 'Add to Position'
-                      : 'Reduce Position'}
-                </Button>
-              </div>
-            </>
+            <PositionDeltaEditor
+              position={position}
+              deltaMode={deltaMode}
+              onDeltaModeChange={setDeltaMode}
+              additionalQuantity={additionalQuantity}
+              onAdditionalQuantityChange={(value) => {
+                setAdditionalQuantity(value);
+                setValidationError(null);
+              }}
+              additionalCostInputMode={additionalCostInputMode}
+              onAdditionalCostInputModeChange={(mode) => {
+                setAdditionalCostInputMode(mode);
+                setValidationError(null);
+              }}
+              additionalTotalCost={additionalTotalCost}
+              calculatedAdditionalTotalCost={calculatedAdditionalTotalCost}
+              onAdditionalTotalCostChange={(value) => {
+                setAdditionalTotalCost(value);
+                setValidationError(null);
+              }}
+              additionalAvgCostInput={additionalAvgCostInput}
+              calculatedAdditionalAvgCost={calculatedAdditionalAvgCost}
+              onAdditionalAvgCostChange={(value) => {
+                setAdditionalAvgCostInput(value);
+                setValidationError(null);
+              }}
+              costCurrency={costCurrency}
+              preview={addPreview}
+              error={error}
+              validationError={validationError}
+              custodySlot={custodyCheckbox}
+              isLoading={isLoading}
+            />
           ) : (
             <>
               {/* Category Selection */}
@@ -1794,177 +1603,56 @@ export function PositionForm({
 
               {/* Total Cost & Average Cost (Crypto + Equity) */}
               {category !== 'cash' && (
-                <div className="space-y-2">
-                  {/* Toggle for cost input mode */}
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-muted-foreground">Enter:</span>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="costMode"
-                        checked={costInputMode === 'total'}
-                        onChange={() => setCostInputMode('total')}
-                        className="w-3.5 h-3.5 accent-primary"
-                      />
-                      <span
-                        className={
-                          costInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'
-                        }
-                      >
-                        Total Cost
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="costMode"
-                        checked={costInputMode === 'avg'}
-                        onChange={() => setCostInputMode('avg')}
-                        className="w-3.5 h-3.5 accent-primary"
-                      />
-                      <span
-                        className={
-                          costInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'
-                        }
-                      >
-                        Avg Cost
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="totalCost" className="text-sm">
-                        Total Cost ({costCurrency})
-                      </Label>
-                      <FormattedNumberInput
-                        id="totalCost"
-                        value={costInputMode === 'total' ? totalCost : calculatedTotalCost}
-                        onValueChange={setTotalCost}
-                        placeholder="0.00"
-                        disabled={costInputMode !== 'total'}
-                        className={costInputMode !== 'total' ? 'bg-muted' : ''}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="avgCost" className="text-sm">
-                        Average Cost ({costCurrency})
-                      </Label>
-                      <FormattedNumberInput
-                        id="avgCost"
-                        value={costInputMode === 'avg' ? avgCostInput : calculatedAvgCost}
-                        onValueChange={setAvgCostInput}
-                        placeholder="0.00"
-                        disabled={costInputMode !== 'avg'}
-                        className={costInputMode !== 'avg' ? 'bg-muted' : ''}
-                      />
-                    </div>
-                  </div>
-                  {!isEditing &&
+                <PositionCostFields
+                  costInputMode={costInputMode}
+                  onCostInputModeChange={setCostInputMode}
+                  totalCost={totalCost}
+                  calculatedTotalCost={calculatedTotalCost}
+                  onTotalCostChange={setTotalCost}
+                  avgCostInput={avgCostInput}
+                  calculatedAvgCost={calculatedAvgCost}
+                  onAvgCostChange={setAvgCostInput}
+                  costCurrency={costCurrency}
+                  showUnitTrustConversion={
+                    !isEditing &&
                     category === 'equity' &&
                     equityMode === 'fund' &&
-                    utNativeCurrency !== 'USD' && (
-                      <p className="text-xs text-muted-foreground">
-                        Stored internally as USD ({utUsdPerNative.toFixed(4)} USD per{' '}
-                        {utNativeCurrency}).
-                      </p>
-                    )}
-                  {category === 'equity' &&
+                    utNativeCurrency !== 'USD'
+                  }
+                  unitTrustUsdPerNative={utUsdPerNative}
+                  unitTrustNativeCurrency={utNativeCurrency}
+                  showSgdConversion={
+                    category === 'equity' &&
                     !(equityMode === 'fund' && !isEditing) &&
-                    costCurrency === 'SGD' && (
-                      <p className="text-xs text-muted-foreground">
-                        Stored internally as USD ({(1 / fxSgdPerUsd).toFixed(4)} USD per SGD).
-                      </p>
-                    )}
-                </div>
+                    costCurrency === 'SGD'
+                  }
+                  fxSgdPerUsd={fxSgdPerUsd}
+                />
               )}
 
-              {/* Storage Type — for equities the dropdown holds broker names
-                  (storageType is always BROKERAGE behind the scenes, set via category effect) */}
-              <div className="space-y-1">
-                <Label htmlFor="pos-storage-type" className="text-sm">
-                  Storage Type
-                </Label>
-                {category === 'equity' ? (
-                  <CreatableSelect
-                    id="pos-storage-type"
-                    value={storageLocation}
-                    options={locationOptions}
-                    placeholder="Select broker"
-                    addLabel="+ Add new broker"
-                    inputPlaceholder="Enter broker name..."
-                    inputLabel="New broker name"
-                    adding={addingStorageLocation}
-                    inputValue={newStorageLocation}
-                    onValueChange={(value) => {
-                      if (!value) return;
-                      setStorageLocation(value);
-                      handleCancelStorageLocation();
-                    }}
-                    onStartAdding={handleStartAddingStorageLocation}
-                    onInputChange={setNewStorageLocation}
-                    onAdd={handleAddStorageLocation}
-                    onCancel={handleCancelStorageLocation}
-                    onEditOption={handleEditStorageLocation}
-                    onDeleteOption={handleDeleteStorageLocation}
-                    onClearValue={handleClearStorageLocation}
-                    isOptionEditable={(option) =>
-                      editableLocationOptions.has(option.toLocaleLowerCase())
-                    }
-                  />
-                ) : (
-                  <Select
-                    value={storageType}
-                    onValueChange={(value) => handleStorageTypeChange(value as PositionStorageType)}
-                  >
-                    <SelectTrigger id="pos-storage-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {storageTypeOptions.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              {/* Storage Location — hidden for equities (broker already captured above) */}
-              {category !== 'equity' && (
-                <div className="space-y-1">
-                  <Label htmlFor="pos-storage-location" className="text-sm">
-                    {storageLocationLabel}
-                  </Label>
-                  <CreatableSelect
-                    id="pos-storage-location"
-                    value={storageLocation}
-                    options={locationOptions}
-                    placeholder={`Select ${storageLocationLabel.toLowerCase()}`}
-                    addLabel={`+ Add new ${storageLocationLabel.toLowerCase()}`}
-                    inputPlaceholder={`Enter ${storageLocationLabel.toLowerCase()} name...`}
-                    inputLabel={`New ${storageLocationLabel.toLowerCase()} name`}
-                    adding={addingStorageLocation}
-                    inputValue={newStorageLocation}
-                    onValueChange={(value) => {
-                      if (!value) return;
-                      setStorageLocation(value);
-                      handleCancelStorageLocation();
-                    }}
-                    onStartAdding={handleStartAddingStorageLocation}
-                    onInputChange={setNewStorageLocation}
-                    onAdd={handleAddStorageLocation}
-                    onCancel={handleCancelStorageLocation}
-                    onEditOption={handleEditStorageLocation}
-                    onDeleteOption={handleDeleteStorageLocation}
-                    onClearValue={handleClearStorageLocation}
-                    isOptionEditable={(option) =>
-                      editableLocationOptions.has(option.toLocaleLowerCase())
-                    }
-                  />
-                </div>
-              )}
+              <PositionStorageFields
+                category={category}
+                storageType={storageType}
+                storageTypeOptions={storageTypeOptions}
+                storageLocation={storageLocation}
+                storageLocationLabel={storageLocationLabel}
+                locationOptions={locationOptions}
+                editableLocationOptions={editableLocationOptions}
+                addingStorageLocation={addingStorageLocation}
+                newStorageLocation={newStorageLocation}
+                onStorageTypeChange={handleStorageTypeChange}
+                onStorageLocationChange={(value) => {
+                  setStorageLocation(value);
+                  handleCancelStorageLocation();
+                }}
+                onStartAddingStorageLocation={handleStartAddingStorageLocation}
+                onNewStorageLocationChange={setNewStorageLocation}
+                onAddStorageLocation={handleAddStorageLocation}
+                onCancelStorageLocation={handleCancelStorageLocation}
+                onEditStorageLocation={handleEditStorageLocation}
+                onDeleteStorageLocation={handleDeleteStorageLocation}
+                onClearStorageLocation={handleClearStorageLocation}
+              />
 
               <div className="space-y-1">
                 <Label htmlFor="notes" className="text-sm">

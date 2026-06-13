@@ -46,8 +46,10 @@
 - `src/lib/constants.ts` - Domain enums (AssetCategory, StorageType, TradeDirection, TradeStatus, SnapshotType, SnapshotSource)
 - `src/lib/domain.ts` - Backend-owned copy of core financial/domain helpers (position value math, add/reduce cost-basis math, external provider/category compatibility)
 - `src/lib/authorization.ts` - Admin and user-asset ownership guards for global asset catalog routes
+- `src/lib/startupChecks.ts` - Production boot warnings for missing operational config such as `ADMIN_USER_IDS`
 - `src/lib/TTLCache.ts` - Generic TTL cache with LRU eviction (used by priceService)
 - `src/__tests__/` - Unit + integration tests (vitest)
+- `src/__tests__/scheduler.test.ts` + `src/__tests__/socketService.test.ts` - Fast backend coverage for cron-driven price refresh fanout and WebSocket event payloads
 - `src/__tests__/routes/` - Route integration tests (supertest + mocked Prisma)
 - `src/__tests__/helpers/` - Test utilities (createTestApp, fixtures)
 - `prisma/schema.prisma` - Database schema
@@ -74,6 +76,8 @@
 - `src/components/portfolio/positionClipboard.ts` - Shared portfolio copy-to-clipboard JSON formatter
 - `src/components/portfolio/positionOptions.ts` - Shared storage location option lists (CEX, onchain, broker, bank) plus localStorage-backed custom option helpers used by position forms
 - `src/components/portfolio/positionFormMath.ts` - Pure PositionForm cost and add/reduce preview helpers backed by shared domain math
+- `src/components/portfolio/PositionDeltaEditor.tsx` - Add/reduce edit-mode UI extracted from PositionForm; keep submit logic in the parent
+- `src/components/portfolio/PositionCostFields.tsx` + `PositionStorageFields.tsx` - Extracted PositionForm field groups for cost-basis and storage-location UI
 - `src/lib/chartColors.ts` - Centralized theme-aware chart color constants backed by OKLCH CSS variables in `index.css`
 - `src/lib/chartUtils.ts` - Time-period date helpers (`getDateRange`, `formatXAxisDate`, `formatTooltipDate`) shared between PortfolioChart and BenchmarkComparisonChart
 - `react-doctor.config.json` - Root-level React Doctor triage policy. Keeps the scan focused on actionable regressions after known React 18/Radix/shadcn and design-opinion rules were reviewed.
@@ -364,6 +368,7 @@ Rules:
 - Custody changes made from either edit tab must persist
 - The confirmation preview uses an Old/New comparison table for quantity, avg cost, and total cost
 - Both the preview and the submitted update go through the shared `applyPositionDelta()` helper (via `positionFormMath.ts`) — do not hand-roll cost-basis arithmetic in the form
+- Keep add/reduce rendering in `PositionDeltaEditor.tsx`, pure math in `positionFormMath.ts`, and API submit/mutation logic in `PositionForm.tsx`.
 
 ### Dashboard Charts
 
@@ -445,6 +450,8 @@ ALLOWED_ORIGINS=http://localhost:4000
 RATE_LIMIT_MAX=10000       # Local dev override (production defaults to 200)
 SENTRY_DSN=                # Optional — error tracking (skipped if empty)
 ```
+
+Production boot logs warn when `ADMIN_USER_IDS` is empty because global Asset catalog edit/delete routes will otherwise return 403 for every user.
 
 ### Frontend (`.env`)
 
