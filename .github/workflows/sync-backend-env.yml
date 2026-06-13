@@ -1,0 +1,75 @@
+name: Sync Backend Env to Coolify
+
+# Pushes the ADMIN_USER_IDS GitHub secret into the Coolify app's environment
+# and redeploys so the container picks it up. Re-run after rotating the secret:
+#   gh secret set ADMIN_USER_IDS --body "user_xxx,user_yyy"
+#   gh workflow run sync-backend-env.yml
+on:
+  workflow_dispatch:
+
+jobs:
+  sync-env:
+    name: Upsert env + redeploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Upsert ADMIN_USER_IDS in Coolify
+        timeout-minutes: 2
+        run: |
+          payload='{"key":"ADMIN_USER_IDS","value":"${{ secrets.ADMIN_USER_IDS }}","is_preview":false,"is_build_time":false}'
+          base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
+
+          # Try update first; fall back to create when the key doesn't exist yet
+          http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X PATCH "$base" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload")
+          echo "PATCH status: $http_code"
+          if [ "$http_code" -ge 400 ]; then
+            http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X POST "$base" \
+              -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d "$payload")
+            echo "POST status: $http_code"
+          fi
+          if [ "$http_code" -ge 400 ]; then
+            cat /tmp/resp
+            echo "Failed to upsert env var"
+            exit 1
+          fi
+
+      - name: Trigger Coolify Deploy
+        timeout-minutes: 2
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.COOLIFY_URL }}/api/v1/deploy" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"uuid":"${{ secrets.COOLIFY_APP_UUID }}","force":true}')
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+          echo "$body"
+          if [ "$http_code" -ne 200 ]; then
+            echo "Deploy failed with status $http_code"
+            exit 1
+          fi
+
+      - name: Wait for Coolify rebuild
+        run: sleep 120
+
+      - name: Health check
+        run: |
+          BACKEND_URL="https://api.foliobuddy.xyz"
+          for i in 1 2 3 4 5; do
+            response=$(curl -s -w "\n%{http_code}" "${BACKEND_URL}/health")
+            http_code=$(echo "$response" | tail -1)
+            body=$(echo "$response" | head -n -1)
+            echo "Attempt $i: HTTP $http_code - $body"
+            if [ "$http_code" -eq 200 ]; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
