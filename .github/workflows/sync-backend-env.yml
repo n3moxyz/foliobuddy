@@ -16,24 +16,20 @@ jobs:
       - name: Upsert ADMIN_USER_IDS in Coolify
         timeout-minutes: 2
         run: |
-          payload='{"key":"ADMIN_USER_IDS","value":"${{ secrets.ADMIN_USER_IDS }}","is_preview":false,"is_build_time":false}'
+          payload='{"key":"ADMIN_USER_IDS","value":"${{ secrets.ADMIN_USER_IDS }}","is_preview":false}'
           base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
+          auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
 
-          # Try update first; fall back to create when the key doesn't exist yet
-          http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X PATCH "$base" \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "$payload")
-          echo "PATCH status: $http_code"
+          # Create first; fall back to update if the key already exists
+          http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X POST "$base" \
+            -H "$auth" -H "Content-Type: application/json" -d "$payload")
+          echo "POST status: $http_code -> $(cat /tmp/resp)"
           if [ "$http_code" -ge 400 ]; then
-            http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X POST "$base" \
-              -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              -d "$payload")
-            echo "POST status: $http_code"
+            http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X PATCH "$base" \
+              -H "$auth" -H "Content-Type: application/json" -d "$payload")
+            echo "PATCH status: $http_code -> $(cat /tmp/resp)"
           fi
           if [ "$http_code" -ge 400 ]; then
-            cat /tmp/resp
             echo "Failed to upsert env var"
             exit 1
           fi
