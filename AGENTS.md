@@ -142,6 +142,8 @@ Captures portfolio state at points in time. Calculates daily/weekly/monthly/YTD 
 
 Yahoo's `/v1/finance/search` region-filters results by caller IP even with `region=US` (our Singapore droplet got only cross-listings for US ETFs). `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` when the query matches `/^[A-Z0-9.-]{1,10}$/` and search returned no exact-symbol match.
 
+For Asian equities, Yahoo uses suffixed symbols and local currencies: Japan `.T` → JPY (e.g. Kioxia `285A.T`), Taiwan `.TW`/`.TWO` → TWD, Korea `.KS`/`.KQ` → KRW. Search queries fan out across US/JP/TW/KR regions, direct ticker lookups try the Asian suffixes for numeric tickers, and ranking intentionally prefers primary Asian exchanges over OTC/Frankfurt/Stuttgart/Munich/Hamburg cross-listings. Keep `YahooFinanceProvider.test.ts` coverage for Kioxia so name searches do not regress to OTC-only results.
+
 ### Unit Trust Statement Parsers (PDF Import)
 
 `POST /assets/parse-unit-trust-statement` extracts text via `pdf-parse` and walks broker-specific parsers in `src/services/statementParsers/` until one succeeds. PDF text collapses table columns into a flat token stream, so each parser finds a deterministic anchor (ISIN or value-block regex) and reads fixed fields after it. Supported: **UOB Kay Hian** (`uobKayHian.ts`) and **FSMOne / iFAST** (`fsmOne.ts`). Adding a broker: new file alongside, append to `parsers` in `routes/assets.ts`, update the supported-formats error string, add a broker→`storageLocation` branch in `PositionForm.tsx:applyParsedHolding`.
@@ -235,6 +237,8 @@ iOS HIG-inspired patterns on all pages:
 | >= $1,000   | 0        | $67,200  |
 
 Use `formatCurrency` (explicit decimals or compact mode) for totals, sizes, and P&L.
+
+Portfolio rows keep the selected app currency as the primary current price. If `asset.nativeCurrency` differs, show a muted second line using `localPriceLabel()` / `formatNativePrice()` and the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW supported). Do not store native current price on `Asset`; derive the display label from `currentPriceUsd × USD/native FX`.
 
 ### Formatted Amount Inputs
 

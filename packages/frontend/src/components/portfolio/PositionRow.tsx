@@ -14,6 +14,7 @@ import {
 } from '@/lib/utils';
 import { Pencil, Trash2, Copy, Check, RefreshCw } from 'lucide-react';
 import type { Position } from '@/lib/types';
+import { localPriceLabel, type UsdFxRatesByCurrency } from './positionPriceDisplay';
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
   WALLET: 'Onchain',
@@ -53,6 +54,7 @@ interface PositionRowProps {
   position: Position;
   currency: 'USD' | 'SGD';
   fxRate: number;
+  usdFxRates: UsdFxRatesByCurrency;
   copiedId: string | null;
   showAllColumns?: boolean;
   onView: (position: Position) => void;
@@ -67,6 +69,7 @@ export const PositionRow = React.memo(function PositionRow({
   position,
   currency,
   fxRate,
+  usdFxRates,
   copiedId,
   showAllColumns = false,
   onView,
@@ -99,6 +102,12 @@ export const PositionRow = React.memo(function PositionRow({
   const priceUpdatedTitle = position.asset.priceUpdatedAt
     ? `NAV updated ${formatDateTime(position.asset.priceUpdatedAt)}`
     : 'NAV never set';
+  const localCurrentPrice = localPriceLabel({
+    usdPrice: position.asset.currentPriceUsd,
+    nativeCurrency: position.asset.nativeCurrency,
+    displayCurrency: currency,
+    usdFxRates,
+  });
 
   // Match PositionTable: hidden on mobile unless toggle is on
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
@@ -147,10 +156,17 @@ export const PositionRow = React.memo(function PositionRow({
         {formatCurrency(convert(totalCost), currency, 0)}
       </TableCell>
       <TableCell className={`text-right font-mono text-sm text-muted-foreground ${HIDDEN_MOBILE}`}>
-        {formatCurrency(
-          convert(position.asset.currentPriceUsd),
-          currency,
-          getSmartDecimals(convert(position.asset.currentPriceUsd))
+        <p>
+          {formatCurrency(
+            convert(position.asset.currentPriceUsd),
+            currency,
+            getSmartDecimals(convert(position.asset.currentPriceUsd))
+          )}
+        </p>
+        {localCurrentPrice && (
+          <p className="mt-0.5 text-[11px] leading-none text-muted-foreground/80">
+            {localCurrentPrice}
+          </p>
         )}
       </TableCell>
       <TableCell className="text-right font-mono text-sm font-medium">

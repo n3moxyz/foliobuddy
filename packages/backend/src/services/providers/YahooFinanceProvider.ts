@@ -24,6 +24,18 @@ const SEARCH_CACHE_DURATION_MS = 10 * 60 * 1000;
 const BATCH_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 8000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const SEARCH_REGIONS = ['US', 'JP', 'TW', 'KR'] as const;
+const SUPPORTED_NATIVE_CURRENCIES = new Set(['USD', 'SGD', 'JPY', 'TWD', 'KRW']);
+const USD_FX_SYMBOLS: Record<string, string> = {
+  SGD: 'SGD=X',
+  JPY: 'JPY=X',
+  TWD: 'TWD=X',
+  KRW: 'KRW=X',
+};
+const ASIA_DIRECT_QUOTE_SUFFIXES = ['.T', '.TW', '.TWO', '.KS', '.KQ'];
+const NAME_DIRECT_QUOTE_CANDIDATES: Record<string, string[]> = {
+  kioxia: ['285A.T'],
+};
 
 // Lower rank = higher in results. Exact match first, then primary listings
 // (no exchange suffix), then cross-listings like EWY.SN or AAPL.BA.
@@ -34,6 +46,49 @@ function rankSymbol(query: string, symbol: string): number {
   if (!hasSuffix) return 1;
   if (upper.startsWith(`${query}.`)) return 2;
   return 3;
+}
+
+function exchangeRank(symbol: string, exchange?: string | null): number {
+  const upperSymbol = symbol.toUpperCase();
+  const upperExchange = (exchange ?? '').toUpperCase();
+
+  if (
+    upperSymbol.endsWith('.T') ||
+    upperSymbol.endsWith('.TW') ||
+    upperSymbol.endsWith('.TWO') ||
+    upperSymbol.endsWith('.KS') ||
+    upperSymbol.endsWith('.KQ') ||
+    upperSymbol.endsWith('.SI') ||
+    upperExchange.includes('TOKYO') ||
+    upperExchange.includes('TAIWAN') ||
+    upperExchange.includes('KOREA') ||
+    upperExchange.includes('KOSDAQ') ||
+    upperExchange.includes('SINGAPORE') ||
+    upperExchange.includes('NASDAQ') ||
+    upperExchange.includes('NYSE')
+  ) {
+    return 0;
+  }
+
+  if (upperExchange.includes('OTC')) return 50;
+  if (
+    upperSymbol.endsWith('.F') ||
+    upperSymbol.endsWith('.SG') ||
+    upperSymbol.endsWith('.MU') ||
+    upperSymbol.endsWith('.HM') ||
+    upperExchange.includes('FRANKFURT') ||
+    upperExchange.includes('STUTTGART') ||
+    upperExchange.includes('MUNICH') ||
+    upperExchange.includes('HAMBURG')
+  ) {
+    return 40;
+  }
+
+  return 20;
+}
+
+function rankSearchResult(query: string, result: ProviderSearchResult): number {
+  return rankSymbol(query, result.symbol) * 10 + exchangeRank(result.symbol, result.exchange);
 }
 
 type YahooSearchItem = {
@@ -65,6 +120,17 @@ type YahooFinanceChartResult = {
   }>;
 };
 
+type YahooQuoteLike = {
+  symbol?: string;
+  quoteType?: string;
+  regularMarketPrice?: number;
+  currency?: string;
+  longName?: string;
+  shortName?: string;
+  fullExchangeName?: string;
+  exchange?: string;
+};
+
 export class YahooFinanceProvider implements AssetPriceProvider {
   readonly name = 'yahoo' as const;
   readonly refreshIntervalMinutes = 15;
@@ -81,6 +147,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     SEARCH_CACHE_DURATION_MS,
     100
   );
+  private readonly usdFxCache = new TTLCache<string, number>(PRICE_CACHE_DURATION_MS, 20);
 
   private async fetchJson<T>(url: string): Promise<T | null> {
     const controller = new AbortController();
@@ -103,22 +170,74 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     }
   }
 
-  private async getUsdSgdRate(): Promise<number> {
+  private async getStoredUsdRateToCurrency(currency: string): Promise<number | null> {
+    if (currency === 'USD') return 1;
     const row = await prisma.fxRate.findUnique({
-      where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: 'SGD' } },
+      where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: currency } },
     });
-    return row?.rate ?? USD_SGD_FALLBACK_RATE;
+    if (row?.rate) return row.rate;
+    return currency === 'SGD' ? USD_SGD_FALLBACK_RATE : null;
   }
 
-  private toUsd(nativePrice: number, currency: string, usdSgd: number): number | null {
-    const ccy = currency.toUpperCase();
-    if (ccy === 'USD') return nativePrice;
-    if (ccy === 'SGD') return nativePrice / usdSgd;
+  private async getYahooUsdRateToCurrency(currency: string): Promise<number | null> {
+    const symbol = USD_FX_SYMBOLS[currency];
+    if (!symbol) return null;
+
+    try {
+      const q = (await yahooFinance.quote(symbol)) as YahooQuoteLike | null;
+      const rate = q?.regularMarketPrice;
+      if (rate && rate > 0) return rate;
+    } catch (err) {
+      logger.warn(
+        `[Yahoo] FX quote lookup for USD/${currency} failed:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+
     return null;
   }
 
+  async getUsdExchangeRates(currencies: string[]): Promise<Map<string, number>> {
+    const rates = new Map<string, number>();
+
+    for (const rawCurrency of currencies) {
+      const currency = rawCurrency.toUpperCase();
+      if (currency === 'USD') {
+        rates.set(currency, 1);
+        continue;
+      }
+      if (!this.isSupportedCurrency(currency)) continue;
+
+      const cached = this.usdFxCache.get(currency);
+      if (cached !== undefined) {
+        rates.set(currency, cached);
+        continue;
+      }
+
+      const stored = await this.getStoredUsdRateToCurrency(currency);
+      const rate = stored ?? (await this.getYahooUsdRateToCurrency(currency));
+      if (rate !== null) {
+        rates.set(currency, rate);
+        this.usdFxCache.set(currency, rate);
+      }
+    }
+
+    return rates;
+  }
+
+  private toUsd(
+    nativePrice: number,
+    currency: string,
+    usdRates: Map<string, number>
+  ): number | null {
+    const ccy = currency.toUpperCase();
+    if (ccy === 'USD') return nativePrice;
+    const usdToNative = usdRates.get(ccy);
+    return usdToNative && usdToNative > 0 ? nativePrice / usdToNative : null;
+  }
+
   private isSupportedCurrency(currency: string | null | undefined): boolean {
-    return currency === 'USD' || currency === 'SGD';
+    return !!currency && SUPPORTED_NATIVE_CURRENCIES.has(currency.toUpperCase());
   }
 
   async getPrices(providerAssetIds: string[]): Promise<Map<string, ProviderPrice>> {
@@ -131,22 +250,15 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     }
     if (idsToFetch.length === 0) return prices;
 
-    const usdSgd = await this.getUsdSgdRate();
-
     for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
       const batch = idsToFetch.slice(i, i + BATCH_SIZE);
-      type QuoteLike = {
-        symbol: string;
-        regularMarketPrice?: number;
-        currency?: string;
-      };
-      let quotes: QuoteLike[] = [];
+      let quotes: YahooQuoteLike[] = [];
       try {
         // yahoo-finance2 handles the crumb+cookie consent flow that Yahoo now
         // requires for /v7/finance/quote from datacenter IPs. Raw fetch against
         // that endpoint silently returns 401/empty from Coolify droplet.
         const res = await yahooFinance.quote(batch);
-        const arr = (Array.isArray(res) ? res : [res]) as unknown as QuoteLike[];
+        const arr = (Array.isArray(res) ? res : [res]) as unknown as YahooQuoteLike[];
         quotes = arr.filter((q) => !!q && typeof q.symbol === 'string');
       } catch (err) {
         logger.warn(
@@ -156,13 +268,18 @@ export class YahooFinanceProvider implements AssetPriceProvider {
         continue;
       }
 
+      const usdRates = await this.getUsdExchangeRates(
+        Array.from(new Set(quotes.map((item) => item.currency?.toUpperCase() ?? 'USD')))
+      );
+
       for (const item of quotes) {
-        if (item.regularMarketPrice === undefined) continue;
+        const symbol = item.symbol;
+        if (!symbol || item.regularMarketPrice === undefined) continue;
         const currency = item.currency?.toUpperCase() ?? 'USD';
         const nativePrice = item.regularMarketPrice;
-        const priceUsd = this.toUsd(nativePrice, currency, usdSgd);
+        const priceUsd = this.toUsd(nativePrice, currency, usdRates);
         if (priceUsd === null) {
-          logger.warn(`[Yahoo] Skipping ${item.symbol}: unsupported currency ${currency}`);
+          logger.warn(`[Yahoo] Skipping ${symbol}: unsupported currency ${currency}`);
           continue;
         }
         const fxRateToUsd = currency === 'USD' ? 1 : priceUsd / nativePrice;
@@ -172,8 +289,8 @@ export class YahooFinanceProvider implements AssetPriceProvider {
           nativeCurrency: currency,
           fxRateToUsd,
         };
-        prices.set(item.symbol, entry);
-        this.priceCache.set(item.symbol, entry);
+        prices.set(symbol, entry);
+        this.priceCache.set(symbol, entry);
       }
     }
     return prices;
@@ -234,20 +351,26 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     // otherwise geolocates and returns region-weighted results (e.g. EWY
     // search returns only Santiago cross-listings, not the primary NYSE ETF).
     let quotes: YahooSearchItem[] = [];
-    try {
-      const res = await yahooFinance.search(query, {
-        quotesCount: 15,
-        newsCount: 0,
-        lang: 'en-US',
-        region: 'US',
-      });
-      quotes = (res.quotes ?? []) as YahooSearchItem[];
-      logger.info(
-        `[Yahoo] search via lib for "${query}": ${quotes.length} quotes (types: ${quotes.map((q) => q.quoteType).join(',')})`
-      );
-    } catch (err) {
-      logger.warn('[Yahoo] search lib error:', err instanceof Error ? err.message : err);
+    const regionsToSearch = query.trim().length >= 2 ? SEARCH_REGIONS : ['US'];
+    for (const region of regionsToSearch) {
+      try {
+        const res = await yahooFinance.search(query, {
+          quotesCount: 20,
+          newsCount: 0,
+          lang: 'en-US',
+          region,
+        });
+        quotes = this.mergeQuotes(quotes, (res.quotes ?? []) as YahooSearchItem[]);
+      } catch (err) {
+        logger.warn(
+          `[Yahoo] search lib error (${region}):`,
+          err instanceof Error ? err.message : err
+        );
+      }
     }
+    logger.info(
+      `[Yahoo] search via lib for "${query}": ${quotes.length} quotes (types: ${quotes.map((q) => q.quoteType).join(',')})`
+    );
 
     if (quotes.length === 0) {
       quotes = await this.searchViaLookup(query);
@@ -273,34 +396,25 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       // exchange-suffixed variants (e.g. EWY.SN on Santiago) before the
       // canonical NYSE ticker, so searches for "EWY" lose the ETF the user
       // actually wants. Heuristic: exact symbol match > no-suffix > has-suffix.
-      .sort((a, b) => rankSymbol(upperQuery, a.symbol) - rankSymbol(upperQuery, b.symbol));
+      .sort((a, b) => rankSearchResult(upperQuery, a) - rankSearchResult(upperQuery, b));
 
-    // Fallback: if search didn't return an exact-symbol ETF/equity/index (common for
-    // US ETFs when our droplet is in SG — Yahoo's search geolocates by source
-    // IP and filters out NYSE listings), try a direct quote lookup. quote()
-    // isn't IP-filtered and resolves deterministic tickers like QQQ/EWY/SPY.
-    const hasExactMatch = results.some((r) => r.symbol.toUpperCase() === upperQuery);
-    if (!hasExactMatch && /^[A-Z0-9.\-]{1,10}$/.test(upperQuery)) {
-      const directMatch = await this.quoteAsSearchResult(upperQuery);
-      if (directMatch) results.unshift(directMatch);
+    for (const directSymbol of this.directQuoteSymbolsForQuery(query)) {
+      if (results.some((r) => r.symbol.toUpperCase() === directSymbol.toUpperCase())) continue;
+      const directMatch = await this.quoteAsSearchResult(directSymbol);
+      if (directMatch) results.push(directMatch);
     }
 
-    this.searchCache.set(cacheKey, results);
-    return results;
+    const sortedResults = results.sort(
+      (a, b) => rankSearchResult(upperQuery, a) - rankSearchResult(upperQuery, b)
+    );
+
+    this.searchCache.set(cacheKey, sortedResults);
+    return sortedResults;
   }
 
   private async quoteAsSearchResult(symbol: string): Promise<ProviderSearchResult | null> {
     try {
-      type QuoteLike = {
-        symbol?: string;
-        quoteType?: string;
-        longName?: string;
-        shortName?: string;
-        fullExchangeName?: string;
-        exchange?: string;
-        currency?: string;
-      };
-      const q = (await yahooFinance.quote(symbol)) as QuoteLike | null;
+      const q = (await yahooFinance.quote(symbol)) as YahooQuoteLike | null;
       if (!q || !q.symbol || !q.quoteType) return null;
       const type = q.quoteType.toUpperCase();
       if (type !== 'EQUITY' && type !== 'ETF' && type !== 'INDEX') return null;
@@ -321,6 +435,36 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       );
       return null;
     }
+  }
+
+  private mergeQuotes(base: YahooSearchItem[], next: YahooSearchItem[]): YahooSearchItem[] {
+    const bySymbol = new Map(base.map((quote) => [quote.symbol.toUpperCase(), quote]));
+    for (const quote of next) {
+      if (!quote.symbol) continue;
+      const key = quote.symbol.toUpperCase();
+      if (!bySymbol.has(key)) bySymbol.set(key, quote);
+    }
+    return Array.from(bySymbol.values());
+  }
+
+  private directQuoteSymbolsForQuery(query: string): string[] {
+    const trimmed = query.trim();
+    const upperQuery = trimmed.toUpperCase();
+    const symbols: string[] = [];
+
+    if (/^[A-Z0-9.\-]{1,10}$/.test(upperQuery)) {
+      symbols.push(upperQuery);
+      if (!upperQuery.includes('.') && /\d/.test(upperQuery)) {
+        symbols.push(...ASIA_DIRECT_QUOTE_SUFFIXES.map((suffix) => `${upperQuery}${suffix}`));
+      }
+    }
+
+    const lowerQuery = trimmed.toLowerCase();
+    for (const [name, candidates] of Object.entries(NAME_DIRECT_QUOTE_CANDIDATES)) {
+      if (lowerQuery.includes(name)) symbols.push(...candidates);
+    }
+
+    return Array.from(new Set(symbols));
   }
 
   private async searchViaLookup(query: string): Promise<YahooSearchItem[]> {
@@ -360,9 +504,12 @@ export class YahooFinanceProvider implements AssetPriceProvider {
 
   private inferCurrencyFromSymbol(symbol: string): string {
     if (symbol.endsWith('.SI')) return 'SGD';
+    if (symbol.endsWith('.T')) return 'JPY';
+    if (symbol.endsWith('.TW') || symbol.endsWith('.TWO')) return 'TWD';
+    if (symbol.endsWith('.KS') || symbol.endsWith('.KQ')) return 'KRW';
     if (symbol.endsWith('.HK')) return 'HKD';
     if (symbol.endsWith('.L')) return 'GBP';
-    if (symbol.endsWith('.T') || symbol.endsWith('.TO')) return 'CAD';
+    if (symbol.endsWith('.TO')) return 'CAD';
     return 'USD';
   }
 
@@ -402,12 +549,12 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       })) as YahooFinanceChartResult;
 
       const currency = result.meta?.currency?.toUpperCase() ?? 'USD';
-      const usdSgd = await this.getUsdSgdRate();
+      const usdRates = await this.getUsdExchangeRates([currency]);
       return this.chartQuotesToHistoricalPoints(
         providerAssetId,
         result.quotes ?? [],
         currency,
-        usdSgd
+        usdRates
       );
     } catch (err) {
       logger.warn(
@@ -432,7 +579,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     }
 
     const currency = result.meta.currency?.toUpperCase() ?? 'USD';
-    const usdSgd = await this.getUsdSgdRate();
+    const usdRates = await this.getUsdExchangeRates([currency]);
     if (!this.isSupportedCurrency(currency)) {
       logger.warn(`[Yahoo] No USD conversion support for ${providerAssetId} currency ${currency}`);
       return [];
@@ -444,7 +591,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     for (let i = 0; i < timestamps.length; i++) {
       const nativePrice = closes[i];
       if (nativePrice === null || nativePrice === undefined) continue;
-      const priceUsd = this.toUsd(nativePrice, currency, usdSgd);
+      const priceUsd = this.toUsd(nativePrice, currency, usdRates);
       if (priceUsd === null) continue;
       points.push({ timestamp: timestamps[i] * 1000, priceUsd, nativePrice });
     }
@@ -456,7 +603,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     providerAssetId: string,
     quotes: NonNullable<YahooFinanceChartResult['quotes']>,
     currency: string,
-    usdSgd: number
+    usdRates: Map<string, number>
   ): ProviderHistoricalPoint[] {
     if (!this.isSupportedCurrency(currency)) {
       logger.warn(`[Yahoo] No USD conversion support for ${providerAssetId} currency ${currency}`);
@@ -472,7 +619,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       const timestamp = date.getTime();
       if (Number.isNaN(timestamp)) continue;
 
-      const priceUsd = this.toUsd(nativePrice, currency, usdSgd);
+      const priceUsd = this.toUsd(nativePrice, currency, usdRates);
       if (priceUsd === null) continue;
       points.push({ timestamp, priceUsd, nativePrice });
     }
@@ -494,5 +641,6 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     this.priceCache.clear();
     this.historicalCache.clear();
     this.searchCache.clear();
+    this.usdFxCache.clear();
   }
 }

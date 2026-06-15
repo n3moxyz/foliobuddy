@@ -45,6 +45,10 @@ import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
 import type { Position, PositionHistoryEntry } from '@/lib/types';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboard';
+import {
+  localPriceLabel,
+  type UsdFxRatesByCurrency,
+} from '@/components/portfolio/positionPriceDisplay';
 
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
@@ -66,6 +70,7 @@ interface PositionTableProps {
   positions: Position[];
   currency?: 'USD' | 'SGD';
   fxRate?: number;
+  usdFxRates?: UsdFxRatesByCurrency;
   sectionPrefix?: string;
   onUpdateNav?: (position: Position) => void;
   /**
@@ -130,6 +135,7 @@ export function PositionTable({
   positions,
   currency = 'USD',
   fxRate = 1,
+  usdFxRates,
   sectionPrefix,
   onUpdateNav,
   groupBy = 'storage',
@@ -150,6 +156,10 @@ export function PositionTable({
   });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);
+  const priceFxRates = useMemo(
+    () => ({ USD: 1, SGD: fxRate, ...(usdFxRates ?? {}) }),
+    [fxRate, usdFxRates]
+  );
   const deletePositionMutation = useDeletePosition();
   const {
     data: positionHistory = [],
@@ -368,6 +378,7 @@ export function PositionTable({
         position={position}
         currency={currency}
         fxRate={fxRate}
+        usdFxRates={priceFxRates}
         copiedId={copiedId}
         showAllColumns={showAllColumns}
         onView={handleView}
@@ -381,6 +392,32 @@ export function PositionTable({
   };
 
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
+
+  const renderCurrentPrice = (position: Position) => {
+    const localCurrentPrice = localPriceLabel({
+      usdPrice: position.asset.currentPriceUsd,
+      nativeCurrency: position.asset.nativeCurrency,
+      displayCurrency: currency,
+      usdFxRates: priceFxRates,
+    });
+
+    return (
+      <>
+        <p className="font-mono font-medium text-muted-foreground">
+          {formatCurrency(
+            convert(position.asset.currentPriceUsd),
+            currency,
+            getSmartDecimals(convert(position.asset.currentPriceUsd))
+          )}
+        </p>
+        {localCurrentPrice && (
+          <p className="font-mono text-[11px] leading-none text-muted-foreground/80">
+            {localCurrentPrice}
+          </p>
+        )}
+      </>
+    );
+  };
 
   const renderTableHeader = (sortState: {
     sortKey: string | null;
@@ -847,13 +884,7 @@ export function PositionTable({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Current Price</p>
-                  <p className="font-mono font-medium text-muted-foreground">
-                    {formatCurrency(
-                      convert(viewPosition.asset.currentPriceUsd),
-                      currency,
-                      getSmartDecimals(convert(viewPosition.asset.currentPriceUsd))
-                    )}
-                  </p>
+                  {renderCurrentPrice(viewPosition)}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Average Cost</p>

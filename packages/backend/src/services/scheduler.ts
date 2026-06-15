@@ -4,6 +4,25 @@ import { snapshotService } from './snapshotService.js';
 import { socketService } from './socketService.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
+import type { ExchangeRates } from './providers/CoinGeckoProvider.js';
+
+const USD_RATE_FIELDS = [
+  { currency: 'SGD', field: 'usdSgd' },
+  { currency: 'JPY', field: 'usdJpy' },
+  { currency: 'TWD', field: 'usdTwd' },
+  { currency: 'KRW', field: 'usdKrw' },
+] as const;
+type UsdRateCurrency = (typeof USD_RATE_FIELDS)[number]['currency'];
+type UsdRateEntry = { currency: UsdRateCurrency; rate: number };
+
+function usdRateEntries(rates: ExchangeRates): UsdRateEntry[] {
+  const entries: UsdRateEntry[] = [];
+  for (const { currency, field } of USD_RATE_FIELDS) {
+    const rate = rates[field];
+    if (rate) entries.push({ currency, rate });
+  }
+  return entries;
+}
 
 /**
  * Check and create missing daily snapshots on server startup
@@ -186,25 +205,32 @@ export function startFxRateJob(): void {
       const rates = await priceService.getExchangeRates();
 
       if (rates) {
-        await prisma.fxRate.upsert({
-          where: {
-            fromCcy_toCcy: {
-              fromCcy: 'USD',
-              toCcy: 'SGD',
-            },
-          },
-          update: {
-            rate: rates.usdSgd,
-            timestamp: new Date(),
-          },
-          create: {
-            fromCcy: 'USD',
-            toCcy: 'SGD',
-            rate: rates.usdSgd,
-          },
-        });
+        const now = new Date();
+        const updatedRates = await Promise.all(
+          usdRateEntries(rates).map(({ currency, rate }) =>
+            prisma.fxRate.upsert({
+              where: {
+                fromCcy_toCcy: {
+                  fromCcy: 'USD',
+                  toCcy: currency,
+                },
+              },
+              update: {
+                rate,
+                timestamp: now,
+              },
+              create: {
+                fromCcy: 'USD',
+                toCcy: currency,
+                rate,
+              },
+            })
+          )
+        );
 
-        logger.info(`[FX Rates] Updated USD/SGD rate: ${rates.usdSgd}`);
+        logger.info(
+          `[FX Rates] Updated ${updatedRates.map((rate) => `${rate.fromCcy}/${rate.toCcy}=${rate.rate}`).join(', ')}`
+        );
       }
     } catch (error) {
       logger.error('[FX Rates] Error:', error);

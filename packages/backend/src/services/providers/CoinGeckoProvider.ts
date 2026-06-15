@@ -23,6 +23,12 @@ type CoinGeckoExchangeRates = {
   rates: Record<string, { name: string; unit: string; value: number; type: string }>;
 };
 type CoinGeckoMarketChartResponse = { prices: [number, number][] };
+export type ExchangeRates = {
+  usdSgd: number;
+  usdJpy?: number;
+  usdTwd?: number;
+  usdKrw?: number;
+};
 
 export class CoinGeckoProvider implements AssetPriceProvider {
   readonly name = 'coingecko' as const;
@@ -206,14 +212,27 @@ export class CoinGeckoProvider implements AssetPriceProvider {
     }));
   }
 
-  async getExchangeRates(): Promise<{ usdSgd: number } | null> {
+  async getExchangeRates(): Promise<ExchangeRates | null> {
     const url = `${COINGECKO_BASE_URL}/exchange_rates`;
     try {
       const data = await this.rateLimitedFetch<CoinGeckoExchangeRates>(url);
       const btcUsd = data.rates.usd?.value;
-      const btcSgd = data.rates.sgd?.value;
-      if (btcUsd && btcSgd) return { usdSgd: btcSgd / btcUsd };
-      return null;
+      if (!btcUsd) return null;
+
+      const usdTo = (currency: string) => {
+        const btcCurrency = data.rates[currency]?.value;
+        return btcCurrency ? btcCurrency / btcUsd : undefined;
+      };
+
+      const usdSgd = usdTo('sgd');
+      if (!usdSgd) return null;
+
+      return {
+        usdSgd,
+        usdJpy: usdTo('jpy'),
+        usdTwd: usdTo('twd'),
+        usdKrw: usdTo('krw'),
+      };
     } catch (error) {
       logger.error('Error fetching exchange rates:', error);
       return null;

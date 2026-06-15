@@ -70,4 +70,81 @@ describe('YahooFinanceProvider', () => {
       },
     ]);
   });
+
+  it('surfaces Kioxia Tokyo listing ahead of OTC and European cross-listings', async () => {
+    searchMock
+      .mockResolvedValueOnce({
+        quotes: [
+          {
+            symbol: 'KXHICF',
+            shortname: 'KIOXIA HLDGS CORP',
+            quoteType: 'EQUITY',
+            exchDisp: 'OTC Markets',
+          },
+          {
+            symbol: 'KXIAY',
+            shortname: 'KIOXIA HLDGS CORP',
+            quoteType: 'EQUITY',
+            exchDisp: 'OTC Markets',
+          },
+          {
+            symbol: 'KI5.F',
+            longname: 'Kioxia Holdings Corporation',
+            quoteType: 'EQUITY',
+            exchDisp: 'Frankfurt',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ quotes: [] })
+      .mockResolvedValueOnce({ quotes: [] })
+      .mockResolvedValueOnce({ quotes: [] });
+    quoteMock.mockImplementation(async (symbol: string) => {
+      if (symbol === '285A.T') {
+        return {
+          symbol: '285A.T',
+          quoteType: 'EQUITY',
+          longName: 'Kioxia Holdings Corporation',
+          fullExchangeName: 'Tokyo Stock Exchange',
+          currency: 'JPY',
+        };
+      }
+      return null;
+    });
+
+    const provider = new YahooFinanceProvider();
+    const results = await provider.search('kioxia');
+
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'JP' }));
+    expect(results[0]).toMatchObject({
+      providerAssetId: '285A.T',
+      symbol: '285A.T',
+      exchange: 'Tokyo Stock Exchange',
+      nativeCurrency: 'JPY',
+    });
+    expect(results.findIndex((result) => result.symbol === '285A.T')).toBeLessThan(
+      results.findIndex((result) => result.symbol === 'KXHICF')
+    );
+  });
+
+  it('converts Japanese equity prices to USD using USD/JPY', async () => {
+    quoteMock.mockImplementation(async (symbolOrSymbols: string | string[]) => {
+      if (Array.isArray(symbolOrSymbols)) {
+        return [{ symbol: '285A.T', regularMarketPrice: 2400, currency: 'JPY' }];
+      }
+      if (symbolOrSymbols === 'JPY=X') {
+        return { symbol: 'JPY=X', regularMarketPrice: 150 };
+      }
+      return null;
+    });
+
+    const provider = new YahooFinanceProvider();
+    const prices = await provider.getPrices(['285A.T']);
+
+    expect(prices.get('285A.T')).toEqual({
+      priceUsd: 16,
+      nativePrice: 2400,
+      nativeCurrency: 'JPY',
+      fxRateToUsd: 1 / 150,
+    });
+  });
 });

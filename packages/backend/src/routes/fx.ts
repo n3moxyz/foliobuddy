@@ -2,27 +2,70 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { priceService } from '../services/priceService.js';
 import { AppError } from '../middleware/errorHandler.js';
+import type { ExchangeRates } from '../services/providers/CoinGeckoProvider.js';
 
 const router = Router();
+const USD_RATE_FIELDS = [
+  { currency: 'SGD', field: 'usdSgd' },
+  { currency: 'JPY', field: 'usdJpy' },
+  { currency: 'TWD', field: 'usdTwd' },
+  { currency: 'KRW', field: 'usdKrw' },
+] as const;
+type UsdRateCurrency = (typeof USD_RATE_FIELDS)[number]['currency'];
+type UsdRateEntry = { currency: UsdRateCurrency; rate: number };
+
+function usdRateEntries(rates: ExchangeRates): UsdRateEntry[] {
+  const entries: UsdRateEntry[] = [];
+  for (const { currency, field } of USD_RATE_FIELDS) {
+    const rate = rates[field];
+    if (rate) entries.push({ currency, rate });
+  }
+  return entries;
+}
+
+async function upsertUsdRates(rates: ExchangeRates) {
+  const now = new Date();
+  return Promise.all(
+    usdRateEntries(rates).map(({ currency, rate }) =>
+      prisma.fxRate.upsert({
+        where: {
+          fromCcy_toCcy: {
+            fromCcy: 'USD',
+            toCcy: currency,
+          },
+        },
+        update: {
+          rate,
+          timestamp: now,
+        },
+        create: {
+          fromCcy: 'USD',
+          toCcy: currency,
+          rate,
+        },
+      })
+    )
+  );
+}
+
+function hasRequiredUsdRates(rates: Array<{ fromCcy: string; toCcy: string }>) {
+  return USD_RATE_FIELDS.every(({ currency }) =>
+    rates.some((rate) => rate.fromCcy === 'USD' && rate.toCcy === currency)
+  );
+}
 
 // GET /api/fx/rates - Get current FX rates
 router.get('/rates', async (req, res, next) => {
   try {
-    const rates = await prisma.fxRate.findMany();
+    let rates = await prisma.fxRate.findMany();
 
-    // If no rates in DB, fetch fresh
-    if (rates.length === 0) {
+    // If required rates are missing, fetch fresh
+    if (!hasRequiredUsdRates(rates)) {
       const freshRates = await priceService.getExchangeRates();
 
       if (freshRates) {
-        const usdSgd = await prisma.fxRate.create({
-          data: {
-            fromCcy: 'USD',
-            toCcy: 'SGD',
-            rate: freshRates.usdSgd,
-          },
-        });
-        rates.push(usdSgd);
+        await upsertUsdRates(freshRates);
+        rates = await prisma.fxRate.findMany();
       }
     }
 
@@ -47,7 +90,7 @@ router.get('/convert', async (req, res, next) => {
       throw new AppError('Invalid amount', 400);
     }
 
-    // For now, we only support USD <-> SGD
+    // FX table stores USD base pairs; inverse conversion is derived when needed.
     const fromUpper = (from as string).toUpperCase();
     const toUpper = (to as string).toUpperCase();
 
@@ -95,20 +138,27 @@ router.get('/convert', async (req, res, next) => {
       const freshRates = await priceService.getExchangeRates();
 
       if (freshRates) {
-        if (fromUpper === 'USD' && toUpper === 'SGD') {
+        const directFreshRate = usdRateEntries(freshRates).find(
+          (entry) => fromUpper === 'USD' && toUpper === entry.currency
+        );
+        const inverseFreshRate = usdRateEntries(freshRates).find(
+          (entry) => fromUpper === entry.currency && toUpper === 'USD'
+        );
+
+        if (directFreshRate) {
           rate = {
             id: 'temp',
             fromCcy: 'USD',
-            toCcy: 'SGD',
-            rate: freshRates.usdSgd,
+            toCcy: directFreshRate.currency,
+            rate: directFreshRate.rate,
             timestamp: new Date(),
           };
-        } else if (fromUpper === 'SGD' && toUpper === 'USD') {
+        } else if (inverseFreshRate) {
           rate = {
             id: 'temp',
-            fromCcy: 'SGD',
+            fromCcy: inverseFreshRate.currency,
             toCcy: 'USD',
-            rate: 1 / freshRates.usdSgd,
+            rate: 1 / inverseFreshRate.rate,
             timestamp: new Date(),
           };
         }
@@ -143,27 +193,11 @@ router.post('/refresh', async (req, res, next) => {
       throw new AppError('Failed to fetch exchange rates', 502);
     }
 
-    const usdSgd = await prisma.fxRate.upsert({
-      where: {
-        fromCcy_toCcy: {
-          fromCcy: 'USD',
-          toCcy: 'SGD',
-        },
-      },
-      update: {
-        rate: freshRates.usdSgd,
-        timestamp: new Date(),
-      },
-      create: {
-        fromCcy: 'USD',
-        toCcy: 'SGD',
-        rate: freshRates.usdSgd,
-      },
-    });
+    const rates = await upsertUsdRates(freshRates);
 
     res.json({
       message: 'FX rates refreshed',
-      rates: [usdSgd],
+      rates,
     });
   } catch (error) {
     next(error);
