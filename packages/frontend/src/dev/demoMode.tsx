@@ -17,11 +17,13 @@ import type {
   Investor,
   PerformancePoint,
   Position,
+  PositionHistoryEntry,
   PortfolioSummary,
   Snapshot,
   SnapshotPosition,
   Trade,
   TradeAnalytics,
+  UpdatePositionData,
 } from '@/lib/types';
 
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
@@ -392,6 +394,39 @@ const initialPositions: Position[] = [
     unrealizedPnLPct: 69.9,
     createdAt: NOW,
     updatedAt: NOW,
+  },
+];
+
+const initialPositionHistory: PositionHistoryEntry[] = [
+  {
+    id: 'hist-btc-add-1',
+    positionId: 'pos-btc',
+    assetId: 'btc',
+    mode: 'add',
+    quantity: 0.42,
+    costBasisUsd: 29266,
+    previousQuantity: 1,
+    previousAvgCostUsd: 45000,
+    previousTotalCostUsd: 45000,
+    nextQuantity: 1.42,
+    nextAvgCostUsd: 52300,
+    nextTotalCostUsd: 74266,
+    createdAt: '2026-05-24T09:10:00.000Z',
+  },
+  {
+    id: 'hist-sol-reduce-1',
+    positionId: 'pos-sol',
+    assetId: 'sol',
+    mode: 'reduce',
+    quantity: 35,
+    costBasisUsd: 4620,
+    previousQuantity: 255,
+    previousAvgCostUsd: 132,
+    previousTotalCostUsd: 33660,
+    nextQuantity: 220,
+    nextAvgCostUsd: 132,
+    nextTotalCostUsd: 29040,
+    createdAt: '2026-05-29T14:35:00.000Z',
   },
 ];
 
@@ -938,6 +973,7 @@ const fxRates: FxRate[] = [
 ];
 let demoAssets: Asset[] = [...initialAssets];
 let demoPositions: Position[] = [...initialPositions];
+let demoPositionHistory: PositionHistoryEntry[] = [...initialPositionHistory];
 let demoIdCounter = 0;
 
 function round(value: number, decimals = 2) {
@@ -1116,7 +1152,7 @@ function createDemoPosition(data: CreatePositionData): Position {
   return position;
 }
 
-function updateDemoPosition(id: string, data: Partial<CreatePositionData>) {
+function updateDemoPosition(id: string, data: UpdatePositionData) {
   const existing = demoPositions.find((position) => position.id === id);
   if (!existing) {
     throw new Error('Position not found');
@@ -1146,6 +1182,35 @@ function updateDemoPosition(id: string, data: Partial<CreatePositionData>) {
   });
 
   demoPositions = demoPositions.map((position) => (position.id === id ? updated : position));
+
+  if (data.positionDelta) {
+    const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
+    const nextTotalCostUsd = updated.quantity * updated.avgCostUsd;
+    const costBasisUsd =
+      data.positionDelta.mode === 'add'
+        ? (data.positionDelta.totalCostUsd ?? nextTotalCostUsd - previousTotalCostUsd)
+        : data.positionDelta.quantity * existing.avgCostUsd;
+
+    demoPositionHistory = [
+      {
+        id: nextDemoId('hist'),
+        positionId: existing.id,
+        assetId: updated.assetId,
+        mode: data.positionDelta.mode,
+        quantity: data.positionDelta.quantity,
+        costBasisUsd,
+        previousQuantity: existing.quantity,
+        previousAvgCostUsd: existing.avgCostUsd,
+        previousTotalCostUsd,
+        nextQuantity: updated.quantity,
+        nextAvgCostUsd: updated.avgCostUsd,
+        nextTotalCostUsd,
+        createdAt: new Date().toISOString(),
+      },
+      ...demoPositionHistory,
+    ];
+  }
+
   return updated;
 }
 
@@ -1264,6 +1329,7 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   if (path === '/api/positions' && method === 'DELETE') {
     const count = demoPositions.length;
     demoPositions = [];
+    demoPositionHistory = [];
     return json({ count });
   }
   if (path === '/api/positions/summary' && method === 'GET') return json(getSummary());
@@ -1273,17 +1339,20 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   if (path === '/api/positions/performers/worst' && method === 'GET') {
     return json(getPerformers('worst'));
   }
+  if (path.startsWith('/api/positions/') && path.endsWith('/history') && method === 'GET') {
+    const id = path.split('/')[3];
+    return json(demoPositionHistory.filter((entry) => entry.positionId === id));
+  }
   if (path.startsWith('/api/positions/') && method === 'PUT') {
     const id = path.split('/')[3];
-    const body = JSON.parse(
-      (init?.body as string | undefined) ?? '{}'
-    ) as Partial<CreatePositionData>;
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as UpdatePositionData;
     return json(updateDemoPosition(id, body));
   }
   if (path.startsWith('/api/positions/') && method === 'DELETE') {
     const id = path.split('/')[3];
     const before = demoPositions.length;
     demoPositions = demoPositions.filter((position) => position.id !== id);
+    demoPositionHistory = demoPositionHistory.filter((entry) => entry.positionId !== id);
     return before === demoPositions.length
       ? json({ error: 'Position not found' }, 404)
       : new Response(null, { status: 204 });

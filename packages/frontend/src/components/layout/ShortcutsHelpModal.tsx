@@ -1,4 +1,10 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { shortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface ShortcutsHelpModalProps {
@@ -12,6 +18,9 @@ export function ShortcutsHelpModal({ open, onOpenChange }: ShortcutsHelpModalPro
       <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Keyboard Shortcuts</DialogTitle>
+          <DialogDescription className="sr-only">
+            A list of keyboard shortcuts available in the application.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           {shortcuts.map((shortcut) => (

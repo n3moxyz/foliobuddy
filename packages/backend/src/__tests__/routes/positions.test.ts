@@ -5,6 +5,7 @@ import { createTestApp } from '../helpers/createTestApp.js';
 
 // Mock Prisma
 const mockPrisma = {
+  $transaction: vi.fn(async (callback) => callback(mockPrisma)),
   asset: { findUnique: vi.fn(), findMany: vi.fn() },
   position: {
     findMany: vi.fn(),
@@ -13,6 +14,10 @@ const mockPrisma = {
     create: vi.fn(),
     update: vi.fn(),
     deleteMany: vi.fn(),
+  },
+  positionHistory: {
+    findMany: vi.fn(),
+    create: vi.fn(),
   },
 };
 
@@ -286,5 +291,97 @@ describe('PUT /api/positions/:id', () => {
         }),
       })
     );
+  });
+
+  it('records add/reduce history when a delta update is submitted', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        assetId: 'asset-1',
+        quantity: 10,
+        avgCostUsd: 100,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+    mockPrisma.position.update.mockImplementation(async ({ data }) =>
+      mockPosition({
+        id: 'position-1',
+        assetId: 'asset-1',
+        quantity: data.quantity,
+        avgCostUsd: data.avgCostUsd,
+        marketValueUsd: data.marketValueUsd,
+        unrealizedPnL: data.unrealizedPnL,
+        unrealizedPnLPct: data.unrealizedPnLPct,
+      })
+    );
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 15,
+        avgCostUsd: 120,
+        positionDelta: {
+          mode: 'add',
+          quantity: 5,
+          totalCostUsd: 800,
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.positionHistory.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'test-user-id',
+        positionId: 'position-1',
+        assetId: 'asset-1',
+        mode: 'add',
+        quantity: 5,
+        costBasisUsd: 800,
+        previousQuantity: 10,
+        previousAvgCostUsd: 100,
+        previousTotalCostUsd: 1000,
+        nextQuantity: 15,
+        nextAvgCostUsd: 120,
+        nextTotalCostUsd: 1800,
+      }),
+    });
+  });
+});
+
+describe('GET /api/positions/:id/history', () => {
+  it('returns add/reduce history for positions owned by the user', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue({ id: 'position-1' });
+    mockPrisma.positionHistory.findMany.mockResolvedValue([
+      {
+        id: 'history-1',
+        userId: 'test-user-id',
+        positionId: 'position-1',
+        assetId: 'asset-1',
+        mode: 'reduce',
+        quantity: 2,
+        costBasisUsd: 200,
+        previousQuantity: 10,
+        previousAvgCostUsd: 100,
+        previousTotalCostUsd: 1000,
+        nextQuantity: 8,
+        nextAvgCostUsd: 100,
+        nextTotalCostUsd: 800,
+        createdAt: '2026-06-15T00:00:00.000Z',
+      },
+    ]);
+
+    const res = await request(app).get('/api/positions/position-1/history');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(mockPrisma.position.findFirst).toHaveBeenCalledWith({
+      where: { id: 'position-1', userId: 'test-user-id' },
+      select: { id: true },
+    });
+    expect(mockPrisma.positionHistory.findMany).toHaveBeenCalledWith({
+      where: { positionId: 'position-1', userId: 'test-user-id' },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
   });
 });

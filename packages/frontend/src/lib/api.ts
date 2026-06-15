@@ -27,6 +27,7 @@ import type {
   Performer,
   PortfolioSummary,
   Position,
+  PositionHistoryEntry,
   ProviderName,
   ProviderSearchResult,
   Snapshot,
@@ -34,6 +35,7 @@ import type {
   StorageAllocation,
   Trade,
   TradeAnalytics,
+  UpdatePositionData,
   UpdateSnapshotData,
 } from './types';
 
@@ -97,12 +99,13 @@ export const api = {
   getWorstPerformers: (limit = 5) =>
     request<Performer[]>(`/positions/performers/worst?limit=${limit}`),
   getPosition: (id: string) => request<Position>(`/positions/${id}`),
+  getPositionHistory: (id: string) => request<PositionHistoryEntry[]>(`/positions/${id}/history`),
   createPosition: (data: CreatePositionData) =>
     request<Position>('/positions', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updatePosition: (id: string, data: Partial<CreatePositionData>) =>
+  updatePosition: (id: string, data: UpdatePositionData) =>
     request<Position>(`/positions/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

@@ -27,7 +27,21 @@ const createPositionSchema = z.object({
   custodyOf: z.string().nullable().optional(),
 });
 
-const updatePositionSchema = createPositionSchema.partial();
+const positionDeltaSchema = z.object({
+  mode: z.enum(['add', 'reduce']),
+  quantity: z.number().positive(),
+  totalCostUsd: z.number().min(0).optional(),
+});
+
+const updatePositionSchema = createPositionSchema.partial().extend({
+  positionDelta: positionDeltaSchema.optional(),
+});
+
+const FLOAT_TOLERANCE = 1e-6;
+
+function numbersClose(a: number, b: number) {
+  return Math.abs(a - b) <= FLOAT_TOLERANCE * Math.max(1, Math.abs(a), Math.abs(b));
+}
 
 router.get('/', async (req, res, next) => {
   try {
@@ -209,6 +223,35 @@ router.post('/bulk', async (req, res, next) => {
   }
 });
 
+router.get('/:id/history', async (req, res, next) => {
+  try {
+    const position = await prisma.position.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
+      select: { id: true },
+    });
+
+    if (!position) {
+      throw new AppError('Position not found', 404);
+    }
+
+    const history = await prisma.positionHistory.findMany({
+      where: {
+        positionId: req.params.id,
+        userId: req.userId!,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    res.json(history);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const position = await prisma.position.findUnique({
@@ -299,6 +342,7 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const data = updatePositionSchema.parse(req.body);
+    const { positionDelta, ...positionData } = data;
 
     const existing = await prisma.position.findFirst({
       where: {
@@ -313,9 +357,9 @@ router.put('/:id', async (req, res, next) => {
     }
 
     let valueAsset = existing.asset;
-    if (data.assetId && data.assetId !== existing.assetId) {
+    if (positionData.assetId && positionData.assetId !== existing.assetId) {
       const nextAsset = await prisma.asset.findUnique({
-        where: { id: data.assetId },
+        where: { id: positionData.assetId },
       });
       if (!nextAsset) {
         throw new AppError('Asset not found', 404);
@@ -323,30 +367,93 @@ router.put('/:id', async (req, res, next) => {
       valueAsset = nextAsset;
     }
 
-    const quantity = data.quantity ?? existing.quantity;
-    const avgCostUsd = data.avgCostUsd ?? existing.avgCostUsd;
+    const quantity = positionData.quantity ?? existing.quantity;
+    const avgCostUsd = positionData.avgCostUsd ?? existing.avgCostUsd;
     const valueFields = calculatePositionValue({
       quantity,
       avgCostUsd,
       currentPriceUsd: valueAsset.currentPriceUsd,
     });
 
+    if (positionDelta) {
+      if (positionData.quantity === undefined || positionData.avgCostUsd === undefined) {
+        throw new AppError('Position delta updates must include quantity and average cost', 400);
+      }
+      if (positionDelta.mode === 'add' && positionDelta.totalCostUsd === undefined) {
+        throw new AppError('Position add history requires a total cost', 400);
+      }
+
+      const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
+      const deltaCostBasisUsd =
+        positionDelta.mode === 'add'
+          ? positionDelta.totalCostUsd!
+          : positionDelta.quantity * existing.avgCostUsd;
+      const multiplier = positionDelta.mode === 'add' ? 1 : -1;
+      const expectedNextQuantity = existing.quantity + positionDelta.quantity * multiplier;
+      const expectedNextTotalCostUsd = Math.max(
+        0,
+        previousTotalCostUsd + deltaCostBasisUsd * multiplier
+      );
+      const nextTotalCostUsd = quantity * avgCostUsd;
+
+      if (
+        expectedNextQuantity < -FLOAT_TOLERANCE ||
+        !numbersClose(quantity, Math.max(0, expectedNextQuantity)) ||
+        !numbersClose(nextTotalCostUsd, expectedNextTotalCostUsd)
+      ) {
+        throw new AppError('Position delta does not match the submitted totals', 400);
+      }
+    }
+
     const updateData = {
-      ...data,
+      ...positionData,
       storageLocation:
-        data.storageLocation !== undefined ? data.storageLocation?.trim() || null : undefined,
-      custodyOf: data.custodyOf !== undefined ? data.custodyOf?.trim() || null : undefined,
+        positionData.storageLocation !== undefined
+          ? positionData.storageLocation?.trim() || null
+          : undefined,
+      custodyOf:
+        positionData.custodyOf !== undefined ? positionData.custodyOf?.trim() || null : undefined,
     };
 
-    const position = await prisma.position.update({
-      where: { id: req.params.id },
-      data: {
-        ...updateData,
-        ...valueFields,
-      },
-      include: {
-        asset: true,
-      },
+    const position = await prisma.$transaction(async (tx) => {
+      const updatedPosition = await tx.position.update({
+        where: { id: req.params.id },
+        data: {
+          ...updateData,
+          ...valueFields,
+        },
+        include: {
+          asset: true,
+        },
+      });
+
+      if (positionDelta) {
+        const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
+        const nextTotalCostUsd = updatedPosition.quantity * updatedPosition.avgCostUsd;
+        const costBasisUsd =
+          positionDelta.mode === 'add'
+            ? positionDelta.totalCostUsd!
+            : positionDelta.quantity * existing.avgCostUsd;
+
+        await tx.positionHistory.create({
+          data: {
+            userId: req.userId!,
+            positionId: existing.id,
+            assetId: updatedPosition.assetId,
+            mode: positionDelta.mode,
+            quantity: positionDelta.quantity,
+            costBasisUsd,
+            previousQuantity: existing.quantity,
+            previousAvgCostUsd: existing.avgCostUsd,
+            previousTotalCostUsd,
+            nextQuantity: updatedPosition.quantity,
+            nextAvgCostUsd: updatedPosition.avgCostUsd,
+            nextTotalCostUsd,
+          },
+        });
+      }
+
+      return updatedPosition;
     });
 
     res.json(position);

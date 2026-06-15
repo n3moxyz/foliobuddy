@@ -271,6 +271,28 @@ export interface Position {
   updatedAt: string;
 }
 
+export interface PositionDeltaMetadata {
+  mode: PositionDeltaMode;
+  quantity: number;
+  totalCostUsd?: number;
+}
+
+export interface PositionHistoryEntry {
+  id: string;
+  positionId: string;
+  assetId: string;
+  mode: PositionDeltaMode;
+  quantity: number;
+  costBasisUsd: number;
+  previousQuantity: number;
+  previousAvgCostUsd: number;
+  previousTotalCostUsd: number;
+  nextQuantity: number;
+  nextAvgCostUsd: number;
+  nextTotalCostUsd: number;
+  createdAt: string;
+}
+
 export interface Trade {
   id: string;
   assetId: string;
@@ -492,6 +514,10 @@ export interface CreatePositionData {
   storageLocation?: string;
   notes?: string;
   custodyOf?: string;
+}
+
+export interface UpdatePositionData extends Partial<CreatePositionData> {
+  positionDelta?: PositionDeltaMetadata;
 }
 
 export interface CreateAssetData {

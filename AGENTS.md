@@ -226,13 +226,13 @@ iOS HIG-inspired patterns on all pages:
 
 `formatPrice()` in `lib/utils.ts` — use for per-unit prices (entry/exit, current price) instead of `formatCurrency(..., 0)`. Decimals by magnitude:
 
-| Price Range | Decimals | Example         |
-| ----------- | -------- | --------------- |
-| < $0.01     | 5        | $0.00842        |
-| < $0.10     | 4        | $0.0812         |
-| < $10       | 3        | $0.780          |
-| < $1,000    | 2        | $32.15          |
-| >= $1,000   | 0        | $67,200         |
+| Price Range | Decimals | Example  |
+| ----------- | -------- | -------- |
+| < $0.01     | 5        | $0.00842 |
+| < $0.10     | 4        | $0.0812  |
+| < $10       | 3        | $0.780   |
+| < $1,000    | 2        | $32.15   |
+| >= $1,000   | 0        | $67,200  |
 
 Use `formatCurrency` (explicit decimals or compact mode) for totals, sizes, and P&L.
 
@@ -308,6 +308,10 @@ Rules:
 - The confirmation preview uses an Old/New comparison table for quantity, avg cost, and total cost
 - Both the preview and the submitted update go through the shared `applyPositionDelta()` helper (via `positionFormMath.ts`) — do not hand-roll cost-basis arithmetic in the form
 - Keep add/reduce rendering in `PositionDeltaEditor.tsx`, pure math in `positionFormMath.ts`, and API submit/mutation logic in `PositionForm.tsx`.
+
+### Position Add/Reduce History
+
+Add/reduce edits are persisted as `PositionHistory` rows through `PUT /positions/:id` when the request includes `positionDelta`. Manual `Edit Totals` corrections must not create history rows. The backend validates the submitted next quantity/cost basis against the delta metadata before updating the position and writing history in one transaction. The line-item detail dialog fetches `GET /positions/:id/history` and shows a concise chronological ledger under the storage/notes summary: original entry first, then each add/reduce with amount + implied price on the left and the resulting quantity/average price on the right. `/dev/demo/portfolio` mirrors this with in-browser mock history so UI testing does not hit a real API.
 
 ### Dashboard Charts
 

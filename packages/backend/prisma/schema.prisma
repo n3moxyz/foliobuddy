@@ -9,36 +9,38 @@ datasource db {
 
 // User model - supports multi-user if needed
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  name      String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  positions Position[]
-  trades    Trade[]
-  investors Investor[]
-  snapshots Snapshot[]
+  id              String            @id @default(cuid())
+  email           String            @unique
+  name            String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  positions       Position[]
+  positionHistory PositionHistory[]
+  trades          Trade[]
+  investors       Investor[]
+  snapshots       Snapshot[]
 }
 
 // Asset model - represents any tradeable asset
 // category: LIQUID_CRYPTO | STABLECOIN | NFT | ANGEL | CASH
 model Asset {
-  id              String         @id @default(cuid())
-  coingeckoId     String?        @unique
-  priceProvider   String         @default("coingecko")
+  id              String            @id @default(cuid())
+  coingeckoId     String?           @unique
+  priceProvider   String            @default("coingecko")
   providerAssetId String?
-  nativeCurrency  String         @default("USD")
+  nativeCurrency  String            @default("USD")
   exchange        String?
   factsheetUrl    String?
   isin            String?
   symbol          String
   name            String
-  category        String         @default("LIQUID_CRYPTO")
+  category        String            @default("LIQUID_CRYPTO")
   currentPriceUsd Float?
   priceUpdatedAt  DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   positions       Position[]
+  positionHistory PositionHistory[]
   trades          Trade[]
   priceHistory    PriceHistory[]
 
@@ -67,28 +69,55 @@ model PriceHistory {
 // Position model - represents a holding of an asset
 // storageType: WALLET | CEX | DEFI | BANK
 model Position {
-  id               String   @id @default(cuid())
-  userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assetId          String
-  asset            Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  quantity         Float
-  avgCostUsd       Float    @default(0)
-  storageType      String   @default("WALLET")
-  storageLocation  String?
-  notes            String?
-  custodyOf        String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetId         String
+  asset           Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  quantity        Float
+  avgCostUsd      Float    @default(0)
+  storageType     String   @default("WALLET")
+  storageLocation String?
+  notes           String?
+  custodyOf       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Computed fields (stored for performance)
   marketValueUsd   Float?
   unrealizedPnL    Float?
   unrealizedPnLPct Float?
+  history          PositionHistory[]
 
   @@index([userId])
   @@index([assetId])
   @@index([custodyOf])
+}
+
+// PositionHistory - add/reduce activity for aggregate holdings
+// mode: add | reduce
+model PositionHistory {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positionId           String
+  position             Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  assetId              String
+  asset                Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  mode                 String
+  quantity             Float
+  costBasisUsd         Float
+  previousQuantity     Float
+  previousAvgCostUsd   Float
+  previousTotalCostUsd Float
+  nextQuantity         Float
+  nextAvgCostUsd       Float
+  nextTotalCostUsd     Float
+  createdAt            DateTime @default(now())
+
+  @@index([userId])
+  @@index([positionId, createdAt])
+  @@index([assetId])
 }
 
 // Trade model - represents a single trade
@@ -159,29 +188,29 @@ model InvestorStake {
 // snapshotType: DAILY | WEEKLY | MONTHLY
 // source: AUTOMATIC | MANUAL
 model Snapshot {
-  id                String             @id @default(cuid())
-  userId            String
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timestamp         DateTime           @default(now())
-  snapshotType      String             @default("DAILY")
-  source            String             @default("AUTOMATIC")
-  totalValueUsd     Float
-  totalValueSgd     Float?
-  usdSgdRate        Float?
-  totalCostBasis    Float?
-  unrealizedPnL     Float?
-  realizedPnL       Float?
-  dailyReturn       Float?
-  weeklyReturn      Float?
-  monthlyReturn     Float?
-  ytdReturn         Float?
-  athValueUsd       Float?
-  btcPrice          Float?
-  ethPrice          Float?
-  btcOutperform     Float?
-  ethOutperform     Float?
-  notes             String?
-  positions         SnapshotPosition[]
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp      DateTime           @default(now())
+  snapshotType   String             @default("DAILY")
+  source         String             @default("AUTOMATIC")
+  totalValueUsd  Float
+  totalValueSgd  Float?
+  usdSgdRate     Float?
+  totalCostBasis Float?
+  unrealizedPnL  Float?
+  realizedPnL    Float?
+  dailyReturn    Float?
+  weeklyReturn   Float?
+  monthlyReturn  Float?
+  ytdReturn      Float?
+  athValueUsd    Float?
+  btcPrice       Float?
+  ethPrice       Float?
+  btcOutperform  Float?
+  ethOutperform  Float?
+  notes          String?
+  positions      SnapshotPosition[]
 
   @@index([userId, timestamp])
   @@index([snapshotType])
@@ -190,14 +219,14 @@ model Snapshot {
 
 // SnapshotPosition - captures position state at snapshot time
 model SnapshotPosition {
-  id            String   @id @default(cuid())
-  snapshotId    String
-  snapshot      Snapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
-  assetSymbol   String
-  quantity      Float
-  priceUsd      Float
-  valueUsd      Float
-  allocation    Float
+  id          String   @id @default(cuid())
+  snapshotId  String
+  snapshot    Snapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  assetSymbol String
+  quantity    Float
+  priceUsd    Float
+  valueUsd    Float
+  allocation  Float
 
   @@index([snapshotId])
 }

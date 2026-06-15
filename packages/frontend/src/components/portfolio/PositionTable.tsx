@@ -24,16 +24,25 @@ import {
   getPnLColorClass,
   isStablecoinCategory,
 } from '@/lib/utils';
-import { useDeletePosition } from '@/hooks/usePortfolio';
+import { useDeletePosition, usePositionHistory } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
 import { PositionRow } from './PositionRow';
-import { Copy, Check, ChevronRight, Pencil, Trash2, Columns3, Columns2 } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  Columns3,
+  Columns2,
+  History,
+} from 'lucide-react';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
-import type { Position } from '@/lib/types';
+import type { Position, PositionHistoryEntry } from '@/lib/types';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboard';
 
@@ -111,6 +120,12 @@ function slugifySectionLabel(label: string) {
   );
 }
 
+function historyQuantityDecimals(position: Position) {
+  return isStablecoinCategory(position.asset.category) || position.asset.category === 'CASH'
+    ? 0
+    : 4;
+}
+
 export function PositionTable({
   positions,
   currency = 'USD',
@@ -136,6 +151,11 @@ export function PositionTable({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);
   const deletePositionMutation = useDeletePosition();
+  const {
+    data: positionHistory = [],
+    isLoading: isHistoryLoading,
+    isError: isHistoryError,
+  } = usePositionHistory(viewPosition?.id);
 
   const handleCopy = useCallback(async (position: Position, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -503,6 +523,126 @@ export function PositionTable({
     </Collapsible>
   );
 
+  const renderPositionHistory = (
+    history: PositionHistoryEntry[],
+    options: { isLoading: boolean; isError: boolean }
+  ) => {
+    if (!viewPosition) return null;
+
+    const qtyDecimals = historyQuantityDecimals(viewPosition);
+    const chronologicalHistory = [...history].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const firstChange = chronologicalHistory[0];
+    const activityRows = [
+      {
+        id: 'original',
+        label: 'Original',
+        date: viewPosition.createdAt,
+        quantity: firstChange?.previousQuantity ?? viewPosition.quantity,
+        quantityPrefix: '',
+        priceUsd: firstChange?.previousAvgCostUsd ?? viewPosition.avgCostUsd,
+        nextQuantity: firstChange?.previousQuantity ?? viewPosition.quantity,
+        nextAvgCostUsd: firstChange?.previousAvgCostUsd ?? viewPosition.avgCostUsd,
+        toneClass: 'text-foreground',
+      },
+      ...chronologicalHistory.map((entry) => {
+        const isAdd = entry.mode === 'add';
+        return {
+          id: entry.id,
+          label: isAdd ? 'Add' : 'Reduce',
+          date: entry.createdAt,
+          quantity: entry.quantity,
+          quantityPrefix: isAdd ? '+' : '-',
+          priceUsd: entry.quantity > 0 ? entry.costBasisUsd / entry.quantity : 0,
+          nextQuantity: entry.nextQuantity,
+          nextAvgCostUsd: entry.nextAvgCostUsd,
+          toneClass: isAdd ? 'text-profit' : 'text-loss',
+        };
+      }),
+    ];
+
+    return (
+      <div className="border-t pt-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Position History
+            </p>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {activityRows.length} {activityRows.length === 1 ? 'entry' : 'entries'}
+          </span>
+        </div>
+
+        {options.isLoading ? (
+          <p className="rounded-md border bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+            Loading activity...
+          </p>
+        ) : options.isError ? (
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-4 text-sm text-destructive">
+            Could not load activity history.
+          </p>
+        ) : (
+          <div className="rounded-md border bg-muted/10">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <span>Entry</span>
+              <span className="text-right">New Qty / Avg</span>
+            </div>
+            <div className="divide-y">
+              {activityRows.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span className={`text-xs font-medium uppercase ${entry.toneClass}`}>
+                        {entry.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(entry.date)}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-sm">
+                      <span className={`font-mono font-medium ${entry.toneClass}`}>
+                        {entry.quantityPrefix}
+                        {formatNumber(entry.quantity, qtyDecimals)}
+                      </span>{' '}
+                      <span>{viewPosition.asset.symbol}</span>
+                      <span className="text-muted-foreground"> @ </span>
+                      <span className="font-mono">
+                        {formatCurrency(
+                          convert(entry.priceUsd),
+                          currency,
+                          getSmartDecimals(convert(entry.priceUsd))
+                        )}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-mono text-sm font-medium">
+                      {formatNumber(entry.nextQuantity, qtyDecimals)}
+                    </p>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      avg{' '}
+                      {formatCurrency(
+                        convert(entry.nextAvgCostUsd),
+                        currency,
+                        getSmartDecimals(convert(entry.nextAvgCostUsd))
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="space-y-4">
@@ -690,6 +830,9 @@ export function PositionTable({
               <span>{viewPosition?.asset.symbol}</span>
               <span className="text-muted-foreground font-normal">{viewPosition?.asset.name}</span>
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Position summary, storage details, add and reduce activity, and position actions.
+            </DialogDescription>
           </DialogHeader>
           {viewPosition && (
             <div className="space-y-4">
@@ -781,6 +924,11 @@ export function PositionTable({
                   </p>
                 </div>
               )}
+
+              {renderPositionHistory(positionHistory, {
+                isLoading: isHistoryLoading,
+                isError: isHistoryError,
+              })}
 
               <div className="border-t pt-4 text-xs text-muted-foreground">
                 <p>Created: {formatDateTime(viewPosition.createdAt)}</p>

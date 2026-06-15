@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { CreatePositionData, Position, ProviderName } from '@/lib/types';
+import type { CreatePositionData, Position, ProviderName, UpdatePositionData } from '@/lib/types';
 
 const portfolioFocusRefreshOptions = {
   refetchOnWindowFocus: true,
@@ -11,6 +11,15 @@ export function usePositions() {
   return useQuery({
     queryKey: ['positions'],
     queryFn: api.getPositions,
+    ...portfolioFocusRefreshOptions,
+  });
+}
+
+export function usePositionHistory(positionId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['positions', positionId, 'history'],
+    queryFn: () => api.getPositionHistory(positionId!),
+    enabled: !!positionId,
     ...portfolioFocusRefreshOptions,
   });
 }
@@ -55,11 +64,12 @@ export function useUpdatePosition() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreatePositionData> }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdatePositionData }) =>
       api.updatePosition(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['positions'] });
       queryClient.invalidateQueries({ queryKey: ['positions', id] });
+      queryClient.invalidateQueries({ queryKey: ['positions', id, 'history'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
     },
   });

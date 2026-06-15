@@ -2016,6 +2016,11 @@ Recently completed:
   - The npm audit pass upgraded Vite to 8.0.16, `node-cron` to 4.2.1, and removed the stale `@types/node-cron` shim because v4 ships declarations through package exports.
   - ExcelJS stayed on 4.4.0, but root `package.json` now overrides its transitive `uuid` dependency to 11.1.1. That is safer than npm's `audit fix --force` suggestion, which would downgrade ExcelJS to 3.4.0 just to escape the advisory range.
   - Lesson: audit output is a triage queue, not a script to obey blindly. Prefer small, explainable upgrades and verify the affected code path instead of accepting force fixes that change product behavior.
+- [x] **Position add/reduce history:**
+  - The portfolio line-item detail dialog now has a concise Position History ledger. It starts with the original entry, then lists adds/reductions chronologically with amount + implied price on the left and the resulting quantity/average price on the right.
+  - Backend persistence now has a `PositionHistory` table. Delta edits include `positionDelta` metadata, and the backend checks that metadata against the submitted next totals before updating the position and writing the history row in one transaction.
+  - Manual `Edit Totals` still works as a correction path and intentionally does not create add/reduce history. That distinction matters: a correction changes the record; a delta explains how the position got there.
+  - Lesson: once an aggregate field becomes editable through both "correct the total" and "record a transaction-ish change," the app needs to preserve intent, not just the final numbers.
 
 ---
 

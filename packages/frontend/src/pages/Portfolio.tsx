@@ -608,6 +608,9 @@ export default function Portfolio() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Perp Exposure</DialogTitle>
+            <DialogDescription className="sr-only">
+              Edit the total open perpetual futures exposure used in portfolio exposure metrics.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">

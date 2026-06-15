@@ -938,6 +938,11 @@ export function PositionForm({
             quantity: deltaResult.nextQuantity,
             avgCostUsd: deltaResult.nextAvgCostUsd,
             custodyOf: isCustody ? custodyOf.trim() || 'Someone' : '',
+            positionDelta: {
+              mode: deltaMode,
+              quantity: deltaQty,
+              ...(deltaMode === 'add' ? { totalCostUsd: deltaCostAddUsd } : {}),
+            },
           },
         });
         handleCustodySave();
