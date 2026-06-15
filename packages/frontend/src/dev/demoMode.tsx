@@ -970,6 +970,9 @@ const performance: PerformancePoint[] = [
 const dbHealth: DbHealth = { status: 'ok', latency_ms: 22 };
 const fxRates: FxRate[] = [
   { id: 'usd-sgd', fromCcy: 'USD', toCcy: 'SGD', rate: 1.3471, timestamp: NOW },
+  { id: 'usd-jpy', fromCcy: 'USD', toCcy: 'JPY', rate: 150, timestamp: NOW },
+  { id: 'usd-twd', fromCcy: 'USD', toCcy: 'TWD', rate: 31.2, timestamp: NOW },
+  { id: 'usd-krw', fromCcy: 'USD', toCcy: 'KRW', rate: 1375, timestamp: NOW },
 ];
 let demoAssets: Asset[] = [...initialAssets];
 let demoPositions: Position[] = [...initialPositions];
@@ -1496,6 +1499,30 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
           nativeCurrency: 'USD',
         },
         { symbol: 'QQQ', name: 'Invesco QQQ Trust', exchange: 'NasdaqGM', nativeCurrency: 'USD' },
+        {
+          symbol: '285A.T',
+          name: 'Kioxia Holdings Corporation',
+          exchange: 'Tokyo Stock Exchange',
+          nativeCurrency: 'JPY',
+        },
+        {
+          symbol: '2330.TW',
+          name: 'Taiwan Semiconductor Manufacturing Company Limited',
+          exchange: 'Taiwan Stock Exchange',
+          nativeCurrency: 'TWD',
+        },
+        {
+          symbol: '005930.KS',
+          name: 'Samsung Electronics Co., Ltd.',
+          exchange: 'Korea Stock Exchange',
+          nativeCurrency: 'KRW',
+        },
+        {
+          symbol: '000660.KS',
+          name: 'SK hynix Inc.',
+          exchange: 'Korea Stock Exchange',
+          nativeCurrency: 'KRW',
+        },
       ]
         .filter(
           (e) =>

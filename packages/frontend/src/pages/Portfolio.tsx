@@ -1,5 +1,10 @@
 import { useState, useMemo } from 'react';
-import { usePositions, usePortfolioSummary, useDeleteAllPositions } from '@/hooks/usePortfolio';
+import {
+  usePositions,
+  usePortfolioSummary,
+  useDeleteAllPositions,
+  useFxRates,
+} from '@/hooks/usePortfolio';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import {
@@ -119,6 +124,7 @@ export default function Portfolio() {
   const { currency } = useCurrencyStore();
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: summary } = usePortfolioSummary();
+  const { data: fxRates } = useFxRates();
   const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
   const [navAsset, setNavAsset] = useState<Position['asset'] | null>(null);
@@ -146,6 +152,22 @@ export default function Portfolio() {
     }
     return USD_SGD_FALLBACK_RATE;
   }, [summary]);
+
+  const usdFxRates = useMemo(() => {
+    const rates: Record<string, number> = { USD: 1, SGD: fxRate };
+
+    for (const rate of fxRates ?? []) {
+      const from = rate.fromCcy.toUpperCase();
+      const to = rate.toCcy.toUpperCase();
+      if (from === 'USD') {
+        rates[to] = rate.rate;
+      } else if (to === 'USD' && rate.rate > 0) {
+        rates[from] = 1 / rate.rate;
+      }
+    }
+
+    return rates;
+  }, [fxRates, fxRate]);
 
   // Helper to convert values based on currency
   const convertValue = (usdValue: number | null | undefined) => {
@@ -546,6 +568,7 @@ export default function Portfolio() {
               positions={section.positions}
               currency={currency}
               fxRate={fxRate}
+              usdFxRates={usdFxRates}
               sectionPrefix={section.id}
               groupBy={section.id === 'equities' ? equityGroupBy : 'storage'}
               onUpdateNav={section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined}
@@ -580,6 +603,7 @@ export default function Portfolio() {
             positions={custodyPositions}
             currency={currency}
             fxRate={fxRate}
+            usdFxRates={usdFxRates}
             sectionPrefix="custody"
           />
         </CollapsibleCard>

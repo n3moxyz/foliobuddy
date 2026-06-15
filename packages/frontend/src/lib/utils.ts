@@ -70,6 +70,8 @@ const NUMBER_FORMATTERS_BY_DECIMALS: Record<number, Intl.NumberFormat> = {
   5: new Intl.NumberFormat('en-US', { minimumFractionDigits: 5, maximumFractionDigits: 5 }),
 };
 
+const ZERO_DECIMAL_PRICE_CURRENCIES = new Set(['JPY', 'KRW']);
+
 const DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
   year: 'numeric',
   month: 'short',
@@ -108,19 +110,43 @@ export function formatCurrency(
 }
 
 /** Smart decimals for prices: more decimals for smaller values */
+export function priceDecimals(value: number, currency?: string): number {
+  if (currency && ZERO_DECIMAL_PRICE_CURRENCIES.has(currency.toUpperCase())) return 0;
+  const abs = Math.abs(value);
+  if (abs < 0.01) return 5;
+  if (abs < 0.1) return 4;
+  if (abs < 10) return 3;
+  if (abs < 1000) return 2;
+  return 0;
+}
+
 export function formatPrice(
   value: number | null | undefined,
   currency: 'USD' | 'SGD' = 'USD'
 ): string {
   if (value === null || value === undefined) return '-';
-  const abs = Math.abs(value);
-  let decimals: number;
-  if (abs < 0.01) decimals = 5;
-  else if (abs < 0.1) decimals = 4;
-  else if (abs < 10) decimals = 3;
-  else if (abs < 1000) decimals = 2;
-  else decimals = 0;
-  return formatCurrency(value, currency, decimals);
+  return formatCurrency(value, currency, priceDecimals(value, currency));
+}
+
+export function formatNativePrice(
+  value: number | null | undefined,
+  currency: string | null | undefined
+): string {
+  if (value === null || value === undefined || !currency) return '-';
+
+  const code = currency.toUpperCase();
+  const decimals = priceDecimals(value, code);
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: code,
+      currencyDisplay: 'code',
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(value);
+  } catch {
+    return `${code} ${formatNumber(value, decimals)}`;
+  }
 }
 
 export function formatNumber(value: number | null | undefined, decimals: number = 2): string {

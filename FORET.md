@@ -2021,6 +2021,11 @@ Recently completed:
   - Backend persistence now has a `PositionHistory` table. Delta edits include `positionDelta` metadata, and the backend checks that metadata against the submitted next totals before updating the position and writing the history row in one transaction.
   - Manual `Edit Totals` still works as a correction path and intentionally does not create add/reduce history. That distinction matters: a correction changes the record; a delta explains how the position got there.
   - Lesson: once an aggregate field becomes editable through both "correct the total" and "record a transaction-ish change," the app needs to preserve intent, not just the final numbers.
+- [x] **Asian equity search + local price hints:**
+  - Yahoo search was technically working, but only inside a too-small USD/SGD worldview. Kioxia was the obvious failure: searching by name surfaced OTC tickers and European cross-listings while the Tokyo listing (`285A.T`) was filtered out because `.T` was treated as unsupported instead of Japan/JPY.
+  - `YahooFinanceProvider` now understands Japan (`.T`/JPY), Taiwan (`.TW`/`.TWO`/TWD), and Korea (`.KS`/`.KQ`/KRW). Search fans out across US/JP/TW/KR, numeric ticker lookups try the Asian suffixes, and result ranking pushes primary Asian exchanges above OTC/Frankfurt/Stuttgart/Munich/Hamburg cross-listings. The Kioxia case is pinned in a unit test.
+  - FX refresh now keeps USD/JPY, USD/TWD, and USD/KRW beside USD/SGD in the existing `FxRate` table. Portfolio rows still show the selected app currency as the main price, but non-selected native currencies get a smaller second line like `(SGD 65.00)` or `(JPY 2,400)`.
+  - Lesson: "support equities" is not the same thing as "support US-style tickers." Yahoo's symbol suffixes carry market and currency meaning, and filtering by currency can quietly erase the primary listing before the UI ever gets a chance to rank it.
 
 ---
 

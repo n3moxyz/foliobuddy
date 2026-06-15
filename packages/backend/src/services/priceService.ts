@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
-import { CoinGeckoProvider } from './providers/CoinGeckoProvider.js';
+import { CoinGeckoProvider, type ExchangeRates } from './providers/CoinGeckoProvider.js';
 import { YahooFinanceProvider } from './providers/YahooFinanceProvider.js';
 import { ManualProvider } from './providers/ManualProvider.js';
 import type {
@@ -62,8 +62,28 @@ class PriceService {
     }));
   }
 
-  async getExchangeRates(): Promise<{ usdSgd: number } | null> {
-    return this.coingecko.getExchangeRates();
+  async getExchangeRates(): Promise<ExchangeRates | null> {
+    const coingeckoRates = await this.coingecko.getExchangeRates();
+    if (!coingeckoRates?.usdSgd) return null;
+
+    const missingCurrencies = (['JPY', 'TWD', 'KRW'] as const).filter((currency) => {
+      if (currency === 'JPY') return !coingeckoRates.usdJpy;
+      if (currency === 'TWD') return !coingeckoRates.usdTwd;
+      return !coingeckoRates.usdKrw;
+    });
+    const yahooRates =
+      missingCurrencies.length > 0
+        ? await this.yahoo.getUsdExchangeRates(missingCurrencies)
+        : new Map<string, number>();
+
+    const rates: ExchangeRates = {
+      usdSgd: coingeckoRates.usdSgd,
+      usdJpy: coingeckoRates.usdJpy ?? yahooRates.get('JPY'),
+      usdTwd: coingeckoRates.usdTwd ?? yahooRates.get('TWD'),
+      usdKrw: coingeckoRates.usdKrw ?? yahooRates.get('KRW'),
+    };
+
+    return rates;
   }
 
   async getHistoricalPrices(

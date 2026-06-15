@@ -32,6 +32,15 @@ export function usePortfolioSummary() {
   });
 }
 
+export function useFxRates() {
+  return useQuery({
+    queryKey: ['fx', 'rates'],
+    queryFn: api.getFxRates,
+    staleTime: 60 * 60 * 1000,
+    ...portfolioFocusRefreshOptions,
+  });
+}
+
 export function useTopPerformers(limit = 5) {
   return useQuery({
     queryKey: ['portfolio', 'performers', 'top', limit],
