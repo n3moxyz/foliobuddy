@@ -15,8 +15,13 @@ interface PositionCostFieldsProps {
   showUnitTrustConversion: boolean;
   unitTrustUsdPerNative: number;
   unitTrustNativeCurrency: string;
-  showSgdConversion: boolean;
-  fxSgdPerUsd: number;
+  showNativeConversion: boolean;
+  nativeUsdPerUnit: number | null;
+  nativeConversionCurrency: string;
+}
+
+function formatUsdPerNative(value: number): string {
+  return value < 0.01 ? value.toFixed(6) : value.toFixed(4);
 }
 
 export function PositionCostFields({
@@ -32,8 +37,9 @@ export function PositionCostFields({
   showUnitTrustConversion,
   unitTrustUsdPerNative,
   unitTrustNativeCurrency,
-  showSgdConversion,
-  fxSgdPerUsd,
+  showNativeConversion,
+  nativeUsdPerUnit,
+  nativeConversionCurrency,
 }: PositionCostFieldsProps) {
   return (
     <div className="space-y-2">
@@ -96,13 +102,14 @@ export function PositionCostFields({
 
       {showUnitTrustConversion && (
         <p className="text-xs text-muted-foreground">
-          Stored internally as USD ({unitTrustUsdPerNative.toFixed(4)} USD per{' '}
+          Stored internally as USD ({formatUsdPerNative(unitTrustUsdPerNative)} USD per{' '}
           {unitTrustNativeCurrency}).
         </p>
       )}
-      {showSgdConversion && (
+      {showNativeConversion && nativeUsdPerUnit !== null && (
         <p className="text-xs text-muted-foreground">
-          Stored internally as USD ({(1 / fxSgdPerUsd).toFixed(4)} USD per SGD).
+          Stored internally as USD ({formatUsdPerNative(nativeUsdPerUnit)} USD per{' '}
+          {nativeConversionCurrency}).
         </p>
       )}
     </div>

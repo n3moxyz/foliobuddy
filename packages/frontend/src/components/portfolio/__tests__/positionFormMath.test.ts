@@ -22,8 +22,10 @@ describe('positionFormMath', () => {
   });
 
   it('converts SGD cost input to stored USD', () => {
-    expect(toUsdCost(135, 'SGD', 1.35)).toBe(100);
-    expect(toUsdCost(100, 'USD', 1.35)).toBe(100);
+    expect(toUsdCost(135, 'SGD', { USD: 1, SGD: 1.35 })).toBe(100);
+    expect(toUsdCost(100, 'USD', { USD: 1, SGD: 1.35 })).toBe(100);
+    expect(toUsdCost(150000, 'JPY', { USD: 1, JPY: 150 })).toBe(1000);
+    expect(toUsdCost(1300000, 'KRW', { USD: 1, KRW: 1300 })).toBe(1000);
   });
 
   it('builds an add-position preview using display currency', () => {
@@ -34,7 +36,7 @@ describe('positionFormMath', () => {
       deltaTotalCostInput: '54',
       mode: 'add',
       costCurrency: 'SGD',
-      fxSgdPerUsd: 1.35,
+      usdFxRates: { USD: 1, SGD: 1.35 },
     });
 
     expect(preview).not.toBeNull();
@@ -55,7 +57,7 @@ describe('positionFormMath', () => {
         deltaTotalCostInput: '',
         mode: 'reduce',
         costCurrency: 'USD',
-        fxSgdPerUsd: 1.35,
+        usdFxRates: { USD: 1, SGD: 1.35 },
       })
     ).toBeNull();
   });

@@ -19,7 +19,12 @@ import {
   useCreateAssetFromProvider,
   useCreateUnitTrust,
 } from '@/hooks/useAssets';
-import { useCreatePosition, useUpdatePosition, usePortfolioSummary } from '@/hooks/usePortfolio';
+import {
+  useCreatePosition,
+  useUpdatePosition,
+  usePortfolioSummary,
+  useFxRates,
+} from '@/hooks/usePortfolio';
 import { USD_SGD_FALLBACK_RATE, applyPositionDelta } from '@foliobuddy/shared';
 import { api } from '@/lib/api';
 import type {
@@ -56,7 +61,11 @@ import {
   calculateNonNegativeAverageCostInput,
   calculateNonNegativeTotalCostInput,
   calculateTotalCostInput,
+  costCurrencyDisplayRate,
+  normalizeCostCurrency,
   toUsdCost,
+  usdPerCostCurrency,
+  type CostCurrency,
   type CostInputMode,
 } from './positionFormMath';
 import type { CategoryType, EquityMode, FormMode, PositionStorageType } from './positionFormTypes';
@@ -336,8 +345,9 @@ export function PositionForm({
     createUnitTrust.isPending;
 
   // Live FX rate (SGD per 1 USD) — derived from portfolio summary so it matches displayed values.
-  // Used to convert single-equity SGD inputs to USD on submit.
+  // Other listed-equity local currencies come from /fx/rates.
   const { data: portfolioSummary } = usePortfolioSummary();
+  const { data: fxRates } = useFxRates();
   const fxSgdPerUsd = useMemo(() => {
     if (
       portfolioSummary &&
@@ -349,31 +359,54 @@ export function PositionForm({
     return USD_SGD_FALLBACK_RATE;
   }, [portfolioSummary]);
 
-  // Currency the user is entering cost in. USD unless the asset is SGD-denominated
-  // (single equity with .SI ticker, or a SGD unit trust). Backend always stores USD.
-  const costCurrency = useMemo<'USD' | 'SGD'>(() => {
+  const usdFxRates = useMemo(() => {
+    const rates: Record<string, number> = { USD: 1, SGD: fxSgdPerUsd };
+
+    for (const rate of fxRates ?? []) {
+      const from = rate.fromCcy.toUpperCase();
+      const to = rate.toCcy.toUpperCase();
+      if (from === 'USD') {
+        rates[to] = rate.rate;
+      } else if (to === 'USD' && rate.rate > 0) {
+        rates[from] = 1 / rate.rate;
+      }
+    }
+
+    return rates;
+  }, [fxRates, fxSgdPerUsd]);
+
+  // Currency the user is entering cost in. For listed equities, use the stock's
+  // supported native currency; backend always stores USD.
+  const costCurrency = useMemo<CostCurrency>(() => {
     if (category !== 'equity') return 'USD';
-    if (equityMode === 'fund' && !isEditing) return utNativeCurrency;
-    const native = selectedAsset?.nativeCurrency?.toUpperCase();
-    return native === 'SGD' ? 'SGD' : 'USD';
+    if (equityMode === 'fund' && !isEditing) return normalizeCostCurrency(utNativeCurrency);
+    return normalizeCostCurrency(selectedAsset?.nativeCurrency);
   }, [category, equityMode, isEditing, utNativeCurrency, selectedAsset]);
 
-  // When editing an SGD-native position, re-display the stored USD cost basis in SGD.
-  // Runs once per position; waits for portfolioSummary so the FX rate is real, not the
-  // 1.35 fallback (would otherwise round-trip incorrectly on save).
+  const costDisplayRate = useMemo(
+    () => costCurrencyDisplayRate(costCurrency, usdFxRates),
+    [costCurrency, usdFxRates]
+  );
+  const costUsdPerNative = useMemo(
+    () => usdPerCostCurrency(costCurrency, usdFxRates),
+    [costCurrency, usdFxRates]
+  );
+
+  // When editing a non-USD-native position, re-display the stored USD cost basis in
+  // local currency. Runs once per position and waits until the relevant FX rate is loaded.
   useEffect(() => {
     if (!position || costInitializedRef.current) return;
-    if (costCurrency !== 'SGD') {
+    if (costCurrency === 'USD') {
       costInitializedRef.current = true;
       return;
     }
-    if (!portfolioSummary) return;
-    const displayAvg = position.avgCostUsd * fxSgdPerUsd;
-    const displayTotal = position.quantity * position.avgCostUsd * fxSgdPerUsd;
+    if (costDisplayRate === null) return;
+    const displayAvg = position.avgCostUsd * costDisplayRate;
+    const displayTotal = position.quantity * position.avgCostUsd * costDisplayRate;
     setAvgCostInput(displayAvg.toFixed(2));
     setTotalCost(displayTotal.toFixed(2));
     costInitializedRef.current = true;
-  }, [position, costCurrency, fxSgdPerUsd, portfolioSummary]);
+  }, [position, costCurrency, costDisplayRate]);
 
   // Form validation
   const isFormValid = useMemo(() => {
@@ -502,7 +535,7 @@ export function PositionForm({
       deltaTotalCostInput: additionalCostInput,
       mode: deltaMode,
       costCurrency,
-      fxSgdPerUsd,
+      usdFxRates,
     });
   }, [
     position,
@@ -511,7 +544,7 @@ export function PositionForm({
     additionalCostInput,
     deltaMode,
     costCurrency,
-    fxSgdPerUsd,
+    usdFxRates,
   ]);
 
   // Filter existing assets based on search and category
@@ -902,10 +935,14 @@ export function PositionForm({
 
     if (isEditing && editMode === 'delta' && position) {
       const deltaQty = parseFloat(additionalQuantity);
+      if (deltaMode === 'add' && costCurrency !== 'USD' && costDisplayRate === null) {
+        setValidationError(`FX rate for ${costCurrency} is still loading. Please try again.`);
+        return;
+      }
       // In add mode the user enters cost in costCurrency — convert to USD for persistence.
       // In reduce mode we shrink basis at current avg cost (already USD), no conversion needed.
       const deltaCostInput = parseFloat(additionalCostInput);
-      const deltaCostAddUsd = toUsdCost(deltaCostInput, costCurrency, fxSgdPerUsd);
+      const deltaCostAddUsd = toUsdCost(deltaCostInput, costCurrency, usdFxRates);
 
       if (!(deltaQty > 0)) {
         setValidationError(`Please enter a valid ${deltaMode} quantity`);
@@ -1030,12 +1067,22 @@ export function PositionForm({
       return;
     }
 
-    // Convert equity-SGD input to USD before persisting (backend stores USD).
-    // Applies to both create and edit (single stocks and unit trusts).
+    if (
+      category === 'equity' &&
+      !(equityMode === 'fund' && !isEditing) &&
+      costCurrency !== 'USD' &&
+      costDisplayRate === null
+    ) {
+      setValidationError(`FX rate for ${costCurrency} is still loading. Please try again.`);
+      return;
+    }
+
+    // Convert local equity input to USD before persisting (backend stores USD).
+    // Applies to both create and edit (single stocks and existing unit trusts).
     const rawAvgCost =
       category === 'cash' ? (selectedAsset?.currentPriceUsd ?? 1) : parseFloat(avgCostUsd) || 0;
     const finalAvgCostUsd =
-      category === 'equity' && costCurrency === 'SGD' ? rawAvgCost / fxSgdPerUsd : rawAvgCost;
+      category === 'equity' ? toUsdCost(rawAvgCost, costCurrency, usdFxRates) : rawAvgCost;
 
     const data = {
       assetId,
@@ -1626,12 +1673,13 @@ export function PositionForm({
                   }
                   unitTrustUsdPerNative={utUsdPerNative}
                   unitTrustNativeCurrency={utNativeCurrency}
-                  showSgdConversion={
+                  showNativeConversion={
                     category === 'equity' &&
                     !(equityMode === 'fund' && !isEditing) &&
-                    costCurrency === 'SGD'
+                    costCurrency !== 'USD'
                   }
-                  fxSgdPerUsd={fxSgdPerUsd}
+                  nativeUsdPerUnit={costUsdPerNative}
+                  nativeConversionCurrency={costCurrency}
                 />
               )}
 

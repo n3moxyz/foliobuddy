@@ -2025,6 +2025,8 @@ Recently completed:
   - Yahoo search was technically working, but only inside a too-small USD/SGD worldview. Kioxia was the obvious failure: searching by name surfaced OTC tickers and European cross-listings while the Tokyo listing (`285A.T`) was filtered out because `.T` was treated as unsupported instead of Japan/JPY.
   - `YahooFinanceProvider` now understands Japan (`.T`/JPY), Taiwan (`.TW`/`.TWO`/TWD), and Korea (`.KS`/`.KQ`/KRW). Search fans out across US/JP/TW/KR, numeric ticker lookups try the Asian suffixes, and result ranking pushes primary Asian exchanges above OTC/Frankfurt/Stuttgart/Munich/Hamburg cross-listings. The Kioxia case is pinned in a unit test.
   - FX refresh now keeps USD/JPY, USD/TWD, and USD/KRW beside USD/SGD in the existing `FxRate` table. Portfolio rows still show the selected app currency as the main price, but non-selected native currencies get a smaller second line like `(SGD 65.00)` or `(JPY 2,400)`.
+  - Add Position now uses the same native-currency signal for cost inputs: selecting Kioxia (`285A.T`) changes Total/Average Cost to JPY, and selecting Samsung (`005930.KS`) changes them to KRW. The database still stores USD; the form converts through the USD→native FX map before saving.
+  - Average cost now follows current price in the table and line-item summary: show the base display currency first, then the local/native price in brackets underneath. Total cost and market value stay single-currency to keep the table from getting noisy.
   - Lesson: "support equities" is not the same thing as "support US-style tickers." Yahoo's symbol suffixes carry market and currency meaning, and filtering by currency can quietly erase the primary listing before the UI ever gets a chance to rank it.
 
 ---

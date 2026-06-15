@@ -238,7 +238,7 @@ iOS HIG-inspired patterns on all pages:
 
 Use `formatCurrency` (explicit decimals or compact mode) for totals, sizes, and P&L.
 
-Portfolio rows keep the selected app currency as the primary current price. If `asset.nativeCurrency` differs, show a muted second line using `localPriceLabel()` / `formatNativePrice()` and the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW supported). Do not store native current price on `Asset`; derive the display label from `currentPriceUsd × USD/native FX`.
+Portfolio rows keep the selected app currency as the primary current price and average cost. If `asset.nativeCurrency` differs, show a muted second line under **Price** and **Avg Cost** using `localPriceLabel()` / `formatNativePrice()` and the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW supported). Do not add native labels under total cost or value, and do not store native current price on `Asset`; derive display labels from USD values × USD/native FX.
 
 ### Formatted Amount Inputs
 
@@ -289,7 +289,7 @@ Two sub-types via UI toggle (enums unchanged):
 - **Stock / ETF**: `equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`. ETFs go here (live ticker prices), not Unit Trust.
 - **Unit Trust**: `equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`.
 
-**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown; `storageType` stays `'BROKERAGE'`. Cost currency follows `asset.nativeCurrency` — SGD tickers (`.SI`) and SGD unit trusts show SGD inputs with a USD conversion note. Backend stores USD; FX from `portfolioSummary` (fallback 1.35). Edit converts stored USD → SGD via the `costInitialized` flag.
+**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown; `storageType` stays `'BROKERAGE'`. Cost currency follows supported `asset.nativeCurrency` values — listed equities in SGD/JPY/TWD/KRW show local cost inputs with a USD conversion note; SGD unit trusts use their statement/parser FX path. Backend stores USD; SGD uses `portfolioSummary` (fallback 1.35) and other listed-equity currencies use the `/fx/rates` USD→native map. Edit converts stored USD → local inputs via the `costInitialized` flag.
 
 **Display:** Equities `PositionTable` defaults to `groupBy='broker'`; unit trusts show a `Unit Trust` badge there. Header segmented control switches to `groupBy='equityType'`; choice persists in localStorage (`foliobuddy-equity-group-by`). **NAV-age badge** under the symbol appears for unit trusts OR manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers and fiat cash skip it.
 

@@ -1,7 +1,11 @@
 import { applyPositionDelta, type PositionDeltaMode } from '@foliobuddy/shared';
 
 export type CostInputMode = 'total' | 'avg';
-export type CostCurrency = 'USD' | 'SGD';
+export type CostCurrency = 'USD' | 'SGD' | 'JPY' | 'TWD' | 'KRW';
+export type CostFxRatesByCurrency = Record<string, number>;
+
+const SUPPORTED_COST_CURRENCIES: CostCurrency[] = ['USD', 'SGD', 'JPY', 'TWD', 'KRW'];
+const SUPPORTED_COST_CURRENCY_SET = new Set<string>(SUPPORTED_COST_CURRENCIES);
 
 export interface DeltaPreview {
   currentQuantity: number;
@@ -14,6 +18,28 @@ export interface DeltaPreview {
 
 function parseNumber(value: string): number {
   return parseFloat(value);
+}
+
+export function normalizeCostCurrency(value: string | null | undefined): CostCurrency {
+  const currency = value?.trim().toUpperCase();
+  return currency && SUPPORTED_COST_CURRENCY_SET.has(currency) ? (currency as CostCurrency) : 'USD';
+}
+
+export function costCurrencyDisplayRate(
+  currency: CostCurrency,
+  usdFxRates: CostFxRatesByCurrency
+): number | null {
+  if (currency === 'USD') return 1;
+  const rate = usdFxRates[currency];
+  return Number.isFinite(rate) && rate > 0 ? rate : null;
+}
+
+export function usdPerCostCurrency(
+  currency: CostCurrency,
+  usdFxRates: CostFxRatesByCurrency
+): number | null {
+  const displayRate = costCurrencyDisplayRate(currency, usdFxRates);
+  return displayRate === null ? null : 1 / displayRate;
 }
 
 export function calculateAverageCostInput(
@@ -80,8 +106,13 @@ export function calculateNonNegativeTotalCostInput(
   return '';
 }
 
-export function toUsdCost(amount: number, currency: CostCurrency, fxSgdPerUsd: number): number {
-  return currency === 'SGD' ? amount / fxSgdPerUsd : amount;
+export function toUsdCost(
+  amount: number,
+  currency: CostCurrency,
+  usdFxRates: CostFxRatesByCurrency
+): number {
+  const displayRate = costCurrencyDisplayRate(currency, usdFxRates);
+  return displayRate === null ? Number.NaN : amount / displayRate;
 }
 
 export function buildPositionDeltaPreview(params: {
@@ -91,14 +122,17 @@ export function buildPositionDeltaPreview(params: {
   deltaTotalCostInput: string;
   mode: PositionDeltaMode;
   costCurrency: CostCurrency;
-  fxSgdPerUsd: number;
+  usdFxRates: CostFxRatesByCurrency;
 }): DeltaPreview | null {
   const deltaQuantity = parseNumber(params.deltaQuantity);
   const rawDeltaCost = parseNumber(params.deltaTotalCostInput);
+  const displayRate = costCurrencyDisplayRate(params.costCurrency, params.usdFxRates);
+  if (displayRate === null) return null;
+
   const deltaTotalCostUsd =
     params.mode === 'reduce'
       ? undefined
-      : toUsdCost(rawDeltaCost, params.costCurrency, params.fxSgdPerUsd);
+      : toUsdCost(rawDeltaCost, params.costCurrency, params.usdFxRates);
 
   try {
     const result = applyPositionDelta({
@@ -108,7 +142,6 @@ export function buildPositionDeltaPreview(params: {
       mode: params.mode,
       deltaTotalCostUsd,
     });
-    const displayRate = params.costCurrency === 'SGD' ? params.fxSgdPerUsd : 1;
 
     return {
       currentQuantity: params.currentQuantity,

@@ -108,6 +108,12 @@ export const PositionRow = React.memo(function PositionRow({
     displayCurrency: currency,
     usdFxRates,
   });
+  const localAvgCost = localPriceLabel({
+    usdPrice: position.avgCostUsd,
+    nativeCurrency: position.asset.nativeCurrency,
+    displayCurrency: currency,
+    usdFxRates,
+  });
 
   // Match PositionTable: hidden on mobile unless toggle is on
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
@@ -146,10 +152,15 @@ export const PositionRow = React.memo(function PositionRow({
         {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
-        {formatCurrency(
-          convert(position.avgCostUsd),
-          currency,
-          getSmartDecimals(convert(position.avgCostUsd))
+        <p>
+          {formatCurrency(
+            convert(position.avgCostUsd),
+            currency,
+            getSmartDecimals(convert(position.avgCostUsd))
+          )}
+        </p>
+        {localAvgCost && (
+          <p className="mt-0.5 text-[11px] leading-none text-muted-foreground/80">{localAvgCost}</p>
         )}
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
