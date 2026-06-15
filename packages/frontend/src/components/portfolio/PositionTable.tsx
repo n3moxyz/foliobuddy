@@ -419,6 +419,32 @@ export function PositionTable({
     );
   };
 
+  const renderAverageCost = (position: Position) => {
+    const localAvgCost = localPriceLabel({
+      usdPrice: position.avgCostUsd,
+      nativeCurrency: position.asset.nativeCurrency,
+      displayCurrency: currency,
+      usdFxRates: priceFxRates,
+    });
+
+    return (
+      <>
+        <p className="font-mono">
+          {formatCurrency(
+            convert(position.avgCostUsd),
+            currency,
+            getSmartDecimals(convert(position.avgCostUsd))
+          )}
+        </p>
+        {localAvgCost && (
+          <p className="font-mono text-[11px] leading-none text-muted-foreground/80">
+            {localAvgCost}
+          </p>
+        )}
+      </>
+    );
+  };
+
   const renderTableHeader = (sortState: {
     sortKey: string | null;
     sortDirection: SortDirection;
@@ -888,13 +914,7 @@ export function PositionTable({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Average Cost</p>
-                  <p className="font-mono">
-                    {formatCurrency(
-                      convert(viewPosition.avgCostUsd),
-                      currency,
-                      getSmartDecimals(convert(viewPosition.avgCostUsd))
-                    )}
-                  </p>
+                  {renderAverageCost(viewPosition)}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Total Cost</p>
