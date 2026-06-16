@@ -55,7 +55,7 @@ export function PositionImportTab({
       )}
 
       {isCustody && (
-        <div className="text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30 px-3 py-2 rounded-md">
+        <div className="text-xs text-info bg-info/10 px-3 py-2 rounded-md">
           Importing as custody for <span className="font-medium">{custodyOf || 'Someone'}</span>
         </div>
       )}

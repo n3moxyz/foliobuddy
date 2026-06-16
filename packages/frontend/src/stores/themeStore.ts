@@ -36,7 +36,21 @@ export const useThemeStore = create<ThemeState>()(
       name: 'theme-storage',
       onRehydrateStorage: () => (state) => {
         if (state) {
-          applyTheme(state.theme);
+          // If there was no persisted theme (fresh user), the FOUC blocking script
+          // in index.html already resolved the correct theme from prefers-color-scheme
+          // and may have added .dark to <html>. Read the DOM result instead of forcing
+          // the store's 'dark' default, so a light-OS new user doesn't see a flash.
+          const hasPersisted =
+            typeof document !== 'undefined' && localStorage.getItem('theme-storage') !== null;
+          if (!hasPersisted && typeof document !== 'undefined') {
+            const resolved: Theme = document.documentElement.classList.contains('dark')
+              ? 'dark'
+              : 'light';
+            state.theme = resolved;
+            // DOM is already correct — no applyTheme call needed.
+          } else {
+            applyTheme(state.theme);
+          }
         }
       },
     }

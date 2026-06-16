@@ -269,7 +269,7 @@ export function getPriceAgeInfo(priceUpdatedAt: string | null | undefined): Pric
 
 export function priceAgeClass(severity: PriceAgeSeverity): string {
   if (severity === 'fresh') return 'text-muted-foreground';
-  if (severity === 'aging') return 'text-amber-500';
+  if (severity === 'aging') return 'text-warning';
   if (severity === 'stale') return 'text-loss';
   return 'text-muted-foreground';
 }

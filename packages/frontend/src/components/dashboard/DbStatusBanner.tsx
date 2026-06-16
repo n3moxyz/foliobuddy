@@ -8,7 +8,11 @@ export function DbStatusBanner() {
   const isHealthy = !isLoading && !isError && data?.status === 'ok';
   const isUnhealthy = isError || (data && data.status !== 'ok');
 
-  const dotClass = isLoading ? 'bg-yellow-500' : isHealthy ? 'bg-green-500' : 'bg-red-500';
+  const dotClass = isLoading
+    ? 'bg-warning'
+    : isHealthy
+      ? 'bg-[hsl(var(--profit))]'
+      : 'bg-destructive';
 
   const label = isLoading ? 'Checking...' : isHealthy ? 'DB OK' : 'DB Down';
 
@@ -29,7 +33,7 @@ export function DbStatusBanner() {
         >
           <span className="relative flex h-2 w-2">
             {isHealthy && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--profit))] opacity-75" />
             )}
             <span className={cn('relative inline-flex rounded-full h-2 w-2', dotClass)} />
           </span>

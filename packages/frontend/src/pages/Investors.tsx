@@ -179,7 +179,7 @@ export default function Investors() {
                         <div className="flex items-center gap-2">
                           {investor.name}
                           {investor.isOwner && (
-                            <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 px-1.5 py-0.5 rounded">
+                            <span className="inline-flex items-center gap-1 text-xs text-warning bg-warning/10 px-1.5 py-0.5 rounded">
                               <Crown className="h-3 w-3" />
                               Owner
                             </span>
@@ -485,7 +485,7 @@ function InvestorForm({
               </p>
             )}
             {exceedsTotal ? (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
+              <p className="text-xs text-warning">
                 Total will be {formatStakePercentage(projectedTotal)}% - rebalancing needed
               </p>
             ) : null}

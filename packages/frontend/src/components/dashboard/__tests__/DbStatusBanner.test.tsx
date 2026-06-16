@@ -32,7 +32,7 @@ describe('DbStatusBanner', () => {
     renderBanner();
 
     expect(screen.getByText('Checking...')).toBeInTheDocument();
-    const dots = document.querySelectorAll('.bg-yellow-500');
+    const dots = document.querySelectorAll('.bg-warning');
     expect(dots.length).toBeGreaterThan(0);
   });
 
@@ -46,8 +46,8 @@ describe('DbStatusBanner', () => {
     renderBanner();
 
     expect(screen.getByText('DB OK')).toBeInTheDocument();
-    const dots = document.querySelectorAll('.bg-green-500');
-    expect(dots.length).toBeGreaterThan(0);
+    const dot = document.querySelector('[class*="--profit"]');
+    expect(dot).not.toBeNull();
   });
 
   it('shows unhealthy state with red dot and "DB Down" when status is error', () => {
@@ -60,7 +60,7 @@ describe('DbStatusBanner', () => {
     renderBanner();
 
     expect(screen.getByText('DB Down')).toBeInTheDocument();
-    const dots = document.querySelectorAll('.bg-red-500');
+    const dots = document.querySelectorAll('.bg-destructive');
     expect(dots.length).toBeGreaterThan(0);
   });
 
@@ -74,7 +74,7 @@ describe('DbStatusBanner', () => {
     renderBanner();
 
     expect(screen.getByText('DB Down')).toBeInTheDocument();
-    const dots = document.querySelectorAll('.bg-red-500');
+    const dots = document.querySelectorAll('.bg-destructive');
     expect(dots.length).toBeGreaterThan(0);
   });
 });
