@@ -139,15 +139,13 @@ Captures portfolio state at points in time. Calculates daily/weekly/monthly/YTD 
 
 `packages/backend/scripts/backfill-equity-snapshots.ts` — one-shot for retroactively inserting positions into historical snapshots. Read the script header for usage (`--dry`/`--apply`/`--rollback`), `BACKFILLS` semantics (additive deltas, not states), and Yahoo-fallback interpolation.
 
-### Yahoo Search IP-Filter Workaround
+### Yahoo Search & Asian Equities
 
-Yahoo's `/v1/finance/search` region-filters results by caller IP even with `region=US` (our Singapore droplet got only cross-listings for US ETFs). `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` when the query matches `/^[A-Z0-9.-]{1,10}$/` and search returned no exact-symbol match.
-
-For Asian equities, Yahoo uses suffixed symbols and local currencies: Japan `.T` → JPY (e.g. Kioxia `285A.T`), Taiwan `.TW`/`.TWO` → TWD, Korea `.KS`/`.KQ` → KRW. Search queries fan out across US/JP/TW/KR regions, direct ticker lookups try the Asian suffixes for numeric tickers, and ranking intentionally prefers primary Asian exchanges over OTC/Frankfurt/Stuttgart/Munich/Hamburg cross-listings. Keep `YahooFinanceProvider.test.ts` coverage for Kioxia so name searches do not regress to OTC-only results.
+Yahoo's `/v1/finance/search` IP-filters by caller region even with `region=US` (our Singapore droplet got only cross-listings for US ETFs). `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` for queries matching `/^[A-Z0-9.-]{1,10}$/` with no exact-symbol match. Asian equities use suffixed symbols + local currencies: Japan `.T`→JPY (Kioxia `285A.T`), Taiwan `.TW`/`.TWO`→TWD, Korea `.KS`/`.KQ`→KRW. Search fans out across US/JP/TW/KR; numeric-ticker lookups try the Asian suffixes; ranking intentionally prefers primary Asian exchanges over OTC/Frankfurt/Stuttgart/Munich/Hamburg cross-listings. Keep the Kioxia coverage in `YahooFinanceProvider.test.ts` so name searches don't regress to OTC-only.
 
 ### Unit Trust Statement Parsers (PDF Import)
 
-`POST /assets/parse-unit-trust-statement` extracts text via `pdf-parse` and walks broker-specific parsers in `src/services/statementParsers/` until one succeeds. PDF text collapses table columns into a flat token stream, so each parser finds a deterministic anchor (ISIN or value-block regex) and reads fixed fields after it. Supported: **UOB Kay Hian** (`uobKayHian.ts`) and **FSMOne / iFAST** (`fsmOne.ts`). Adding a broker: new file alongside, append to `parsers` in `routes/assets.ts`, update the supported-formats error string, add a broker→`storageLocation` branch in `PositionForm.tsx:applyParsedHolding`.
+`POST /assets/parse-unit-trust-statement` extracts text via `pdf-parse`, then walks broker parsers in `src/services/statementParsers/` until one succeeds. PDF text flattens table columns into a token stream, so each parser anchors on a deterministic marker (ISIN or value-block regex) and reads fixed fields after it. Supported: **UOB Kay Hian** (`uobKayHian.ts`), **FSMOne / iFAST** (`fsmOne.ts`). Add a broker: new file alongside, append to `parsers` in `routes/assets.ts`, update the supported-formats error string, add a broker→`storageLocation` branch in `PositionForm.tsx:applyParsedHolding`.
 
 ### CoinGecko Rate Limiting
 
@@ -184,14 +182,14 @@ All pages are lazy-loaded with `React.lazy()` + `Suspense`. Vite `manualChunks` 
 
 ### Dev Demo Route
 
-`src/dev/demoMode.tsx` provides a local-only `/dev/demo` route for UI testing without Clerk or a backend:
+`src/dev/demoMode.tsx` — local-only `/dev/demo` route for UI testing without Clerk or a backend:
 
-- **Dev-only**: `App.tsx` lazy-loads it only when `import.meta.env.DEV` is true — the mock payload never ships in production bundles.
-- Mocks `/api/*` and `/api/v1/*` in the browser; restores the original `fetch` + token getter on unmount — never leave global monkey-patches installed.
-- Child routes render only after the fetch mock is installed (else React Query caches empty real responses and demo appears blank). `DemoPages` installs the mock in `useLayoutEffect`, then flips readiness on a short timer to satisfy the `set-state-in-effect` lint.
-- Stateful in-browser portfolio CRUD — use `/dev/demo/portfolio` for add/edit/delete/import UX testing. Resets on full refresh.
-- Seed data intentionally spans all buckets (crypto, equities, unit trust, stables, USD/SGD cash, alternatives, storage types, custody). Keep each seeded `Position.assetId` and embedded `asset` in sync via `demoAsset(id)`, not array indexes. The 4th allocation chart needs stable/cash positions.
-- Demo performance history must honor `/snapshots/performance` params (`days`, `from`, `to`, `all=true`); `Max` should include pre-1Y points.
+- **Dev-only**: `App.tsx` lazy-loads it only when `import.meta.env.DEV` — the mock payload never ships in prod.
+- Mocks `/api/*` and `/api/v1/*` in-browser; restores the original `fetch` + token getter on unmount (never leave global monkey-patches installed).
+- Child routes render only after the mock installs (else React Query caches empty real responses and demo appears blank). `DemoPages` installs in `useLayoutEffect`, then flips readiness on a short timer (satisfies the `set-state-in-effect` lint).
+- Stateful in-browser CRUD at `/dev/demo/portfolio` (add/edit/delete/import); resets on full refresh.
+- Seed data spans all buckets (crypto, equities, unit trust, stables, USD/SGD cash, alternatives, storage types, custody). Keep each seeded `Position.assetId` and embedded `asset` in sync via `demoAsset(id)`, not array indexes; the 4th allocation chart needs stable/cash positions.
+- Demo perf history must honor `/snapshots/performance` params (`days`, `from`, `to`, `all=true`); `Max` includes pre-1Y points.
 - UI/responsive testing only — never point at production write APIs.
 
 ### React Doctor Quality Scan
@@ -221,7 +219,7 @@ Delete mutations in `usePortfolio`, `useTrades`, `useSnapshots` use optimistic u
 iOS HIG-inspired patterns on all pages:
 
 - **Column toggle**: Portfolio/Trades tables have a mobile-only "All columns"/"Compact" toggle — Compact hides secondary columns (`hidden md:table-cell`); expanded scrolls horizontally (`overflow-x-auto` + `min-w-[700px]`).
-- **Touch targets**: shared `Button` sizes give 44px mobile hit areas, compacting at `sm+`/`md+`. Dense row actions need `shrink-0` so buttons aren't squeezed. Sortable headers, allocation legends, and `HelpTooltip` also need 44px mobile hit areas.
+- **Touch targets**: shared `Button` sizes give 44px mobile hit areas, compacting at `sm+`/`md+`. Dense row actions need `shrink-0`. Sortable headers, allocation legends, and `HelpTooltip` also need 44px mobile hit areas.
 - **Responsive headers**: stack vertically on mobile (`flex-col gap-3 sm:flex-row`); secondary actions move to `DropdownMenu` overflow.
 - **Dialog safety**: `w-[calc(100%-2rem)]` margins + `max-h-[85vh] overflow-y-auto`.
 
@@ -237,13 +235,13 @@ iOS HIG-inspired patterns on all pages:
 | < $1,000    | 2        | $32.15   |
 | >= $1,000   | 0        | $67,200  |
 
-Use `formatCurrency` (explicit decimals or compact mode) for totals, sizes, and P&L.
+Use `formatCurrency` for totals, sizes, and P&L. For cost/total _amounts_ in a currency use `currencyDecimals(currency)` (0 for zero-decimal JPY/KRW, else 2) — not magnitude-based `priceDecimals`.
 
-Portfolio rows keep the selected app currency as the primary current price and average cost. If `asset.nativeCurrency` differs, show a muted second line under **Price** and **Avg Cost** using `localPriceLabel()` / `formatNativePrice()` and the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW supported). Do not add native labels under total cost or value, and do not store native current price on `Asset`; derive display labels from USD values × USD/native FX.
+Portfolio rows keep the selected app currency as the primary current price and average cost. If `asset.nativeCurrency` differs, show a muted second line under **Price** and **Avg Cost** via `localPriceLabel()` / `formatNativePrice()` and the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW). Do not add native labels under total cost or value, and do not store native current price on `Asset`; derive labels from USD × USD/native FX.
 
 ### Smart Quantity Formatting
 
-Use `formatQuantity()` for read-only portfolio quantity displays (tables, detail dialogs, history, add/reduce previews). It trims trailing zeroes while capping precision by asset type: equities max 4 decimals, unit trusts max 3, crypto max 8, cash/stables max 2. Keep editable fields as raw `FormattedNumberInput` strings so precision is preserved while typing and saving.
+Use `formatQuantity()` for read-only quantity displays (tables, detail dialogs, history, add/reduce previews). It trims trailing zeroes while capping precision by asset type: equities max 4 decimals, unit trusts max 3, crypto max 8, cash/stables max 2. Keep editable fields as raw `FormattedNumberInput` strings so precision survives typing and saving.
 
 ### Formatted Amount Inputs
 
@@ -254,38 +252,38 @@ Use `FormattedNumberInput` for editable money/quantity/unit/NAV/capital/exposure
 `Trades.tsx` is one page with three lenses above the shared Trade Tape table:
 
 - **Review** (default `/trades`): collapsed `TradeStatsCard`, collapsed `TickerPnLCard`, then the All/Open/Closed table.
-- **Ticker Dossier** (`?ticker=SOL`): ticker-level P&L, win rate, average hold, largest win/loss, tags, recent closed trades, focused table. The ticker chip clears the query param.
+- **Ticker Dossier** (`?ticker=SOL`): ticker P&L, win rate, average hold, largest win/loss, tags, recent closed trades, focused table. The ticker chip clears the query param.
 - **Monthly Postmortem** (`?view=monthly`): selectable month summaries, repeatable-edge tags, loss review, open-trade watchlist.
 
-Fetches all trades once via `useTrades()`, filtering table status locally so lens summaries survive tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with seeded rows. Trade form defaults entry date to 5 days ago, exit to today. Trade Tape rows are clickable and keyboard-activatable (Enter/Space) to open a detail dialog; row action cells use `stopPropagation()`. Keep lens UI in `TradeLensViews.tsx`, pure aggregation in `tradeLensModels.ts`.
+Fetches all trades once via `useTrades()`, filtering table status locally so lens summaries survive tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with seeded rows. Trade form defaults entry date to 5 days ago, exit to today. Trade Tape rows are clickable + keyboard-activatable (Enter/Space) to open a detail dialog; row action cells use `stopPropagation()`. Keep lens UI in `TradeLensViews.tsx`, pure aggregation in `tradeLensModels.ts`.
 
 ### Portfolio Hero Summary
 
-Borderless hero (matching Dashboard's Net Worth pattern). Total Value at `text-3xl sm:text-4xl font-bold tracking-tight tabular-nums` with inline YTD P&L trend arrow. Secondary stats in `divide-x` grid (YTD Start, Exposure, Positions, YTD P&L) — 4 columns desktop, 2 mobile; all labels have `HelpTooltip`. Exposure = owned non-stable/non-cash value + local perp exposure ÷ total; custody excluded. `pb-6 mb-2 border-b` wrapper.
+Borderless hero (matching Net Worth). Large bold tabular Total Value with inline YTD P&L trend arrow. Secondary stats in a `divide-x` grid (YTD Start, Exposure, Positions, YTD P&L) — 4 cols desktop, 2 mobile; all labels have `HelpTooltip`. Exposure = owned non-stable/non-cash value + local perp exposure ÷ total; custody excluded.
 
 ### Portfolio Section Headers
 
-Two-level grouping: **Crypto/Equities/Cash** (primary, `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, `PositionTable`). `CollapsibleCard` takes `icon` and `accentColor` props (blue Crypto, amber Equities, green Cash, purple Custody). Accent classes use full hairline borders + subtle background tints (e.g. `border-blue-500/40 bg-blue-500/5`), not colored side stripes.
+Two-level grouping: **Crypto/Equities/Cash** (primary, `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, `PositionTable`). `CollapsibleCard` takes `icon` + `accentColor` props (blue Crypto, amber Equities, green Cash, purple Custody); accents use full hairline borders + subtle bg tints (`border-blue-500/40 bg-blue-500/5`), not colored side stripes.
 
 ### Custody Positions ("Held for Others")
 
-Positions held for others (e.g. "bought BTC for Mum"). `Position.custodyOf String?` — `null`=owned, non-null=custody. Custody excluded from net worth, P&L, allocations, snapshots, exposure. Backend services filter `custodyOf: null`; Zod schema `z.string().nullable().optional()` (empty string → null). `Portfolio.tsx` splits owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default). `CustodyCheckbox.tsx` renders at the bottom of every form with a name dropdown (positions + localStorage `foliobuddy-custody-names` + "Add new person"); edit sends empty string to clear. Clipboard JSON includes `custodyOf` when set.
+Positions held for others (e.g. "bought BTC for Mum"). `Position.custodyOf String?` — `null`=owned, non-null=custody. Custody is excluded from net worth, P&L, allocations, snapshots, and exposure: backend services filter `custodyOf: null`; Zod schema is `z.string().nullable().optional()` (empty string → null). `Portfolio.tsx` splits owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default). `CustodyCheckbox.tsx` renders at the bottom of every form with a name dropdown (positions + localStorage `foliobuddy-custody-names` + "Add new person"); edit sends empty string to clear. Clipboard JSON includes `custodyOf` when set.
 
 ### Creatable Storage Location Dropdowns
 
 CEX exchanges, onchain wallets, brokers, and banks use `CreatableSelect` (no generic "Others") with a "+ Add new ..." row and pencil/trash actions for custom options:
 
-- Default options are protected (no edit/delete controls); only user-added localStorage options are manageable. Customs persist under `foliobuddy-storage-location-options`, bucketed by storage type (`CEX`, `WALLET`, `BROKERAGE`, `BANK`), merged with defaults via `positionOptions.ts`.
+- Default options are protected (no edit/delete); only user-added localStorage options are manageable. Customs persist under `foliobuddy-storage-location-options`, bucketed by storage type (`CEX`, `WALLET`, `BROKERAGE`, `BANK`), merged with defaults via `positionOptions.ts`.
 - Deleting an option only removes it from the dropdown; existing positions keep their value, and edit forms include the current value as a one-off option.
-- Keep fixed domain selects fixed (Category, storage type, fiat currency, trade direction, theme) — only free-text location-style dropdowns are creatable.
+- Keep fixed domain selects fixed (Category, storage type, fiat currency, trade direction, theme) — only free-text location dropdowns are creatable.
 - Radix Select can emit a trailing empty value after the create row closes — creatable `onValueChange` handlers must ignore empty values.
 - Shared `SelectContent` sizes the popper viewport to its content (with max-height) and sits above dialogs (`z-[60]`); never force `h-[var(--radix-select-trigger-height)]` or share the dialog's `z-50`, or menus appear open but clipped.
 
 ### Cash Positions (Stablecoins + Fiat)
 
-The former Stables category is labeled **Cash**. In `PositionForm.tsx`, Cash shows a **Type** dropdown: USDT, USDC, USDe, FDUSD, DAI, **Cash (fiat)**. Cash (fiat) reveals a **Currency** dropdown (`USD`, `SGD`, `GBP`, default USD) and creates/reuses a `CASH` asset with that symbol. SGD is priced from the current USD/SGD summary rate at creation; all fiat cash uses `priceProvider='manual'`. Portfolio rows show the symbol on top, subtitle simply `Cash` for all cash-equivalents.
+The former Stables category is labeled **Cash**. In `PositionForm.tsx`, Cash shows a **Type** dropdown (USDT, USDC, USDe, FDUSD, DAI, **Cash (fiat)**); Cash (fiat) reveals a **Currency** dropdown (`USD`, `SGD`, `GBP`, default USD) and creates/reuses a `CASH` asset with that symbol. SGD is priced from the current USD/SGD summary rate at creation; all fiat cash uses `priceProvider='manual'`. Rows show the symbol on top, subtitle simply `Cash`.
 
-Storage depends on Type: stablecoins → **CEX**/**Onchain**; Cash (fiat) → **Broker account**/**Bank**. Broker locations share the alphabetized `BROKER_LOCATIONS` defaults (`FSMOne`, `IBKR`, `Tiger`, `UOB KH` — never `DBS`); bank defaults: `Citi`, `DBS`, `SCB`, `Trust+`, `UOB`. `PositionForm` guards cash storage-type validity when Type changes, so Cash (fiat) can't keep a crypto-only location.
+Storage depends on Type: stablecoins → **CEX**/**Onchain**; Cash (fiat) → **Broker account**/**Bank**. Broker locations share the alphabetized `BROKER_LOCATIONS` defaults (`FSMOne`, `IBKR`, `Tiger`, `UOB KH` — never `DBS`); bank defaults `Citi`, `DBS`, `SCB`, `Trust+`, `UOB`. `PositionForm` guards cash storage-type validity when Type changes, so Cash (fiat) can't keep a crypto-only location.
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
@@ -294,9 +292,9 @@ Two sub-types via UI toggle (enums unchanged):
 - **Stock / ETF**: `equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`. ETFs go here (live ticker prices), not Unit Trust.
 - **Unit Trust**: `equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`.
 
-**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown; `storageType` stays `'BROKERAGE'`. Cost currency follows supported `asset.nativeCurrency` values — listed equities in SGD/JPY/TWD/KRW show local cost inputs with a USD conversion note; SGD unit trusts use their statement/parser FX path. Backend stores USD. Fallback FX may be used for display hints while rates load, but create/edit/add-position submits for non-USD listed equities must wait for a real `/fx/rates` row (or real SGD summary rate) before converting and persisting cost basis. Edit converts stored USD → local inputs via the `costInitialized` flag.
+**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown; `storageType` stays `'BROKERAGE'`. Cost currency follows supported `asset.nativeCurrency` — listed equities in SGD/JPY/TWD/KRW show local cost inputs with a USD conversion note; SGD unit trusts use their statement/parser FX path. Backend stores USD. Fallback FX may be used for display hints while rates load, but create/edit/add-position submits for non-USD listed equities MUST wait for a real `/fx/rates` row (or real SGD summary rate) before converting and persisting cost basis. Edit converts stored USD → local inputs via the `costInitialized` flag.
 
-**Display:** Equities `PositionTable` defaults to `groupBy='broker'`; unit trusts show a `Unit Trust` badge there. Header segmented control switches to `groupBy='equityType'`; choice persists in localStorage (`foliobuddy-equity-group-by`). **NAV-age badge** under the symbol appears for unit trusts OR manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers and fiat cash skip it.
+**Display:** Equities `PositionTable` defaults to `groupBy='broker'`; unit trusts show a `Unit Trust` badge. Header segmented control switches to `groupBy='equityType'`; choice persists in localStorage (`foliobuddy-equity-group-by`). **NAV-age badge** under the symbol appears for unit trusts OR manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers and fiat cash skip it.
 
 **Statement upload:** Dashed card is a `<label>` wrapping the file input — click or drag-drop PDF both work (`utDragOver` highlights). Validates `application/pdf`/`.pdf`.
 
@@ -304,32 +302,25 @@ Two sub-types via UI toggle (enums unchanged):
 
 ### Position Edit Modes
 
-`PositionForm.tsx` edit mode has two tabs:
+`PositionForm.tsx` edit mode has two tabs: `Edit Totals` (manual corrections to quantity/cost basis) and `Add/Reduce Position` (normal changes without hand-editing aggregates). Rules:
 
-- `Edit Totals` for manual corrections to quantity/cost basis
-- `Add/Reduce Position` for normal position changes without hand-editing aggregate totals
-
-Rules:
-
-- `Add` asks for additional quantity and additional total cost, then recomputes weighted average cost automatically
-- `Reduce` asks for quantity only and removes cost basis at the current average cost, so average cost stays unchanged unless the position goes to zero
-- Custody changes made from either edit tab must persist
-- The confirmation preview uses an Old/New comparison table for quantity, avg cost, and total cost
-- Both the preview and the submitted update go through the shared `applyPositionDelta()` helper (via `positionFormMath.ts`) — do not hand-roll cost-basis arithmetic in the form
-- Keep add/reduce rendering in `PositionDeltaEditor.tsx`, pure math in `positionFormMath.ts`, and API submit/mutation logic in `PositionForm.tsx`.
+- `Add` asks for additional quantity + additional total cost, then recomputes weighted average cost automatically.
+- `Reduce` asks for quantity only and removes cost basis at the current average cost, so average cost stays unchanged unless the position goes to zero.
+- Custody changes made from either edit tab must persist.
+- The confirmation preview uses an Old/New comparison table for quantity, avg cost, and total cost.
+- Both preview and submit go through the shared `applyPositionDelta()` helper (via `positionFormMath.ts`) — do not hand-roll cost-basis arithmetic in the form.
+- Keep add/reduce rendering in `PositionDeltaEditor.tsx`, pure math in `positionFormMath.ts`, API submit/mutation logic in `PositionForm.tsx`.
 
 ### Position Add/Reduce History
 
-Add/reduce edits are persisted as `PositionHistory` rows through `PUT /positions/:id` when the request includes `positionDelta`. Manual `Edit Totals` corrections must not create history rows. The backend validates the submitted next quantity/cost basis against the delta metadata before updating the position and writing history in one transaction. The line-item detail dialog fetches `GET /positions/:id/history` and shows a concise chronological ledger under the storage/notes summary: original entry first, then each add/reduce with amount + implied price on the left and the resulting quantity/average price on the right. `/dev/demo/portfolio` mirrors this with in-browser mock history so UI testing does not hit a real API.
+Add/reduce edits are persisted as `PositionHistory` rows through `PUT /positions/:id` when the request includes `positionDelta`. Manual `Edit Totals` corrections must not create history rows. The backend validates the submitted next quantity/cost basis against the delta metadata before updating the position and writing history in one transaction. The line-item detail dialog fetches `GET /positions/:id/history` and shows a chronological ledger under the storage/notes summary: original entry first, then each add/reduce with amount + implied price on the left and the resulting quantity/average price on the right. `/dev/demo/portfolio` mirrors this with in-browser mock history.
 
 ### Dashboard Charts
 
-- **Portfolio $ Value**: AreaChart (Recharts), gradient fill, period selector (7D/1M/3M/1Y/YTD/Max), reference line at starting value, end-of-line label. Loading uses `isFetching` to detect period-change refetches.
-- **Max chart range**: `getDateRange('Max')` must send `all=true` to `/snapshots/performance`; an empty query falls back to the backend's 30-day default.
-- **Portfolio % vs Benchmarks**: Normalized % vs default BTC/ETH/SPX plus custom benchmarks; each stores `provider` + `providerAssetId` (crypto → CoinGecko, TradFi/index → Yahoo). The SPX default uses Yahoo `SPY` (production Yahoo history is unreliable for `^GSPC`). Use `yahooFinance.chart()` first for Yahoo history (raw fetches fail on datacenter IPs). Baseline = price at first portfolio timestamp (not first provider price); binary search + dynamic threshold for timestamp matching. Portfolio line color = `PORTFOLIO_LINE_COLOR` from `chartColors.ts`, never inline hex.
-- **Allocation donuts** (4 charts, `grid sm:grid-cols-2 lg:grid-cols-4` in `AllocationCharts.tsx`): **By Asset** (Crypto/Equities/Cash via `bucketFor()` → `categoryGroup()`); **By Detailed Asset** (default "All" shows crypto by symbol, Equities + Cash stay bundled wedges; inline category dropdown switches to symbol-level breakdown; sub-2% crypto slices group into "Other" once 2+ exist, `OTHER_THRESHOLD_PCT = 2`); **By Storage** (CEX/Broker account/Bank/Onchain/Onchain Ledger); **Cash Breakdown** (by stable/fiat symbol, renders only when cash positions exist).
-- Custody filtered out before allocations (`positions.filter((p) => !p.custodyOf)`).
-- Layout: legend right of donut at sm/md, below at lg+. Card titles show compact USD totals in parentheses (Cash Breakdown = total cash; the rest = total owned). Center label = top item's % + truncated name. Hover shows `name · $value · %` under the title; no Recharts Tooltip (overlaps legend). Colors from `lib/chartColors.ts`. Legend toggles keep 44px mobile hit areas.
+- **Portfolio $ Value**: Recharts AreaChart, gradient fill, period selector (7D/1M/3M/1Y/YTD/Max), reference line at start value, end-of-line label; loading uses `isFetching` for period-change refetches. `getDateRange('Max')` MUST send `all=true` to `/snapshots/performance` (empty query falls back to the backend's 30-day default).
+- **Portfolio % vs Benchmarks**: normalized % vs default BTC/ETH/SPX + custom benchmarks; each stores `provider` + `providerAssetId` (crypto→CoinGecko, TradFi/index→Yahoo). SPX default uses Yahoo `SPY` (prod history unreliable for `^GSPC`); use `yahooFinance.chart()` first (raw fetches fail on datacenter IPs). Baseline = price at first portfolio timestamp (not first provider price), via binary search + dynamic threshold. Portfolio line color = `PORTFOLIO_LINE_COLOR` from `chartColors.ts`, never inline hex.
+- **Allocation donuts** (4, `grid sm:grid-cols-2 lg:grid-cols-4` in `AllocationCharts.tsx`): **By Asset** (Crypto/Equities/Cash via `bucketFor()`→`categoryGroup()`); **By Detailed Asset** ("All" shows crypto by symbol, Equities+Cash bundled; category dropdown switches to symbol-level; sub-2% crypto slices group into "Other" once 2+ exist, `OTHER_THRESHOLD_PCT = 2`); **By Storage** (CEX/Broker account/Bank/Onchain/Onchain Ledger); **Cash Breakdown** (by stable/fiat symbol, only when cash positions exist). Custody filtered out first (`positions.filter((p) => !p.custodyOf)`).
+- Layout: legend right of donut at sm/md, below at lg+. Titles show compact USD totals in parens (Cash Breakdown = total cash; rest = total owned). Center label = top item's % + truncated name. Hover shows `name · $value · %`; no Recharts Tooltip (overlaps legend). Colors from `chartColors.ts`; legend toggles keep 44px mobile hit areas.
 
 ### Dashboard Investor Default
 
@@ -337,28 +328,23 @@ The dashboard investor filter defaults to the primary owner investor (`isOwner =
 
 ### Net Worth Card
 
-Borderless hero with merged stats. Title shows investor label (`Net Worth (Nemo)`). Net worth at `text-4xl sm:text-5xl font-bold`. Desktop `grid-cols-6 divide-x` (YTD P&L, YTD Start, vs 30D, Exposure, Positions, Trades); mobile 2-col. All labels have `HelpTooltip`. Exposure = owned non-stable/non-cash + local perp exposure ÷ total. Key values use `useAnimatedNumber`.
+Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). Desktop `grid-cols-6 divide-x` (YTD P&L, YTD Start, vs 30D, Exposure, Positions, Trades), mobile 2-col; all labels have `HelpTooltip`. Exposure = owned non-stable/non-cash + local perp exposure ÷ total. Key values use `useAnimatedNumber`.
 
 ### Performers Card
 
-Borderless — plain `<div className="pb-4">` with `divide-y` list. Title icons `h-4 w-4` with `text-profit`/`text-loss opacity-70`; rank numbers `text-xs text-muted-foreground tabular-nums`. **Ranking** (backend `getTopPerformers`/`getWorstPerformers`): sorted by absolute `unrealizedPnL` in USD, not percent — surfaces the positions actually moving net worth.
+Borderless `divide-y` list with profit/loss-tinted title icons and muted tabular rank numbers. **Ranking** (backend `getTopPerformers`/`getWorstPerformers`): sort by absolute `unrealizedPnL` in USD, not percent — surfaces the positions actually moving net worth.
 
 ### Page Entrance Animations
 
-`animate-fade-in-up` (keyframe in `index.css`) only on page headers — no staggered section animations. 12px slide + fade, 450ms `cubic-bezier(0.16, 1, 0.3, 1)`. Respects `prefers-reduced-motion`.
+`animate-fade-in-up` (keyframe in `index.css`) on page headers only — no staggered section animations. 12px slide + fade, ~450ms ease-out. Respects `prefers-reduced-motion`.
 
 ### Settings & Investors Page Layouts
 
-Settings: flat layout with `<h2>` headings + `<Separator>` between sections — no Card wrappers (utility pages stay visually lighter than data pages). Investors: summary stats in a flat inline row (`flex items-baseline gap-6 flex-wrap py-4 border-b`), matching the History page pattern.
+Settings: flat layout, `<h2>` headings + `<Separator>` between sections, no Card wrappers (utility pages stay lighter than data pages). Investors: summary stats in a flat inline row, matching the History page pattern.
 
 ### Consistent Page Headers
 
-All pages MUST use the same header pattern:
-
-- **Wrapper**: `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`
-- **Title**: `text-2xl font-bold` (no responsive upsizing); **Subtitle**: `text-sm text-muted-foreground`
-- **Buttons**: `size="sm"` with `mr-1` icon spacing
-- **Data pages with Add/Log actions**: use `PageActionHeader` so the action row sticks below the app shell (`top-14 sm:top-16`). Keep the sticky region to the title/actions row only.
+All pages MUST use the same header pattern: a `flex-col gap-3 sm:flex-row ... justify-between` wrapper, `text-2xl font-bold` title (no responsive upsizing) + `text-sm text-muted-foreground` subtitle, and `size="sm"` buttons with `mr-1` icon spacing. Data pages with Add/Log actions use `PageActionHeader` so the title/actions row sticks below the app shell (`top-14 sm:top-16`) — keep the sticky region to that row only.
 
 ### Destructive Actions in Headers
 
@@ -366,13 +352,12 @@ All pages MUST use the same header pattern:
 
 ### Design System & Visual Identity
 
-- **Colors**: indigo-tinted neutrals — `--primary: 234 89% 55%` (light), `234 89% 62%` (dark, AA-safe). Profit/loss via `text-profit`/`text-loss`, backed by contrast-safe CSS vars (`--profit`/`--loss` + `-foreground`, `:root` and `.dark`); `--warning`/`--info` also available. Chart colors only from `chartColors.ts` constants — never inline hex.
-- **Fonts**: Plus Jakarta Sans (body/headings) + JetBrains Mono (tabular numbers)
-- **Skeleton loading**: `.skeleton` CSS shimmer, used on all pages and charts
-- **HelpTooltip**: `?` tooltips on finance terms. Controlled open state, tap-to-toggle for touch; `stopPropagation` on pointer events so taps don't toggle `CollapsibleCard`.
-- **Sidebar**: Linear-style active state — `border border-primary/30 bg-primary/10 text-primary font-semibold`, no side stripe. Desktop collapses to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed`); mobile stays a full-width drawer.
-- **Scrollbars**: thin 6px, transparent track, rounded thumb. **Empty states**: icon + heading + description + action CTA.
-- **Design context**: `PRODUCT.md` at project root. Legacy `.impeccable.md` was migrated — do not recreate or maintain both files.
+- **Colors**: indigo-tinted neutrals — `--primary: 234 89% 55%` (light), `234 89% 62%` (dark, AA-safe). Profit/loss via `text-profit`/`text-loss`, backed by contrast-safe CSS vars (`--profit`/`--loss` + `-foreground`); `--warning`/`--info` also available. Chart colors only from `chartColors.ts` — never inline hex.
+- **Fonts**: Plus Jakarta Sans (body/headings) + JetBrains Mono (tabular numbers). **Skeleton**: `.skeleton` CSS shimmer on all pages/charts.
+- **HelpTooltip**: `?` tooltips on finance terms; controlled open state, tap-to-toggle for touch, `stopPropagation` on pointer events so taps don't toggle `CollapsibleCard`.
+- **Sidebar**: Linear-style active state (`border border-primary/30 bg-primary/10 text-primary font-semibold`, no side stripe); desktop collapses to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed`), mobile stays a full-width drawer.
+- **Scrollbars**: thin 6px, rounded thumb. **Empty states**: icon + heading + description + action CTA.
+- **Design context**: `PRODUCT.md` at project root; legacy `.impeccable.md` was migrated — do not recreate or maintain both.
 
 ## Environment Variables
 
@@ -422,15 +407,7 @@ All data tables (Portfolio, Trades, History) share the same pattern: per-row cli
 
 ## Local Database Setup
 
-Prereq: Docker Desktop. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env`; `DATABASE_URL` defaults to `postgresql://dev:dev@localhost:5433/example_portfolio_db`.
-
-```bash
-npm run db:local       # Start local Postgres (port 5433)
-npm run db:sync        # Pull fresh production data → local
-npm run dev            # Start dev servers
-```
-
-Local backend connects to local Postgres; production is untouched. Re-run `db:sync` anytime.
+Prereq: Docker Desktop. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env`; `DATABASE_URL` defaults to `postgresql://dev:dev@localhost:5433/example_portfolio_db`. Then `npm run db:local` (Postgres on 5433) → `npm run db:sync` (pull prod data → local, re-runnable anytime) → `npm run dev`. Local backend hits local Postgres; production is untouched.
 
 ### Branding
 
