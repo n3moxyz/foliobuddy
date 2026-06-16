@@ -13,7 +13,7 @@ import {
   CATEGORIES_IN_GROUP,
   CategoryGroup,
 } from '../lib/constants.js';
-import { calculatePositionValue } from '../lib/domain.js';
+import { applyPositionDelta, calculatePositionValue } from '../lib/domain.js';
 
 const router = Router();
 
@@ -25,6 +25,7 @@ const createPositionSchema = z.object({
   storageLocation: z.string().optional(),
   notes: z.string().optional(),
   custodyOf: z.string().nullable().optional(),
+  fundingCashPositionId: z.string().min(1).nullable().optional(),
 });
 
 const positionDeltaSchema = z.object({
@@ -275,6 +276,7 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const data = createPositionSchema.parse(req.body);
+    const fundingCashPositionId = data.fundingCashPositionId?.trim() || null;
 
     // Verify asset exists
     const asset = await prisma.asset.findUnique({
@@ -315,22 +317,115 @@ router.post('/', async (req, res, next) => {
 
     const storageLocation = data.storageLocation?.trim() || null;
     const custodyOf = data.custodyOf?.trim() || null;
+    const purchaseCostUsd = data.quantity * data.avgCostUsd;
 
-    const position = await prisma.position.create({
-      data: {
-        userId: req.userId!,
-        assetId: data.assetId,
-        quantity: data.quantity,
-        avgCostUsd: data.avgCostUsd,
-        storageType: data.storageType,
-        storageLocation,
-        notes: data.notes,
-        custodyOf,
-        ...valueFields,
-      },
-      include: {
-        asset: true,
-      },
+    const fundingCashPosition = fundingCashPositionId
+      ? await prisma.position.findFirst({
+          where: {
+            id: fundingCashPositionId,
+            userId: req.userId!,
+            custodyOf: null,
+          },
+          include: { asset: true },
+        })
+      : null;
+
+    if (fundingCashPositionId && !fundingCashPosition) {
+      throw new AppError('Funding cash position not found', 404);
+    }
+
+    if (
+      fundingCashPosition &&
+      categoryGroup(fundingCashPosition.asset.category) !== CategoryGroup.STABLES
+    ) {
+      throw new AppError('Funding position must be a cash position', 400);
+    }
+
+    const fundingPriceUsd = fundingCashPosition
+      ? (fundingCashPosition.asset.currentPriceUsd ?? fundingCashPosition.avgCostUsd)
+      : null;
+
+    if (fundingCashPosition && !(purchaseCostUsd > 0)) {
+      throw new AppError('Funding cash source requires a positive position cost', 400);
+    }
+
+    if (fundingCashPosition && !(fundingPriceUsd && fundingPriceUsd > 0)) {
+      throw new AppError('Funding cash position needs a usable USD price', 400);
+    }
+
+    const fundingDelta = fundingCashPosition
+      ? (() => {
+          try {
+            const quantityToReduce = purchaseCostUsd / fundingPriceUsd!;
+            const result = applyPositionDelta({
+              currentQuantity: fundingCashPosition.quantity,
+              currentAvgCostUsd: fundingCashPosition.avgCostUsd,
+              deltaQuantity: quantityToReduce,
+              mode: 'reduce',
+            });
+            return { quantityToReduce, result };
+          } catch (error) {
+            throw new AppError(
+              error instanceof Error ? error.message : 'Funding cash position cannot cover cost',
+              400
+            );
+          }
+        })()
+      : null;
+
+    const position = await prisma.$transaction(async (tx) => {
+      const createdPosition = await tx.position.create({
+        data: {
+          userId: req.userId!,
+          assetId: data.assetId,
+          quantity: data.quantity,
+          avgCostUsd: data.avgCostUsd,
+          storageType: data.storageType,
+          storageLocation,
+          notes: data.notes,
+          custodyOf,
+          ...valueFields,
+        },
+        include: {
+          asset: true,
+        },
+      });
+
+      if (fundingCashPosition && fundingDelta) {
+        const nextValueFields = calculatePositionValue({
+          quantity: fundingDelta.result.nextQuantity,
+          avgCostUsd: fundingDelta.result.nextAvgCostUsd,
+          currentPriceUsd: fundingCashPosition.asset.currentPriceUsd,
+        });
+
+        await tx.position.update({
+          where: { id: fundingCashPosition.id },
+          data: {
+            quantity: fundingDelta.result.nextQuantity,
+            avgCostUsd: fundingDelta.result.nextAvgCostUsd,
+            ...nextValueFields,
+          },
+        });
+
+        await tx.positionHistory.create({
+          data: {
+            userId: req.userId!,
+            positionId: fundingCashPosition.id,
+            assetId: fundingCashPosition.assetId,
+            mode: 'reduce',
+            quantity: fundingDelta.quantityToReduce,
+            costBasisUsd: fundingDelta.result.deltaCostUsd,
+            previousQuantity: fundingCashPosition.quantity,
+            previousAvgCostUsd: fundingCashPosition.avgCostUsd,
+            previousTotalCostUsd: fundingDelta.result.currentTotalCostUsd,
+            nextQuantity: fundingDelta.result.nextQuantity,
+            nextAvgCostUsd: fundingDelta.result.nextAvgCostUsd,
+            nextTotalCostUsd: fundingDelta.result.nextTotalCostUsd,
+          },
+        });
+      }
+
+      return createdPosition;
     });
 
     res.status(201).json(position);

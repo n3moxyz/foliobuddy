@@ -523,6 +523,7 @@ export interface CreatePositionData {
   storageLocation?: string;
   notes?: string;
   custodyOf?: string;
+  fundingCashPositionId?: string | null;
 }
 
 export interface UpdatePositionData extends Partial<CreatePositionData> {

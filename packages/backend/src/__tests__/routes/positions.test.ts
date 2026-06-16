@@ -121,6 +121,135 @@ describe('POST /api/positions', () => {
     expect(res.status).toBe(404);
     expect(res.body.error).toBe('Asset not found');
   });
+
+  it('reduces the selected cash position and records history when funding a new position', async () => {
+    const targetAsset = mockAsset({ id: 'asset-sol', currentPriceUsd: 150 });
+    const cashAsset = mockAsset({
+      id: 'asset-usdc',
+      symbol: 'USDC',
+      name: 'USD Coin',
+      category: 'STABLECOIN',
+      currentPriceUsd: 1,
+    });
+    const cashPosition = mockPosition({
+      id: 'cash-position-1',
+      assetId: 'asset-usdc',
+      quantity: 1000,
+      avgCostUsd: 1,
+      asset: cashAsset,
+    });
+    const created = mockPosition({
+      id: 'position-new',
+      assetId: 'asset-sol',
+      quantity: 2,
+      avgCostUsd: 100,
+      asset: targetAsset,
+    });
+
+    mockPrisma.asset.findUnique.mockResolvedValue(targetAsset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.findFirst.mockResolvedValue(cashPosition);
+    mockPrisma.position.create.mockResolvedValue(created);
+    mockPrisma.position.update.mockResolvedValue(mockPosition());
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app).post('/api/positions').send({
+      assetId: 'asset-sol',
+      quantity: 2,
+      avgCostUsd: 100,
+      fundingCashPositionId: 'cash-position-1',
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockPrisma.position.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'cash-position-1',
+        userId: 'test-user-id',
+        custodyOf: null,
+      },
+      include: { asset: true },
+    });
+    expect(mockPrisma.position.update).toHaveBeenCalledWith({
+      where: { id: 'cash-position-1' },
+      data: expect.objectContaining({
+        quantity: 800,
+        avgCostUsd: 1,
+        marketValueUsd: 800,
+        unrealizedPnL: 0,
+        unrealizedPnLPct: 0,
+      }),
+    });
+    expect(mockPrisma.positionHistory.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'test-user-id',
+        positionId: 'cash-position-1',
+        assetId: 'asset-usdc',
+        mode: 'reduce',
+        quantity: 200,
+        costBasisUsd: 200,
+        previousQuantity: 1000,
+        previousAvgCostUsd: 1,
+        previousTotalCostUsd: 1000,
+        nextQuantity: 800,
+        nextAvgCostUsd: 1,
+        nextTotalCostUsd: 800,
+      }),
+    });
+  });
+
+  it('rejects funding from a non-cash position', async () => {
+    const targetAsset = mockAsset({ id: 'asset-sol' });
+    const cryptoPosition = mockPosition({
+      id: 'crypto-position-1',
+      asset: mockAsset({ id: 'asset-btc', category: 'LIQUID_CRYPTO' }),
+    });
+
+    mockPrisma.asset.findUnique.mockResolvedValue(targetAsset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.findFirst.mockResolvedValue(cryptoPosition);
+
+    const res = await request(app).post('/api/positions').send({
+      assetId: 'asset-sol',
+      quantity: 2,
+      avgCostUsd: 100,
+      fundingCashPositionId: 'crypto-position-1',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Funding position must be a cash position');
+    expect(mockPrisma.position.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects funding when the selected cash position cannot cover the cost', async () => {
+    const targetAsset = mockAsset({ id: 'asset-sol' });
+    const cashPosition = mockPosition({
+      id: 'cash-position-1',
+      quantity: 50,
+      avgCostUsd: 1,
+      assetId: 'asset-usdc',
+      asset: mockAsset({
+        id: 'asset-usdc',
+        symbol: 'USDC',
+        category: 'STABLECOIN',
+        currentPriceUsd: 1,
+      }),
+    });
+
+    mockPrisma.asset.findUnique.mockResolvedValue(targetAsset);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.findFirst.mockResolvedValue(cashPosition);
+
+    const res = await request(app).post('/api/positions').send({
+      assetId: 'asset-sol',
+      quantity: 2,
+      avgCostUsd: 100,
+      fundingCashPositionId: 'cash-position-1',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('You cannot reduce below zero quantity');
+    expect(mockPrisma.position.create).not.toHaveBeenCalled();
+  });
 });
 
 describe('GET /api/positions', () => {

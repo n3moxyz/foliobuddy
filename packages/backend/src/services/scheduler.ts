@@ -4,25 +4,7 @@ import { snapshotService } from './snapshotService.js';
 import { socketService } from './socketService.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
-import type { ExchangeRates } from './providers/CoinGeckoProvider.js';
-
-const USD_RATE_FIELDS = [
-  { currency: 'SGD', field: 'usdSgd' },
-  { currency: 'JPY', field: 'usdJpy' },
-  { currency: 'TWD', field: 'usdTwd' },
-  { currency: 'KRW', field: 'usdKrw' },
-] as const;
-type UsdRateCurrency = (typeof USD_RATE_FIELDS)[number]['currency'];
-type UsdRateEntry = { currency: UsdRateCurrency; rate: number };
-
-function usdRateEntries(rates: ExchangeRates): UsdRateEntry[] {
-  const entries: UsdRateEntry[] = [];
-  for (const { currency, field } of USD_RATE_FIELDS) {
-    const rate = rates[field];
-    if (rate) entries.push({ currency, rate });
-  }
-  return entries;
-}
+import { usdRateEntries } from '../lib/fxConstants.js';
 
 /**
  * Check and create missing daily snapshots on server startup

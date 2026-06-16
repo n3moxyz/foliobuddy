@@ -128,6 +128,12 @@ export function priceDecimals(value: number, currency?: string): number {
   return 0;
 }
 
+/** Decimal places for a monetary amount by currency convention: 0 for zero-decimal
+ *  currencies (JPY/KRW), 2 otherwise. Use for cost/total amounts, not per-unit prices. */
+export function currencyDecimals(currency?: string): number {
+  return currency && ZERO_DECIMAL_PRICE_CURRENCIES.has(currency.toUpperCase()) ? 0 : 2;
+}
+
 export function formatPrice(
   value: number | null | undefined,
   currency: 'USD' | 'SGD' = 'USD'

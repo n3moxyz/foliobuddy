@@ -2,26 +2,11 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { priceService } from '../services/priceService.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { ensureUser } from '../middleware/auth.js';
+import { USD_RATE_FIELDS, usdRateEntries } from '../lib/fxConstants.js';
 import type { ExchangeRates } from '../services/providers/CoinGeckoProvider.js';
 
 const router = Router();
-const USD_RATE_FIELDS = [
-  { currency: 'SGD', field: 'usdSgd' },
-  { currency: 'JPY', field: 'usdJpy' },
-  { currency: 'TWD', field: 'usdTwd' },
-  { currency: 'KRW', field: 'usdKrw' },
-] as const;
-type UsdRateCurrency = (typeof USD_RATE_FIELDS)[number]['currency'];
-type UsdRateEntry = { currency: UsdRateCurrency; rate: number };
-
-function usdRateEntries(rates: ExchangeRates): UsdRateEntry[] {
-  const entries: UsdRateEntry[] = [];
-  for (const { currency, field } of USD_RATE_FIELDS) {
-    const rate = rates[field];
-    if (rate) entries.push({ currency, rate });
-  }
-  return entries;
-}
 
 async function upsertUsdRates(rates: ExchangeRates) {
   const now = new Date();
@@ -184,8 +169,9 @@ router.get('/convert', async (req, res, next) => {
   }
 });
 
-// POST /api/fx/refresh - Refresh FX rates
-router.post('/refresh', async (req, res, next) => {
+// POST /api/fx/refresh - Refresh FX rates (auth required; GET /rates stays public so
+// the frontend can load rates before Clerk auth resolves).
+router.post('/refresh', ensureUser, async (req, res, next) => {
   try {
     const freshRates = await priceService.getExchangeRates();
 

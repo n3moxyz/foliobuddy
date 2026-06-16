@@ -372,35 +372,51 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       `[Yahoo] search via lib for "${query}": ${quotes.length} quotes (types: ${quotes.map((q) => q.quoteType).join(',')})`
     );
 
-    if (quotes.length === 0) {
-      quotes = await this.searchViaLookup(query);
-      logger.info(`[Yahoo] search via lookup for "${query}": ${quotes.length} quotes`);
-    }
-
     const allowedTypes = new Set(['EQUITY', 'ETF', 'INDEX']);
     const upperQuery = query.toUpperCase();
-    const results: ProviderSearchResult[] = quotes
-      .filter((q) => {
-        if (!q.quoteType || !allowedTypes.has(q.quoteType)) return false;
-        return this.isSupportedCurrency(this.inferCurrencyFromSymbol(q.symbol));
-      })
-      .map((q) => ({
-        providerAssetId: q.symbol,
-        symbol: q.symbol,
-        name: q.longname || q.shortname || q.symbol,
-        exchange: q.exchDisp || q.exchange || null,
-        nativeCurrency: this.inferCurrencyFromSymbol(q.symbol),
-        rank: null,
-      }))
-      // Rank primary listings above cross-listings. Yahoo often returns
-      // exchange-suffixed variants (e.g. EWY.SN on Santiago) before the
-      // canonical NYSE ticker, so searches for "EWY" lose the ETF the user
-      // actually wants. Heuristic: exact symbol match > no-suffix > has-suffix.
-      .sort((a, b) => rankSearchResult(upperQuery, a) - rankSearchResult(upperQuery, b));
+    const toResults = (items: YahooSearchItem[]): ProviderSearchResult[] =>
+      items
+        .filter((q) => {
+          if (!q.quoteType || !allowedTypes.has(q.quoteType)) return false;
+          return this.isSupportedCurrency(this.inferCurrencyFromSymbol(q.symbol));
+        })
+        .map((q) => ({
+          providerAssetId: q.symbol,
+          symbol: q.symbol,
+          name: q.longname || q.shortname || q.symbol,
+          exchange: q.exchDisp || q.exchange || null,
+          nativeCurrency: this.inferCurrencyFromSymbol(q.symbol),
+          rank: null,
+        }));
 
-    for (const directSymbol of this.directQuoteSymbolsForQuery(query)) {
-      if (results.some((r) => r.symbol.toUpperCase() === directSymbol.toUpperCase())) continue;
-      const directMatch = await this.quoteAsSearchResult(directSymbol);
+    let results = toResults(quotes);
+
+    // Fall back to the lookup endpoint when nothing survives type/currency
+    // filtering — not just when the regions returned zero raw quotes. A region
+    // returning only mutual funds or currencies would otherwise leave `quotes`
+    // non-empty and suppress the fallback, yielding no result for a valid ticker.
+    if (results.length === 0) {
+      const lookupQuotes = await this.searchViaLookup(query);
+      logger.info(`[Yahoo] search via lookup for "${query}": ${lookupQuotes.length} quotes`);
+      results = toResults(lookupQuotes);
+    }
+
+    // Rank primary listings above cross-listings. Yahoo often returns
+    // exchange-suffixed variants (e.g. EWY.SN on Santiago) before the canonical
+    // NYSE ticker, so searches for "EWY" lose the ETF the user actually wants.
+    // Heuristic: exact symbol match > no-suffix > has-suffix.
+    results.sort((a, b) => rankSearchResult(upperQuery, a) - rankSearchResult(upperQuery, b));
+
+    // Direct ticker lookups (base symbol + Asian suffixes) for anything the
+    // region fan-out didn't already surface. Run concurrently rather than
+    // serially so a numeric query doesn't fan out into many sequential round-trips.
+    const directSymbols = this.directQuoteSymbolsForQuery(query).filter(
+      (symbol) => !results.some((r) => r.symbol.toUpperCase() === symbol.toUpperCase())
+    );
+    const directMatches = await Promise.all(
+      directSymbols.map((symbol) => this.quoteAsSearchResult(symbol))
+    );
+    for (const directMatch of directMatches) {
       if (directMatch) results.push(directMatch);
     }
 
@@ -579,11 +595,11 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     }
 
     const currency = result.meta.currency?.toUpperCase() ?? 'USD';
-    const usdRates = await this.getUsdExchangeRates([currency]);
     if (!this.isSupportedCurrency(currency)) {
       logger.warn(`[Yahoo] No USD conversion support for ${providerAssetId} currency ${currency}`);
       return [];
     }
+    const usdRates = await this.getUsdExchangeRates([currency]);
     const closes = result.indicators.quote[0].close;
     const timestamps = result.timestamp;
 

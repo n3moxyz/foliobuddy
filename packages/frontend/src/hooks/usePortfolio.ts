@@ -62,8 +62,14 @@ export function useCreatePosition() {
 
   return useMutation({
     mutationFn: (data: CreatePositionData) => api.createPosition(data),
-    onSuccess: () => {
+    onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: ['positions'] });
+      if (data.fundingCashPositionId) {
+        queryClient.invalidateQueries({ queryKey: ['positions', data.fundingCashPositionId] });
+        queryClient.invalidateQueries({
+          queryKey: ['positions', data.fundingCashPositionId, 'history'],
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
     },
   });

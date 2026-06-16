@@ -22,6 +22,7 @@ import {
 import {
   useCreatePosition,
   useUpdatePosition,
+  usePositions,
   usePortfolioSummary,
   useFxRates,
 } from '@/hooks/usePortfolio';
@@ -45,7 +46,7 @@ import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 import { CustodyCheckbox } from './CustodyCheckbox';
-import { formatNumber, isStablecoinCategory } from '@/lib/utils';
+import { formatCurrency, formatNumber, isStablecoinCategory, currencyDecimals } from '@/lib/utils';
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
 import { PositionCostFields } from './PositionCostFields';
@@ -155,9 +156,50 @@ const FIAT_CASH_USD_FALLBACKS: Record<Exclude<FiatCashCurrency, 'SGD'>, number> 
 
 const MAX_POSITIONS_PER_CATEGORY = 20;
 const EMPTY_CUSTODY_NAMES: string[] = [];
+const NO_FUNDING_CASH_POSITION = 'none';
+const CASH_FUNDING_TOLERANCE = 1e-6;
+const SKIP_FUNDING_CONFIRM_KEY = 'foliobuddy-skip-funded-position-confirm';
+
+interface FundingConfirmationState {
+  positionLabel: string;
+  purchaseCostUsd: number;
+  cashLabel: string;
+  cashAvailableUsd: number;
+  cashRemainingUsd: number;
+  onConfirm: () => Promise<void>;
+}
 
 function isFiatCashCurrency(value: string): value is FiatCashCurrency {
   return FIAT_CASH_CURRENCIES.includes(value as FiatCashCurrency);
+}
+
+function cashFundingValueUsd(position: Position): number {
+  return (
+    position.marketValueUsd ??
+    position.quantity * (position.asset.currentPriceUsd ?? position.avgCostUsd)
+  );
+}
+
+function cashFundingLabel(position: Position): string {
+  return position.storageLocation
+    ? `${position.asset.symbol} · ${position.storageLocation}`
+    : position.asset.symbol;
+}
+
+function loadSkipFundingConfirm(): boolean {
+  try {
+    return localStorage.getItem(SKIP_FUNDING_CONFIRM_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function saveSkipFundingConfirm() {
+  try {
+    localStorage.setItem(SKIP_FUNDING_CONFIRM_KEY, 'true');
+  } catch {
+    // localStorage may be unavailable in privacy-restricted browser contexts.
+  }
 }
 
 export function PositionForm({
@@ -235,6 +277,13 @@ export function PositionForm({
     }
     return DEFAULT_FIAT_CASH_CURRENCY;
   });
+  const [fundingCashPositionId, setFundingCashPositionId] = useState(NO_FUNDING_CASH_POSITION);
+  const [fundingConfirmation, setFundingConfirmation] = useState<FundingConfirmationState | null>(
+    null
+  );
+  const [dontAskFundingAgain, setDontAskFundingAgain] = useState(false);
+  const [skipFundingConfirm, setSkipFundingConfirm] = useState(loadSkipFundingConfirm);
+  const [confirmingFunding, setConfirmingFunding] = useState(false);
 
   // Validation state
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -289,6 +338,9 @@ export function PositionForm({
     setHighlightedIndex(-1);
     setQuantity('');
     setTotalCost('');
+    setFundingCashPositionId(NO_FUNDING_CASH_POSITION);
+    setFundingConfirmation(null);
+    setDontAskFundingAgain(false);
     setError(null);
     setStorageType(nextCategory === 'equity' ? 'BROKERAGE' : DEFAULT_STABLECOIN_STORAGE_TYPE);
     setStorageLocation('');
@@ -327,6 +379,7 @@ export function PositionForm({
   };
 
   // Hooks
+  const { data: positions } = usePositions();
   const { data: assets } = useAssets();
   const { data: searchResults, isLoading: searchLoading } = useSearchCoins(
     category === 'equity' ? '' : searchQuery
@@ -379,7 +432,7 @@ export function PositionForm({
     for (const rate of fxRates ?? []) {
       const from = rate.fromCcy.toUpperCase();
       const to = rate.toCcy.toUpperCase();
-      if (from === 'USD') {
+      if (from === 'USD' && rate.rate > 0) {
         rates[to] = rate.rate;
       } else if (to === 'USD' && rate.rate > 0) {
         rates[from] = 1 / rate.rate;
@@ -442,10 +495,12 @@ export function PositionForm({
       return;
     }
     if (costDisplayRate === null || !costRateIsReal) return;
+    // Zero-decimal currencies (JPY/KRW) must not show ".00" sub-units.
+    const dec = currencyDecimals(costCurrency);
     const displayAvg = position.avgCostUsd * costDisplayRate;
     const displayTotal = position.quantity * position.avgCostUsd * costDisplayRate;
-    setAvgCostInput(displayAvg.toFixed(2));
-    setTotalCost(displayTotal.toFixed(2));
+    setAvgCostInput(displayAvg.toFixed(dec));
+    setTotalCost(displayTotal.toFixed(dec));
     costInitializedRef.current = true;
   }, [position, costCurrency, costDisplayRate, costRateIsReal]);
 
@@ -655,6 +710,30 @@ export function PositionForm({
 
     return results;
   }, [filteredAssets, searchResults, equitySearchResults, searchQuery, category, assets]);
+
+  const cashFundingOptions = useMemo(() => {
+    if (isEditing) return [];
+    return (positions ?? [])
+      .filter(
+        (item) =>
+          !item.custodyOf &&
+          isStablecoinCategory(item.asset.category) &&
+          item.quantity > 0 &&
+          cashFundingValueUsd(item) > 0
+      )
+      .sort((a, b) => cashFundingValueUsd(b) - cashFundingValueUsd(a));
+  }, [isEditing, positions]);
+
+  const selectedFundingCashPosition = useMemo(
+    () => cashFundingOptions.find((item) => item.id === fundingCashPositionId) ?? null,
+    [cashFundingOptions, fundingCashPositionId]
+  );
+
+  useEffect(() => {
+    if (fundingCashPositionId === NO_FUNDING_CASH_POSITION) return;
+    if (cashFundingOptions.some((item) => item.id === fundingCashPositionId)) return;
+    setFundingCashPositionId(NO_FUNDING_CASH_POSITION);
+  }, [cashFundingOptions, fundingCashPositionId]);
 
   const handleSelectExistingAsset = (asset: Asset) => {
     setAssetId(asset.id);
@@ -969,6 +1048,91 @@ export function PositionForm({
     }
   };
 
+  const fundingCashPositionIdForSubmit =
+    !isEditing && fundingCashPositionId !== NO_FUNDING_CASH_POSITION
+      ? fundingCashPositionId
+      : undefined;
+
+  const validateFundingCashSelection = (purchaseCostUsd: number) => {
+    if (!fundingCashPositionIdForSubmit) return true;
+
+    if (!selectedFundingCashPosition) {
+      setValidationError('Selected cash pile is no longer available');
+      return false;
+    }
+
+    if (!(purchaseCostUsd > 0)) {
+      setValidationError('Funded positions need a positive total cost');
+      return false;
+    }
+
+    const availableUsd = cashFundingValueUsd(selectedFundingCashPosition);
+    if (availableUsd + CASH_FUNDING_TOLERANCE < purchaseCostUsd) {
+      setValidationError(
+        `${selectedFundingCashPosition.asset.symbol} cash pile has ${formatCurrency(
+          availableUsd,
+          'USD',
+          0
+        )} available, below the ${formatCurrency(purchaseCostUsd, 'USD', 0)} position cost`
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  const requestFundingConfirmation = async (
+    purchaseCostUsd: number,
+    positionLabel: string,
+    onConfirm: () => Promise<void>
+  ) => {
+    if (!fundingCashPositionIdForSubmit || skipFundingConfirm) {
+      await onConfirm();
+      return;
+    }
+
+    if (!selectedFundingCashPosition) {
+      throw new Error('Selected cash pile is no longer available');
+    }
+
+    const cashAvailableUsd = cashFundingValueUsd(selectedFundingCashPosition);
+    setFundingConfirmation({
+      positionLabel,
+      purchaseCostUsd,
+      cashLabel: cashFundingLabel(selectedFundingCashPosition),
+      cashAvailableUsd,
+      cashRemainingUsd: Math.max(0, cashAvailableUsd - purchaseCostUsd),
+      onConfirm,
+    });
+  };
+
+  const handleCancelFundingConfirmation = () => {
+    setFundingConfirmation(null);
+    setDontAskFundingAgain(false);
+    setConfirmingFunding(false);
+  };
+
+  const handleConfirmFunding = async () => {
+    if (!fundingConfirmation) return;
+
+    if (dontAskFundingAgain) {
+      saveSkipFundingConfirm();
+      setSkipFundingConfirm(true);
+    }
+
+    setConfirmingFunding(true);
+    setError(null);
+    setValidationError(null);
+
+    try {
+      await fundingConfirmation.onConfirm();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save position';
+      setError(errorMessage);
+      setConfirmingFunding(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -1075,7 +1239,11 @@ export function PositionForm({
       const totalCostUsd =
         utNativeCurrency === 'USD' ? costNumInput : costNumInput * utUsdPerNative;
 
-      try {
+      if (!validateFundingCashSelection(totalCostUsd)) {
+        return;
+      }
+
+      const createFundPosition = async () => {
         const newAsset = await createUnitTrust.mutateAsync({
           symbol: utSymbol.trim().toUpperCase(),
           name: utName.trim(),
@@ -1099,9 +1267,18 @@ export function PositionForm({
           storageLocation: storageLocation || undefined,
           notes: notes.trim() || undefined,
           custodyOf: isCustody ? custodyOf.trim() || 'Someone' : undefined,
+          fundingCashPositionId: fundingCashPositionIdForSubmit,
         });
         handleCustodySave();
         onSuccess();
+      };
+
+      try {
+        await requestFundingConfirmation(
+          totalCostUsd,
+          `${utSymbol.trim().toUpperCase()} ${utName.trim()}`.trim(),
+          createFundPosition
+        );
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to create unit trust');
       }
@@ -1134,9 +1311,14 @@ export function PositionForm({
       storageLocation: storageLocation || undefined,
       notes: notes.trim() || undefined,
       custodyOf: isCustody ? custodyOf.trim() || 'Someone' : isEditing ? '' : undefined,
+      fundingCashPositionId: fundingCashPositionIdForSubmit,
     };
 
-    try {
+    if (!isEditing && !validateFundingCashSelection(data.quantity * data.avgCostUsd)) {
+      return;
+    }
+
+    const savePosition = async () => {
       if (isEditing) {
         await updatePosition.mutateAsync({ id: position.id, data });
       } else {
@@ -1144,6 +1326,14 @@ export function PositionForm({
       }
       handleCustodySave();
       onSuccess();
+    };
+
+    try {
+      await requestFundingConfirmation(
+        data.quantity * data.avgCostUsd,
+        selectedAsset ? `${selectedAsset.symbol} ${selectedAsset.name}` : 'New position',
+        savePosition
+      );
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save position';
       setError(errorMessage);
@@ -1153,6 +1343,90 @@ export function PositionForm({
   // If showing import results, show the results UI
   if (mode === 'import' && importResults) {
     return <ImportResultsList results={importResults} onDone={onSuccess} />;
+  }
+
+  if (fundingConfirmation) {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-base font-semibold">Confirm Funded Position</h3>
+          <p className="text-sm text-muted-foreground">
+            This will add the new position and reduce the selected cash pile.
+          </p>
+        </div>
+
+        <div className="space-y-3 rounded-md border bg-muted/20 p-3 text-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium">Add position</p>
+              <p className="text-muted-foreground">{fundingConfirmation.positionLabel}</p>
+            </div>
+            <span className="shrink-0 font-medium tabular-nums">
+              {formatCurrency(fundingConfirmation.purchaseCostUsd, 'USD', 0)}
+            </span>
+          </div>
+
+          <div className="border-t border-border/60 pt-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium">Reduce cash pile</p>
+                <p className="text-muted-foreground">{fundingConfirmation.cashLabel}</p>
+              </div>
+              <span className="shrink-0 font-medium text-loss tabular-nums">
+                -{formatCurrency(fundingConfirmation.purchaseCostUsd, 'USD', 0)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>Cash pile before</span>
+              <span className="tabular-nums">
+                {formatCurrency(fundingConfirmation.cashAvailableUsd, 'USD', 0)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>Cash pile after</span>
+              <span className="tabular-nums">
+                {formatCurrency(fundingConfirmation.cashRemainingUsd, 'USD', 0)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2 py-1">
+          <input
+            type="checkbox"
+            id="dontAskFundingAgain"
+            checked={dontAskFundingAgain}
+            onChange={(e) => setDontAskFundingAgain(e.target.checked)}
+            disabled={confirmingFunding}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <label
+            htmlFor="dontAskFundingAgain"
+            className="cursor-pointer text-sm text-muted-foreground"
+          >
+            Don't ask me again
+          </label>
+        </div>
+
+        {error && (
+          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancelFundingConfirmation}
+            disabled={confirmingFunding}
+          >
+            Back
+          </Button>
+          <Button type="button" onClick={handleConfirmFunding} disabled={confirmingFunding}>
+            {confirmingFunding ? 'Saving...' : 'Confirm'}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const custodyCheckbox = (
@@ -1723,6 +1997,34 @@ export function PositionForm({
                   nativeUsdPerUnit={costUsdPerNative}
                   nativeConversionCurrency={costCurrency}
                 />
+              )}
+
+              {!isEditing && category !== 'cash' && cashFundingOptions.length > 0 && (
+                <div className="space-y-1">
+                  <Label htmlFor="funding-cash-position" className="text-sm">
+                    Fund From (Optional)
+                  </Label>
+                  <Select value={fundingCashPositionId} onValueChange={setFundingCashPositionId}>
+                    <SelectTrigger id="funding-cash-position">
+                      <SelectValue placeholder="No cash pile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_FUNDING_CASH_POSITION}>No cash pile</SelectItem>
+                      {cashFundingOptions.map((cashPosition) => {
+                        const valueUsd = cashFundingValueUsd(cashPosition);
+                        const location = cashPosition.storageLocation
+                          ? ` · ${cashPosition.storageLocation}`
+                          : '';
+                        return (
+                          <SelectItem key={cashPosition.id} value={cashPosition.id}>
+                            {cashPosition.asset.symbol}
+                            {location} · {formatCurrency(valueUsd, 'USD', 0)}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
 
               <PositionStorageFields

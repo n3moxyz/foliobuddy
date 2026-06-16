@@ -1,5 +1,6 @@
 import { lazy, Suspense, useLayoutEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { applyPositionDelta, CategoryGroup, categoryGroup } from '@foliobuddy/shared';
 import { AppShell } from '@/components/layout/AppShell';
 import { ShortcutsHelpModal } from '@/components/layout/ShortcutsHelpModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -1138,6 +1139,7 @@ function createDemoPosition(data: CreatePositionData): Position {
   }
 
   const timestamp = new Date().toISOString();
+  reduceDemoFundingCashPosition(data, timestamp);
   const position = computePosition(asset, {
     id: nextDemoId('pos'),
     assetId: data.assetId,
@@ -1153,6 +1155,74 @@ function createDemoPosition(data: CreatePositionData): Position {
 
   demoPositions = [position, ...demoPositions];
   return position;
+}
+
+function reduceDemoFundingCashPosition(data: CreatePositionData, timestamp: string) {
+  const fundingCashPositionId = data.fundingCashPositionId?.trim();
+  if (!fundingCashPositionId) return;
+
+  const fundingPosition = demoPositions.find(
+    (position) => position.id === fundingCashPositionId && !position.custodyOf
+  );
+  if (!fundingPosition) {
+    throw new Error('Funding cash position not found');
+  }
+  if (categoryGroup(fundingPosition.asset.category) !== CategoryGroup.STABLES) {
+    throw new Error('Funding position must be a cash position');
+  }
+
+  const purchaseCostUsd = data.quantity * (data.avgCostUsd ?? 0);
+  if (!(purchaseCostUsd > 0)) {
+    throw new Error('Funding cash source requires a positive position cost');
+  }
+
+  const fundingPriceUsd = fundingPosition.asset.currentPriceUsd ?? fundingPosition.avgCostUsd;
+  if (!(fundingPriceUsd > 0)) {
+    throw new Error('Funding cash position needs a usable USD price');
+  }
+
+  const quantityToReduce = purchaseCostUsd / fundingPriceUsd;
+  const delta = applyPositionDelta({
+    currentQuantity: fundingPosition.quantity,
+    currentAvgCostUsd: fundingPosition.avgCostUsd,
+    deltaQuantity: quantityToReduce,
+    mode: 'reduce',
+  });
+
+  const updatedFundingPosition = computePosition(fundingPosition.asset, {
+    id: fundingPosition.id,
+    assetId: fundingPosition.assetId,
+    quantity: delta.nextQuantity,
+    avgCostUsd: delta.nextAvgCostUsd,
+    storageType: fundingPosition.storageType,
+    storageLocation: fundingPosition.storageLocation,
+    notes: fundingPosition.notes,
+    custodyOf: fundingPosition.custodyOf,
+    createdAt: fundingPosition.createdAt,
+    updatedAt: timestamp,
+  });
+
+  demoPositions = demoPositions.map((position) =>
+    position.id === fundingPosition.id ? updatedFundingPosition : position
+  );
+  demoPositionHistory = [
+    {
+      id: nextDemoId('hist'),
+      positionId: fundingPosition.id,
+      assetId: fundingPosition.assetId,
+      mode: 'reduce',
+      quantity: quantityToReduce,
+      costBasisUsd: delta.deltaCostUsd,
+      previousQuantity: fundingPosition.quantity,
+      previousAvgCostUsd: fundingPosition.avgCostUsd,
+      previousTotalCostUsd: delta.currentTotalCostUsd,
+      nextQuantity: delta.nextQuantity,
+      nextAvgCostUsd: delta.nextAvgCostUsd,
+      nextTotalCostUsd: delta.nextTotalCostUsd,
+      createdAt: timestamp,
+    },
+    ...demoPositionHistory,
+  ];
 }
 
 function updateDemoPosition(id: string, data: UpdatePositionData) {
