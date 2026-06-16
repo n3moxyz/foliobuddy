@@ -15,6 +15,15 @@ export interface PaginatedResponse<T> {
 /** Fallback USD/SGD exchange rate when FX API is unavailable */
 export const USD_SGD_FALLBACK_RATE = 1.35;
 
+/**
+ * Rough fallback USD->native rates for the supported Asian equity currencies,
+ * used only to keep position-form cost entry working before live /fx/rates load
+ * (and never persisted). Real rates from /fx/rates always override these.
+ */
+export const USD_JPY_FALLBACK_RATE = 155;
+export const USD_TWD_FALLBACK_RATE = 32;
+export const USD_KRW_FALLBACK_RATE = 1380;
+
 /** Maximum positions allowed per asset category */
 export const MAX_POSITIONS_PER_CATEGORY = 20;
 
