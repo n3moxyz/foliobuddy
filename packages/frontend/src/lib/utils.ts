@@ -70,6 +70,14 @@ const NUMBER_FORMATTERS_BY_DECIMALS: Record<number, Intl.NumberFormat> = {
   5: new Intl.NumberFormat('en-US', { minimumFractionDigits: 5, maximumFractionDigits: 5 }),
 };
 
+const TRIMMED_NUMBER_FORMATTERS_BY_MAX_DECIMALS: Record<number, Intl.NumberFormat> = {
+  0: new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+  2: new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+  3: new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 3 }),
+  4: new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 }),
+  8: new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 8 }),
+};
+
 const ZERO_DECIMAL_PRICE_CURRENCIES = new Set(['JPY', 'KRW']);
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
@@ -154,6 +162,40 @@ export function formatNumber(value: number | null | undefined, decimals: number 
 
   const formatter = NUMBER_FORMATTERS_BY_DECIMALS[decimals] || NUMBER_FORMATTERS_BY_DECIMALS[2];
   return formatter.format(value);
+}
+
+export function formatTrimmedNumber(value: number | null | undefined, maxDecimals: number): string {
+  if (value === null || value === undefined) return '-';
+
+  const formatter =
+    TRIMMED_NUMBER_FORMATTERS_BY_MAX_DECIMALS[maxDecimals] ||
+    new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: maxDecimals,
+    });
+  return formatter.format(value);
+}
+
+export function formatQuantity(value: number | null | undefined, category?: string | null): string {
+  if (value === null || value === undefined) return '-';
+
+  if (category === AssetCategory.STABLECOIN || category === AssetCategory.CASH) {
+    return formatTrimmedNumber(value, 2);
+  }
+
+  if (category === AssetCategory.UNIT_TRUST) {
+    return formatTrimmedNumber(value, 3);
+  }
+
+  if (category === AssetCategory.EQUITY) {
+    return formatTrimmedNumber(value, 4);
+  }
+
+  if (categoryGroup(category) === CategoryGroup.CRYPTO) {
+    return formatTrimmedNumber(value, 8);
+  }
+
+  return formatTrimmedNumber(value, 4);
 }
 
 export function formatPercent(value: number | null | undefined): string {

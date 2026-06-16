@@ -4,7 +4,7 @@ import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
-import { formatNumber, isStablecoinCategory } from '@/lib/utils';
+import { formatQuantity } from '@/lib/utils';
 import type { Position } from '@/lib/types';
 import type { CostCurrency, CostInputMode, DeltaPreview } from './positionFormMath';
 
@@ -51,8 +51,7 @@ export function PositionDeltaEditor({
   custodySlot,
   isLoading,
 }: PositionDeltaEditorProps) {
-  const formatQuantity = (value: number) =>
-    isStablecoinCategory(position.asset.category) ? formatNumber(value, 0) : formatNumber(value, 4);
+  const formatPositionQuantity = (value: number) => formatQuantity(value, position.asset.category);
 
   return (
     <>
@@ -64,7 +63,7 @@ export function PositionDeltaEditor({
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Current quantity</p>
-            <p className="font-mono text-sm">{formatQuantity(position.quantity)}</p>
+            <p className="font-mono text-sm">{formatPositionQuantity(position.quantity)}</p>
           </div>
         </div>
       </div>
@@ -204,7 +203,7 @@ export function PositionDeltaEditor({
               Old
             </div>
             <div className="text-right font-mono text-muted-foreground">
-              {formatQuantity(preview.currentQuantity)}
+              {formatPositionQuantity(preview.currentQuantity)}
             </div>
             <div className="text-right font-mono text-muted-foreground">
               {preview.currentAvgCost.toFixed(preview.currentAvgCost >= 1000 ? 0 : 2)}
@@ -215,7 +214,7 @@ export function PositionDeltaEditor({
 
             <div className="text-[11px] font-medium uppercase tracking-wide text-primary">New</div>
             <div className="text-right font-mono font-medium text-primary">
-              {formatQuantity(preview.nextQuantity)}
+              {formatPositionQuantity(preview.nextQuantity)}
             </div>
             <div className="text-right font-mono font-medium text-primary">
               {preview.nextAvgCost.toFixed(preview.nextAvgCost >= 1000 ? 0 : 2)}

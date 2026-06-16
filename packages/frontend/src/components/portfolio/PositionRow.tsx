@@ -4,7 +4,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   formatCurrency,
-  formatNumber,
+  formatQuantity,
   formatPercent,
   formatDateTime,
   getPnLColorClass,
@@ -149,7 +149,7 @@ export const PositionRow = React.memo(function PositionRow({
         </div>
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
-        {isStable ? formatNumber(position.quantity, 0) : formatNumber(position.quantity, 4)}
+        {formatQuantity(position.quantity, position.asset.category)}
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         <p>
