@@ -293,7 +293,7 @@ Two sub-types via UI toggle (enums unchanged):
 - **Stock / ETF**: `equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`. ETFs go here (live ticker prices), not Unit Trust.
 - **Unit Trust**: `equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`.
 
-**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown; `storageType` stays `'BROKERAGE'`. Cost currency follows supported `asset.nativeCurrency` values — listed equities in SGD/JPY/TWD/KRW show local cost inputs with a USD conversion note; SGD unit trusts use their statement/parser FX path. Backend stores USD; SGD uses `portfolioSummary` (fallback 1.35) and other listed-equity currencies use the `/fx/rates` USD→native map. Edit converts stored USD → local inputs via the `costInitialized` flag.
+**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown; `storageType` stays `'BROKERAGE'`. Cost currency follows supported `asset.nativeCurrency` values — listed equities in SGD/JPY/TWD/KRW show local cost inputs with a USD conversion note; SGD unit trusts use their statement/parser FX path. Backend stores USD. Fallback FX may be used for display hints while rates load, but create/edit/add-position submits for non-USD listed equities must wait for a real `/fx/rates` row (or real SGD summary rate) before converting and persisting cost basis. Edit converts stored USD → local inputs via the `costInitialized` flag.
 
 **Display:** Equities `PositionTable` defaults to `groupBy='broker'`; unit trusts show a `Unit Trust` badge there. Header segmented control switches to `groupBy='equityType'`; choice persists in localStorage (`foliobuddy-equity-group-by`). **NAV-age badge** under the symbol appears for unit trusts OR manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers and fiat cash skip it.
 
@@ -449,7 +449,7 @@ See `PRODUCT.md` at project root — source of truth for users, brand personalit
 
 - `.env.local` overrides `.env` in Vite — if you see wrong ports or "DB Down", check `.env.local` first
 - Always define `onDelete: Cascade` in Prisma relations to avoid FK errors
-- FX rates need fallback values for when the API is slow
+- FX rates may use fallback values for read-only display hints while the API is slow, but persisted non-USD cost-basis conversions must wait for real rates.
 - Snapshots use unique constraint + check-before-create to prevent duplicates
 - Position P&L should display as percentage for clarity
 - Bulk import endpoints skip price fetching (`skipPriceFetch: true`) to avoid rate limiting — the scheduler updates prices within 1 minute
