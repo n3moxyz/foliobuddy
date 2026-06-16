@@ -533,6 +533,9 @@ describe('PUT /api/positions/:id', () => {
       });
 
     expect(res.status).toBe(200);
+    expect(mockPrisma.position.update.mock.calls[0][0].data).not.toHaveProperty(
+      'fundingCashPositionId'
+    );
     expect(mockPrisma.position.update).toHaveBeenCalledWith({
       where: { id: 'cash-position-1' },
       data: expect.objectContaining({
