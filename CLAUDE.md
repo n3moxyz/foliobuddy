@@ -240,6 +240,10 @@ Use `formatCurrency` (explicit decimals or compact mode) for totals, sizes, and 
 
 Portfolio rows keep the selected app currency as the primary current price and average cost. If `asset.nativeCurrency` differs, show a muted second line under **Price** and **Avg Cost** using `localPriceLabel()` / `formatNativePrice()` and the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW supported). Do not add native labels under total cost or value, and do not store native current price on `Asset`; derive display labels from USD values × USD/native FX.
 
+### Smart Quantity Formatting
+
+Use `formatQuantity()` for read-only portfolio quantity displays (tables, detail dialogs, history, add/reduce previews). It trims trailing zeroes while capping precision by asset type: equities max 4 decimals, unit trusts max 3, crypto max 8, cash/stables max 2. Keep editable fields as raw `FormattedNumberInput` strings so precision is preserved while typing and saving.
+
 ### Formatted Amount Inputs
 
 Use `FormattedNumberInput` for editable money/quantity/unit/NAV/capital/exposure fields. Renders `10000` as `10,000` while keeping state as the raw string (`"10000"`) so `parseFloat()` and API payloads stay safe. Don't use raw `type="number"` for finance amounts unless the field needs native min/max semantics (e.g. bounded percentages).

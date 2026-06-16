@@ -18,11 +18,10 @@ import {
 } from '@/components/ui/dialog';
 import {
   formatCurrency,
-  formatNumber,
   formatPercent,
   formatDateTime,
+  formatQuantity,
   getPnLColorClass,
-  isStablecoinCategory,
 } from '@/lib/utils';
 import { useDeletePosition, usePositionHistory } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
@@ -123,12 +122,6 @@ function slugifySectionLabel(label: string) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'storage'
   );
-}
-
-function historyQuantityDecimals(position: Position) {
-  return isStablecoinCategory(position.asset.category) || position.asset.category === 'CASH'
-    ? 0
-    : 4;
 }
 
 export function PositionTable({
@@ -592,7 +585,6 @@ export function PositionTable({
   ) => {
     if (!viewPosition) return null;
 
-    const qtyDecimals = historyQuantityDecimals(viewPosition);
     const chronologicalHistory = [...history].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
@@ -671,7 +663,7 @@ export function PositionTable({
                     <p className="mt-0.5 truncate text-sm">
                       <span className={`font-mono font-medium ${entry.toneClass}`}>
                         {entry.quantityPrefix}
-                        {formatNumber(entry.quantity, qtyDecimals)}
+                        {formatQuantity(entry.quantity, viewPosition.asset.category)}
                       </span>{' '}
                       <span>{viewPosition.asset.symbol}</span>
                       <span className="text-muted-foreground"> @ </span>
@@ -686,7 +678,7 @@ export function PositionTable({
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="font-mono text-sm font-medium">
-                      {formatNumber(entry.nextQuantity, qtyDecimals)}
+                      {formatQuantity(entry.nextQuantity, viewPosition.asset.category)}
                     </p>
                     <p className="font-mono text-xs text-muted-foreground">
                       avg{' '}
@@ -903,9 +895,7 @@ export function PositionTable({
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Quantity</p>
                   <p className="font-mono font-medium">
-                    {isStablecoinCategory(viewPosition.asset.category)
-                      ? formatNumber(viewPosition.quantity, 0)
-                      : formatNumber(viewPosition.quantity, 4)}
+                    {formatQuantity(viewPosition.quantity, viewPosition.asset.category)}
                   </p>
                 </div>
                 <div className="space-y-1">
