@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -73,6 +73,155 @@ function groupSmallDetailedSlices(data: ChartData[]): ChartData[] {
   ];
 }
 
+interface AllocationDonutProps {
+  data: ChartData[];
+  colors: string[];
+  hidden: Set<string>;
+  setHidden: React.Dispatch<React.SetStateAction<Set<string>>>;
+  title: string;
+  totalValue: number;
+  headerControl?: React.ReactNode;
+}
+
+const AllocationDonut = memo(function AllocationDonut({
+  data,
+  colors,
+  hidden,
+  setHidden,
+  title,
+  totalValue,
+  headerControl,
+}: AllocationDonutProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const toggleLegendItem = (name: string) => {
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  };
+
+  const filteredData = data.filter((d) => !hidden.has(d.name));
+  const visibleTotal = filteredData.reduce((sum, d) => sum + d.value, 0);
+  const visibleData = filteredData.map((d) => ({
+    ...d,
+    displayPercentage: visibleTotal > 0 ? (d.value / visibleTotal) * 100 : 0,
+  }));
+
+  return (
+    <Card className="flex-1">
+      <CardHeader className="pb-2">
+        <div className="flex min-h-8 items-center">
+          <CardTitle className="min-w-0 truncate text-base">
+            {title}{' '}
+            <span className="text-sm font-medium text-muted-foreground tabular-nums">
+              ({formatCurrency(totalValue, 'USD', true)})
+            </span>
+          </CardTitle>
+        </div>
+        <div className="flex min-h-11 items-center gap-2 sm:min-h-6">
+          <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground tabular-nums">
+            {hoveredIndex != null && visibleData[hoveredIndex] ? (
+              <>
+                {visibleData[hoveredIndex].name} &middot;{' '}
+                {formatCurrency(visibleData[hoveredIndex].value, 'USD', true)} &middot;{' '}
+                {formatNumber(visibleData[hoveredIndex].displayPercentage, 1)}%
+              </>
+            ) : null}
+          </div>
+          {headerControl && <div className="shrink-0">{headerControl}</div>}
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center lg:flex-col lg:items-stretch lg:gap-3">
+          <div className="mx-auto h-[140px] w-[140px] flex-shrink-0 relative sm:mx-0 lg:mx-auto">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={visibleData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={35}
+                  outerRadius={60}
+                  paddingAngle={2}
+                  dataKey="value"
+                  onMouseLeave={() => setHoveredIndex(null)}
+                >
+                  {visibleData.map((entry, i) => {
+                    const originalIndex = data.findIndex((d) => d.name === entry.name);
+                    return (
+                      <Cell
+                        key={`cell-${entry.name}`}
+                        fill={colors[originalIndex % colors.length]}
+                        onMouseEnter={() => setHoveredIndex(i)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    );
+                  })}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            {visibleData.length > 0 &&
+              (() => {
+                const top = visibleData.reduce((a, b) => (a.value > b.value ? a : b));
+                const shortName = top.name.length > 8 ? top.name.slice(0, 7) + '…' : top.name;
+                return (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-lg font-bold leading-tight">
+                      {Math.round(top.displayPercentage)}%
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">
+                      {shortName}
+                    </span>
+                  </div>
+                );
+              })()}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-1.5 flex-1">
+            {data.map((item, index) => {
+              const isHidden = hidden.has(item.name);
+              const displayPct = isHidden
+                ? item.percentage
+                : visibleTotal > 0
+                  ? (item.value / visibleTotal) * 100
+                  : 0;
+              return (
+                <button
+                  key={item.name}
+                  className={`flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ${
+                    isHidden ? 'opacity-40 line-through text-muted-foreground' : ''
+                  }`}
+                  aria-pressed={!hidden.has(item.name)}
+                  onClick={() => toggleLegendItem(item.name)}
+                >
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ${
+                      isHidden ? 'opacity-40' : ''
+                    }`}
+                    style={{ backgroundColor: colors[index % colors.length] }}
+                  />
+                  <span className="truncate">{item.name}</span>
+                  <span
+                    className={`ml-auto font-medium tabular-nums ${isHidden ? '' : 'text-muted-foreground'}`}
+                  >
+                    {formatNumber(displayPct, 0)}%
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
 export function AllocationCharts({ positions, isLoading }: AllocationChartsProps) {
   // Track hidden items for each chart
   const [hiddenCategory, setHiddenCategory] = useState<Set<string>>(new Set());
@@ -80,7 +229,6 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
   const [hiddenStorage, setHiddenStorage] = useState<Set<string>>(new Set());
   const [hiddenCash, setHiddenCash] = useState<Set<string>>(new Set());
   const [detailedFilter, setDetailedFilter] = useState<DetailedAssetFilter>('all');
-  const [hoveredSlice, setHoveredSlice] = useState<Record<string, number | null>>({});
 
   // Calculate all allocations from positions
   const {
@@ -253,154 +401,9 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     return null;
   }
 
-  const toggleLegendItem = (
-    name: string,
-    hidden: Set<string>,
-    setHidden: React.Dispatch<React.SetStateAction<Set<string>>>
-  ) => {
-    const newHidden = new Set(hidden);
-    if (newHidden.has(name)) {
-      newHidden.delete(name);
-    } else {
-      newHidden.add(name);
-    }
-    setHidden(newHidden);
-  };
-
   const handleDetailedFilterChange = (value: string) => {
     setDetailedFilter(value as DetailedAssetFilter);
     setHiddenDetailed(new Set());
-    setHoveredSlice((prev) => ({ ...prev, 'By Detailed Asset': null }));
-  };
-
-  const renderPieChart = (
-    data: ChartData[],
-    colors: string[],
-    hidden: Set<string>,
-    setHidden: React.Dispatch<React.SetStateAction<Set<string>>>,
-    title: string,
-    totalValue: number,
-    headerControl?: React.ReactNode
-  ) => {
-    const filteredData = data.filter((d) => !hidden.has(d.name));
-    const visibleTotal = filteredData.reduce((sum, d) => sum + d.value, 0);
-    const visibleData = filteredData.map((d) => ({
-      ...d,
-      displayPercentage: visibleTotal > 0 ? (d.value / visibleTotal) * 100 : 0,
-    }));
-
-    return (
-      <Card className="flex-1">
-        <CardHeader className="pb-2">
-          <div className="flex min-h-8 items-center">
-            <CardTitle className="min-w-0 truncate text-base">
-              {title}{' '}
-              <span className="text-sm font-medium text-muted-foreground tabular-nums">
-                ({formatCurrency(totalValue, 'USD', true)})
-              </span>
-            </CardTitle>
-          </div>
-          <div className="flex min-h-11 items-center gap-2 sm:min-h-6">
-            <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground tabular-nums">
-              {(() => {
-                const hIdx = hoveredSlice[title];
-                if (hIdx == null || !visibleData[hIdx]) return null;
-                const hovered = visibleData[hIdx];
-                return (
-                  <>
-                    {hovered.name} &middot; {formatCurrency(hovered.value, 'USD', true)} &middot;{' '}
-                    {formatNumber(hovered.displayPercentage, 1)}%
-                  </>
-                );
-              })()}
-            </div>
-            {headerControl && <div className="shrink-0">{headerControl}</div>}
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center lg:flex-col lg:items-stretch lg:gap-3">
-            <div className="mx-auto h-[140px] w-[140px] flex-shrink-0 relative sm:mx-0 lg:mx-auto">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={visibleData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={35}
-                    outerRadius={60}
-                    paddingAngle={2}
-                    dataKey="value"
-                    onMouseLeave={() => setHoveredSlice((prev) => ({ ...prev, [title]: null }))}
-                  >
-                    {visibleData.map((entry, i) => {
-                      const originalIndex = data.findIndex((d) => d.name === entry.name);
-                      return (
-                        <Cell
-                          key={`cell-${entry.name}`}
-                          fill={colors[originalIndex % colors.length]}
-                          onMouseEnter={() => setHoveredSlice((prev) => ({ ...prev, [title]: i }))}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      );
-                    })}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              {visibleData.length > 0 &&
-                (() => {
-                  const top = visibleData.reduce((a, b) => (a.value > b.value ? a : b));
-                  const shortName =
-                    top.name.length > 8 ? top.name.slice(0, 7) + '\u2026' : top.name;
-                  return (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-lg font-bold leading-tight">
-                        {Math.round(top.displayPercentage)}%
-                      </span>
-                      <span className="text-[10px] text-muted-foreground leading-tight">
-                        {shortName}
-                      </span>
-                    </div>
-                  );
-                })()}
-            </div>
-
-            <div className="flex min-w-0 flex-col gap-1.5 flex-1">
-              {data.map((item, index) => {
-                const isHidden = hidden.has(item.name);
-                const displayPct = isHidden
-                  ? item.percentage
-                  : visibleTotal > 0
-                    ? (item.value / visibleTotal) * 100
-                    : 0;
-                return (
-                  <button
-                    key={item.name}
-                    className={`flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ${
-                      isHidden ? 'opacity-40 line-through text-muted-foreground' : ''
-                    }`}
-                    aria-pressed={!hidden.has(item.name)}
-                    onClick={() => toggleLegendItem(item.name, hidden, setHidden)}
-                  >
-                    <div
-                      className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ${
-                        isHidden ? 'opacity-40' : ''
-                      }`}
-                      style={{ backgroundColor: colors[index % colors.length] }}
-                    />
-                    <span className="truncate">{item.name}</span>
-                    <span
-                      className={`ml-auto font-medium tabular-nums ${isHidden ? '' : 'text-muted-foreground'}`}
-                    >
-                      {formatNumber(displayPct, 0)}%
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
   };
 
   const selectedDetailedAllocation =
@@ -434,40 +437,41 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {renderPieChart(
-        categoryAllocation,
-        ASSET_COLORS,
-        hiddenCategory,
-        setHiddenCategory,
-        'By Asset',
-        totals.portfolio
+      <AllocationDonut
+        data={categoryAllocation}
+        colors={ASSET_COLORS}
+        hidden={hiddenCategory}
+        setHidden={setHiddenCategory}
+        title="By Asset"
+        totalValue={totals.portfolio}
+      />
+      <AllocationDonut
+        data={selectedDetailedAllocation}
+        colors={selectedDetailedColors}
+        hidden={hiddenDetailed}
+        setHidden={setHiddenDetailed}
+        title="By Detailed Asset"
+        totalValue={selectedDetailedTotal}
+        headerControl={detailedHeaderControl}
+      />
+      <AllocationDonut
+        data={storageAllocation}
+        colors={STORAGE_COLORS}
+        hidden={hiddenStorage}
+        setHidden={setHiddenStorage}
+        title="By Storage"
+        totalValue={totals.portfolio}
+      />
+      {cashAllocation.length > 0 && (
+        <AllocationDonut
+          data={cashAllocation}
+          colors={STABLES_COLORS}
+          hidden={hiddenCash}
+          setHidden={setHiddenCash}
+          title="Cash Breakdown"
+          totalValue={totals.cash}
+        />
       )}
-      {renderPieChart(
-        selectedDetailedAllocation,
-        selectedDetailedColors,
-        hiddenDetailed,
-        setHiddenDetailed,
-        'By Detailed Asset',
-        selectedDetailedTotal,
-        detailedHeaderControl
-      )}
-      {renderPieChart(
-        storageAllocation,
-        STORAGE_COLORS,
-        hiddenStorage,
-        setHiddenStorage,
-        'By Storage',
-        totals.portfolio
-      )}
-      {cashAllocation.length > 0 &&
-        renderPieChart(
-          cashAllocation,
-          STABLES_COLORS,
-          hiddenCash,
-          setHiddenCash,
-          'Cash Breakdown',
-          totals.cash
-        )}
     </div>
   );
 }
