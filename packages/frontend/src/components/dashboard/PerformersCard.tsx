@@ -62,7 +62,7 @@ export function PerformersCard({
               <span className="text-muted-foreground text-xs tabular-nums w-4">{index + 1}</span>
               <div>
                 <p className="font-medium text-sm">{performer.symbol}</p>
-                <p className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">
+                <p className="text-xs text-muted-foreground truncate max-w-[160px] sm:max-w-[200px]">
                   {performer.name}
                 </p>
               </div>

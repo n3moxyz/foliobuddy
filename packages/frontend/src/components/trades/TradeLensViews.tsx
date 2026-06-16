@@ -502,9 +502,7 @@ function TagList({
 function LensEmpty({ icon, title }: { icon: ReactNode; title: string }) {
   return (
     <div className="rounded-md border border-dashed bg-card/40 py-12 text-center">
-      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        {icon}
-      </div>
+      <div className="mx-auto mb-3 text-muted-foreground">{icon}</div>
       <p className="font-medium">{title}</p>
     </div>
   );

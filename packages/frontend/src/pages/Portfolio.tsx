@@ -322,7 +322,7 @@ export default function Portfolio() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  className="sm:hidden"
+                  className="sm:hidden min-h-11"
                   onClick={async () => {
                     if (positions && positions.length > 0) {
                       const success = await copyPositionsToClipboard(positions);

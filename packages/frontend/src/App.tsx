@@ -85,7 +85,7 @@ function App() {
                     appearance={{
                       elements: {
                         rootBox: 'mx-auto',
-                        card: 'shadow-lg',
+                        card: 'shadow-sm border',
                       },
                     }}
                   />

@@ -21,9 +21,7 @@ export function ErrorFallback({ error, eventId, resetError }: ErrorFallbackProps
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertTriangle className="h-6 w-6 text-destructive" />
-          </div>
+          <AlertTriangle className="mx-auto mb-4 h-10 w-10 text-destructive" />
           <CardTitle>Something went wrong</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
