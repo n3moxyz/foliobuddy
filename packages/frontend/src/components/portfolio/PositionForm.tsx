@@ -406,15 +406,18 @@ export function PositionForm({
     [costCurrency, usdFxRates]
   );
 
-  // True only once a REAL (non-fallback) USD->costCurrency rate is loaded. Editing an
-  // existing position back-converts its stored USD cost basis to local currency, so it
-  // must wait for the real rate — initializing with a USD_*_FALLBACK_RATE seed would let
-  // an unmodified save round-trip through the fallback and silently shift the stored cost.
+  // True only once a REAL (non-fallback) USD<->costCurrency rate is loaded. We allow
+  // fallback rates for display hints, but never for persisting non-USD cost basis.
   const costRateIsReal = useMemo(() => {
     if (costCurrency === 'USD') return true;
-    const hasApiRate = (fxRates ?? []).some(
-      (rate) => rate.fromCcy.toUpperCase() === 'USD' && rate.toCcy.toUpperCase() === costCurrency
-    );
+    const hasApiRate = (fxRates ?? []).some((rate) => {
+      const from = rate.fromCcy.toUpperCase();
+      const to = rate.toCcy.toUpperCase();
+      return (
+        rate.rate > 0 &&
+        ((from === 'USD' && to === costCurrency) || (from === costCurrency && to === 'USD'))
+      );
+    });
     if (hasApiRate) return true;
     // SGD's real rate is also derivable from the portfolio summary, but only when both
     // totals are positive — this must mirror fxSgdPerUsd's guard exactly, otherwise a
@@ -973,7 +976,7 @@ export function PositionForm({
 
     if (isEditing && editMode === 'delta' && position) {
       const deltaQty = parseFloat(additionalQuantity);
-      if (deltaMode === 'add' && costCurrency !== 'USD' && costDisplayRate === null) {
+      if (deltaMode === 'add' && costCurrency !== 'USD' && !costRateIsReal) {
         setValidationError(`FX rate for ${costCurrency} is still loading. Please try again.`);
         return;
       }
@@ -1105,13 +1108,12 @@ export function PositionForm({
       return;
     }
 
-    // Editing back-converts a stored USD basis, so it needs the real rate; creating
-    // takes a fresh local value where the fallback seed is an acceptable estimate.
+    // Never persist non-USD listed-equity cost basis through fallback FX rates.
     if (
       category === 'equity' &&
       !(equityMode === 'fund' && !isEditing) &&
       costCurrency !== 'USD' &&
-      (isEditing ? !costRateIsReal : costDisplayRate === null)
+      !costRateIsReal
     ) {
       setValidationError(`FX rate for ${costCurrency} is still loading. Please try again.`);
       return;
