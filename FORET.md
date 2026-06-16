@@ -623,6 +623,20 @@ Shell refinement: the left sidebar now has a Codex-style collapsible desktop rai
 
 **The lesson:** Quality tooling is most useful when it catches the little splinters before they become production mysteries. A typo in logging config and a cache edge case are not dramatic bugs, but they are exactly the sort of thing that makes a future outage feel haunted.
 
+### A Fallback FX Rate Is Safe for Display, Toxic for Round-Trips
+
+**The bug:** Adding a foreign-currency equity (a Tokyo or Singapore stock) shows cost in the local currency but stores USD, so it needs a live FX rate. While that rate loaded, the form seeded a rough fallback (1.35 for SGD). Editing an existing position re-displayed its stored USD cost _in local currency_ using whatever rate was on hand, then locked that value in with a one-shot flag. If the fallback fired first and the real rate (say 1.34) arrived a moment later, hitting **Save without changing anything** converted the locked-in local value back to USD at the _real_ rate — quietly shifting the stored cost basis. A no-op save corrupting money is the worst kind of bug: silent, and you would never think to look.
+
+**The fix:** Split the two jobs a fallback does. For **creating** a position the user typed a fresh local number, so a fallback is a fine estimate. For **editing** (and the native price labels) we must wait for a _real_ rate before back-converting stored USD — a `costRateIsReal` gate that only turns true once `/fx/rates` actually has the pair (or, for SGD, the portfolio summary does). The gate has to mirror its rate source _exactly_: an early version called SGD "real" whenever the summary existed, but the summary returns the fallback when its totals are zero, so the gate also had to require `totalValueUsd > 0 && totalValueSgd > 0` to match the rate function byte for byte.
+
+**The lesson:** A fallback value is only safe where a small error is acceptable and never round-trips. The moment you convert _back_ through it — especially on an unmodified save — an estimate becomes silent data corruption. And when a guard asks "is this value real yet?", it must use the identical condition as the thing producing the value, or the two drift apart at exactly the edge cases.
+
+### Running the no-mistakes Gate From Windows
+
+**The snag:** `/no-mistakes` shells out to the `claude` CLI for its review/document/PR steps and passes the whole diff as a command-line argument. On Windows the `claude` binary is an npm `.cmd` shim, so it runs through `cmd.exe`, whose command line caps at 8,191 characters. A 76 KB diff (this Asian-equities change) blew past that — `"The command line is too long."` — and no version bump fixes it, because the limit is the OS, not the tool.
+
+**The workaround:** When the gate physically cannot start on Windows, reproduce it by hand — run the real checks it would (`npm run build`, `npm test`, `npm run domain:check`) plus a diff review, then commit and push as usual. Worth knowing before you sit waiting on a gate that was never going to run.
+
 ### Lesson 1: Prisma Cascading Deletes
 
 **The bug:** Deleted a user, database exploded with foreign key errors.

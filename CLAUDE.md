@@ -21,8 +21,9 @@
 
 - `src/index.ts` - Server entry (rate limiting, logger, FX job init, `/api/v1` prefix)
 - `src/routes/` / `src/services/` / `src/middleware/` - API endpoints; business logic (portfolioService, priceService, snapshotService); auth + error handling
-- `src/lib/` - Shared utilities (constants, logger, pagination, tradePnL, sentry, TTLCache)
+- `src/lib/` - Shared utilities (constants, logger, pagination, tradePnL, sentry, TTLCache, fxConstants)
 - `src/lib/constants.ts` - Domain enums (AssetCategory, StorageType, TradeDirection, TradeStatus, SnapshotType, SnapshotSource)
+- `src/lib/fxConstants.ts` - Shared USD→native FX-rate fields + `usdRateEntries()`; imported by the `/fx` route and scheduler so adding a currency is one edit, not two
 - `src/lib/domain.ts` - Backend-owned copy of core financial/domain helpers (position value math, add/reduce cost-basis math, provider/category compatibility)
 - `src/lib/authorization.ts` - Admin and user-asset ownership guards for global asset catalog routes
 - `src/lib/startupChecks.ts` - Production boot warnings for missing operational config such as `ADMIN_USER_IDS`
