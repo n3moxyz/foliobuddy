@@ -280,6 +280,9 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
           >
             <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
           </Button>
+          <span className="sr-only" role="status" aria-live="polite">
+            {refreshing ? 'Refreshing prices' : ''}
+          </span>
 
           <Button
             variant="ghost"

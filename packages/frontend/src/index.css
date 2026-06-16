@@ -170,6 +170,14 @@
   color: hsl(var(--loss-foreground));
 }
 
+.text-warning {
+  color: hsl(var(--warning-foreground));
+}
+
+.text-info {
+  color: hsl(var(--info-foreground));
+}
+
 .bg-profit {
   background-color: hsl(var(--profit) / 0.12);
 }

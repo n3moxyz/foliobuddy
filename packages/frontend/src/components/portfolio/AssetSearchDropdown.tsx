@@ -13,6 +13,7 @@ interface AssetSearchDropdownProps {
   searchLoading: boolean;
   combinedResults: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: SearchCandidate }>;
   isEditing: boolean;
+  id?: string;
   placeholder?: string;
   positionAssetSymbol?: string;
   positionAssetName?: string;
@@ -35,6 +36,7 @@ export function AssetSearchDropdown({
   searchLoading,
   combinedResults,
   isEditing,
+  id,
   placeholder = 'Search for a coin...',
   positionAssetSymbol,
   positionAssetName,
@@ -93,6 +95,7 @@ export function AssetSearchDropdown({
   return (
     <div className="relative">
       <Input
+        id={id}
         placeholder={placeholder}
         value={searchQuery}
         onChange={(e) => {
@@ -158,7 +161,7 @@ export function AssetSearchDropdown({
                   <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
                 )}
                 {result.type === 'existing' && (
-                  <span className="text-xs text-green-600">In portfolio</span>
+                  <span className="text-xs text-profit">In portfolio</span>
                 )}
               </button>
             ))

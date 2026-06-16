@@ -30,7 +30,7 @@ function UnitTrustBadge() {
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className="inline-flex h-5 shrink-0 cursor-default items-center rounded-sm border border-warning/35 bg-warning/10 px-1.5 text-[10px] font-semibold leading-none text-warning outline-none ring-offset-background transition-colors hover:border-warning/50 hover:bg-warning/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="inline-flex h-5 shrink-0 cursor-default items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning outline-none ring-offset-background transition-colors hover:border-warning/50 hover:bg-warning/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="Unit Trust"
             tabIndex={0}
             onClick={(event) => event.stopPropagation()}
@@ -160,7 +160,7 @@ export const PositionRow = React.memo(function PositionRow({
           )}
         </p>
         {localAvgCost && (
-          <p className="mt-0.5 text-[11px] leading-none text-muted-foreground/80">{localAvgCost}</p>
+          <p className="mt-0.5 text-[11px] leading-none text-muted-foreground">{localAvgCost}</p>
         )}
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
@@ -175,7 +175,7 @@ export const PositionRow = React.memo(function PositionRow({
           )}
         </p>
         {localCurrentPrice && (
-          <p className="mt-0.5 text-[11px] leading-none text-muted-foreground/80">
+          <p className="mt-0.5 text-[11px] leading-none text-muted-foreground">
             {localCurrentPrice}
           </p>
         )}

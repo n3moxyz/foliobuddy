@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -41,12 +42,11 @@ export function CustodyCheckbox({
 }: CustodyCheckboxProps) {
   return (
     <div className="flex items-start gap-3 rounded-md border px-3 py-2 bg-muted/20">
-      <input
-        type="checkbox"
+      <Checkbox
         id={id}
         checked={isCustody}
-        onChange={(e) => onCustodyChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-purple-600"
+        onCheckedChange={(checked) => onCustodyChange(checked === true)}
+        className="mt-0.5 shrink-0"
       />
       <div className="flex-1 min-w-0">
         <label htmlFor={id} className="block text-sm font-medium cursor-pointer leading-tight">

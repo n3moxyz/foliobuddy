@@ -67,9 +67,9 @@ export function NetWorthCard({
 
   return (
     <div className="pb-6 mb-2 border-b">
-      <p className="text-sm font-medium text-muted-foreground mb-2">
+      <h2 className="text-sm font-medium text-muted-foreground mb-2">
         Net Worth{investorLabel && ` (${investorLabel})`}
-      </p>
+      </h2>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-3">
         <span className="text-4xl font-bold tracking-tight sm:text-5xl tabular-nums">

@@ -46,6 +46,7 @@ import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { PositionImportTab } from './PositionImportTab';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 import { CustodyCheckbox } from './CustodyCheckbox';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency, formatNumber, isStablecoinCategory, currencyDecimals } from '@/lib/utils';
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
@@ -1413,13 +1414,11 @@ export function PositionForm({
         </div>
 
         <div className="flex items-center space-x-2 py-1">
-          <input
-            type="checkbox"
+          <Checkbox
             id="dontAskFundingAgain"
             checked={dontAskFundingAgain}
-            onChange={(e) => setDontAskFundingAgain(e.target.checked)}
+            onCheckedChange={(checked) => setDontAskFundingAgain(checked === true)}
             disabled={confirmingFunding}
-            className="h-4 w-4 rounded border-gray-300"
           />
           <label
             htmlFor="dontAskFundingAgain"
@@ -1430,7 +1429,9 @@ export function PositionForm({
         </div>
 
         {error && (
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+          <div role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            {error}
+          </div>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
@@ -1638,10 +1639,17 @@ export function PositionForm({
               {/* Equity sub-type: Single stock vs Fund-level (unit trust) */}
               {!isEditing && category === 'equity' && (
                 <div className="space-y-1">
-                  <Label className="text-sm">Type</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <Label id="equity-type-label" className="text-sm">
+                    Type
+                  </Label>
+                  <div
+                    role="group"
+                    aria-labelledby="equity-type-label"
+                    className="grid grid-cols-2 gap-2"
+                  >
                     <button
                       type="button"
+                      aria-pressed={equityMode === 'single'}
                       onClick={() => handleEquityModeChange('single')}
                       className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
                         equityMode === 'single'
@@ -1654,6 +1662,7 @@ export function PositionForm({
                     </button>
                     <button
                       type="button"
+                      aria-pressed={equityMode === 'fund'}
                       onClick={() => handleEquityModeChange('fund')}
                       className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
                         equityMode === 'fund'
@@ -1763,7 +1772,7 @@ export function PositionForm({
 
                   {utPrefilledFrom && !utMultipleHoldings && (
                     <div className="space-y-1">
-                      <div className="rounded-md border border-emerald-500/30 bg-emerald-50 p-2 text-xs text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+                      <div className="rounded-md border border-profit/30 bg-profit/10 p-2 text-xs text-profit">
                         Pre-filled from {utPrefilledFrom} statement. Please review before saving.
                       </div>
                       {utYahooSymbol && (
@@ -1897,6 +1906,7 @@ export function PositionForm({
                     Asset
                   </Label>
                   <AssetSearchDropdown
+                    id="pos-asset"
                     selectedAsset={selectedAsset}
                     searchQuery={searchQuery}
                     showDropdown={showDropdown}
@@ -2088,13 +2098,16 @@ export function PositionForm({
 
               {/* Error Display */}
               {error && (
-                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                <div
+                  role="alert"
+                  className="text-sm text-destructive bg-destructive/10 p-3 rounded-md"
+                >
                   {error}
                 </div>
               )}
 
               {validationError && (
-                <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
+                <div role="alert" className="text-sm text-warning bg-warning/10 p-2 rounded-md">
                   {validationError}
                 </div>
               )}

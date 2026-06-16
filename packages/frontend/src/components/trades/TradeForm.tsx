@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
@@ -120,6 +121,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
           <div className="space-y-2">
             <Label htmlFor="trade-asset">Asset</Label>
             <AssetSearchDropdown
+              id="trade-asset"
               selectedAsset={selectedAsset}
               onSelectAsset={handleSelectAsset}
               disabled={isEditing}
@@ -131,17 +133,28 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             <Select value={direction} onValueChange={(v) => setDirection(v as 'LONG' | 'SHORT')}>
               <SelectTrigger id="trade-direction">
                 <span
-                  className={`font-medium ${direction === 'LONG' ? 'text-profit' : 'text-loss'}`}
+                  className={`inline-flex items-center gap-1 font-medium ${direction === 'LONG' ? 'text-profit' : 'text-loss'}`}
                 >
+                  {direction === 'LONG' ? (
+                    <TrendingUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <TrendingDown className="h-3.5 w-3.5" />
+                  )}
                   {direction}
                 </span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="LONG">
-                  <span className="text-profit font-medium">LONG</span>
+                  <span className="inline-flex items-center gap-1 text-profit font-medium">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    LONG
+                  </span>
                 </SelectItem>
                 <SelectItem value="SHORT">
-                  <span className="text-loss font-medium">SHORT</span>
+                  <span className="inline-flex items-center gap-1 text-loss font-medium">
+                    <TrendingDown className="h-3.5 w-3.5" />
+                    SHORT
+                  </span>
                 </SelectItem>
               </SelectContent>
             </Select>

@@ -231,11 +231,13 @@ export function PositionDeltaEditor({
       )}
 
       {error && (
-        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
+        <div role="alert" className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+          {error}
+        </div>
       )}
 
       {validationError && (
-        <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
+        <div role="alert" className="text-sm text-warning bg-warning/10 p-2 rounded-md">
           {validationError}
         </div>
       )}

@@ -275,9 +275,9 @@ export function SnapshotTable({
                         {snapshot.source === 'AUTOMATIC' && (
                           <span className="inline-flex items-center justify-center h-6 w-6">
                             {isExpanded ? (
-                              <ChevronDown className="h-4 w-4" />
+                              <ChevronDown className="h-4 w-4" aria-hidden="true" />
                             ) : (
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronRight className="h-4 w-4" aria-hidden="true" />
                             )}
                           </span>
                         )}
@@ -290,7 +290,7 @@ export function SnapshotTable({
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="flex items-center justify-end gap-1 text-amber-600 dark:text-amber-400">
+                                <span className="flex items-center justify-end gap-1 text-warning">
                                   <AlertTriangle className="h-3.5 w-3.5" />
                                   {displayValue(snapshot.totalValueUsd)}
                                 </span>
@@ -309,9 +309,7 @@ export function SnapshotTable({
                       <TableCell className="hidden sm:table-cell">
                         <span
                           className={`flex items-center gap-1 text-xs ${
-                            snapshot.source === 'AUTOMATIC'
-                              ? 'text-blue-600 dark:text-blue-400'
-                              : 'text-orange-600 dark:text-orange-400'
+                            snapshot.source === 'AUTOMATIC' ? 'text-info' : 'text-warning'
                           }`}
                         >
                           {snapshot.source === 'AUTOMATIC' ? (

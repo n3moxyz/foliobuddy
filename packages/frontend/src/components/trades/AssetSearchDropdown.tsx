@@ -9,12 +9,14 @@ interface AssetSearchDropdownProps {
   selectedAsset: Asset | null;
   onSelectAsset: (assetId: string, asset: Asset) => void;
   disabled?: boolean;
+  id?: string;
 }
 
 export function AssetSearchDropdown({
   selectedAsset,
   onSelectAsset,
   disabled,
+  id,
 }: AssetSearchDropdownProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -166,6 +168,7 @@ export function AssetSearchDropdown({
   return (
     <div className="relative">
       <Input
+        id={id}
         placeholder="Search for a coin..."
         value={searchQuery}
         onChange={(e) => {
@@ -227,7 +230,7 @@ export function AssetSearchDropdown({
                   <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
                 )}
                 {result.type === 'existing' && (
-                  <span className="text-xs text-green-600">In portfolio</span>
+                  <span className="text-xs text-profit">In portfolio</span>
                 )}
               </button>
             ))
