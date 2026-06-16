@@ -25,7 +25,13 @@ import {
   usePortfolioSummary,
   useFxRates,
 } from '@/hooks/usePortfolio';
-import { USD_SGD_FALLBACK_RATE, applyPositionDelta } from '@foliobuddy/shared';
+import {
+  USD_SGD_FALLBACK_RATE,
+  USD_JPY_FALLBACK_RATE,
+  USD_TWD_FALLBACK_RATE,
+  USD_KRW_FALLBACK_RATE,
+  applyPositionDelta,
+} from '@foliobuddy/shared';
 import { api } from '@/lib/api';
 import type {
   Asset,
@@ -360,7 +366,15 @@ export function PositionForm({
   }, [portfolioSummary]);
 
   const usdFxRates = useMemo(() => {
-    const rates: Record<string, number> = { USD: 1, SGD: fxSgdPerUsd };
+    // Seed fallbacks so cost entry works before live rates load; real /fx/rates
+    // values below override them. SGD's seed is derived from the portfolio summary.
+    const rates: Record<string, number> = {
+      USD: 1,
+      SGD: fxSgdPerUsd,
+      JPY: USD_JPY_FALLBACK_RATE,
+      TWD: USD_TWD_FALLBACK_RATE,
+      KRW: USD_KRW_FALLBACK_RATE,
+    };
 
     for (const rate of fxRates ?? []) {
       const from = rate.fromCcy.toUpperCase();
@@ -392,21 +406,45 @@ export function PositionForm({
     [costCurrency, usdFxRates]
   );
 
+  // True only once a REAL (non-fallback) USD->costCurrency rate is loaded. Editing an
+  // existing position back-converts its stored USD cost basis to local currency, so it
+  // must wait for the real rate — initializing with a USD_*_FALLBACK_RATE seed would let
+  // an unmodified save round-trip through the fallback and silently shift the stored cost.
+  const costRateIsReal = useMemo(() => {
+    if (costCurrency === 'USD') return true;
+    const hasApiRate = (fxRates ?? []).some(
+      (rate) => rate.fromCcy.toUpperCase() === 'USD' && rate.toCcy.toUpperCase() === costCurrency
+    );
+    if (hasApiRate) return true;
+    // SGD's real rate is also derivable from the portfolio summary, but only when both
+    // totals are positive — this must mirror fxSgdPerUsd's guard exactly, otherwise a
+    // non-null summary with zero totals would read as "real" while usdFxRates['SGD'] is
+    // still the 1.35 fallback, re-opening the silent cost-basis drift.
+    if (costCurrency === 'SGD') {
+      return (
+        portfolioSummary != null &&
+        portfolioSummary.totalValueUsd > 0 &&
+        portfolioSummary.totalValueSgd > 0
+      );
+    }
+    return false;
+  }, [costCurrency, fxRates, portfolioSummary]);
+
   // When editing a non-USD-native position, re-display the stored USD cost basis in
-  // local currency. Runs once per position and waits until the relevant FX rate is loaded.
+  // local currency. Runs once per position and waits until the real FX rate is loaded.
   useEffect(() => {
     if (!position || costInitializedRef.current) return;
     if (costCurrency === 'USD') {
       costInitializedRef.current = true;
       return;
     }
-    if (costDisplayRate === null) return;
+    if (costDisplayRate === null || !costRateIsReal) return;
     const displayAvg = position.avgCostUsd * costDisplayRate;
     const displayTotal = position.quantity * position.avgCostUsd * costDisplayRate;
     setAvgCostInput(displayAvg.toFixed(2));
     setTotalCost(displayTotal.toFixed(2));
     costInitializedRef.current = true;
-  }, [position, costCurrency, costDisplayRate]);
+  }, [position, costCurrency, costDisplayRate, costRateIsReal]);
 
   // Form validation
   const isFormValid = useMemo(() => {
@@ -1067,11 +1105,13 @@ export function PositionForm({
       return;
     }
 
+    // Editing back-converts a stored USD basis, so it needs the real rate; creating
+    // takes a fresh local value where the fallback seed is an acceptable estimate.
     if (
       category === 'equity' &&
       !(equityMode === 'fund' && !isEditing) &&
       costCurrency !== 'USD' &&
-      costDisplayRate === null
+      (isEditing ? !costRateIsReal : costDisplayRate === null)
     ) {
       setValidationError(`FX rate for ${costCurrency} is still loading. Please try again.`);
       return;
