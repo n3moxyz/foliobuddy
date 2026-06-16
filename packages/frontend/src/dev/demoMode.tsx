@@ -1139,7 +1139,11 @@ function createDemoPosition(data: CreatePositionData): Position {
   }
 
   const timestamp = new Date().toISOString();
-  reduceDemoFundingCashPosition(data, timestamp);
+  reduceDemoFundingCashPositionByCost(
+    data.fundingCashPositionId,
+    data.quantity * (data.avgCostUsd ?? 0),
+    timestamp
+  );
   const position = computePosition(asset, {
     id: nextDemoId('pos'),
     assetId: data.assetId,
@@ -1157,8 +1161,12 @@ function createDemoPosition(data: CreatePositionData): Position {
   return position;
 }
 
-function reduceDemoFundingCashPosition(data: CreatePositionData, timestamp: string) {
-  const fundingCashPositionId = data.fundingCashPositionId?.trim();
+function reduceDemoFundingCashPositionByCost(
+  fundingCashPositionIdInput: string | null | undefined,
+  purchaseCostUsd: number,
+  timestamp: string
+) {
+  const fundingCashPositionId = fundingCashPositionIdInput?.trim();
   if (!fundingCashPositionId) return;
 
   const fundingPosition = demoPositions.find(
@@ -1171,7 +1179,6 @@ function reduceDemoFundingCashPosition(data: CreatePositionData, timestamp: stri
     throw new Error('Funding position must be a cash position');
   }
 
-  const purchaseCostUsd = data.quantity * (data.avgCostUsd ?? 0);
   if (!(purchaseCostUsd > 0)) {
     throw new Error('Funding cash source requires a positive position cost');
   }
@@ -1236,6 +1243,18 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
     throw new Error('Asset not found');
   }
 
+  const timestamp = new Date().toISOString();
+  if (data.fundingCashPositionId) {
+    if (data.positionDelta?.mode !== 'add') {
+      throw new Error('Funding cash source is only supported when adding to a position');
+    }
+    reduceDemoFundingCashPositionByCost(
+      data.fundingCashPositionId,
+      data.positionDelta.totalCostUsd ?? 0,
+      timestamp
+    );
+  }
+
   const updated = computePosition(asset, {
     id: existing.id,
     assetId: asset.id,
@@ -1251,7 +1270,7 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
           ? data.custodyOf
           : null,
     createdAt: existing.createdAt,
-    updatedAt: new Date().toISOString(),
+    updatedAt: timestamp,
   });
 
   demoPositions = demoPositions.map((position) => (position.id === id ? updated : position));
@@ -1278,7 +1297,7 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
         nextQuantity: updated.quantity,
         nextAvgCostUsd: updated.avgCostUsd,
         nextTotalCostUsd,
-        createdAt: new Date().toISOString(),
+        createdAt: timestamp,
       },
       ...demoPositionHistory,
     ];

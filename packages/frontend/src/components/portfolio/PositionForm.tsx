@@ -711,18 +711,23 @@ export function PositionForm({
     return results;
   }, [filteredAssets, searchResults, equitySearchResults, searchQuery, category, assets]);
 
+  const canUseFundingCash = isEditing
+    ? editMode === 'delta' && deltaMode === 'add' && !isStablecoinCategory(position?.asset.category)
+    : category !== 'cash';
+
   const cashFundingOptions = useMemo(() => {
-    if (isEditing) return [];
+    if (!canUseFundingCash) return [];
     return (positions ?? [])
       .filter(
         (item) =>
+          item.id !== position?.id &&
           !item.custodyOf &&
           isStablecoinCategory(item.asset.category) &&
           item.quantity > 0 &&
           cashFundingValueUsd(item) > 0
       )
       .sort((a, b) => cashFundingValueUsd(b) - cashFundingValueUsd(a));
-  }, [isEditing, positions]);
+  }, [canUseFundingCash, position?.id, positions]);
 
   const selectedFundingCashPosition = useMemo(
     () => cashFundingOptions.find((item) => item.id === fundingCashPositionId) ?? null,
@@ -1049,7 +1054,7 @@ export function PositionForm({
   };
 
   const fundingCashPositionIdForSubmit =
-    !isEditing && fundingCashPositionId !== NO_FUNDING_CASH_POSITION
+    canUseFundingCash && fundingCashPositionId !== NO_FUNDING_CASH_POSITION
       ? fundingCashPositionId
       : undefined;
 
@@ -1175,13 +1180,18 @@ export function PositionForm({
         return;
       }
 
-      try {
+      if (deltaMode === 'add' && !validateFundingCashSelection(deltaCostAddUsd)) {
+        return;
+      }
+
+      const saveDeltaPosition = async () => {
         await updatePosition.mutateAsync({
           id: position.id,
           data: {
             quantity: deltaResult.nextQuantity,
             avgCostUsd: deltaResult.nextAvgCostUsd,
             custodyOf: isCustody ? custodyOf.trim() || 'Someone' : '',
+            fundingCashPositionId: fundingCashPositionIdForSubmit,
             positionDelta: {
               mode: deltaMode,
               quantity: deltaQty,
@@ -1191,6 +1201,14 @@ export function PositionForm({
         });
         handleCustodySave();
         onSuccess();
+      };
+
+      try {
+        await requestFundingConfirmation(
+          deltaCostAddUsd,
+          `${position.asset.symbol} ${position.asset.name}`,
+          saveDeltaPosition
+        );
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to save position';
         setError(errorMessage);
@@ -1353,14 +1371,15 @@ export function PositionForm({
         <div className="space-y-1">
           <h3 className="text-base font-semibold">Confirm Funded Position</h3>
           <p className="text-sm text-muted-foreground">
-            This will add the new position and reduce the selected cash pile.
+            This will {isEditing ? 'add to this position' : 'add the new position'} and reduce the
+            selected cash pile.
           </p>
         </div>
 
         <div className="space-y-3 rounded-md border bg-muted/20 p-3 text-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-medium">Add position</p>
+              <p className="font-medium">{isEditing ? 'Add to position' : 'Add position'}</p>
               <p className="text-muted-foreground">{fundingConfirmation.positionLabel}</p>
             </div>
             <span className="shrink-0 font-medium tabular-nums">
@@ -1451,6 +1470,31 @@ export function PositionForm({
       onCancelAddingName={() => setAddingNewName(false)}
     />
   );
+
+  const fundingCashSelector =
+    canUseFundingCash && cashFundingOptions.length > 0 ? (
+      <div className="space-y-1">
+        <Label htmlFor="funding-cash-position" className="text-sm">
+          Fund From (Optional)
+        </Label>
+        <Select value={fundingCashPositionId} onValueChange={setFundingCashPositionId}>
+          <SelectTrigger id="funding-cash-position">
+            <SelectValue placeholder="No cash pile" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_FUNDING_CASH_POSITION}>No cash pile</SelectItem>
+            {cashFundingOptions.map((cashPosition) => {
+              const valueUsd = cashFundingValueUsd(cashPosition);
+              return (
+                <SelectItem key={cashPosition.id} value={cashPosition.id}>
+                  {cashFundingLabel(cashPosition)} · {formatCurrency(valueUsd, 'USD', 0)}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      </div>
+    ) : null;
 
   return (
     <div className="space-y-3">
@@ -1568,6 +1612,7 @@ export function PositionForm({
               validationError={validationError}
               custodySlot={custodyCheckbox}
               isLoading={isLoading}
+              fundingSlot={fundingCashSelector}
             />
           ) : (
             <>
@@ -2001,33 +2046,7 @@ export function PositionForm({
                 />
               )}
 
-              {!isEditing && category !== 'cash' && cashFundingOptions.length > 0 && (
-                <div className="space-y-1">
-                  <Label htmlFor="funding-cash-position" className="text-sm">
-                    Fund From (Optional)
-                  </Label>
-                  <Select value={fundingCashPositionId} onValueChange={setFundingCashPositionId}>
-                    <SelectTrigger id="funding-cash-position">
-                      <SelectValue placeholder="No cash pile" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_FUNDING_CASH_POSITION}>No cash pile</SelectItem>
-                      {cashFundingOptions.map((cashPosition) => {
-                        const valueUsd = cashFundingValueUsd(cashPosition);
-                        const location = cashPosition.storageLocation
-                          ? ` · ${cashPosition.storageLocation}`
-                          : '';
-                        return (
-                          <SelectItem key={cashPosition.id} value={cashPosition.id}>
-                            {cashPosition.asset.symbol}
-                            {location} · {formatCurrency(valueUsd, 'USD', 0)}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              {fundingCashSelector}
 
               <PositionStorageFields
                 category={category}

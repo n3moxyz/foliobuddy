@@ -475,6 +475,118 @@ describe('PUT /api/positions/:id', () => {
       }),
     });
   });
+
+  it('reduces a funding cash position when adding to an existing position', async () => {
+    const targetPosition = mockPosition({
+      id: 'position-1',
+      assetId: 'asset-1',
+      quantity: 10,
+      avgCostUsd: 100,
+      asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+    });
+    const cashPosition = mockPosition({
+      id: 'cash-position-1',
+      assetId: 'asset-usdc',
+      quantity: 1000,
+      avgCostUsd: 1,
+      asset: mockAsset({
+        id: 'asset-usdc',
+        symbol: 'USDC',
+        category: 'STABLECOIN',
+        currentPriceUsd: 1,
+      }),
+    });
+    mockPrisma.position.findFirst
+      .mockResolvedValueOnce(targetPosition)
+      .mockResolvedValueOnce(cashPosition);
+    mockPrisma.position.update.mockImplementation(async ({ where, data }) =>
+      where.id === 'position-1'
+        ? mockPosition({
+            id: 'position-1',
+            assetId: 'asset-1',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+            marketValueUsd: data.marketValueUsd,
+            unrealizedPnL: data.unrealizedPnL,
+            unrealizedPnLPct: data.unrealizedPnLPct,
+          })
+        : mockPosition({
+            id: 'cash-position-1',
+            assetId: 'asset-usdc',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+          })
+    );
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 15,
+        avgCostUsd: 120,
+        fundingCashPositionId: 'cash-position-1',
+        positionDelta: {
+          mode: 'add',
+          quantity: 5,
+          totalCostUsd: 800,
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.position.update).toHaveBeenCalledWith({
+      where: { id: 'cash-position-1' },
+      data: expect.objectContaining({
+        quantity: 200,
+        avgCostUsd: 1,
+        marketValueUsd: 200,
+        unrealizedPnL: 0,
+        unrealizedPnLPct: 0,
+      }),
+    });
+    expect(mockPrisma.positionHistory.create).toHaveBeenNthCalledWith(2, {
+      data: expect.objectContaining({
+        userId: 'test-user-id',
+        positionId: 'cash-position-1',
+        assetId: 'asset-usdc',
+        mode: 'reduce',
+        quantity: 800,
+        costBasisUsd: 800,
+        previousQuantity: 1000,
+        previousAvgCostUsd: 1,
+        previousTotalCostUsd: 1000,
+        nextQuantity: 200,
+        nextAvgCostUsd: 1,
+        nextTotalCostUsd: 200,
+      }),
+    });
+  });
+
+  it('rejects funding cash source for reduce delta updates', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        quantity: 10,
+        avgCostUsd: 100,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 8,
+        avgCostUsd: 100,
+        fundingCashPositionId: 'cash-position-1',
+        positionDelta: {
+          mode: 'reduce',
+          quantity: 2,
+        },
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Funding cash source is only supported when adding to a position');
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
 });
 
 describe('GET /api/positions/:id/history', () => {

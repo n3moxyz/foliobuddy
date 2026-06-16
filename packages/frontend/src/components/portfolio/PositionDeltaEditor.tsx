@@ -26,6 +26,7 @@ interface PositionDeltaEditorProps {
   preview: DeltaPreview | null;
   error: string | null;
   validationError: string | null;
+  fundingSlot?: ReactNode;
   custodySlot: ReactNode;
   isLoading: boolean;
 }
@@ -48,6 +49,7 @@ export function PositionDeltaEditor({
   preview,
   error,
   validationError,
+  fundingSlot,
   custodySlot,
   isLoading,
 }: PositionDeltaEditorProps) {
@@ -190,6 +192,8 @@ export function PositionDeltaEditor({
           Cost basis will be reduced automatically using the current average cost.
         </div>
       )}
+
+      {deltaMode === 'add' && fundingSlot}
 
       {preview && (
         <div className="rounded-md border bg-muted/20 p-3">

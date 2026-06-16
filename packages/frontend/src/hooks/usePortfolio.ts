@@ -81,10 +81,16 @@ export function useUpdatePosition() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdatePositionData }) =>
       api.updatePosition(id, data),
-    onSuccess: (_, { id }) => {
+    onSuccess: (_, { id, data }) => {
       queryClient.invalidateQueries({ queryKey: ['positions'] });
       queryClient.invalidateQueries({ queryKey: ['positions', id] });
       queryClient.invalidateQueries({ queryKey: ['positions', id, 'history'] });
+      if (data.fundingCashPositionId) {
+        queryClient.invalidateQueries({ queryKey: ['positions', data.fundingCashPositionId] });
+        queryClient.invalidateQueries({
+          queryKey: ['positions', data.fundingCashPositionId, 'history'],
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });
     },
   });
