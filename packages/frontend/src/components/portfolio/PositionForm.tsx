@@ -1146,8 +1146,10 @@ export function PositionForm({
       }
       // In add mode the user enters cost in costCurrency — convert to USD for persistence.
       // In reduce mode we shrink basis at current avg cost (already USD), no conversion needed.
+      // Only convert in add mode — reduce mode would otherwise leave a latent NaN here.
       const deltaCostInput = parseFloat(additionalCostInput);
-      const deltaCostAddUsd = toUsdCost(deltaCostInput, costCurrency, usdFxRates);
+      const deltaCostAddUsd =
+        deltaMode === 'add' ? toUsdCost(deltaCostInput, costCurrency, usdFxRates) : 0;
 
       if (!(deltaQty > 0)) {
         setValidationError(`Please enter a valid ${deltaMode} quantity`);

@@ -149,8 +149,10 @@ export function PositionTable({
   });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);
+  // SGD last so it wins over any DB USD->SGD rate in usdFxRates: the native SGD label
+  // then uses the same portfolio-summary rate as the primary column (avoids bps drift).
   const priceFxRates = useMemo(
-    () => ({ USD: 1, SGD: fxRate, ...(usdFxRates ?? {}) }),
+    () => ({ USD: 1, ...(usdFxRates ?? {}), SGD: fxRate }),
     [fxRate, usdFxRates]
   );
   const deletePositionMutation = useDeletePosition();

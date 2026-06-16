@@ -114,7 +114,13 @@ describe('YahooFinanceProvider', () => {
     const provider = new YahooFinanceProvider();
     const results = await provider.search('kioxia');
 
+    // Fans out across all four regions, not just JP — guards against a region
+    // being dropped from SEARCH_REGIONS (which would silently lose listings).
+    expect(searchMock).toHaveBeenCalledTimes(4);
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'US' }));
     expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'JP' }));
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'TW' }));
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'KR' }));
     expect(results[0]).toMatchObject({
       providerAssetId: '285A.T',
       symbol: '285A.T',
@@ -145,6 +151,110 @@ describe('YahooFinanceProvider', () => {
       nativePrice: 2400,
       nativeCurrency: 'JPY',
       fxRateToUsd: 1 / 150,
+    });
+  });
+
+  it('converts Taiwanese equity prices to USD using USD/TWD', async () => {
+    quoteMock.mockImplementation(async (symbolOrSymbols: string | string[]) => {
+      if (Array.isArray(symbolOrSymbols)) {
+        return [{ symbol: '2330.TW', regularMarketPrice: 640, currency: 'TWD' }];
+      }
+      if (symbolOrSymbols === 'TWD=X') {
+        return { symbol: 'TWD=X', regularMarketPrice: 32 };
+      }
+      return null;
+    });
+
+    const provider = new YahooFinanceProvider();
+    const prices = await provider.getPrices(['2330.TW']);
+
+    expect(prices.get('2330.TW')).toEqual({
+      priceUsd: 20,
+      nativePrice: 640,
+      nativeCurrency: 'TWD',
+      fxRateToUsd: 1 / 32,
+    });
+  });
+
+  it('converts Korean equity prices to USD using USD/KRW', async () => {
+    quoteMock.mockImplementation(async (symbolOrSymbols: string | string[]) => {
+      if (Array.isArray(symbolOrSymbols)) {
+        return [{ symbol: '005930.KS', regularMarketPrice: 69000, currency: 'KRW' }];
+      }
+      if (symbolOrSymbols === 'KRW=X') {
+        return { symbol: 'KRW=X', regularMarketPrice: 1380 };
+      }
+      return null;
+    });
+
+    const provider = new YahooFinanceProvider();
+    const prices = await provider.getPrices(['005930.KS']);
+
+    expect(prices.get('005930.KS')).toEqual({
+      priceUsd: 50,
+      nativePrice: 69000,
+      nativeCurrency: 'KRW',
+      fxRateToUsd: 1 / 1380,
+    });
+  });
+
+  it('converts non-USD historical chart prices to USD using the currency FX rate', async () => {
+    chartMock.mockResolvedValue({
+      meta: { currency: 'JPY' },
+      quotes: [
+        { date: new Date('2026-01-02T00:00:00.000Z'), close: 3000 },
+        { date: new Date('2026-01-03T00:00:00.000Z'), close: null },
+        { date: new Date('2026-01-04T00:00:00.000Z'), close: 3300 },
+      ],
+    });
+    quoteMock.mockImplementation(async (symbol: string) => {
+      if (symbol === 'JPY=X') return { symbol: 'JPY=X', regularMarketPrice: 150 };
+      return null;
+    });
+
+    const provider = new YahooFinanceProvider();
+    const history = await provider.getHistoricalPrices('285A.T', 30);
+
+    expect(history).toEqual([
+      {
+        timestamp: new Date('2026-01-02T00:00:00.000Z').getTime(),
+        priceUsd: 20,
+        nativePrice: 3000,
+      },
+      {
+        timestamp: new Date('2026-01-04T00:00:00.000Z').getTime(),
+        priceUsd: 22,
+        nativePrice: 3300,
+      },
+    ]);
+  });
+
+  it('uses a stored DB FX rate instead of fetching one from Yahoo', async () => {
+    mockPrisma.fxRate.findUnique.mockResolvedValue({
+      fromCcy: 'USD',
+      toCcy: 'JPY',
+      rate: 160,
+    });
+    quoteMock.mockImplementation(async (symbolOrSymbols: string | string[]) => {
+      if (Array.isArray(symbolOrSymbols)) {
+        return [{ symbol: '285A.T', regularMarketPrice: 3200, currency: 'JPY' }];
+      }
+      // Yahoo FX fallback — must NOT be reached when the DB rate is present.
+      if (symbolOrSymbols === 'JPY=X') {
+        return { symbol: 'JPY=X', regularMarketPrice: 150 };
+      }
+      return null;
+    });
+
+    const provider = new YahooFinanceProvider();
+    const prices = await provider.getPrices(['285A.T']);
+
+    expect(quoteMock).not.toHaveBeenCalledWith('JPY=X');
+    expect(prices.get('285A.T')).toEqual({
+      priceUsd: 20,
+      nativePrice: 3200,
+      nativeCurrency: 'JPY',
+      fxRateToUsd: 1 / 160,
     });
   });
 });

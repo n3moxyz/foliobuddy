@@ -159,7 +159,7 @@ export default function Portfolio() {
     for (const rate of fxRates ?? []) {
       const from = rate.fromCcy.toUpperCase();
       const to = rate.toCcy.toUpperCase();
-      if (from === 'USD') {
+      if (from === 'USD' && rate.rate > 0) {
         rates[to] = rate.rate;
       } else if (to === 'USD' && rate.rate > 0) {
         rates[from] = 1 / rate.rate;
