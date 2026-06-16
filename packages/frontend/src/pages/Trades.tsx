@@ -206,6 +206,8 @@ export default function Trades() {
     [searchParams, setSearchParams]
   );
 
+  const allOpenTrades = useMemo(() => allTrades.filter((t) => t.status === 'OPEN'), [allTrades]);
+
   return (
     <div className="space-y-6">
       <PageActionHeader
@@ -256,7 +258,7 @@ export default function Trades() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  className="sm:hidden"
+                  className="sm:hidden min-h-11"
                   onClick={async () => {
                     if (trades && trades.length > 0) {
                       const success = await copyTradesToClipboard(trades);
@@ -390,7 +392,7 @@ export default function Trades() {
         <TabsContent value="monthly" className="mt-5">
           <MonthlyPostmortemLens
             monthlyReviews={monthlyReviews}
-            openTrades={allTrades.filter((trade) => trade.status === 'OPEN')}
+            openTrades={allOpenTrades}
             currency={currency}
             fxRate={fxRate}
             onTradeClick={handleNotableTradeClick}

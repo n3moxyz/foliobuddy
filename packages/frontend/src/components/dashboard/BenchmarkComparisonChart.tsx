@@ -36,6 +36,7 @@ import {
   getDaysFromPeriod,
   formatXAxisDate,
   formatTooltipDate,
+  downsampleLTTB,
 } from '@/lib/chartUtils';
 import { Plus, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -191,8 +192,19 @@ export function BenchmarkComparisonChart() {
       }
     });
 
+    // Downsample for very long (Max) periods only — keeps 1Y (365 pts) untouched
+    const displayData =
+      normalized.length > 400
+        ? downsampleLTTB(
+            normalized,
+            300,
+            (d) => new Date(d.timestamp).getTime(),
+            (d) => (typeof d.portfolio === 'number' ? d.portfolio : 0)
+          )
+        : normalized;
+
     // Add formatted dates for display
-    return normalized.map((point) => ({
+    return displayData.map((point) => ({
       ...point,
       displayDate: formatXAxisDate(point.timestamp, dataSpanDays),
       tooltipDate: formatTooltipDate(point.timestamp),
@@ -376,7 +388,7 @@ export function BenchmarkComparisonChart() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-11 w-11 px-0 rounded-l-none border-l-0 sm:h-8 sm:w-8"
+                className="h-11 w-11 px-0 rounded-l-none border-l-0 touch-manipulation sm:h-8 sm:w-8"
                 style={{
                   borderColor: benchmark.color,
                   color: benchmark.foregroundColor ?? benchmark.color,
@@ -400,6 +412,7 @@ export function BenchmarkComparisonChart() {
               <PopoverContent className="w-[calc(100vw-2rem)] max-w-64 p-2">
                 <Input
                   placeholder="Search coins, ETFs, indexes..."
+                  aria-label="Search for a benchmark"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8"

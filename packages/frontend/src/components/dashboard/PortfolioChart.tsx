@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
 import { formatCurrency } from '@/lib/utils';
-import { getDateRange, formatXAxisDate, formatTooltipDate } from '@/lib/chartUtils';
+import { getDateRange, formatXAxisDate, formatTooltipDate, downsampleLTTB } from '@/lib/chartUtils';
 import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 import type { TimePeriod } from '@/lib/types';
 
@@ -71,6 +71,17 @@ export function PortfolioChart({
         isLive: false,
       };
     });
+
+    // Downsample for very long (Max) periods only — keeps 1Y (365 pts) untouched
+    if (data.length > 400) {
+      const downsampled = downsampleLTTB(
+        data,
+        300,
+        (d) => new Date(d.timestamp).getTime(),
+        (d) => d.value
+      );
+      data.splice(0, data.length, ...downsampled);
+    }
 
     // Handle live data: either append or replace today's $0 snapshot
     if (liveValueUsd && data.length > 0) {

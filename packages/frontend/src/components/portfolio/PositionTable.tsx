@@ -8,6 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -171,16 +172,19 @@ export function PositionTable({
     }
   }, []);
 
-  const convert = (usdValue: number | null | undefined) => {
-    if (usdValue === null || usdValue === undefined) return usdValue;
-    return currency === 'SGD' ? usdValue * fxRate : usdValue;
-  };
+  const convert = useCallback(
+    (usdValue: number | null | undefined) => {
+      if (usdValue === null || usdValue === undefined) return usdValue;
+      return currency === 'SGD' ? usdValue * fxRate : usdValue;
+    },
+    [currency, fxRate]
+  );
 
-  const getSmartDecimals = (value: number | null | undefined): number => {
+  const getSmartDecimals = useCallback((value: number | null | undefined): number => {
     if (value === null || value === undefined) return 2;
     const absValue = Math.abs(value);
     return absValue < 1000 ? 2 : 0;
-  };
+  }, []);
 
   const { isExpanded, toggle } = useCollapsibleState();
 
@@ -363,28 +367,39 @@ export function PositionTable({
   const handleView = useCallback((position: Position) => setViewPosition(position), []);
   const handleEdit = useCallback((position: Position) => setEditPosition(position), []);
 
-  const renderPositionRow = (
-    position: Position,
-    options: { showUnitTrustBadge?: boolean } = {}
-  ) => {
-    return (
-      <PositionRow
-        key={position.id}
-        position={position}
-        currency={currency}
-        fxRate={fxRate}
-        usdFxRates={priceFxRates}
-        copiedId={copiedId}
-        showAllColumns={showAllColumns}
-        onView={handleView}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-        onCopy={handleCopy}
-        onUpdateNav={onUpdateNav}
-        showUnitTrustBadge={options.showUnitTrustBadge}
-      />
-    );
-  };
+  const renderPositionRow = useCallback(
+    (position: Position, options: { showUnitTrustBadge?: boolean } = {}) => {
+      return (
+        <PositionRow
+          key={position.id}
+          position={position}
+          currency={currency}
+          fxRate={fxRate}
+          usdFxRates={priceFxRates}
+          copiedId={copiedId}
+          showAllColumns={showAllColumns}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          onCopy={handleCopy}
+          onUpdateNav={onUpdateNav}
+          showUnitTrustBadge={options.showUnitTrustBadge}
+        />
+      );
+    },
+    [
+      currency,
+      fxRate,
+      priceFxRates,
+      copiedId,
+      showAllColumns,
+      handleView,
+      handleEdit,
+      handleDeleteClick,
+      handleCopy,
+      onUpdateNav,
+    ]
+  );
 
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
 
@@ -848,12 +863,10 @@ export function PositionTable({
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center space-x-2 py-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="dontAskAgain"
               checked={dontAskAgain}
-              onChange={(e) => setDontAskAgain(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
+              onCheckedChange={(checked) => setDontAskAgain(checked === true)}
             />
             <label htmlFor="dontAskAgain" className="text-sm text-muted-foreground cursor-pointer">
               Don't ask me again

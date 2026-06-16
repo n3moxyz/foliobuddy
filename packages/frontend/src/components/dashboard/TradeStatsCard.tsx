@@ -57,12 +57,7 @@ function ratingLabel(
     if (value >= min)
       return {
         text,
-        color:
-          min >= 1.5
-            ? 'text-profit'
-            : min >= 1
-              ? 'text-yellow-600 dark:text-yellow-400'
-              : 'text-loss',
+        color: min >= 1.5 ? 'text-profit' : min >= 1 ? 'text-warning' : 'text-loss',
       };
   }
   return { text: thresholds[thresholds.length - 1][1], color: 'text-loss' };
@@ -234,7 +229,14 @@ function AvgWinLossSegment({
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground w-10 shrink-0">Win</span>
           <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
-            <div className="h-full bg-profit/70 rounded" style={{ width: `${winBarPct}%` }} />
+            <div
+              className="h-full bg-profit/70 rounded transition-transform origin-left"
+              style={{
+                width: '100%',
+                transform: `scaleX(${winBarPct / 100})`,
+                transformOrigin: 'left',
+              }}
+            />
           </div>
           <span className="text-xs font-medium tabular-nums text-profit w-20 text-right">
             {formatCurrency(convert(analytics.avgWin), currency)}
@@ -243,7 +245,14 @@ function AvgWinLossSegment({
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground w-10 shrink-0">Loss</span>
           <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
-            <div className="h-full bg-loss/70 rounded" style={{ width: `${lossBarPct}%` }} />
+            <div
+              className="h-full bg-loss/70 rounded transition-transform origin-left"
+              style={{
+                width: '100%',
+                transform: `scaleX(${lossBarPct / 100})`,
+                transformOrigin: 'left',
+              }}
+            />
           </div>
           <span className="text-xs font-medium tabular-nums text-loss w-20 text-right">
             -{formatCurrency(convert(analytics.avgLoss), currency)}

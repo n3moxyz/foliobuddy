@@ -72,3 +72,77 @@ export function formatTooltipDate(timestamp: string): string {
     year: 'numeric',
   });
 }
+
+/**
+ * Largest-Triangle-Three-Buckets (LTTB) downsampling.
+ * Reduces a data series to `threshold` points while preserving visual shape.
+ * Always keeps the first and last points.
+ * Returns the original array unchanged when data.length <= threshold or threshold < 3.
+ */
+export function downsampleLTTB<T>(
+  data: T[],
+  threshold: number,
+  getX: (d: T) => number,
+  getY: (d: T) => number
+): T[] {
+  if (data.length <= threshold || threshold < 3) return data;
+
+  const sampled: T[] = [];
+  // Always include the first point
+  sampled.push(data[0]);
+
+  // Number of buckets for the middle section (exclude first and last points)
+  const bucketCount = threshold - 2;
+  const bucketSize = (data.length - 2) / bucketCount;
+
+  let prevSelected = 0;
+
+  for (let i = 0; i < bucketCount; i++) {
+    // Current bucket range
+    const bucketStart = Math.floor((i + 1) * bucketSize) + 1;
+    const bucketEnd = Math.min(Math.floor((i + 2) * bucketSize) + 1, data.length - 1);
+
+    // Next bucket average (used as the third point of the triangle)
+    const nextBucketStart = bucketEnd;
+    const nextBucketEnd = Math.min(Math.floor((i + 3) * bucketSize) + 1, data.length - 1);
+    let avgX = 0;
+    let avgY = 0;
+    let avgCount = 0;
+    for (let j = nextBucketStart; j < nextBucketEnd; j++) {
+      avgX += getX(data[j]);
+      avgY += getY(data[j]);
+      avgCount++;
+    }
+    // Fall back to the last point if next bucket is empty
+    if (avgCount === 0) {
+      avgX = getX(data[data.length - 1]);
+      avgY = getY(data[data.length - 1]);
+    } else {
+      avgX /= avgCount;
+      avgY /= avgCount;
+    }
+
+    // Pick the point in the current bucket that forms the largest triangle
+    const ax = getX(data[prevSelected]);
+    const ay = getY(data[prevSelected]);
+    let maxArea = -1;
+    let maxIndex = bucketStart;
+    for (let j = bucketStart; j < bucketEnd; j++) {
+      const bx = getX(data[j]);
+      const by = getY(data[j]);
+      // Triangle area × 2 (sign doesn't matter for comparison)
+      const area = Math.abs((ax - avgX) * (by - ay) - (bx - ax) * (avgY - ay));
+      if (area > maxArea) {
+        maxArea = area;
+        maxIndex = j;
+      }
+    }
+
+    sampled.push(data[maxIndex]);
+    prevSelected = maxIndex;
+  }
+
+  // Always include the last point
+  sampled.push(data[data.length - 1]);
+  return sampled;
+}
