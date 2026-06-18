@@ -97,6 +97,7 @@ describe('YahooFinanceProvider', () => {
       })
       .mockResolvedValueOnce({ quotes: [] })
       .mockResolvedValueOnce({ quotes: [] })
+      .mockResolvedValueOnce({ quotes: [] })
       .mockResolvedValueOnce({ quotes: [] });
     quoteMock.mockImplementation(async (symbol: string) => {
       if (symbol === '285A.T') {
@@ -114,13 +115,14 @@ describe('YahooFinanceProvider', () => {
     const provider = new YahooFinanceProvider();
     const results = await provider.search('kioxia');
 
-    // Fans out across all four regions, not just JP — guards against a region
+    // Fans out across all configured regions, not just JP — guards against a region
     // being dropped from SEARCH_REGIONS (which would silently lose listings).
-    expect(searchMock).toHaveBeenCalledTimes(4);
+    expect(searchMock).toHaveBeenCalledTimes(5);
     expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'US' }));
     expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'JP' }));
     expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'TW' }));
     expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'KR' }));
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'NO' }));
     expect(results[0]).toMatchObject({
       providerAssetId: '285A.T',
       symbol: '285A.T',
@@ -130,6 +132,61 @@ describe('YahooFinanceProvider', () => {
     expect(results.findIndex((result) => result.symbol === '285A.T')).toBeLessThan(
       results.findIndex((result) => result.symbol === 'KXHICF')
     );
+  });
+
+  it('surfaces Oslo listings as NOK-native equity search results', async () => {
+    searchMock
+      .mockResolvedValueOnce({ quotes: [] })
+      .mockResolvedValueOnce({ quotes: [] })
+      .mockResolvedValueOnce({ quotes: [] })
+      .mockResolvedValueOnce({ quotes: [] })
+      .mockResolvedValueOnce({
+        quotes: [
+          {
+            symbol: 'ENH.OL',
+            longname: 'FED Energy Holdings ASA',
+            quoteType: 'EQUITY',
+            exchDisp: 'Oslo',
+          },
+        ],
+      });
+
+    const provider = new YahooFinanceProvider();
+    const results = await provider.search('FED Energy Holdings');
+
+    expect(results[0]).toMatchObject({
+      providerAssetId: 'ENH.OL',
+      symbol: 'ENH.OL',
+      exchange: 'Oslo',
+      nativeCurrency: 'NOK',
+    });
+  });
+
+  it('looks up Oslo suffix tickers directly', async () => {
+    searchMock.mockResolvedValue({ quotes: [] });
+    quoteMock.mockImplementation(async (symbol: string) => {
+      if (symbol === 'ENH.OL') {
+        return {
+          symbol: 'ENH.OL',
+          quoteType: 'EQUITY',
+          longName: 'FED Energy Holdings ASA',
+          fullExchangeName: 'Oslo Stock Exchange',
+          currency: 'NOK',
+        };
+      }
+      return null;
+    });
+
+    const provider = new YahooFinanceProvider();
+    const results = await provider.search('ENH');
+
+    expect(quoteMock).toHaveBeenCalledWith('ENH.OL');
+    expect(results[0]).toMatchObject({
+      providerAssetId: 'ENH.OL',
+      symbol: 'ENH.OL',
+      exchange: 'Oslo Stock Exchange',
+      nativeCurrency: 'NOK',
+    });
   });
 
   it('converts Japanese equity prices to USD using USD/JPY', async () => {
@@ -195,6 +252,28 @@ describe('YahooFinanceProvider', () => {
       nativePrice: 69000,
       nativeCurrency: 'KRW',
       fxRateToUsd: 1 / 1380,
+    });
+  });
+
+  it('converts Norwegian equity prices to USD using USD/NOK', async () => {
+    quoteMock.mockImplementation(async (symbolOrSymbols: string | string[]) => {
+      if (Array.isArray(symbolOrSymbols)) {
+        return [{ symbol: 'ENH.OL', regularMarketPrice: 21, currency: 'NOK' }];
+      }
+      if (symbolOrSymbols === 'NOK=X') {
+        return { symbol: 'NOK=X', regularMarketPrice: 10.5 };
+      }
+      return null;
+    });
+
+    const provider = new YahooFinanceProvider();
+    const prices = await provider.getPrices(['ENH.OL']);
+
+    expect(prices.get('ENH.OL')).toEqual({
+      priceUsd: 2,
+      nativePrice: 21,
+      nativeCurrency: 'NOK',
+      fxRateToUsd: 1 / 10.5,
     });
   });
 

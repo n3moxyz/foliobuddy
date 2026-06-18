@@ -24,13 +24,14 @@ const SEARCH_CACHE_DURATION_MS = 10 * 60 * 1000;
 const BATCH_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 8000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const SEARCH_REGIONS = ['US', 'JP', 'TW', 'KR'] as const;
-const SUPPORTED_NATIVE_CURRENCIES = new Set(['USD', 'SGD', 'JPY', 'TWD', 'KRW']);
+const SEARCH_REGIONS = ['US', 'JP', 'TW', 'KR', 'NO'] as const;
+const SUPPORTED_NATIVE_CURRENCIES = new Set(['USD', 'SGD', 'JPY', 'TWD', 'KRW', 'NOK']);
 const USD_FX_SYMBOLS: Record<string, string> = {
   SGD: 'SGD=X',
   JPY: 'JPY=X',
   TWD: 'TWD=X',
   KRW: 'KRW=X',
+  NOK: 'NOK=X',
 };
 const ASIA_DIRECT_QUOTE_SUFFIXES = ['.T', '.TW', '.TWO', '.KS', '.KQ'];
 const NAME_DIRECT_QUOTE_CANDIDATES: Record<string, string[]> = {
@@ -59,11 +60,13 @@ function exchangeRank(symbol: string, exchange?: string | null): number {
     upperSymbol.endsWith('.KS') ||
     upperSymbol.endsWith('.KQ') ||
     upperSymbol.endsWith('.SI') ||
+    upperSymbol.endsWith('.OL') ||
     upperExchange.includes('TOKYO') ||
     upperExchange.includes('TAIWAN') ||
     upperExchange.includes('KOREA') ||
     upperExchange.includes('KOSDAQ') ||
     upperExchange.includes('SINGAPORE') ||
+    upperExchange.includes('OSLO') ||
     upperExchange.includes('NASDAQ') ||
     upperExchange.includes('NYSE')
   ) {
@@ -473,6 +476,9 @@ export class YahooFinanceProvider implements AssetPriceProvider {
       if (!upperQuery.includes('.') && /\d/.test(upperQuery)) {
         symbols.push(...ASIA_DIRECT_QUOTE_SUFFIXES.map((suffix) => `${upperQuery}${suffix}`));
       }
+      if (!upperQuery.includes('.') && /^[A-Z]{1,5}$/.test(upperQuery)) {
+        symbols.push(`${upperQuery}.OL`);
+      }
     }
 
     const lowerQuery = trimmed.toLowerCase();
@@ -523,6 +529,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     if (symbol.endsWith('.T')) return 'JPY';
     if (symbol.endsWith('.TW') || symbol.endsWith('.TWO')) return 'TWD';
     if (symbol.endsWith('.KS') || symbol.endsWith('.KQ')) return 'KRW';
+    if (symbol.endsWith('.OL')) return 'NOK';
     if (symbol.endsWith('.HK')) return 'HKD';
     if (symbol.endsWith('.L')) return 'GBP';
     if (symbol.endsWith('.TO')) return 'CAD';

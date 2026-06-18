@@ -116,6 +116,50 @@ describe('POST /api/assets', () => {
   });
 });
 
+describe('POST /api/assets/from-provider', () => {
+  it('updates stale native currency metadata on an existing Yahoo asset', async () => {
+    const existing = mockManualAsset({
+      id: 'asset-oslo',
+      priceProvider: 'yahoo',
+      providerAssetId: 'ENH.OL',
+      symbol: 'ENH.OL',
+      name: 'FED Energy Holdings ASA',
+      category: 'EQUITY',
+      nativeCurrency: 'USD',
+      exchange: null,
+    });
+    const updated = {
+      ...existing,
+      nativeCurrency: 'NOK',
+      exchange: 'Oslo Stock Exchange',
+    };
+
+    mockPrisma.asset.findFirst.mockResolvedValue(existing);
+    mockPrisma.asset.update.mockResolvedValue(updated);
+
+    const res = await request(app).post('/api/assets/from-provider').send({
+      provider: 'yahoo',
+      providerAssetId: 'ENH.OL',
+      symbol: 'ENH.OL',
+      name: 'FED Energy Holdings ASA',
+      category: 'EQUITY',
+      nativeCurrency: 'NOK',
+      exchange: 'Oslo Stock Exchange',
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.asset.update).toHaveBeenCalledWith({
+      where: { id: 'asset-oslo' },
+      data: {
+        nativeCurrency: 'NOK',
+        exchange: 'Oslo Stock Exchange',
+      },
+    });
+    expect(mockPriceService.getProvider).not.toHaveBeenCalled();
+    expect(res.body.nativeCurrency).toBe('NOK');
+  });
+});
+
 describe('GET /api/assets/:id', () => {
   it('filters included positions to the authenticated user', async () => {
     mockPrisma.asset.findUnique.mockResolvedValue(mockManualAsset({ positions: [] }));

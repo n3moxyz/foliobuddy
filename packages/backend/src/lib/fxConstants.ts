@@ -9,6 +9,7 @@ export const USD_RATE_FIELDS = [
   { currency: 'JPY', field: 'usdJpy' },
   { currency: 'TWD', field: 'usdTwd' },
   { currency: 'KRW', field: 'usdKrw' },
+  { currency: 'NOK', field: 'usdNok' },
 ] as const;
 
 export type UsdRateCurrency = (typeof USD_RATE_FIELDS)[number]['currency'];

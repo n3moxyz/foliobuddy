@@ -10,6 +10,7 @@ import type {
   ProviderSearchResult,
 } from './providers/types.js';
 import { calculatePositionValue } from '../lib/domain.js';
+import { USD_RATE_FIELDS } from '../lib/fxConstants.js';
 
 type RefreshResult = {
   updated: number;
@@ -66,11 +67,9 @@ class PriceService {
     const coingeckoRates = await this.coingecko.getExchangeRates();
     if (!coingeckoRates?.usdSgd) return null;
 
-    const missingCurrencies = (['JPY', 'TWD', 'KRW'] as const).filter((currency) => {
-      if (currency === 'JPY') return !coingeckoRates.usdJpy;
-      if (currency === 'TWD') return !coingeckoRates.usdTwd;
-      return !coingeckoRates.usdKrw;
-    });
+    const missingCurrencies = USD_RATE_FIELDS.filter(
+      ({ currency, field }) => currency !== 'SGD' && !coingeckoRates[field]
+    ).map(({ currency }) => currency);
     const yahooRates =
       missingCurrencies.length > 0
         ? await this.yahoo.getUsdExchangeRates(missingCurrencies)
@@ -81,6 +80,7 @@ class PriceService {
       usdJpy: coingeckoRates.usdJpy ?? yahooRates.get('JPY'),
       usdTwd: coingeckoRates.usdTwd ?? yahooRates.get('TWD'),
       usdKrw: coingeckoRates.usdKrw ?? yahooRates.get('KRW'),
+      usdNok: coingeckoRates.usdNok ?? yahooRates.get('NOK'),
     };
 
     return rates;
@@ -176,7 +176,11 @@ class PriceService {
         assetUpdates.push(
           prisma.asset.update({
             where: { id: asset.id },
-            data: { currentPriceUsd: price.priceUsd, priceUpdatedAt: now },
+            data: {
+              currentPriceUsd: price.priceUsd,
+              priceUpdatedAt: now,
+              ...(price.nativeCurrency ? { nativeCurrency: price.nativeCurrency } : {}),
+            },
           })
         );
         // Manual assets get PriceHistory rows only from explicit NAV updates

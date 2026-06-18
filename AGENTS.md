@@ -139,9 +139,9 @@ Captures portfolio state at points in time. Calculates daily/weekly/monthly/YTD 
 
 `packages/backend/scripts/backfill-equity-snapshots.ts` — one-shot for retroactively inserting positions into historical snapshots. Read the script header for usage (`--dry`/`--apply`/`--rollback`), `BACKFILLS` semantics (additive deltas, not states), and Yahoo-fallback interpolation.
 
-### Yahoo Search & Asian Equities
+### Yahoo Search & Local-Currency Equities
 
-Yahoo's `/v1/finance/search` IP-filters by caller region even with `region=US` (our Singapore droplet got only cross-listings for US ETFs). `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` for queries matching `/^[A-Z0-9.-]{1,10}$/` with no exact-symbol match. Asian equities use suffixed symbols + local currencies: Japan `.T`→JPY (Kioxia `285A.T`), Taiwan `.TW`/`.TWO`→TWD, Korea `.KS`/`.KQ`→KRW. Search fans out across US/JP/TW/KR; numeric-ticker lookups try the Asian suffixes; ranking intentionally prefers primary Asian exchanges over OTC/Frankfurt/Stuttgart/Munich/Hamburg cross-listings. Keep the Kioxia coverage in `YahooFinanceProvider.test.ts` so name searches don't regress to OTC-only.
+Yahoo's `/v1/finance/search` IP-filters by caller region even with `region=US` (our Singapore droplet got only cross-listings for US ETFs). `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` for queries matching `/^[A-Z0-9.-]{1,10}$/` with no exact-symbol match. Supported local-currency suffixes: Singapore `.SI`→SGD, Japan `.T`→JPY (Kioxia `285A.T`), Taiwan `.TW`/`.TWO`→TWD, Korea `.KS`/`.KQ`→KRW, Oslo `.OL`→NOK. Search fans out across US/JP/TW/KR/NO; numeric-ticker lookups try the Asian suffixes; short alphabetic ticker lookups also try `.OL`; ranking intentionally prefers primary local exchanges over OTC/Frankfurt/Stuttgart/Munich/Hamburg cross-listings. Keep the Kioxia and Oslo coverage in `YahooFinanceProvider.test.ts` so name searches don't regress to cross-listings or USD fallback.
 
 ### Unit Trust Statement Parsers (PDF Import)
 
@@ -237,7 +237,7 @@ iOS HIG-inspired patterns on all pages:
 
 Use `formatCurrency` for totals, sizes, and P&L. For cost/total _amounts_ in a currency use `currencyDecimals(currency)` (0 for zero-decimal JPY/KRW, else 2) — not magnitude-based `priceDecimals`.
 
-Portfolio rows keep the selected app currency as the primary current price and average cost. If `asset.nativeCurrency` differs, show a muted second line under **Price** and **Avg Cost** via `localPriceLabel()` / `formatNativePrice()` and the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW). Do not add native labels under total cost or value, and do not store native current price on `Asset`; derive labels from USD × USD/native FX.
+Portfolio rows keep the selected app currency as the primary current price and average cost. If `asset.nativeCurrency` differs, show a muted second line under **Price** and **Avg Cost** via `localPriceLabel()` / `formatNativePrice()` and the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW/NOK). Do not add native labels under total cost or value, and do not store native current price on `Asset`; derive labels from USD × USD/native FX.
 
 ### Smart Quantity Formatting
 
@@ -292,7 +292,7 @@ Two sub-types via UI toggle (enums unchanged):
 - **Stock / ETF**: `equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`. ETFs go here (live ticker prices), not Unit Trust.
 - **Unit Trust**: `equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`.
 
-**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown; `storageType` stays `'BROKERAGE'`. Cost currency follows supported `asset.nativeCurrency` — listed equities in SGD/JPY/TWD/KRW show local cost inputs with a USD conversion note; SGD unit trusts use their statement/parser FX path. Backend stores USD. Fallback FX may be used for display hints while rates load, but create/edit/add-position submits for non-USD listed equities MUST wait for a real `/fx/rates` row (or real SGD summary rate) before converting and persisting cost basis. Edit converts stored USD → local inputs via the `costInitialized` flag.
+**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown; `storageType` stays `'BROKERAGE'`. Cost currency follows supported `asset.nativeCurrency` — listed equities in SGD/JPY/TWD/KRW/NOK show local cost inputs with a USD conversion note; SGD unit trusts use their statement/parser FX path. Backend stores USD. Fallback FX may be used for display hints while rates load, but create/edit/add-position submits for non-USD listed equities MUST wait for a real `/fx/rates` row (or real SGD summary rate) before converting and persisting cost basis. Edit converts stored USD → local inputs via the `costInitialized` flag.
 
 **Display:** Equities `PositionTable` defaults to `groupBy='broker'`; unit trusts show a `Unit Trust` badge. Header segmented control switches to `groupBy='equityType'`; choice persists in localStorage (`foliobuddy-equity-group-by`). **NAV-age badge** under the symbol appears for unit trusts OR manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers and fiat cash skip it.
 

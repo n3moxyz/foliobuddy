@@ -5,6 +5,7 @@ import {
   calculateNonNegativeAverageCostInput,
   calculateNonNegativeTotalCostInput,
   calculateTotalCostInput,
+  normalizeCostCurrency,
   toUsdCost,
 } from '../positionFormMath';
 
@@ -26,6 +27,12 @@ describe('positionFormMath', () => {
     expect(toUsdCost(100, 'USD', { USD: 1, SGD: 1.35 })).toBe(100);
     expect(toUsdCost(150000, 'JPY', { USD: 1, JPY: 150 })).toBe(1000);
     expect(toUsdCost(1300000, 'KRW', { USD: 1, KRW: 1300 })).toBe(1000);
+    expect(toUsdCost(2100, 'NOK', { USD: 1, NOK: 10.5 })).toBe(200);
+  });
+
+  it('normalizes supported listed-equity cost currencies', () => {
+    expect(normalizeCostCurrency('nok')).toBe('NOK');
+    expect(normalizeCostCurrency('CHF')).toBe('USD');
   });
 
   it('builds an add-position preview using display currency', () => {

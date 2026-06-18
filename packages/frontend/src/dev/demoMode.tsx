@@ -974,6 +974,7 @@ const fxRates: FxRate[] = [
   { id: 'usd-jpy', fromCcy: 'USD', toCcy: 'JPY', rate: 150, timestamp: NOW },
   { id: 'usd-twd', fromCcy: 'USD', toCcy: 'TWD', rate: 31.2, timestamp: NOW },
   { id: 'usd-krw', fromCcy: 'USD', toCcy: 'KRW', rate: 1375, timestamp: NOW },
+  { id: 'usd-nok', fromCcy: 'USD', toCcy: 'NOK', rate: 10.5, timestamp: NOW },
 ];
 let demoAssets: Asset[] = [...initialAssets];
 let demoPositions: Position[] = [...initialPositions];
@@ -1611,6 +1612,12 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
           name: 'SK hynix Inc.',
           exchange: 'Korea Stock Exchange',
           nativeCurrency: 'KRW',
+        },
+        {
+          symbol: 'ENH.OL',
+          name: 'FED Energy Holdings ASA',
+          exchange: 'Oslo Stock Exchange',
+          nativeCurrency: 'NOK',
         },
       ]
         .filter(

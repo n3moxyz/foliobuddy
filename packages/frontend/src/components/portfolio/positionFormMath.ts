@@ -1,10 +1,10 @@
 import { applyPositionDelta, type PositionDeltaMode } from '@foliobuddy/shared';
 
 export type CostInputMode = 'total' | 'avg';
-export type CostCurrency = 'USD' | 'SGD' | 'JPY' | 'TWD' | 'KRW';
+export type CostCurrency = 'USD' | 'SGD' | 'JPY' | 'TWD' | 'KRW' | 'NOK';
 export type CostFxRatesByCurrency = Record<string, number>;
 
-const SUPPORTED_COST_CURRENCIES: CostCurrency[] = ['USD', 'SGD', 'JPY', 'TWD', 'KRW'];
+const SUPPORTED_COST_CURRENCIES: CostCurrency[] = ['USD', 'SGD', 'JPY', 'TWD', 'KRW', 'NOK'];
 const SUPPORTED_COST_CURRENCY_SET = new Set<string>(SUPPORTED_COST_CURRENCIES);
 
 export interface DeltaPreview {

@@ -251,6 +251,33 @@ const fromProviderSchema = z.object({
   skipPriceFetch: z.boolean().optional(),
 });
 
+function providerMetadataUpdates(
+  existing: {
+    priceProvider: string | null;
+    providerAssetId: string | null;
+    nativeCurrency: string;
+    exchange: string | null;
+  },
+  data: z.infer<typeof fromProviderSchema>
+): Prisma.AssetUpdateInput | null {
+  if (existing.priceProvider !== data.provider) return null;
+
+  const updates: Prisma.AssetUpdateInput = {};
+  const nativeCurrency = data.nativeCurrency?.trim().toUpperCase();
+
+  if (existing.providerAssetId !== data.providerAssetId) {
+    updates.providerAssetId = data.providerAssetId;
+  }
+  if (nativeCurrency && existing.nativeCurrency !== nativeCurrency) {
+    updates.nativeCurrency = nativeCurrency;
+  }
+  if (data.exchange !== undefined && existing.exchange !== (data.exchange ?? null)) {
+    updates.exchange = data.exchange ?? null;
+  }
+
+  return Object.keys(updates).length > 0 ? updates : null;
+}
+
 router.post('/from-provider', async (req, res, next) => {
   try {
     const data = fromProviderSchema.parse(req.body);
@@ -272,11 +299,21 @@ router.post('/from-provider', async (req, res, next) => {
       },
     });
 
-    if (existing) return res.json(existing);
+    if (existing) {
+      const updates = providerMetadataUpdates(existing, data);
+      if (updates) {
+        const updated = await prisma.asset.update({
+          where: { id: existing.id },
+          data: updates,
+        });
+        return res.json(updated);
+      }
+      return res.json(existing);
+    }
 
     let currentPriceUsd: number | null = null;
     let nativePrice: number | null = null;
-    let nativeCurrency: string = data.nativeCurrency ?? 'USD';
+    let nativeCurrency: string = data.nativeCurrency?.trim().toUpperCase() ?? 'USD';
 
     if (!data.skipPriceFetch && data.provider !== 'manual') {
       try {

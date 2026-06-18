@@ -28,6 +28,7 @@ export type ExchangeRates = {
   usdJpy?: number;
   usdTwd?: number;
   usdKrw?: number;
+  usdNok?: number;
 };
 
 export class CoinGeckoProvider implements AssetPriceProvider {
@@ -232,6 +233,7 @@ export class CoinGeckoProvider implements AssetPriceProvider {
         usdJpy: usdTo('jpy'),
         usdTwd: usdTo('twd'),
         usdKrw: usdTo('krw'),
+        usdNok: usdTo('nok'),
       };
     } catch (error) {
       logger.error('Error fetching exchange rates:', error);

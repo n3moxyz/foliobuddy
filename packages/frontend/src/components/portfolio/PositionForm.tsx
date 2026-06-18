@@ -31,6 +31,7 @@ import {
   USD_JPY_FALLBACK_RATE,
   USD_TWD_FALLBACK_RATE,
   USD_KRW_FALLBACK_RATE,
+  USD_NOK_FALLBACK_RATE,
   applyPositionDelta,
 } from '@foliobuddy/shared';
 import { api } from '@/lib/api';
@@ -428,6 +429,7 @@ export function PositionForm({
       JPY: USD_JPY_FALLBACK_RATE,
       TWD: USD_TWD_FALLBACK_RATE,
       KRW: USD_KRW_FALLBACK_RATE,
+      NOK: USD_NOK_FALLBACK_RATE,
     };
 
     for (const rate of fxRates ?? []) {
