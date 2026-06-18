@@ -38,7 +38,7 @@
 - `src/lib/api.ts` - API client methods; `src/lib/types.ts` - frontend types; `src/lib/chartColors.ts` - OKLCH CSS-variable chart colors; `src/lib/chartUtils.ts` - time-period date helpers shared by PortfolioChart/BenchmarkComparisonChart
 - `src/components/ui/` - `skeleton.tsx` (shimmer), `HelpTooltip.tsx` (? tooltips), `creatable-select.tsx` ("+ Add new ..." Radix Select), `formatted-number-input.tsx` (thousands-separator amount input; pure helpers in `-utils.ts` for Fast Refresh)
 - `src/components/layout/PageActionHeader.tsx` - Sticky title/action header for high-scroll data pages
-- `src/components/trades/` - `TradeLensViews.tsx` (lens UI) + `tradeLensModels.ts` (pure aggregation)
+- `src/components/trades/` - `Trades.tsx` page is split into `TradeTable.tsx` (sortable tape + row actions), `TradeTapeSection.tsx` (status filter + ticker chip wrapper), `TradeDetailDialog.tsx` (row detail dialog + `formatTradeTags`), `tradeClipboard.ts` (copy/format helpers), `TradeLensViews.tsx` (lens UI) + `tradeLensModels.ts` (pure aggregation). Page keeps shared state + the create/edit/delete dialogs.
 - `src/components/portfolio/` - `positionClipboard.ts` (copy JSON), `positionOptions.ts` (storage location options + localStorage customs), `positionFormMath.ts` (pure cost/add-reduce preview math on shared domain helpers), `PositionDeltaEditor.tsx` (add/reduce edit UI; submit logic stays in PositionForm), `PositionCostFields.tsx` + `PositionStorageFields.tsx` (extracted field groups)
 - `react-doctor.config.json` - Root-level React Doctor triage policy
 
@@ -352,7 +352,7 @@ All pages MUST use the same header pattern: a `flex-col gap-3 sm:flex-row ... ju
 
 ### Design System & Visual Identity
 
-- **Colors**: indigo-tinted neutrals — `--primary: 234 89% 55%` (light), `234 89% 62%` (dark, AA-safe). Profit/loss via `text-profit`/`text-loss`, backed by contrast-safe CSS vars (`--profit`/`--loss` + `-foreground`); `--warning`/`--info` also available. Chart colors only from `chartColors.ts` — never inline hex.
+- **Colors**: indigo-tinted neutrals — `--primary: 234 89% 55%` (light), `234 89% 62%` (dark, AA-safe). Profit/loss via `text-profit`/`text-loss`, backed by contrast-safe CSS vars (`--profit`/`--loss` + `-foreground`). `text-warning`/`text-info` are overridden in `index.css` to their `-foreground` variants (AA-safe in light) — use these tokens for semantic-state text (never raw amber/green/blue palette); use `bg-warning`/`bg-info` (base token) for fills. Chart colors only from `chartColors.ts` — never inline hex.
 - **Fonts**: Plus Jakarta Sans (body/headings) + JetBrains Mono (tabular numbers). **Skeleton**: `.skeleton` CSS shimmer on all pages/charts.
 - **HelpTooltip**: `?` tooltips on finance terms; controlled open state, tap-to-toggle for touch, `stopPropagation` on pointer events so taps don't toggle `CollapsibleCard`.
 - **Sidebar**: Linear-style active state (`border border-primary/30 bg-primary/10 text-primary font-semibold`, no side stripe); desktop collapses to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed`), mobile stays a full-width drawer.
