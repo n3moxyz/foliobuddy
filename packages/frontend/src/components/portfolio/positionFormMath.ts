@@ -6,6 +6,15 @@ export type CostFxRatesByCurrency = Record<string, number>;
 
 const SUPPORTED_COST_CURRENCIES: CostCurrency[] = ['USD', 'SGD', 'JPY', 'TWD', 'KRW', 'NOK'];
 const SUPPORTED_COST_CURRENCY_SET = new Set<string>(SUPPORTED_COST_CURRENCIES);
+const YAHOO_SUFFIX_COST_CURRENCIES: Array<[suffix: string, currency: CostCurrency]> = [
+  ['.SI', 'SGD'],
+  ['.T', 'JPY'],
+  ['.TW', 'TWD'],
+  ['.TWO', 'TWD'],
+  ['.KS', 'KRW'],
+  ['.KQ', 'KRW'],
+  ['.OL', 'NOK'],
+];
 
 export interface DeltaPreview {
   currentQuantity: number;
@@ -23,6 +32,27 @@ function parseNumber(value: string): number {
 export function normalizeCostCurrency(value: string | null | undefined): CostCurrency {
   const currency = value?.trim().toUpperCase();
   return currency && SUPPORTED_COST_CURRENCY_SET.has(currency) ? (currency as CostCurrency) : 'USD';
+}
+
+function inferCurrencyFromYahooSymbol(value: string | null | undefined): CostCurrency | null {
+  const symbol = value?.trim().toUpperCase();
+  if (!symbol) return null;
+  const match = YAHOO_SUFFIX_COST_CURRENCIES.find(([suffix]) => symbol.endsWith(suffix));
+  return match?.[1] ?? null;
+}
+
+export function inferListedEquityCostCurrency(params: {
+  nativeCurrency: string | null | undefined;
+  symbol: string | null | undefined;
+  providerAssetId: string | null | undefined;
+}): CostCurrency {
+  const nativeCurrency = normalizeCostCurrency(params.nativeCurrency);
+  const inferred =
+    inferCurrencyFromYahooSymbol(params.providerAssetId) ??
+    inferCurrencyFromYahooSymbol(params.symbol);
+
+  if (nativeCurrency === 'USD' && inferred) return inferred;
+  return nativeCurrency;
 }
 
 export function costCurrencyDisplayRate(

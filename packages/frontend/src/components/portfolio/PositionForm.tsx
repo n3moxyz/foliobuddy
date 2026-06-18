@@ -71,6 +71,7 @@ import {
   calculateNonNegativeTotalCostInput,
   calculateTotalCostInput,
   costCurrencyDisplayRate,
+  inferListedEquityCostCurrency,
   normalizeCostCurrency,
   toUsdCost,
   usdPerCostCurrency,
@@ -450,7 +451,11 @@ export function PositionForm({
   const costCurrency = useMemo<CostCurrency>(() => {
     if (category !== 'equity') return 'USD';
     if (equityMode === 'fund' && !isEditing) return normalizeCostCurrency(utNativeCurrency);
-    return normalizeCostCurrency(selectedAsset?.nativeCurrency);
+    return inferListedEquityCostCurrency({
+      nativeCurrency: selectedAsset?.nativeCurrency,
+      symbol: selectedAsset?.symbol,
+      providerAssetId: selectedAsset?.providerAssetId,
+    });
   }, [category, equityMode, isEditing, utNativeCurrency, selectedAsset]);
 
   const costDisplayRate = useMemo(
@@ -743,12 +748,52 @@ export function PositionForm({
     setFundingCashPositionId(NO_FUNDING_CASH_POSITION);
   }, [cashFundingOptions, fundingCashPositionId]);
 
+  const withInferredListedEquityCurrency = (asset: Asset): Asset => {
+    if (asset.category !== 'EQUITY') return asset;
+    if (normalizeCostCurrency(asset.nativeCurrency) !== 'USD') return asset;
+    const inferredCurrency = inferListedEquityCostCurrency({
+      nativeCurrency: asset.nativeCurrency,
+      symbol: asset.symbol,
+      providerAssetId: asset.providerAssetId,
+    });
+    return inferredCurrency !== 'USD' && inferredCurrency !== asset.nativeCurrency
+      ? { ...asset, nativeCurrency: inferredCurrency }
+      : asset;
+  };
+
+  const repairExistingProviderAsset = async (asset: Asset, nativeCurrency: CostCurrency) => {
+    if (asset.priceProvider !== 'yahoo') return null;
+    if (asset.nativeCurrency === nativeCurrency) return null;
+    return createAssetFromProvider.mutateAsync({
+      provider: 'yahoo',
+      providerAssetId: asset.providerAssetId ?? asset.symbol,
+      symbol: asset.symbol,
+      name: asset.name,
+      category: 'EQUITY',
+      nativeCurrency,
+      exchange: asset.exchange ?? null,
+    });
+  };
+
   const handleSelectExistingAsset = (asset: Asset) => {
-    setAssetId(asset.id);
-    setSelectedAsset(asset);
+    const localAsset = withInferredListedEquityCurrency(asset);
+    setAssetId(localAsset.id);
+    setSelectedAsset(localAsset);
     setSearchQuery('');
     setHighlightedIndex(-1);
     setShowDropdown(false);
+
+    void repairExistingProviderAsset(asset, localAsset.nativeCurrency as CostCurrency)
+      .then((updatedAsset) => {
+        if (updatedAsset) {
+          const localizedUpdatedAsset = withInferredListedEquityCurrency(updatedAsset);
+          setAssetId(localizedUpdatedAsset.id);
+          setSelectedAsset(localizedUpdatedAsset);
+        }
+      })
+      .catch(() => {
+        // Keep the local suffix-inferred currency even if the catalog repair is delayed.
+      });
   };
 
   const fiatCashPriceUsd = (currency: FiatCashCurrency) => {
@@ -808,8 +853,9 @@ export function PositionForm({
       });
     }
 
-    setAssetId(asset.id);
-    setSelectedAsset(asset);
+    const localAsset = withInferredListedEquityCurrency(asset);
+    setAssetId(localAsset.id);
+    setSelectedAsset(localAsset);
     setSearchQuery('');
     setHighlightedIndex(-1);
     setShowDropdown(false);

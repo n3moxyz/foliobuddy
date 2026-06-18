@@ -5,6 +5,7 @@ import {
   calculateNonNegativeAverageCostInput,
   calculateNonNegativeTotalCostInput,
   calculateTotalCostInput,
+  inferListedEquityCostCurrency,
   normalizeCostCurrency,
   toUsdCost,
 } from '../positionFormMath';
@@ -33,6 +34,33 @@ describe('positionFormMath', () => {
   it('normalizes supported listed-equity cost currencies', () => {
     expect(normalizeCostCurrency('nok')).toBe('NOK');
     expect(normalizeCostCurrency('CHF')).toBe('USD');
+  });
+
+  it('infers supported Yahoo suffix currencies when catalog metadata is stale USD', () => {
+    expect(
+      inferListedEquityCostCurrency({
+        nativeCurrency: 'USD',
+        symbol: 'ENH.OL',
+        providerAssetId: 'ENH.OL',
+      })
+    ).toBe('NOK');
+    expect(
+      inferListedEquityCostCurrency({
+        nativeCurrency: 'USD',
+        symbol: '285A.T',
+        providerAssetId: '285A.T',
+      })
+    ).toBe('JPY');
+  });
+
+  it('keeps explicit supported native currencies ahead of suffix inference', () => {
+    expect(
+      inferListedEquityCostCurrency({
+        nativeCurrency: 'SGD',
+        symbol: 'ENH.OL',
+        providerAssetId: 'ENH.OL',
+      })
+    ).toBe('SGD');
   });
 
   it('builds an add-position preview using display currency', () => {
