@@ -1406,6 +1406,16 @@ Applies beyond PDFs: scraping JSON-shaped logs out of unstructured stdout, pulli
 
 **FSMOne-specific bonus:** the format omits ISINs (UOB Kay Hian includes them). The route's downstream Yahoo `searchByIsin` lookup is gated on `if (h.isin)`, so an empty ISIN naturally skips the lookup and the user wires up the Yahoo symbol manually after import. No code change needed — the gate was already defensive. Worth noting because "feature works because the next consumer was defensive" is the kind of accidental-correctness that's only obvious in hindsight, and might bite the next person who tightens the validation.
 
+### Monthly Unit-Trust Statements Should Reconcile, Not Duplicate
+
+**The bug:** Unit-trust PDF upload was built as a convenient create flow: parse the monthly broker statement, prefill fund identity/NAV/units/cost, then submit and create a new `Position`. That is wrong for monthly statements. A broker statement is a point-in-time state for an existing fund holding, so uploading the next month's PDF should overtake the matching row instead of adding a duplicate line item.
+
+**The fix:** Keep parsing on the backend, but make reconciliation a frontend form concern where the current user's positions are already loaded. `statementMatching.ts` matches parsed holdings against existing unit-trust positions in descending-confidence order: ISIN, provider/Yahoo symbol, exact fund code, exact fund name plus currency. If multiple rows match the same fund, the parsed broker maps to app storage (`UOB Kay Hian` → `UOB KH`, `FSMOne / iFAST` → `FSMOne`) and breaks the tie.
+
+When `PositionForm` has a statement match, save calls `PUT /positions/:id` with the parsed units and cost basis instead of `POST /positions`. That naturally creates the existing `mode='reset'` history boundary, so older add/reduce history remains visible but becomes previous history before the broker statement reset. Manual-priced unit-trust assets also get the parsed NAV through `PATCH /assets/:id/nav`; Yahoo-backed unit trusts skip manual NAV update because that route intentionally only accepts manual-priced assets. Cash-pile funding is disabled for matched statement saves because this is reconciliation, not a new purchase.
+
+**The pattern:** For recurring statement imports, treat the document as an authoritative state snapshot, not a transaction. Parse on stable identifiers, match conservatively, show the matched row in the form, then update/reset that row. Only create a new position when the statement cannot be confidently tied to an existing holding.
+
 ### Backfill Scripts as Ephemeral State, Not a Registry
 
 **The bug:** Adding two new `AMOVASIN` positions (Amova Singapore Equity Fund, one in FSMOne and one in UOB Kay Hian — same fund, two brokers) to the prod snapshot history. Opened `backfill-equity-snapshots.ts` to add the entries. The `BACKFILLS` array already had six entries from prior runs (`D05.SI`, `S68.SI`, `OV8.SI`, `GLXY`, `EWY`, `LIONGLOB`). Initial instinct: "append the new ones, the script's docstring says re-running is idempotent."

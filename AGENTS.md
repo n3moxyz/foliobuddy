@@ -145,7 +145,7 @@ Yahoo's `/v1/finance/search` IP-filters by caller region even with `region=US` (
 
 ### Unit Trust Statement Parsers (PDF Import)
 
-`POST /assets/parse-unit-trust-statement` extracts text via `pdf-parse`, then walks broker parsers in `src/services/statementParsers/` until one succeeds. PDF text flattens table columns into a token stream, so each parser anchors on a deterministic marker (ISIN or value-block regex) and reads fixed fields after it. Supported: **UOB Kay Hian** (`uobKayHian.ts`), **FSMOne / iFAST** (`fsmOne.ts`). Add a broker: new file alongside, append to `parsers` in `routes/assets.ts`, update the supported-formats error string, add a broker→`storageLocation` branch in `PositionForm.tsx:applyParsedHolding`.
+`POST /assets/parse-unit-trust-statement` extracts text via `pdf-parse`, then walks broker parsers in `src/services/statementParsers/` until one succeeds. PDF text flattens table columns into a token stream, so each parser anchors on a deterministic marker (ISIN or value-block regex) and reads fixed fields after it. Supported: **UOB Kay Hian** (`uobKayHian.ts`), **FSMOne / iFAST** (`fsmOne.ts`). Parsed holdings are reconciled against existing unit-trust positions by `PositionForm.tsx` + `statementMatching.ts` (ISIN first, provider/Yahoo symbol, exact symbol, exact name; broker storage location breaks ties). Add a broker: new file alongside, append to `parsers` in `routes/assets.ts`, update the supported-formats error string, add the broker→`storageLocation` mapping in `statementMatching.ts`, and keep `statementMatching.test.ts` coverage for matching/tie-break behavior.
 
 ### CoinGecko Rate Limiting
 
@@ -296,7 +296,7 @@ Two sub-types via UI toggle (enums unchanged):
 
 **Display:** Equities `PositionTable` defaults to `groupBy='broker'`; unit trusts show a `Unit Trust` badge. Header segmented control switches to `groupBy='equityType'`; choice persists in localStorage (`foliobuddy-equity-group-by`). **NAV-age badge** under the symbol appears for unit trusts OR manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers and fiat cash skip it.
 
-**Statement upload:** Dashed card is a `<label>` wrapping the file input — click or drag-drop PDF both work (`utDragOver` highlights). Validates `application/pdf`/`.pdf`.
+**Statement upload:** Dashed card is a `<label>` wrapping the file input — click or drag-drop PDF both work (`utDragOver` highlights). Validates `application/pdf`/`.pdf`. Monthly statement uploads should update a matched existing unit-trust `Position` instead of creating a duplicate line: when `statementMatching.ts` finds a match, submit calls `PUT /positions/:id` with the parsed units/cost basis and records a normal `mode='reset'` history boundary; manual-priced assets also get the parsed NAV via `PATCH /assets/:id/nav`. Cash funding is intentionally disabled for matched statements because the statement is a reconciliation/reset, not a new funded purchase.
 
 **Copy/Paste round-trip:** Clipboard includes `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` for non-coingecko assets. Bulk import honors these only when creating a new Asset (defaults: `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`); existing symbols match by symbol first.
 

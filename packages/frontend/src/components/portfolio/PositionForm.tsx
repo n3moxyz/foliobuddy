@@ -18,6 +18,7 @@ import {
   useCreateAssetFromCoinGecko,
   useCreateAssetFromProvider,
   useCreateUnitTrust,
+  useUpdateAssetNav,
 } from '@/hooks/useAssets';
 import {
   useCreatePosition,
@@ -78,11 +79,22 @@ import {
   type CostCurrency,
   type CostInputMode,
 } from './positionFormMath';
+import {
+  findMatchingUnitTrustPosition,
+  statementBrokerStorageLocation,
+  type UnitTrustStatementMatch,
+} from './statementMatching';
 import type { CategoryType, EquityMode, FormMode, PositionStorageType } from './positionFormTypes';
 import type { PositionDeltaMode } from '@foliobuddy/shared';
 
 const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
 const LEGACY_CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
+const STATEMENT_MATCH_REASON_LABEL: Record<UnitTrustStatementMatch['reason'], string> = {
+  isin: 'ISIN',
+  'provider-symbol': 'Yahoo symbol',
+  'asset-symbol': 'fund code',
+  name: 'fund name',
+};
 
 function getCustodyNames(): string[] {
   try {
@@ -259,6 +271,7 @@ export function PositionForm({
   // usdPerNative: 1 unit of native currency = x USD. Overwritten by PDF parse when available.
   const [utUsdPerNative, setUtUsdPerNative] = useState<number>(1 / USD_SGD_FALLBACK_RATE);
   const [utYahooSymbol, setUtYahooSymbol] = useState<string | null>(null);
+  const [utStatementMatch, setUtStatementMatch] = useState<UnitTrustStatementMatch | null>(null);
 
   // Error state
   const [error, setError] = useState<string | null>(null);
@@ -349,6 +362,7 @@ export function PositionForm({
     setStorageLocation('');
     setAddingStorageLocation(false);
     setNewStorageLocation('');
+    setUtStatementMatch(null);
   };
 
   const handleCategoryChange = (value: string) => {
@@ -395,6 +409,7 @@ export function PositionForm({
   const createAssetFromCoinGecko = useCreateAssetFromCoinGecko();
   const createAssetFromProvider = useCreateAssetFromProvider();
   const createUnitTrust = useCreateUnitTrust();
+  const updateAssetNav = useUpdateAssetNav();
   const createPosition = useCreatePosition();
   const updatePosition = useUpdatePosition();
 
@@ -404,7 +419,16 @@ export function PositionForm({
     createAsset.isPending ||
     createAssetFromCoinGecko.isPending ||
     createAssetFromProvider.isPending ||
-    createUnitTrust.isPending;
+    createUnitTrust.isPending ||
+    updateAssetNav.isPending;
+
+  const utStatementMatchedPosition = useMemo(() => {
+    if (!utStatementMatch) return null;
+    return (
+      positions?.find((item) => item.id === utStatementMatch.position.id) ??
+      utStatementMatch.position
+    );
+  }, [positions, utStatementMatch]);
 
   // Live FX rate (SGD per 1 USD) — derived from portfolio summary so it matches displayed values.
   // Other listed-equity local currencies come from /fx/rates.
@@ -721,7 +745,7 @@ export function PositionForm({
 
   const canUseFundingCash = isEditing
     ? editMode === 'delta' && deltaMode === 'add' && !isStablecoinCategory(position?.asset.category)
-    : category !== 'cash';
+    : category !== 'cash' && !utStatementMatch;
 
   const cashFundingOptions = useMemo(() => {
     if (!canUseFundingCash) return [];
@@ -1048,6 +1072,8 @@ export function PositionForm({
   };
 
   const applyParsedHolding = (h: ParsedStatementHolding, broker: string) => {
+    const statementMatch = findMatchingUnitTrustPosition(h, positions, broker);
+    setUtStatementMatch(statementMatch);
     setUtSymbol(h.symbol);
     setUtName(h.name);
     setUtIsin(h.isin);
@@ -1063,11 +1089,7 @@ export function PositionForm({
     const usdPerNative = h.fxRateToUsd ?? (ccy === 'USD' ? 1 : 1 / USD_SGD_FALLBACK_RATE);
     setUtUsdPerNative(usdPerNative);
     setTotalCost(ccy === 'USD' ? h.totalCostUsd.toFixed(2) : h.totalCostNative.toFixed(2));
-    const parsedStorageLocation = broker.includes('UOB')
-      ? 'UOB KH'
-      : /FSM|fundsupermart|iFAST/i.test(broker)
-        ? 'FSMOne'
-        : broker.trim();
+    const parsedStorageLocation = statementBrokerStorageLocation(broker);
     setStorageLocation(parsedStorageLocation);
     if (parsedStorageLocation) {
       saveLocationOptionForStorageType('BROKERAGE', parsedStorageLocation);
@@ -1076,10 +1098,21 @@ export function PositionForm({
     setUtPrefilledFrom(broker);
     setUtMultipleHoldings(null);
     setUtYahooSymbol(h.yahooSymbol ?? null);
+    if (statementMatch) {
+      setAssetId(statementMatch.position.assetId);
+      setSelectedAsset(statementMatch.position.asset);
+      setNotes(statementMatch.position.notes ?? '');
+      setIsCustody(!!statementMatch.position.custodyOf);
+      setCustodyOf(statementMatch.position.custodyOf ?? '');
+    } else {
+      setAssetId('');
+      setSelectedAsset(null);
+    }
   };
 
   const handleUploadStatement = async (file: File) => {
     setUtUploadError(null);
+    setUtStatementMatch(null);
     setUtUploading(true);
     try {
       const result = await api.parseUnitTrustStatement(file);
@@ -1286,7 +1319,8 @@ export function PositionForm({
       }
     }
 
-    // Fund-level (unit trust) create path: create asset + initial NAV, then create position
+    // Fund-level (unit trust) path: a matched monthly statement updates the existing row;
+    // otherwise create the asset + initial NAV, then create a new position.
     if (!isEditing && category === 'equity' && equityMode === 'fund') {
       const navNum = parseFloat(utNav);
       const qtyNum = parseFloat(quantity);
@@ -1312,32 +1346,59 @@ export function PositionForm({
         return;
       }
 
-      const createFundPosition = async () => {
-        const newAsset = await createUnitTrust.mutateAsync({
-          symbol: utSymbol.trim().toUpperCase(),
-          name: utName.trim(),
-          nativeCurrency: utNativeCurrency,
-          isin: utIsin.trim() || undefined,
-          factsheetUrl: utFactsheetUrl.trim() || undefined,
-          initialNav: navNum,
-          navAsOfDate: new Date(utNavAsOfDate).toISOString(),
-          yahooSymbol: utYahooSymbol ?? undefined,
-        });
+      const saveFundPosition = async () => {
+        if (utStatementMatchedPosition) {
+          if (utStatementMatchedPosition.asset.priceProvider === 'manual') {
+            await updateAssetNav.mutateAsync({
+              id: utStatementMatchedPosition.assetId,
+              data: {
+                navPrice: navNum,
+                asOfDate: new Date(utNavAsOfDate).toISOString(),
+                notes: utPrefilledFrom ? `Statement import from ${utPrefilledFrom}` : undefined,
+              },
+            });
+          }
 
-        if (!newAsset?.id) {
-          throw new Error('Unit trust asset creation did not return an id');
+          await updatePosition.mutateAsync({
+            id: utStatementMatchedPosition.id,
+            data: {
+              assetId: utStatementMatchedPosition.assetId,
+              quantity: qtyNum,
+              avgCostUsd: qtyNum > 0 ? totalCostUsd / qtyNum : 0,
+              storageType: 'BROKERAGE',
+              storageLocation: storageLocation || undefined,
+              notes: notes.trim() || undefined,
+              custodyOf: isCustody ? custodyOf.trim() || 'Someone' : '',
+            },
+          });
+        } else {
+          const newAsset = await createUnitTrust.mutateAsync({
+            symbol: utSymbol.trim().toUpperCase(),
+            name: utName.trim(),
+            nativeCurrency: utNativeCurrency,
+            isin: utIsin.trim() || undefined,
+            factsheetUrl: utFactsheetUrl.trim() || undefined,
+            initialNav: navNum,
+            navAsOfDate: new Date(utNavAsOfDate).toISOString(),
+            yahooSymbol: utYahooSymbol ?? undefined,
+          });
+
+          if (!newAsset?.id) {
+            throw new Error('Unit trust asset creation did not return an id');
+          }
+
+          await createPosition.mutateAsync({
+            assetId: newAsset.id,
+            quantity: qtyNum,
+            avgCostUsd: qtyNum > 0 ? totalCostUsd / qtyNum : 0,
+            storageType: 'BROKERAGE',
+            storageLocation: storageLocation || undefined,
+            notes: notes.trim() || undefined,
+            custodyOf: isCustody ? custodyOf.trim() || 'Someone' : undefined,
+            fundingCashPositionId: fundingCashPositionIdForSubmit,
+          });
         }
 
-        await createPosition.mutateAsync({
-          assetId: newAsset.id,
-          quantity: qtyNum,
-          avgCostUsd: qtyNum > 0 ? totalCostUsd / qtyNum : 0,
-          storageType: 'BROKERAGE',
-          storageLocation: storageLocation || undefined,
-          notes: notes.trim() || undefined,
-          custodyOf: isCustody ? custodyOf.trim() || 'Someone' : undefined,
-          fundingCashPositionId: fundingCashPositionIdForSubmit,
-        });
         handleCustodySave();
         onSuccess();
       };
@@ -1345,11 +1406,13 @@ export function PositionForm({
       try {
         await requestFundingConfirmation(
           totalCostUsd,
-          `${utSymbol.trim().toUpperCase()} ${utName.trim()}`.trim(),
-          createFundPosition
+          utStatementMatchedPosition
+            ? `${utStatementMatchedPosition.asset.symbol} ${utStatementMatchedPosition.asset.name}`
+            : `${utSymbol.trim().toUpperCase()} ${utName.trim()}`.trim(),
+          saveFundPosition
         );
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to create unit trust');
+        setError(err instanceof Error ? err.message : 'Failed to save unit trust');
       }
       return;
     }
@@ -1802,7 +1865,7 @@ export function PositionForm({
                       <div className="space-y-1">
                         {utMultipleHoldings.map((h) => (
                           <button
-                            key={h.isin}
+                            key={`${h.isin || h.yahooSymbol || h.symbol}-${h.name}`}
                             type="button"
                             onClick={() => applyParsedHolding(h, utPrefilledFrom || '')}
                             className="w-full rounded border bg-background p-2 text-left text-sm hover:bg-accent"
@@ -1820,6 +1883,17 @@ export function PositionForm({
 
                   {utPrefilledFrom && !utMultipleHoldings && (
                     <div className="space-y-1">
+                      {utStatementMatch && utStatementMatchedPosition && (
+                        <div className="rounded-md border border-info/30 bg-info/10 p-2 text-xs text-info">
+                          Matched existing position by{' '}
+                          {STATEMENT_MATCH_REASON_LABEL[utStatementMatch.reason]}:{' '}
+                          {utStatementMatchedPosition.asset.symbol}
+                          {utStatementMatchedPosition.storageLocation
+                            ? ` at ${utStatementMatchedPosition.storageLocation}`
+                            : ''}
+                          . Saving will update this line instead of adding a new one.
+                        </div>
+                      )}
                       <div className="rounded-md border border-profit/30 bg-profit/10 p-2 text-xs text-profit">
                         Pre-filled from {utPrefilledFrom} statement. Please review before saving.
                       </div>
@@ -2176,7 +2250,11 @@ export function PositionForm({
                   className={!isFormValid && !isLoading ? 'opacity-50 cursor-not-allowed' : ''}
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Saving...' : isEditing ? 'Update Position' : 'Add Position'}
+                  {isLoading
+                    ? 'Saving...'
+                    : isEditing || utStatementMatch
+                      ? 'Update Position'
+                      : 'Add Position'}
                 </Button>
               </div>
             </>
