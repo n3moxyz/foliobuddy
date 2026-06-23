@@ -113,11 +113,13 @@ model PositionHistory {
   nextQuantity         Float
   nextAvgCostUsd       Float
   nextTotalCostUsd     Float
+  operationId          String?
   createdAt            DateTime @default(now())
 
   @@index([userId])
   @@index([positionId, createdAt])
   @@index([assetId])
+  @@index([operationId])
 }
 
 // Trade model - represents a single trade

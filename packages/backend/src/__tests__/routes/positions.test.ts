@@ -17,7 +17,9 @@ const mockPrisma = {
   },
   positionHistory: {
     findMany: vi.fn(),
+    findFirst: vi.fn(),
     create: vi.fn(),
+    deleteMany: vi.fn(),
   },
 };
 
@@ -476,6 +478,56 @@ describe('PUT /api/positions/:id', () => {
     });
   });
 
+  it('records reset history when edit totals changes aggregate quantity or cost', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        assetId: 'asset-1',
+        quantity: 25000,
+        avgCostUsd: 1,
+        asset: mockAsset({ id: 'asset-1', category: 'CASH', currentPriceUsd: 1 }),
+      })
+    );
+    mockPrisma.position.update.mockImplementation(async ({ data }) =>
+      mockPosition({
+        id: 'position-1',
+        assetId: 'asset-1',
+        quantity: data.quantity,
+        avgCostUsd: data.avgCostUsd,
+        marketValueUsd: data.marketValueUsd,
+        unrealizedPnL: data.unrealizedPnL,
+        unrealizedPnLPct: data.unrealizedPnLPct,
+      })
+    );
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app).put('/api/positions/position-1').send({
+      assetId: 'asset-1',
+      quantity: 20000,
+      avgCostUsd: 1,
+      storageType: 'BANK',
+      storageLocation: 'DBS',
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.positionHistory.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'test-user-id',
+        positionId: 'position-1',
+        assetId: 'asset-1',
+        mode: 'reset',
+        quantity: 20000,
+        costBasisUsd: 20000,
+        previousQuantity: 25000,
+        previousAvgCostUsd: 1,
+        previousTotalCostUsd: 25000,
+        nextQuantity: 20000,
+        nextAvgCostUsd: 1,
+        nextTotalCostUsd: 20000,
+      }),
+    });
+  });
+
   it('reduces a funding cash position when adding to an existing position', async () => {
     const targetPosition = mockPosition({
       id: 'position-1',
@@ -627,5 +679,301 @@ describe('GET /api/positions/:id/history', () => {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+  });
+});
+
+describe('DELETE /api/positions/:id/history/:historyId', () => {
+  it('cancels the latest add/reduce history entry and restores previous totals', async () => {
+    const position = mockPosition({
+      id: 'position-1',
+      assetId: 'asset-1',
+      quantity: 15,
+      avgCostUsd: 120,
+      asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+    });
+    const historyEntry = {
+      id: 'history-1',
+      userId: 'test-user-id',
+      positionId: 'position-1',
+      assetId: 'asset-1',
+      mode: 'add',
+      quantity: 5,
+      costBasisUsd: 800,
+      previousQuantity: 10,
+      previousAvgCostUsd: 100,
+      previousTotalCostUsd: 1000,
+      nextQuantity: 15,
+      nextAvgCostUsd: 120,
+      nextTotalCostUsd: 1800,
+      createdAt: new Date('2026-06-15T00:00:00.000Z'),
+    };
+
+    mockPrisma.position.findFirst.mockResolvedValue(position);
+    mockPrisma.positionHistory.findFirst
+      .mockResolvedValueOnce(historyEntry)
+      .mockResolvedValueOnce({ id: 'history-1' });
+    mockPrisma.position.update.mockImplementation(async ({ data }) =>
+      mockPosition({
+        id: 'position-1',
+        assetId: 'asset-1',
+        quantity: data.quantity,
+        avgCostUsd: data.avgCostUsd,
+        marketValueUsd: data.marketValueUsd,
+        unrealizedPnL: data.unrealizedPnL,
+        unrealizedPnLPct: data.unrealizedPnLPct,
+      })
+    );
+    mockPrisma.positionHistory.deleteMany.mockResolvedValue({ count: 1 });
+
+    const res = await request(app).delete('/api/positions/position-1/history/history-1');
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.position.update).toHaveBeenCalledWith({
+      where: { id: 'position-1' },
+      data: expect.objectContaining({
+        quantity: 10,
+        avgCostUsd: 100,
+        marketValueUsd: 1500,
+        unrealizedPnL: 500,
+        unrealizedPnLPct: 50,
+      }),
+      include: { asset: true },
+    });
+    expect(mockPrisma.positionHistory.deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: 'history-1',
+        positionId: 'position-1',
+        userId: 'test-user-id',
+      },
+    });
+  });
+
+  it('cancels a funded add and restores the paired cash reduction', async () => {
+    const targetPosition = mockPosition({
+      id: 'position-1',
+      assetId: 'asset-1',
+      quantity: 15,
+      avgCostUsd: 120,
+      asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+    });
+    const cashPosition = mockPosition({
+      id: 'cash-position-1',
+      assetId: 'asset-usdc',
+      quantity: 200,
+      avgCostUsd: 1,
+      asset: mockAsset({
+        id: 'asset-usdc',
+        symbol: 'USDC',
+        category: 'STABLECOIN',
+        currentPriceUsd: 1,
+      }),
+    });
+    const targetHistory = {
+      id: 'history-1',
+      userId: 'test-user-id',
+      positionId: 'position-1',
+      assetId: 'asset-1',
+      mode: 'add',
+      quantity: 5,
+      costBasisUsd: 800,
+      previousQuantity: 10,
+      previousAvgCostUsd: 100,
+      previousTotalCostUsd: 1000,
+      nextQuantity: 15,
+      nextAvgCostUsd: 120,
+      nextTotalCostUsd: 1800,
+      operationId: 'operation-1',
+      createdAt: new Date('2026-06-15T00:00:00.000Z'),
+    };
+    const cashHistory = {
+      id: 'cash-history-1',
+      userId: 'test-user-id',
+      positionId: 'cash-position-1',
+      assetId: 'asset-usdc',
+      mode: 'reduce',
+      quantity: 800,
+      costBasisUsd: 800,
+      previousQuantity: 1000,
+      previousAvgCostUsd: 1,
+      previousTotalCostUsd: 1000,
+      nextQuantity: 200,
+      nextAvgCostUsd: 1,
+      nextTotalCostUsd: 200,
+      operationId: 'operation-1',
+      createdAt: new Date('2026-06-15T00:00:00.000Z'),
+    };
+
+    mockPrisma.position.findFirst
+      .mockResolvedValueOnce(targetPosition)
+      .mockResolvedValueOnce(cashPosition);
+    mockPrisma.positionHistory.findFirst
+      .mockResolvedValueOnce(targetHistory)
+      .mockResolvedValueOnce({ id: 'history-1' })
+      .mockResolvedValueOnce({ id: 'cash-history-1' });
+    mockPrisma.positionHistory.findMany.mockResolvedValue([cashHistory]);
+    mockPrisma.position.update.mockImplementation(async ({ where, data }) =>
+      where.id === 'cash-position-1'
+        ? mockPosition({
+            id: 'cash-position-1',
+            assetId: 'asset-usdc',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+            marketValueUsd: data.marketValueUsd,
+            unrealizedPnL: data.unrealizedPnL,
+            unrealizedPnLPct: data.unrealizedPnLPct,
+          })
+        : mockPosition({
+            id: 'position-1',
+            assetId: 'asset-1',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+            marketValueUsd: data.marketValueUsd,
+            unrealizedPnL: data.unrealizedPnL,
+            unrealizedPnLPct: data.unrealizedPnLPct,
+          })
+    );
+    mockPrisma.positionHistory.deleteMany.mockResolvedValue({ count: 1 });
+
+    const res = await request(app).delete('/api/positions/position-1/history/history-1');
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.position.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'position-1' },
+      data: expect.objectContaining({
+        quantity: 10,
+        avgCostUsd: 100,
+        marketValueUsd: 1500,
+      }),
+      include: { asset: true },
+    });
+    expect(mockPrisma.position.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'cash-position-1' },
+      data: expect.objectContaining({
+        quantity: 1000,
+        avgCostUsd: 1,
+        marketValueUsd: 1000,
+      }),
+      include: { asset: true },
+    });
+    expect(mockPrisma.positionHistory.deleteMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        id: 'history-1',
+        positionId: 'position-1',
+        userId: 'test-user-id',
+      },
+    });
+    expect(mockPrisma.positionHistory.deleteMany).toHaveBeenNthCalledWith(2, {
+      where: {
+        id: 'cash-history-1',
+        positionId: 'cash-position-1',
+        userId: 'test-user-id',
+      },
+    });
+  });
+
+  it('rejects canceling a non-latest history entry', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        quantity: 15,
+        avgCostUsd: 120,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+    mockPrisma.positionHistory.findFirst
+      .mockResolvedValueOnce({
+        id: 'history-1',
+        userId: 'test-user-id',
+        positionId: 'position-1',
+        assetId: 'asset-1',
+        mode: 'add',
+        quantity: 5,
+        costBasisUsd: 800,
+        previousQuantity: 10,
+        previousAvgCostUsd: 100,
+        previousTotalCostUsd: 1000,
+        nextQuantity: 15,
+        nextAvgCostUsd: 120,
+        nextTotalCostUsd: 1800,
+        createdAt: new Date('2026-06-15T00:00:00.000Z'),
+      })
+      .mockResolvedValueOnce({ id: 'history-2' });
+
+    const res = await request(app).delete('/api/positions/position-1/history/history-1');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Only the latest position history entry can be canceled');
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+    expect(mockPrisma.positionHistory.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects canceling a manual reset history entry', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        quantity: 20000,
+        avgCostUsd: 1,
+        asset: mockAsset({ id: 'asset-1', category: 'CASH', currentPriceUsd: 1 }),
+      })
+    );
+    mockPrisma.positionHistory.findFirst.mockResolvedValue({
+      id: 'history-reset-1',
+      userId: 'test-user-id',
+      positionId: 'position-1',
+      assetId: 'asset-1',
+      mode: 'reset',
+      quantity: 20000,
+      costBasisUsd: 20000,
+      previousQuantity: 25000,
+      previousAvgCostUsd: 1,
+      previousTotalCostUsd: 25000,
+      nextQuantity: 20000,
+      nextAvgCostUsd: 1,
+      nextTotalCostUsd: 20000,
+      createdAt: new Date('2026-06-15T00:00:00.000Z'),
+    });
+
+    const res = await request(app).delete('/api/positions/position-1/history/history-reset-1');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Manual total reset entries cannot be canceled from history');
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+    expect(mockPrisma.positionHistory.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects canceling when the position no longer matches the history entry', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        quantity: 14,
+        avgCostUsd: 120,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+    mockPrisma.positionHistory.findFirst
+      .mockResolvedValueOnce({
+        id: 'history-1',
+        userId: 'test-user-id',
+        positionId: 'position-1',
+        assetId: 'asset-1',
+        mode: 'add',
+        quantity: 5,
+        costBasisUsd: 800,
+        previousQuantity: 10,
+        previousAvgCostUsd: 100,
+        previousTotalCostUsd: 1000,
+        nextQuantity: 15,
+        nextAvgCostUsd: 120,
+        nextTotalCostUsd: 1800,
+        createdAt: new Date('2026-06-15T00:00:00.000Z'),
+      })
+      .mockResolvedValueOnce({ id: 'history-1' });
+
+    const res = await request(app).delete('/api/positions/position-1/history/history-1');
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Position has changed since this history entry was recorded');
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+    expect(mockPrisma.positionHistory.deleteMany).not.toHaveBeenCalled();
   });
 });

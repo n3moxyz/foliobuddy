@@ -165,6 +165,7 @@ export function calculatePositionValue({
 }
 
 export type PositionDeltaMode = 'add' | 'reduce';
+export type PositionHistoryMode = PositionDeltaMode | 'reset';
 
 export interface PositionDeltaInput {
   currentQuantity: number;
@@ -291,7 +292,7 @@ export interface PositionHistoryEntry {
   id: string;
   positionId: string;
   assetId: string;
-  mode: PositionDeltaMode;
+  mode: PositionHistoryMode;
   quantity: number;
   costBasisUsd: number;
   previousQuantity: number;
@@ -300,6 +301,7 @@ export interface PositionHistoryEntry {
   nextQuantity: number;
   nextAvgCostUsd: number;
   nextTotalCostUsd: number;
+  operationId?: string | null;
   createdAt: string;
 }
 

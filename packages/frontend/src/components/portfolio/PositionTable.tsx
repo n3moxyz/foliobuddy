@@ -24,7 +24,11 @@ import {
   formatQuantity,
   getPnLColorClass,
 } from '@/lib/utils';
-import { useDeletePosition, usePositionHistory } from '@/hooks/usePortfolio';
+import {
+  useCancelPositionHistory,
+  useDeletePosition,
+  usePositionHistory,
+} from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
 import { PositionRow } from './PositionRow';
 import {
@@ -137,6 +141,7 @@ export function PositionTable({
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [deletePosition, setDeletePosition] = useState<Position | null>(null);
+  const [cancelHistoryEntry, setCancelHistoryEntry] = useState<PositionHistoryEntry | null>(null);
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const [skipConfirm, setSkipConfirm] = useState(() => {
     // Migrates users from the old pa-portfolio key to the new foliobuddy key on first render
@@ -157,6 +162,7 @@ export function PositionTable({
     [fxRate, usdFxRates]
   );
   const deletePositionMutation = useDeletePosition();
+  const cancelPositionHistoryMutation = useCancelPositionHistory();
   const {
     data: positionHistory = [],
     isLoading: isHistoryLoading,
@@ -362,6 +368,21 @@ export function PositionTable({
     await deletePositionMutation.mutateAsync(deletePosition.id);
     setDeletePosition(null);
     setDontAskAgain(false);
+  };
+
+  const handleCancelHistoryEntry = async () => {
+    if (!viewPosition || !cancelHistoryEntry) return;
+
+    try {
+      const updatedPosition = await cancelPositionHistoryMutation.mutateAsync({
+        id: viewPosition.id,
+        historyId: cancelHistoryEntry.id,
+      });
+      setViewPosition(updatedPosition);
+      setCancelHistoryEntry(null);
+    } catch {
+      // Keep the dialog open so the mutation error can be shown below the preview.
+    }
   };
 
   const handleView = useCallback((position: Position) => setViewPosition(position), []);
@@ -605,34 +626,189 @@ export function PositionTable({
     const chronologicalHistory = [...history].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
-    const firstChange = chronologicalHistory[0];
-    const activityRows = [
-      {
-        id: 'original',
-        label: 'Original',
-        date: viewPosition.createdAt,
-        quantity: firstChange?.previousQuantity ?? viewPosition.quantity,
-        quantityPrefix: '',
-        priceUsd: firstChange?.previousAvgCostUsd ?? viewPosition.avgCostUsd,
-        nextQuantity: firstChange?.previousQuantity ?? viewPosition.quantity,
-        nextAvgCostUsd: firstChange?.previousAvgCostUsd ?? viewPosition.avgCostUsd,
-        toneClass: 'text-foreground',
-      },
-      ...chronologicalHistory.map((entry) => {
-        const isAdd = entry.mode === 'add';
+    type ActivityRow = {
+      id: string;
+      label: string;
+      date: string;
+      quantity: number;
+      quantityPrefix: string;
+      priceUsd: number;
+      nextQuantity: number;
+      nextAvgCostUsd: number;
+      toneClass: string;
+      canCancel: boolean;
+      historyEntry: PositionHistoryEntry | null;
+      detail?: string;
+    };
+
+    let lastResetIndex = -1;
+    chronologicalHistory.forEach((entry, index) => {
+      if (entry.mode === 'reset') {
+        lastResetIndex = index;
+      }
+    });
+
+    const resetEntry = lastResetIndex >= 0 ? chronologicalHistory[lastResetIndex] : null;
+    const historyBeforeReset = resetEntry ? chronologicalHistory.slice(0, lastResetIndex) : [];
+    const currentHistoryEntries = resetEntry
+      ? chronologicalHistory.slice(lastResetIndex + 1)
+      : chronologicalHistory;
+    const latestHistoryEntry = chronologicalHistory[chronologicalHistory.length - 1];
+    const latestCancelableHistoryId =
+      latestHistoryEntry && latestHistoryEntry.mode !== 'reset' ? latestHistoryEntry.id : null;
+
+    const rowForHistoryEntry = (entry: PositionHistoryEntry): ActivityRow => {
+      if (entry.mode === 'reset') {
         return {
           id: entry.id,
-          label: isAdd ? 'Add' : 'Reduce',
+          label: 'Manual Reset',
           date: entry.createdAt,
-          quantity: entry.quantity,
-          quantityPrefix: isAdd ? '+' : '-',
-          priceUsd: entry.quantity > 0 ? entry.costBasisUsd / entry.quantity : 0,
+          quantity: entry.nextQuantity,
+          quantityPrefix: '',
+          priceUsd: entry.nextAvgCostUsd,
           nextQuantity: entry.nextQuantity,
           nextAvgCostUsd: entry.nextAvgCostUsd,
-          toneClass: isAdd ? 'text-profit' : 'text-loss',
+          toneClass: 'text-info',
+          canCancel: false,
+          historyEntry: entry,
+          detail: `Previous baseline: ${formatQuantity(
+            entry.previousQuantity,
+            viewPosition.asset.category
+          )}`,
         };
-      }),
+      }
+
+      const isAdd = entry.mode === 'add';
+      return {
+        id: entry.id,
+        label: isAdd ? 'Add' : 'Reduce',
+        date: entry.createdAt,
+        quantity: entry.quantity,
+        quantityPrefix: isAdd ? '+' : '-',
+        priceUsd: entry.quantity > 0 ? entry.costBasisUsd / entry.quantity : 0,
+        nextQuantity: entry.nextQuantity,
+        nextAvgCostUsd: entry.nextAvgCostUsd,
+        toneClass: isAdd ? 'text-profit' : 'text-loss',
+        canCancel: entry.id === latestCancelableHistoryId,
+        historyEntry: entry,
+      };
+    };
+
+    const firstPreviousChange = historyBeforeReset[0];
+    const previousRows: ActivityRow[] = resetEntry
+      ? [
+          {
+            id: 'previous-original',
+            label: 'Original',
+            date: viewPosition.createdAt,
+            quantity: firstPreviousChange?.previousQuantity ?? resetEntry.previousQuantity,
+            quantityPrefix: '',
+            priceUsd: firstPreviousChange?.previousAvgCostUsd ?? resetEntry.previousAvgCostUsd,
+            nextQuantity: firstPreviousChange?.previousQuantity ?? resetEntry.previousQuantity,
+            nextAvgCostUsd:
+              firstPreviousChange?.previousAvgCostUsd ?? resetEntry.previousAvgCostUsd,
+            toneClass: 'text-foreground',
+            canCancel: false,
+            historyEntry: null,
+          },
+          ...historyBeforeReset.map(rowForHistoryEntry),
+        ]
+      : [];
+
+    const firstCurrentChange = currentHistoryEntries[0];
+    const currentRows: ActivityRow[] = [
+      {
+        id: resetEntry ? `current-baseline-${resetEntry.id}` : 'original',
+        label: resetEntry ? 'Current Baseline' : 'Original',
+        date: resetEntry?.createdAt ?? viewPosition.createdAt,
+        quantity:
+          resetEntry?.nextQuantity ?? firstCurrentChange?.previousQuantity ?? viewPosition.quantity,
+        quantityPrefix: '',
+        priceUsd:
+          resetEntry?.nextAvgCostUsd ??
+          firstCurrentChange?.previousAvgCostUsd ??
+          viewPosition.avgCostUsd,
+        nextQuantity:
+          resetEntry?.nextQuantity ?? firstCurrentChange?.previousQuantity ?? viewPosition.quantity,
+        nextAvgCostUsd:
+          resetEntry?.nextAvgCostUsd ??
+          firstCurrentChange?.previousAvgCostUsd ??
+          viewPosition.avgCostUsd,
+        toneClass: resetEntry ? 'text-info' : 'text-foreground',
+        canCancel: false,
+        historyEntry: null,
+        detail: resetEntry ? 'Manual total correction starts a new active history.' : undefined,
+      },
+      ...currentHistoryEntries.map(rowForHistoryEntry),
     ];
+    const activityRowCount = previousRows.length + currentRows.length;
+
+    const renderActivityRows = (rows: ActivityRow[]) =>
+      rows.map((entry) => (
+        <div
+          key={entry.id}
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5"
+        >
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className={`text-xs font-medium uppercase ${entry.toneClass}`}>
+                {entry.label}
+              </span>
+              <span className="text-xs text-muted-foreground">{formatDateTime(entry.date)}</span>
+            </div>
+            <p className="mt-0.5 truncate text-sm">
+              <span className={`font-mono font-medium ${entry.toneClass}`}>
+                {entry.quantityPrefix}
+                {formatQuantity(entry.quantity, viewPosition.asset.category)}
+              </span>{' '}
+              <span>{viewPosition.asset.symbol}</span>
+              <span className="text-muted-foreground"> @ </span>
+              <span className="font-mono">
+                {formatCurrency(
+                  convert(entry.priceUsd),
+                  currency,
+                  getSmartDecimals(convert(entry.priceUsd))
+                )}
+              </span>
+            </p>
+            {entry.detail && (
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{entry.detail}</p>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center justify-end gap-2 text-right">
+            <div>
+              <p className="font-mono text-sm font-medium">
+                {formatQuantity(entry.nextQuantity, viewPosition.asset.category)}
+              </p>
+              <p className="font-mono text-xs text-muted-foreground">
+                avg{' '}
+                {formatCurrency(
+                  convert(entry.nextAvgCostUsd),
+                  currency,
+                  getSmartDecimals(convert(entry.nextAvgCostUsd))
+                )}
+              </p>
+            </div>
+            {entry.canCancel && entry.historyEntry && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="-mr-1 h-9 w-9 shrink-0 text-destructive touch-manipulation hover:text-destructive sm:h-8 sm:w-8"
+                aria-label={`Delete ${entry.label.toLowerCase()} history entry`}
+                title="Delete history entry"
+                onClick={() => {
+                  cancelPositionHistoryMutation.reset();
+                  setCancelHistoryEntry(entry.historyEntry);
+                }}
+                disabled={cancelPositionHistoryMutation.isPending}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      ));
 
     return (
       <div className="border-t pt-4">
@@ -644,7 +820,7 @@ export function PositionTable({
             </p>
           </div>
           <span className="text-xs text-muted-foreground">
-            {activityRows.length} {activityRows.length === 1 ? 'entry' : 'entries'}
+            {activityRowCount} {activityRowCount === 1 ? 'entry' : 'entries'}
           </span>
         </div>
 
@@ -662,52 +838,16 @@ export function PositionTable({
               <span>Entry</span>
               <span className="text-right">New Qty / Avg</span>
             </div>
-            <div className="divide-y">
-              {activityRows.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      <span className={`text-xs font-medium uppercase ${entry.toneClass}`}>
-                        {entry.label}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateTime(entry.date)}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 truncate text-sm">
-                      <span className={`font-mono font-medium ${entry.toneClass}`}>
-                        {entry.quantityPrefix}
-                        {formatQuantity(entry.quantity, viewPosition.asset.category)}
-                      </span>{' '}
-                      <span>{viewPosition.asset.symbol}</span>
-                      <span className="text-muted-foreground"> @ </span>
-                      <span className="font-mono">
-                        {formatCurrency(
-                          convert(entry.priceUsd),
-                          currency,
-                          getSmartDecimals(convert(entry.priceUsd))
-                        )}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="font-mono text-sm font-medium">
-                      {formatQuantity(entry.nextQuantity, viewPosition.asset.category)}
-                    </p>
-                    <p className="font-mono text-xs text-muted-foreground">
-                      avg{' '}
-                      {formatCurrency(
-                        convert(entry.nextAvgCostUsd),
-                        currency,
-                        getSmartDecimals(convert(entry.nextAvgCostUsd))
-                      )}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <div>
+              {previousRows.length > 0 && (
+                <details className="border-b bg-background/50">
+                  <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide [&::-webkit-details-marker]:hidden">
+                    Previous history before manual correction ({previousRows.length})
+                  </summary>
+                  <div className="divide-y border-t">{renderActivityRows(previousRows)}</div>
+                </details>
+              )}
+              <div className="divide-y">{renderActivityRows(currentRows)}</div>
             </div>
           </div>
         )}
@@ -893,7 +1033,13 @@ export function PositionTable({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!viewPosition} onOpenChange={() => setViewPosition(null)}>
+      <Dialog
+        open={!!viewPosition}
+        onOpenChange={() => {
+          setViewPosition(null);
+          setCancelHistoryEntry(null);
+        }}
+      >
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1035,6 +1181,92 @@ export function PositionTable({
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!cancelHistoryEntry}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelHistoryEntry(null);
+            cancelPositionHistoryMutation.reset();
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cancel History Entry</DialogTitle>
+            <DialogDescription>
+              Restore {viewPosition?.asset.symbol} to the quantity and average cost it had before
+              this {cancelHistoryEntry?.mode} entry.
+            </DialogDescription>
+          </DialogHeader>
+          {cancelHistoryEntry && viewPosition && (
+            <div className="rounded-md border bg-muted/10 p-3 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Current quantity</p>
+                  <p className="font-mono">
+                    {formatQuantity(cancelHistoryEntry.nextQuantity, viewPosition.asset.category)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Restored quantity</p>
+                  <p className="font-mono">
+                    {formatQuantity(
+                      cancelHistoryEntry.previousQuantity,
+                      viewPosition.asset.category
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Current avg</p>
+                  <p className="font-mono">
+                    {formatCurrency(
+                      convert(cancelHistoryEntry.nextAvgCostUsd),
+                      currency,
+                      getSmartDecimals(convert(cancelHistoryEntry.nextAvgCostUsd))
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Restored avg</p>
+                  <p className="font-mono">
+                    {formatCurrency(
+                      convert(cancelHistoryEntry.previousAvgCostUsd),
+                      currency,
+                      getSmartDecimals(convert(cancelHistoryEntry.previousAvgCostUsd))
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          {cancelPositionHistoryMutation.error && (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {cancelPositionHistoryMutation.error instanceof Error
+                ? cancelPositionHistoryMutation.error.message
+                : 'Could not cancel this history entry.'}
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelHistoryEntry(null);
+                cancelPositionHistoryMutation.reset();
+              }}
+            >
+              Keep Entry
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelHistoryEntry}
+              disabled={cancelPositionHistoryMutation.isPending}
+            >
+              {cancelPositionHistoryMutation.isPending ? 'Canceling...' : 'Cancel Entry'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

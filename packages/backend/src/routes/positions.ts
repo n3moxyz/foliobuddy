@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -305,6 +306,146 @@ router.get('/:id/history', async (req, res, next) => {
   }
 });
 
+router.delete('/:id/history/:historyId', async (req, res, next) => {
+  try {
+    const position = await prisma.$transaction(async (tx) => {
+      const existing = await tx.position.findFirst({
+        where: {
+          id: req.params.id,
+          userId: req.userId!,
+        },
+        include: { asset: true },
+      });
+
+      if (!existing) {
+        throw new AppError('Position not found', 404);
+      }
+
+      const historyEntry = await tx.positionHistory.findFirst({
+        where: {
+          id: req.params.historyId,
+          positionId: existing.id,
+          userId: req.userId!,
+        },
+      });
+
+      if (!historyEntry) {
+        throw new AppError('Position history entry not found', 404);
+      }
+
+      if (historyEntry.mode === 'reset') {
+        throw new AppError('Manual total reset entries cannot be canceled from history', 400);
+      }
+
+      const entriesToCancel = [{ history: historyEntry, position: existing }];
+
+      if (historyEntry.operationId) {
+        const relatedHistoryEntries = await tx.positionHistory.findMany({
+          where: {
+            operationId: historyEntry.operationId,
+            userId: req.userId!,
+            id: { not: historyEntry.id },
+          },
+        });
+
+        for (const relatedHistoryEntry of relatedHistoryEntries) {
+          if (relatedHistoryEntry.mode === 'reset') {
+            throw new AppError('Manual total reset entries cannot be canceled from history', 400);
+          }
+
+          const relatedPosition = await tx.position.findFirst({
+            where: {
+              id: relatedHistoryEntry.positionId,
+              userId: req.userId!,
+            },
+            include: { asset: true },
+          });
+
+          if (!relatedPosition) {
+            throw new AppError('Related position for history entry not found', 404);
+          }
+
+          entriesToCancel.push({ history: relatedHistoryEntry, position: relatedPosition });
+        }
+      }
+
+      for (const entryToCancel of entriesToCancel) {
+        const latestHistoryEntry = await tx.positionHistory.findFirst({
+          where: {
+            positionId: entryToCancel.position.id,
+            userId: req.userId!,
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: { id: true },
+        });
+
+        if (latestHistoryEntry?.id !== entryToCancel.history.id) {
+          throw new AppError('Only the latest position history entry can be canceled', 400);
+        }
+
+        const currentTotalCostUsd =
+          entryToCancel.position.quantity * entryToCancel.position.avgCostUsd;
+        if (
+          entryToCancel.position.assetId !== entryToCancel.history.assetId ||
+          !numbersClose(entryToCancel.position.quantity, entryToCancel.history.nextQuantity) ||
+          !numbersClose(entryToCancel.position.avgCostUsd, entryToCancel.history.nextAvgCostUsd) ||
+          !numbersClose(currentTotalCostUsd, entryToCancel.history.nextTotalCostUsd)
+        ) {
+          throw new AppError('Position has changed since this history entry was recorded', 409);
+        }
+      }
+
+      let updatedRequestedPosition = null;
+
+      for (const entryToCancel of entriesToCancel) {
+        const valueFields = calculatePositionValue({
+          quantity: entryToCancel.history.previousQuantity,
+          avgCostUsd: entryToCancel.history.previousAvgCostUsd,
+          currentPriceUsd: entryToCancel.position.asset.currentPriceUsd,
+        });
+
+        const updatedPosition = await tx.position.update({
+          where: { id: entryToCancel.position.id },
+          data: {
+            quantity: entryToCancel.history.previousQuantity,
+            avgCostUsd: entryToCancel.history.previousAvgCostUsd,
+            ...valueFields,
+          },
+          include: {
+            asset: true,
+          },
+        });
+
+        const deletedHistory = await tx.positionHistory.deleteMany({
+          where: {
+            id: entryToCancel.history.id,
+            positionId: entryToCancel.position.id,
+            userId: req.userId!,
+          },
+        });
+
+        if (deletedHistory.count === 0) {
+          throw new AppError('Position history entry not found', 404);
+        }
+
+        if (entryToCancel.position.id === existing.id) {
+          updatedRequestedPosition = updatedPosition;
+        }
+      }
+
+      if (!updatedRequestedPosition) {
+        throw new AppError('Position history entry not found', 404);
+      }
+
+      return updatedRequestedPosition;
+    });
+
+    res.json(position);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const position = await prisma.position.findUnique({
@@ -499,6 +640,16 @@ router.put('/:id', async (req, res, next) => {
       avgCostUsd,
       currentPriceUsd: valueAsset.currentPriceUsd,
     });
+    const assetChanged =
+      positionData.assetId !== undefined && positionData.assetId !== existing.assetId;
+    const manualTotalsChanged =
+      !positionDelta &&
+      (positionData.quantity !== undefined ||
+        positionData.avgCostUsd !== undefined ||
+        assetChanged) &&
+      (assetChanged ||
+        !numbersClose(quantity, existing.quantity) ||
+        !numbersClose(avgCostUsd, existing.avgCostUsd));
 
     if (positionDelta) {
       if (positionData.quantity === undefined || positionData.avgCostUsd === undefined) {
@@ -549,6 +700,8 @@ router.put('/:id', async (req, res, next) => {
       fundingCashPosition && positionDelta?.mode === 'add'
         ? buildFundingCashDelta(fundingCashPosition, positionDelta.totalCostUsd!)
         : null;
+    const operationId = fundingDelta ? randomUUID() : null;
+    const historyCreatedAt = new Date();
 
     const updateData = {
       ...positionData,
@@ -594,6 +747,28 @@ router.put('/:id', async (req, res, next) => {
             nextQuantity: updatedPosition.quantity,
             nextAvgCostUsd: updatedPosition.avgCostUsd,
             nextTotalCostUsd,
+            operationId,
+            createdAt: historyCreatedAt,
+          },
+        });
+      } else if (manualTotalsChanged) {
+        const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
+        const nextTotalCostUsd = updatedPosition.quantity * updatedPosition.avgCostUsd;
+
+        await tx.positionHistory.create({
+          data: {
+            userId: req.userId!,
+            positionId: existing.id,
+            assetId: updatedPosition.assetId,
+            mode: 'reset',
+            quantity: updatedPosition.quantity,
+            costBasisUsd: nextTotalCostUsd,
+            previousQuantity: existing.quantity,
+            previousAvgCostUsd: existing.avgCostUsd,
+            previousTotalCostUsd,
+            nextQuantity: updatedPosition.quantity,
+            nextAvgCostUsd: updatedPosition.avgCostUsd,
+            nextTotalCostUsd,
           },
         });
       }
@@ -628,6 +803,8 @@ router.put('/:id', async (req, res, next) => {
             nextQuantity: fundingDelta.result.nextQuantity,
             nextAvgCostUsd: fundingDelta.result.nextAvgCostUsd,
             nextTotalCostUsd: fundingDelta.result.nextTotalCostUsd,
+            operationId,
+            createdAt: historyCreatedAt,
           },
         });
       }

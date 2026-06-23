@@ -96,6 +96,21 @@ export function useUpdatePosition() {
   });
 }
 
+export function useCancelPositionHistory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, historyId }: { id: string; historyId: string }) =>
+      api.cancelPositionHistory(id, historyId),
+    onSuccess: (position, { id }) => {
+      queryClient.setQueryData(['positions', id], position);
+      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['positions', id, 'history'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+    },
+  });
+}
+
 export function useDeletePosition() {
   const queryClient = useQueryClient();
 

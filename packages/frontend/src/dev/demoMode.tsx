@@ -986,6 +986,12 @@ function round(value: number, decimals = 2) {
   return Math.round(value * factor) / factor;
 }
 
+const FLOAT_TOLERANCE = 1e-6;
+
+function numbersClose(a: number, b: number) {
+  return Math.abs(a - b) <= FLOAT_TOLERANCE * Math.max(1, Math.abs(a), Math.abs(b));
+}
+
 function nextDemoId(prefix: string) {
   demoIdCounter += 1;
   return `${prefix}-${Date.now()}-${demoIdCounter}`;
@@ -1165,7 +1171,8 @@ function createDemoPosition(data: CreatePositionData): Position {
 function reduceDemoFundingCashPositionByCost(
   fundingCashPositionIdInput: string | null | undefined,
   purchaseCostUsd: number,
-  timestamp: string
+  timestamp: string,
+  operationId?: string
 ) {
   const fundingCashPositionId = fundingCashPositionIdInput?.trim();
   if (!fundingCashPositionId) return;
@@ -1227,6 +1234,7 @@ function reduceDemoFundingCashPositionByCost(
       nextQuantity: delta.nextQuantity,
       nextAvgCostUsd: delta.nextAvgCostUsd,
       nextTotalCostUsd: delta.nextTotalCostUsd,
+      operationId,
       createdAt: timestamp,
     },
     ...demoPositionHistory,
@@ -1245,6 +1253,10 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
   }
 
   const timestamp = new Date().toISOString();
+  const operationId =
+    data.positionDelta?.mode === 'add' && data.fundingCashPositionId
+      ? nextDemoId('operation')
+      : undefined;
   if (data.fundingCashPositionId) {
     if (data.positionDelta?.mode !== 'add') {
       throw new Error('Funding cash source is only supported when adding to a position');
@@ -1252,7 +1264,8 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
     reduceDemoFundingCashPositionByCost(
       data.fundingCashPositionId,
       data.positionDelta.totalCostUsd ?? 0,
-      timestamp
+      timestamp,
+      operationId
     );
   }
 
@@ -1298,13 +1311,142 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
         nextQuantity: updated.quantity,
         nextAvgCostUsd: updated.avgCostUsd,
         nextTotalCostUsd,
+        operationId,
         createdAt: timestamp,
       },
       ...demoPositionHistory,
     ];
+  } else {
+    const assetChanged = data.assetId !== undefined && data.assetId !== existing.assetId;
+    const manualTotalsChanged =
+      (data.quantity !== undefined || data.avgCostUsd !== undefined || assetChanged) &&
+      (assetChanged ||
+        !numbersClose(updated.quantity, existing.quantity) ||
+        !numbersClose(updated.avgCostUsd, existing.avgCostUsd));
+
+    if (manualTotalsChanged) {
+      const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
+      const nextTotalCostUsd = updated.quantity * updated.avgCostUsd;
+
+      demoPositionHistory = [
+        {
+          id: nextDemoId('hist'),
+          positionId: existing.id,
+          assetId: updated.assetId,
+          mode: 'reset',
+          quantity: updated.quantity,
+          costBasisUsd: nextTotalCostUsd,
+          previousQuantity: existing.quantity,
+          previousAvgCostUsd: existing.avgCostUsd,
+          previousTotalCostUsd,
+          nextQuantity: updated.quantity,
+          nextAvgCostUsd: updated.avgCostUsd,
+          nextTotalCostUsd,
+          createdAt: timestamp,
+        },
+        ...demoPositionHistory,
+      ];
+    }
   }
 
   return updated;
+}
+
+function cancelDemoPositionHistory(positionId: string, historyId: string) {
+  const existing = demoPositions.find((position) => position.id === positionId);
+  if (!existing) {
+    throw new Error('Position not found');
+  }
+
+  const historyEntry = demoPositionHistory.find(
+    (entry) => entry.id === historyId && entry.positionId === positionId
+  );
+  if (!historyEntry) {
+    throw new Error('Position history entry not found');
+  }
+
+  if (historyEntry.mode === 'reset') {
+    throw new Error('Manual total reset entries cannot be canceled from history');
+  }
+
+  const timestamp = new Date().toISOString();
+  const entriesToCancel = [
+    {
+      history: historyEntry,
+      position: existing,
+    },
+  ];
+
+  if (historyEntry.operationId) {
+    demoPositionHistory
+      .filter(
+        (entry) => entry.operationId === historyEntry.operationId && entry.id !== historyEntry.id
+      )
+      .forEach((relatedHistory) => {
+        if (relatedHistory.mode === 'reset') {
+          throw new Error('Manual total reset entries cannot be canceled from history');
+        }
+        const relatedPosition = demoPositions.find(
+          (position) => position.id === relatedHistory.positionId
+        );
+        if (!relatedPosition) {
+          throw new Error('Related position for history entry not found');
+        }
+        entriesToCancel.push({ history: relatedHistory, position: relatedPosition });
+      });
+  }
+
+  entriesToCancel.forEach((entryToCancel) => {
+    const latestHistoryEntry = [...demoPositionHistory]
+      .filter((entry) => entry.positionId === entryToCancel.position.id)
+      .sort((a, b) => {
+        const timeDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return timeDiff || b.id.localeCompare(a.id);
+      })[0];
+
+    if (latestHistoryEntry?.id !== entryToCancel.history.id) {
+      throw new Error('Only the latest position history entry can be canceled');
+    }
+
+    const currentTotalCostUsd = entryToCancel.position.quantity * entryToCancel.position.avgCostUsd;
+    if (
+      entryToCancel.position.assetId !== entryToCancel.history.assetId ||
+      !numbersClose(entryToCancel.position.quantity, entryToCancel.history.nextQuantity) ||
+      !numbersClose(entryToCancel.position.avgCostUsd, entryToCancel.history.nextAvgCostUsd) ||
+      !numbersClose(currentTotalCostUsd, entryToCancel.history.nextTotalCostUsd)
+    ) {
+      throw new Error('Position has changed since this history entry was recorded');
+    }
+  });
+
+  let updatedRequestedPosition = existing;
+  const canceledIds = new Set(entriesToCancel.map((entry) => entry.history.id));
+
+  entriesToCancel.forEach((entryToCancel) => {
+    const updated = computePosition(entryToCancel.position.asset, {
+      id: entryToCancel.position.id,
+      assetId: entryToCancel.position.assetId,
+      quantity: entryToCancel.history.previousQuantity,
+      avgCostUsd: entryToCancel.history.previousAvgCostUsd,
+      storageType: entryToCancel.position.storageType,
+      storageLocation: entryToCancel.position.storageLocation,
+      notes: entryToCancel.position.notes,
+      custodyOf: entryToCancel.position.custodyOf,
+      createdAt: entryToCancel.position.createdAt,
+      updatedAt: timestamp,
+    });
+
+    demoPositions = demoPositions.map((position) =>
+      position.id === updated.id ? updated : position
+    );
+    if (updated.id === positionId) {
+      updatedRequestedPosition = updated;
+    }
+  });
+
+  demoPositionHistory = demoPositionHistory.filter((entry) => !canceledIds.has(entry.id));
+
+  return updatedRequestedPosition;
 }
 
 function createImportedPosition(position: BulkImportPosition) {
@@ -1440,6 +1582,10 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
     const id = path.split('/')[3];
     const body = JSON.parse((init?.body as string | undefined) ?? '{}') as UpdatePositionData;
     return json(updateDemoPosition(id, body));
+  }
+  if (path.startsWith('/api/positions/') && path.includes('/history/') && method === 'DELETE') {
+    const parts = path.split('/');
+    return json(cancelDemoPositionHistory(parts[3], parts[5]));
   }
   if (path.startsWith('/api/positions/') && method === 'DELETE') {
     const id = path.split('/')[3];

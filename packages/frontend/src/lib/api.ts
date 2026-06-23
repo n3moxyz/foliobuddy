@@ -100,6 +100,8 @@ export const api = {
     request<Performer[]>(`/positions/performers/worst?limit=${limit}`),
   getPosition: (id: string) => request<Position>(`/positions/${id}`),
   getPositionHistory: (id: string) => request<PositionHistoryEntry[]>(`/positions/${id}/history`),
+  cancelPositionHistory: (id: string, historyId: string) =>
+    request<Position>(`/positions/${id}/history/${historyId}`, { method: 'DELETE' }),
   createPosition: (data: CreatePositionData) =>
     request<Position>('/positions', {
       method: 'POST',
