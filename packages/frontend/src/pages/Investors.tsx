@@ -107,38 +107,38 @@ export default function Investors() {
             Add Investor
           </Button>
         }
-      />
-
-      <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
-        <div>
-          <p className="text-sm text-muted-foreground mb-0.5">
-            Total Investors
-            <HelpTooltip content="Number of investors with portfolio stakes" />
-          </p>
-          <p className="text-lg font-semibold tabular-nums">{investors?.length || 0}</p>
+      >
+        <div className="flex items-baseline gap-6 flex-wrap pb-1">
+          <div>
+            <p className="text-sm text-muted-foreground mb-0.5">
+              Total Investors
+              <HelpTooltip content="Number of investors with portfolio stakes" />
+            </p>
+            <p className="text-lg font-semibold tabular-nums">{investors?.length || 0}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground mb-0.5">
+              Allocated Stake
+              <HelpTooltip content="Total percentage of portfolio allocated to investors" />
+            </p>
+            <p className="text-lg font-semibold tabular-nums">
+              {formatStakePercentage(totalStake)}%
+              <span className="text-sm font-normal text-muted-foreground ml-1.5">
+                ({formatStakePercentage(100 - totalStake)}% available)
+              </span>
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground mb-0.5">
+              Total Current Value
+              <HelpTooltip content="Combined current value of all investor stakes" />
+            </p>
+            <p className="text-lg font-semibold tabular-nums">
+              {formatCurrency(totalCurrentValue, 'USD', 0)}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm text-muted-foreground mb-0.5">
-            Allocated Stake
-            <HelpTooltip content="Total percentage of portfolio allocated to investors" />
-          </p>
-          <p className="text-lg font-semibold tabular-nums">
-            {formatStakePercentage(totalStake)}%
-            <span className="text-sm font-normal text-muted-foreground ml-1.5">
-              ({formatStakePercentage(100 - totalStake)}% available)
-            </span>
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground mb-0.5">
-            Total Current Value
-            <HelpTooltip content="Combined current value of all investor stakes" />
-          </p>
-          <p className="text-lg font-semibold tabular-nums">
-            {formatCurrency(totalCurrentValue, 'USD', 0)}
-          </p>
-        </div>
-      </div>
+      </PageActionHeader>
 
       <Card>
         <CardHeader>

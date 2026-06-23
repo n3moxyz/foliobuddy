@@ -5,12 +5,22 @@ interface PageActionHeaderProps {
   title: string;
   subtitle?: ReactNode;
   actions: ReactNode;
+  children?: ReactNode;
   className?: string;
+  contentClassName?: string;
 }
 
-export function PageActionHeader({ title, subtitle, actions, className }: PageActionHeaderProps) {
+export function PageActionHeader({
+  title,
+  subtitle,
+  actions,
+  children,
+  className,
+  contentClassName,
+}: PageActionHeaderProps) {
   return (
     <div
+      data-page-sticky-header
       className={cn(
         'sticky top-14 z-20 -mx-4 -mt-4 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:top-16 lg:-mx-6 lg:-mt-6 lg:px-6',
         className
@@ -23,6 +33,7 @@ export function PageActionHeader({ title, subtitle, actions, className }: PageAc
         </div>
         <div className="flex flex-wrap items-center gap-2">{actions}</div>
       </div>
+      {children ? <div className={cn('mt-5', contentClassName)}>{children}</div> : null}
     </div>
   );
 }

@@ -357,110 +357,114 @@ export default function Portfolio() {
             </DropdownMenu>
           </>
         }
-      />
+      >
+        {summary && (
+          <div className="pb-1">
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <p className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums">
+                {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
+              </p>
+              {summary.unrealizedPnL !== 0 && (
+                <span
+                  className={`inline-flex items-center gap-1 text-sm font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}
+                >
+                  {summary.unrealizedPnL >= 0 ? (
+                    <TrendingUp className="h-4 w-4" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4" />
+                  )}
+                  {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)} (
+                  {formatPercent(summary.unrealizedPnLPct)})
+                </span>
+              )}
+            </div>
 
-      {summary && (
-        <div className="pb-6 mb-2 border-b">
-          <div className="flex items-baseline gap-3 flex-wrap">
-            <p className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums">
-              {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
-            </p>
-            {summary.unrealizedPnL !== 0 && (
-              <span
-                className={`inline-flex items-center gap-1 text-sm font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}
-              >
-                {summary.unrealizedPnL >= 0 ? (
-                  <TrendingUp className="h-4 w-4" />
-                ) : (
-                  <TrendingDown className="h-4 w-4" />
-                )}
-                {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)} (
-                {formatPercent(summary.unrealizedPnLPct)})
-              </span>
-            )}
-          </div>
+            <div className="mt-4 hidden sm:grid sm:grid-cols-4 divide-x divide-border">
+              <div className="pr-4">
+                <div className="flex items-center gap-1">
+                  <p className="text-muted-foreground text-sm">YTD Start</p>
+                  <HelpTooltip content="Your total cost basis: how much you invested" />
+                </div>
+                <p className="font-medium tabular-nums">
+                  {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
+                </p>
+              </div>
+              <div className="px-4">
+                <div className="flex items-center gap-1">
+                  <p className="text-muted-foreground text-sm">Exposure</p>
+                  <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
+                </div>
+                <p className="font-medium tabular-nums">
+                  {summary.totalValueUsd > 0
+                    ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
+                    : '0%'}
+                </p>
+              </div>
+              <div className="px-4">
+                <div className="flex items-center gap-1">
+                  <p className="text-muted-foreground text-sm">Positions</p>
+                  <HelpTooltip content="Number of assets you currently hold" />
+                </div>
+                <p className="font-medium tabular-nums">{summary.positionCount}</p>
+              </div>
+              <div className="pl-4">
+                <div className="flex items-center gap-1">
+                  <p className="text-muted-foreground text-sm">YTD P&L</p>
+                  <HelpTooltip content="Unrealized profit or loss since the start of the year" />
+                </div>
+                <p
+                  className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
+                >
+                  {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
+                  <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
+                </p>
+              </div>
+            </div>
 
-          <div className="mt-4 hidden sm:grid sm:grid-cols-4 divide-x divide-border">
-            <div className="pr-4">
-              <div className="flex items-center gap-1">
-                <p className="text-muted-foreground text-sm">YTD Start</p>
-                <HelpTooltip content="Your total cost basis: how much you invested" />
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:hidden">
+              <div>
+                <div className="flex items-center gap-1">
+                  <p className="text-muted-foreground text-sm">YTD Start</p>
+                  <HelpTooltip content="Your total cost basis: how much you invested" />
+                </div>
+                <p className="font-medium tabular-nums">
+                  {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
+                </p>
               </div>
-              <p className="font-medium tabular-nums">
-                {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
-              </p>
-            </div>
-            <div className="px-4">
-              <div className="flex items-center gap-1">
-                <p className="text-muted-foreground text-sm">Exposure</p>
-                <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
+              <div>
+                <div className="flex items-center gap-1">
+                  <p className="text-muted-foreground text-sm">Exposure</p>
+                  <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
+                </div>
+                <p className="font-medium tabular-nums">
+                  {summary.totalValueUsd > 0
+                    ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
+                    : '0%'}
+                </p>
               </div>
-              <p className="font-medium tabular-nums">
-                {summary.totalValueUsd > 0
-                  ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
-                  : '0%'}
-              </p>
-            </div>
-            <div className="px-4">
-              <div className="flex items-center gap-1">
-                <p className="text-muted-foreground text-sm">Positions</p>
-                <HelpTooltip content="Number of assets you currently hold" />
+              <div>
+                <div className="flex items-center gap-1">
+                  <p className="text-muted-foreground text-sm">Positions</p>
+                  <HelpTooltip content="Number of assets you currently hold" />
+                </div>
+                <p className="font-medium tabular-nums">{summary.positionCount}</p>
               </div>
-              <p className="font-medium tabular-nums">{summary.positionCount}</p>
-            </div>
-            <div className="pl-4">
-              <div className="flex items-center gap-1">
-                <p className="text-muted-foreground text-sm">YTD P&L</p>
-                <HelpTooltip content="Unrealized profit or loss since the start of the year" />
+              <div>
+                <div className="flex items-center gap-1">
+                  <p className="text-muted-foreground text-sm">YTD P&L</p>
+                  <HelpTooltip content="Unrealized profit or loss since the start of the year" />
+                </div>
+                <p
+                  className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
+                >
+                  {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
+                  <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
+                </p>
               </div>
-              <p className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}>
-                {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
-                <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:hidden">
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-muted-foreground text-sm">YTD Start</p>
-                <HelpTooltip content="Your total cost basis: how much you invested" />
-              </div>
-              <p className="font-medium tabular-nums">
-                {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
-              </p>
-            </div>
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-muted-foreground text-sm">Exposure</p>
-                <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
-              </div>
-              <p className="font-medium tabular-nums">
-                {summary.totalValueUsd > 0
-                  ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
-                  : '0%'}
-              </p>
-            </div>
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-muted-foreground text-sm">Positions</p>
-                <HelpTooltip content="Number of assets you currently hold" />
-              </div>
-              <p className="font-medium tabular-nums">{summary.positionCount}</p>
-            </div>
-            <div>
-              <div className="flex items-center gap-1">
-                <p className="text-muted-foreground text-sm">YTD P&L</p>
-                <HelpTooltip content="Unrealized profit or loss since the start of the year" />
-              </div>
-              <p className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}>
-                {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
-                <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
-              </p>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </PageActionHeader>
 
       {positionsLoading && (
         <div className="space-y-3">

@@ -35,6 +35,13 @@ export const STORAGE_COLORS: string[] = [
   chartColor('--chart-storage-4'),
   chartColor('--chart-storage-5'),
 ];
+
+export const STORAGE_BREAKDOWN_COLORS: string[] = [
+  ...STORAGE_COLORS,
+  ...ASSET_COLORS.slice(5),
+  ...ASSET_COLORS.slice(0, 5),
+];
+
 export const STABLES_COLORS: string[] = [
   chartColor('--chart-cash-1'),
   chartColor('--chart-cash-2'),

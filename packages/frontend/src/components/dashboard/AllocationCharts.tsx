@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber, formatCurrency, categoryGroup } from '@/lib/utils';
-import { ASSET_COLORS, STORAGE_COLORS, STABLES_COLORS } from '@/lib/chartColors';
+import { ASSET_COLORS, STORAGE_BREAKDOWN_COLORS, STABLES_COLORS } from '@/lib/chartColors';
 import type { Position } from '@/lib/types';
 
 interface AllocationChartsProps {
@@ -317,7 +317,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     const cashDetailedData = mapToChartData(cashMap, cashTotal);
     const equitiesDetailedData = mapToChartData(equitiesMap, equitiesTotal);
 
-    // Storage allocation: CEX, Broker account, Bank, Onchain, Onchain Ledger
+    // Storage allocation: broker accounts by exact broker, plus CEX, Bank, Onchain, Onchain Ledger.
     const storageMap = new Map<string, number>();
 
     positions.forEach((p) => {
@@ -327,7 +327,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
       if (p.storageType === 'CEX') {
         storageLabel = 'CEX';
       } else if (p.storageType === 'BROKERAGE') {
-        storageLabel = 'Broker account';
+        storageLabel = p.storageLocation?.trim() || 'Broker account';
       } else if (p.storageType === 'BANK') {
         storageLabel = 'Bank';
       } else if (p.storageLocation?.toLowerCase().includes('ledger')) {
@@ -456,7 +456,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
       />
       <AllocationDonut
         data={storageAllocation}
-        colors={STORAGE_COLORS}
+        colors={STORAGE_BREAKDOWN_COLORS}
         hidden={hiddenStorage}
         setHidden={setHiddenStorage}
         title="By Storage"

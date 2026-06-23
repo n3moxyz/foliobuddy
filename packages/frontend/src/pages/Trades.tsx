@@ -143,116 +143,116 @@ export default function Trades() {
 
   return (
     <div className="space-y-6">
-      <PageActionHeader
-        title="Trade Journal"
-        subtitle={
-          analytics
-            ? `${analytics.totalTrades} trades · ${analytics.winRate?.toFixed(0) ?? 0}% win rate`
-            : undefined
-        }
-        actions={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden sm:inline-flex"
-              onClick={async () => {
-                if (trades && trades.length > 0) {
-                  const success = await copyTradesToClipboard(trades);
-                  if (success) {
-                    setCopiedAll(true);
-                    setTimeout(() => setCopiedAll(false), 2000);
-                  }
-                }
-              }}
-              disabled={!trades || trades.length === 0}
-            >
-              {copiedAll ? (
-                <Check className="h-4 w-4 mr-1 text-profit" />
-              ) : (
-                <Copy className="h-4 w-4 mr-1" />
-              )}
-              {copiedAll ? 'Copied!' : 'Copy All'}
-            </Button>
-            <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              Log Trade
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-label="More options"
-                  className="touch-manipulation"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="sm:hidden min-h-11"
-                  onClick={async () => {
-                    if (trades && trades.length > 0) {
-                      const success = await copyTradesToClipboard(trades);
-                      if (success) {
-                        setCopiedAll(true);
-                        setTimeout(() => setCopiedAll(false), 2000);
-                      }
-                    }
-                  }}
-                  disabled={!trades || trades.length === 0}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy All
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => setShowDeleteAllConfirm(true)}
-                  disabled={!trades || trades.length === 0}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete All
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.open(api.exportTradesCsv(), '_blank')}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export All Trades
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => window.open(api.exportTradesCsv({ status: 'OPEN' }), '_blank')}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Open Trades
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => window.open(api.exportTradesCsv({ status: 'CLOSED' }), '_blank')}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Closed Trades
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        }
-      />
-
       <Tabs value={activeLens} onValueChange={(value) => setLens(value as TradeLens)}>
-        <div className="flex items-center gap-3 overflow-x-auto border-b pb-2">
-          <TabsList>
-            <TabsTrigger value="review">
-              <FileText className="mr-1.5 h-3.5 w-3.5" />
-              Review
-            </TabsTrigger>
-            <TabsTrigger value="ticker" disabled={tickerDossiers.length === 0}>
-              <Target className="mr-1.5 h-3.5 w-3.5" />
-              Ticker
-            </TabsTrigger>
-            <TabsTrigger value="monthly" disabled={monthlyReviews.length === 0}>
-              <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
-              Monthly
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <PageActionHeader
+          title="Trade Journal"
+          subtitle={
+            analytics
+              ? `${analytics.totalTrades} trades · ${analytics.winRate?.toFixed(0) ?? 0}% win rate`
+              : undefined
+          }
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden sm:inline-flex"
+                onClick={async () => {
+                  if (trades && trades.length > 0) {
+                    const success = await copyTradesToClipboard(trades);
+                    if (success) {
+                      setCopiedAll(true);
+                      setTimeout(() => setCopiedAll(false), 2000);
+                    }
+                  }
+                }}
+                disabled={!trades || trades.length === 0}
+              >
+                {copiedAll ? (
+                  <Check className="h-4 w-4 mr-1 text-profit" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-1" />
+                )}
+                {copiedAll ? 'Copied!' : 'Copy All'}
+              </Button>
+              <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Log Trade
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label="More options"
+                    className="touch-manipulation"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="sm:hidden min-h-11"
+                    onClick={async () => {
+                      if (trades && trades.length > 0) {
+                        const success = await copyTradesToClipboard(trades);
+                        if (success) {
+                          setCopiedAll(true);
+                          setTimeout(() => setCopiedAll(false), 2000);
+                        }
+                      }
+                    }}
+                    disabled={!trades || trades.length === 0}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy All
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => setShowDeleteAllConfirm(true)}
+                    disabled={!trades || trades.length === 0}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete All
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => window.open(api.exportTradesCsv(), '_blank')}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export All Trades
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => window.open(api.exportTradesCsv({ status: 'OPEN' }), '_blank')}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Open Trades
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => window.open(api.exportTradesCsv({ status: 'CLOSED' }), '_blank')}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Closed Trades
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+        >
+          <div className="flex items-center gap-3 overflow-x-auto pb-1">
+            <TabsList>
+              <TabsTrigger value="review">
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+                Review
+              </TabsTrigger>
+              <TabsTrigger value="ticker" disabled={tickerDossiers.length === 0}>
+                <Target className="mr-1.5 h-3.5 w-3.5" />
+                Ticker
+              </TabsTrigger>
+              <TabsTrigger value="monthly" disabled={monthlyReviews.length === 0}>
+                <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
+                Monthly
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </PageActionHeader>
 
         <TabsContent value="review" className="mt-5 space-y-6">
           {analytics && (

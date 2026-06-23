@@ -171,22 +171,22 @@ export default function History() {
             </DropdownMenu>
           </>
         }
-      />
-
-      <div className="flex items-baseline gap-6 flex-wrap py-4 border-b">
-        <div>
-          <p className="text-sm text-muted-foreground mb-0.5">Total</p>
-          <p className="text-lg font-semibold tabular-nums">{totalCount}</p>
+      >
+        <div className="flex items-baseline gap-6 flex-wrap pb-1">
+          <div>
+            <p className="text-sm text-muted-foreground mb-0.5">Total</p>
+            <p className="text-lg font-semibold tabular-nums">{totalCount}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground mb-0.5">Automatic</p>
+            <p className="text-lg font-semibold tabular-nums">{automaticCount}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground mb-0.5">Manual</p>
+            <p className="text-lg font-semibold tabular-nums">{manualCount}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm text-muted-foreground mb-0.5">Automatic</p>
-          <p className="text-lg font-semibold tabular-nums">{automaticCount}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground mb-0.5">Manual</p>
-          <p className="text-lg font-semibold tabular-nums">{manualCount}</p>
-        </div>
-      </div>
+      </PageActionHeader>
 
       <Tabs defaultValue="all" onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
         <TabsList className="sm:w-auto">
