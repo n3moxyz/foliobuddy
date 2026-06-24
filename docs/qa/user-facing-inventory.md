@@ -1,5 +1,9 @@
 # User-Facing Inventory And Acceptance Criteria
 
+Canonical status tracker: [`docs/qa/foliobuddy-user-story-tracker.xlsx`](foliobuddy-user-story-tracker.xlsx).
+Use the workbook as the single source of truth for story status, defects, fix status, and retest
+evidence. This Markdown file remains the narrative inventory/runbook companion.
+
 This is the source-backed checklist for the production-scale local QA pass. It should be used with
 `docs/qa/local-production-scale-runbook.md` and updated when user-facing routes, controls, fields,
 or workflows change.
