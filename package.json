@@ -20,6 +20,7 @@
     "build": "npm run build --workspaces",
     "db:migrate": "npm run db:migrate --workspace=@foliobuddy/backend",
     "db:seed": "npm run db:seed --workspace=@foliobuddy/backend",
+    "db:seed:scale": "npm run db:seed:scale --workspace=@foliobuddy/backend",
     "format": "prettier --ignore-unknown --write \"*.{json,ts,js,yml,yaml}\" \"e2e/**/*\" \"scripts/**/*\" \"packages/**/*.{ts,tsx,js,jsx,json,css,html,yml,yaml}\"",
     "format:check": "prettier --ignore-unknown --check \"*.{json,ts,js,yml,yaml}\" \"e2e/**/*\" \"scripts/**/*\" \"packages/**/*.{ts,tsx,js,jsx,json,css,html,yml,yaml}\" && npm run scripts:check && npm run domain:check",
     "scripts:check": "node scripts/check-shell-scripts.mjs",

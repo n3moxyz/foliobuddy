@@ -9,6 +9,7 @@ const mockPrisma = {
     findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    delete: vi.fn(),
   },
   fxRate: { findUnique: vi.fn() },
   position: { findFirst: vi.fn(), findMany: vi.fn() },
@@ -189,6 +190,17 @@ describe('PUT /api/assets/:id', () => {
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('Admin access required');
     expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('DELETE /api/assets/:id', () => {
+  it('requires admin access before checking or deleting global catalog rows', async () => {
+    const res = await request(app).delete('/api/assets/asset-1');
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('Admin access required');
+    expect(mockPrisma.position.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.asset.delete).not.toHaveBeenCalled();
   });
 });
 

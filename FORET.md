@@ -716,6 +716,10 @@ const unrealizedPnLPct = ((marketValue - costBasis) / costBasis) * 100;
 
 **The fix:** Make demo mode stateful in the browser. `/dev/demo/portfolio` now supports add, edit, delete, and import flows without Clerk or the backend. It behaves like a safe sandbox and resets on refresh.
 
+**Scale-QA follow-up:** The same rule has to cover every visible success path, not just Portfolio. Trade import, snapshot import, investor CRUD, snapshot CRUD, and manual NAV updates all need real demo handlers and regression tests. Otherwise the UI becomes dangerous in the opposite way: it looks like a safe sandbox while returning `{ ok: true }` from a generic mock and leaving the screen stale. `src/dev/__tests__/demoMode.test.ts` now exists to pin those mocked write/import contracts. `docs/qa/user-facing-inventory.md` is the source-backed checklist for the real local scale pass: routes, roles, controls, dialogs, inputs, states, workflows, API evidence, acceptance criteria, and finite edge cases. For real local API browser QA without Clerk credentials, pair backend `ALLOW_LOCAL_AUTH_BYPASS=true` with frontend `VITE_LOCAL_AUTH_BYPASS=true`; both are local/dev-only and must never be used with production data. The frontend bypass must not touch Clerk runtime at all: it skips `ClerkProvider`, installs a no-token API getter, shows the local `LB` avatar, and leaves websocket status disconnected until a real Clerk session is used. When Clerk credentials are not available, websocket behavior is pinned by an explicit harness instead: `socketService.integration.test.ts` runs real Socket.io clients with mocked Clerk verification, and `useWebSocket.test.ts` covers reconnect and query invalidation behavior.
+
+**Scale-QA finance-form lesson:** The shared `FormattedNumberInput` fix was only half the story. Positive-only finance forms also need real submit guards. `TradeForm`, `PositionForm`, and add/reduce edits now use `src/lib/formValidation.ts` helpers so zero, blank, negative, and incomplete numeric text cannot fire mutations before the backend Zod schemas reject them.
+
 **The gotchas we had to fix immediately:**
 
 - New demo assets need seeded prices or portfolio totals fall apart
@@ -2032,6 +2036,8 @@ Recently completed:
 - [x] **Scheduler/WebSocket reliability coverage:**
   - `scheduler.test.ts` now pins the price-refresh fanout path: refresh provider prices, broadcast the global price update, recalculate changed positions, then send portfolio updates only to users holding changed assets.
   - `socketService.test.ts` pins the two backend event contracts (`prices:updated` and `portfolio:updated`) without needing a live Socket.io server.
+  - `socketService.integration.test.ts` adds the live harness: real Socket.io clients authenticate through mocked Clerk verification, price broadcasts reach all clients, portfolio broadcasts stay scoped to the target user room, and missing auth is rejected.
+  - `useWebSocket.test.ts` covers frontend reconnect status transitions plus price and portfolio query invalidation.
   - Lesson: real-time features deserve boring unit coverage around the event contract and fanout criteria. The browser can miss a push; the backend should at least be predictable about what it emits.
 - [x] **PositionForm extraction pass:**
   - The 2k-line `PositionForm.tsx` gave up its add/reduce editor, cost-basis inputs, storage-location inputs, and shared form union types to small focused files: `PositionDeltaEditor.tsx`, `PositionCostFields.tsx`, `PositionStorageFields.tsx`, and `positionFormTypes.ts`.
@@ -2069,6 +2075,11 @@ Recently completed:
   - With `core.autocrlf=true` and no `.gitattributes`, every file is CRLF on disk, so `npm run format:check` fails **locally** on ~50 files (most untouched) while CI on Linux passes because git commits LF. This looks alarming but is purely environmental.
   - To check only real formatting (not line endings) on changed files: `npx prettier --check --end-of-line auto <files>`. To fix real issues without flipping the whole repo's EOL: `npx prettier --write --end-of-line auto <files>`.
   - Lesson: a red local `format:check` on Windows is usually CRLF noise, not a regression. Verify with `--end-of-line auto` before chasing it; a real `.gitattributes eol=lf` cleanup is a separate, repo-wide change.
+- [x] **Production-scale local QA caught export and validation bugs:**
+  - The sanitized scale seed plus real local API pass now covers 60+ positions, 240 trades, 390 snapshots, 5 investors, copy flows, export headers, signed-out auth, benchmark add/remove, and high-risk dialog open states. The durable evidence lives in `docs/qa/2026-06-23-real-local-scale-qa.md`.
+  - Excel export failed only when the real export endpoint was exercised: ExcelJS rejects a worksheet literally named `History`. The workbook now uses `Snapshots`, and `export.test.ts` loads the generated XLSX so this can't regress unseen behind a browser download.
+  - A negative snapshot value (`-1`) was silently sanitized to `1` by `FormattedNumberInput`, creating a bad manual snapshot during QA. Non-negative formatted inputs now drop leading-negative input instead of converting it to a positive number, and `SnapshotForm` disables submit until the value is greater than 0.
+  - Lesson: production-scale QA is valuable because it tests boring seams unit tests often skip — clipboard size, Excel sheet names, attachment headers, route guards, and form sanitizers under realistic data volume.
 
 ---
 

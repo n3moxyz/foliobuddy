@@ -2,10 +2,11 @@ import { useState, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
 import { AppShell } from './components/layout/AppShell';
-import { useAuthSetup } from './hooks/useAuthSetup';
+import { useAuthSetup, useLocalAuthBypassSetup } from './hooks/useAuthSetup';
 import { useThemeEffect } from './hooks/useThemeEffect';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
+import { isLocalAuthBypassEnabled } from './lib/localAuthBypass';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const Portfolio = lazy(() => import('./pages/Portfolio'));
@@ -17,10 +18,9 @@ const DemoModeApp = import.meta.env.DEV
   ? lazy(() => import('./dev/demoMode').then((module) => ({ default: module.DemoModeApp })))
   : null;
 
-function AuthenticatedApp() {
+function AuthenticatedAppContent({ localAuthBypass = false }: { localAuthBypass?: boolean }) {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
-  useAuthSetup();
   useThemeEffect();
   useKeyboardShortcuts({
     onShowHelp: () => setShowShortcutsHelp(true),
@@ -28,7 +28,7 @@ function AuthenticatedApp() {
 
   return (
     <>
-      <AppShell>
+      <AppShell localAuthBypass={localAuthBypass}>
         <Suspense
           fallback={
             <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -51,7 +51,19 @@ function AuthenticatedApp() {
   );
 }
 
+function ClerkAuthenticatedApp() {
+  useAuthSetup();
+  return <AuthenticatedAppContent />;
+}
+
+function LocalAuthenticatedApp() {
+  useLocalAuthBypassSetup();
+  return <AuthenticatedAppContent localAuthBypass />;
+}
+
 function App() {
+  const localAuthBypassEnabled = isLocalAuthBypassEnabled();
+
   return (
     <Routes>
       {DemoModeApp && (
@@ -73,30 +85,34 @@ function App() {
       <Route
         path="/*"
         element={
-          <>
-            <SignedOut>
-              <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-center space-y-6">
-                  <div className="space-y-2">
-                    <h1 className="text-3xl font-bold">FolioBuddy</h1>
-                    <p className="text-muted-foreground">Sign in to track your portfolio</p>
+          localAuthBypassEnabled ? (
+            <LocalAuthenticatedApp />
+          ) : (
+            <>
+              <SignedOut>
+                <div className="min-h-screen bg-background flex items-center justify-center">
+                  <div className="text-center space-y-6">
+                    <div className="space-y-2">
+                      <h1 className="text-3xl font-bold">FolioBuddy</h1>
+                      <p className="text-muted-foreground">Sign in to track your portfolio</p>
+                    </div>
+                    <SignIn
+                      appearance={{
+                        elements: {
+                          rootBox: 'mx-auto',
+                          card: 'shadow-sm border',
+                        },
+                      }}
+                    />
                   </div>
-                  <SignIn
-                    appearance={{
-                      elements: {
-                        rootBox: 'mx-auto',
-                        card: 'shadow-sm border',
-                      },
-                    }}
-                  />
                 </div>
-              </div>
-            </SignedOut>
+              </SignedOut>
 
-            <SignedIn>
-              <AuthenticatedApp />
-            </SignedIn>
-          </>
+              <SignedIn>
+                <ClerkAuthenticatedApp />
+              </SignedIn>
+            </>
+          )
         }
       />
     </Routes>

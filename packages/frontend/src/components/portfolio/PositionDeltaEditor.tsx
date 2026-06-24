@@ -29,6 +29,7 @@ interface PositionDeltaEditorProps {
   fundingSlot?: ReactNode;
   custodySlot: ReactNode;
   isLoading: boolean;
+  canSubmit: boolean;
 }
 
 export function PositionDeltaEditor({
@@ -52,6 +53,7 @@ export function PositionDeltaEditor({
   fundingSlot,
   custodySlot,
   isLoading,
+  canSubmit,
 }: PositionDeltaEditorProps) {
   const formatPositionQuantity = (value: number) => formatQuantity(value, position.asset.category);
 
@@ -245,7 +247,7 @@ export function PositionDeltaEditor({
       <div className="pt-3 border-t border-border/60">{custodySlot}</div>
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading || !canSubmit}>
           {isLoading ? 'Saving...' : deltaMode === 'add' ? 'Add to Position' : 'Reduce Position'}
         </Button>
       </div>

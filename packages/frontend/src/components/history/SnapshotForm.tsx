@@ -45,11 +45,16 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
     if (isNaN(value)) return 0;
     return inputCurrency === 'SGD' ? value / fxRate : value;
   };
+  const valueInUsd = getValueInUsd();
+  const hasTotalValue = totalValue.trim() !== '';
+  const totalValueError =
+    hasTotalValue && valueInUsd <= 0 ? 'Total value must be greater than 0' : null;
+  const canSubmit = !isLoading && hasTotalValue && !totalValueError;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const valueInUsd = getValueInUsd();
+    if (!canSubmit) return;
 
     if (isEditing && snapshot) {
       await updateSnapshot.mutateAsync({
@@ -148,6 +153,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
               USD (rate: {fxRate.toFixed(4)})
             </p>
           )}
+          {totalValueError && <p className="text-xs text-destructive">{totalValueError}</p>}
         </div>
 
         <div className="space-y-2">
@@ -165,7 +171,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading || !totalValue}>
+          <Button type="submit" disabled={!canSubmit}>
             {isLoading ? 'Saving...' : 'Update'}
           </Button>
         </div>
@@ -275,6 +281,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                 USD (rate: {fxRate.toFixed(4)})
               </p>
             )}
+            {totalValueError && <p className="text-xs text-destructive">{totalValueError}</p>}
           </div>
 
           <div className="space-y-2">
@@ -292,7 +299,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !totalValue}>
+            <Button type="submit" disabled={!canSubmit}>
               {isLoading ? 'Saving...' : 'Add Snapshot'}
             </Button>
           </div>

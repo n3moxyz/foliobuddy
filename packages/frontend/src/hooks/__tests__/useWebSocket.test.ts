@@ -103,6 +103,33 @@ describe('useWebSocket', () => {
     await waitFor(() => expect(result.current.status).toBe('disconnected'));
   });
 
+  it('updates status during reconnect lifecycle events', async () => {
+    const getToken = vi.fn().mockResolvedValue('test-token');
+    mocks.useAuthMock.mockReturnValue({ isSignedIn: true, getToken });
+
+    const { result } = renderHook(() => useWebSocket());
+
+    await waitFor(() => expect(mocks.ioMock).toHaveBeenCalled());
+
+    act(() => {
+      handlers.connect();
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('connected'));
+
+    act(() => {
+      handlers.reconnecting();
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('connecting'));
+
+    act(() => {
+      handlers.reconnect();
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('connected'));
+  });
+
   it('invalidates queries when prices are updated', async () => {
     const getToken = vi.fn().mockResolvedValue('test-token');
     mocks.useAuthMock.mockReturnValue({ isSignedIn: true, getToken });
@@ -125,5 +152,28 @@ describe('useWebSocket', () => {
     expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['positions'] });
     expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['prices'] });
     expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['dashboard'] });
+  });
+
+  it('invalidates portfolio, positions, and snapshots when the portfolio is updated', async () => {
+    const getToken = vi.fn().mockResolvedValue('test-token');
+    mocks.useAuthMock.mockReturnValue({ isSignedIn: true, getToken });
+
+    const { result } = renderHook(() => useWebSocket());
+
+    await waitFor(() => expect(mocks.ioMock).toHaveBeenCalled());
+
+    const timestamp = '2026-01-01T12:00:00.000Z';
+
+    act(() => {
+      handlers['portfolio:updated']({ timestamp, userId: 'user-1' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.lastUpdate?.toISOString()).toBe(timestamp);
+    });
+
+    expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['portfolio'] });
+    expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['positions'] });
+    expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['snapshots'] });
   });
 });

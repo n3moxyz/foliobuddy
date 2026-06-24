@@ -13,3 +13,9 @@ export function useAuthSetup() {
     setTokenGetter(getToken);
   }, [getToken]);
 }
+
+export function useLocalAuthBypassSetup() {
+  useEffect(() => {
+    setTokenGetter(async () => null);
+  }, []);
+}

@@ -33,13 +33,22 @@ import { useCurrencyStore } from '@/stores/currencyStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { api } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import {
+  useWebSocket,
+  type ConnectionStatus as WebSocketConnectionStatus,
+} from '@/hooks/useWebSocket';
 import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
 
 interface AppShellProps {
   children: ReactNode;
   basePath?: string;
   demoMode?: boolean;
+  localAuthBypass?: boolean;
+}
+
+interface AppShellContentProps extends AppShellProps {
+  wsStatus: WebSocketConnectionStatus;
+  lastUpdate: Date | null;
 }
 
 const navigation = [
@@ -63,7 +72,27 @@ function getInitialSidebarCollapsed() {
   return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
 }
 
-export function AppShell({ children, basePath = '', demoMode = false }: AppShellProps) {
+export function AppShell(props: AppShellProps) {
+  if (props.demoMode || props.localAuthBypass) {
+    return <AppShellContent {...props} wsStatus="disconnected" lastUpdate={null} />;
+  }
+
+  return <AppShellWithWebSocket {...props} />;
+}
+
+function AppShellWithWebSocket(props: AppShellProps) {
+  const { status: wsStatus, lastUpdate } = useWebSocket();
+  return <AppShellContent {...props} wsStatus={wsStatus} lastUpdate={lastUpdate} />;
+}
+
+function AppShellContent({
+  children,
+  basePath = '',
+  demoMode = false,
+  localAuthBypass = false,
+  wsStatus,
+  lastUpdate,
+}: AppShellContentProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
@@ -71,7 +100,6 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
   const { currency, toggleCurrency } = useCurrencyStore();
   const { theme, cycleTheme } = useThemeStore();
   const queryClient = useQueryClient();
-  const { status: wsStatus, lastUpdate } = useWebSocket();
   const ThemeIcon = themeIcons[theme];
   const buildPath = (href: string) => `${basePath}${href === '/' ? '' : href}` || '/';
   const SidebarToggleIcon = sidebarCollapsed ? PanelLeftOpen : PanelLeftClose;
@@ -323,13 +351,13 @@ export function AppShell({ children, basePath = '', demoMode = false }: AppShell
 
           <Separator orientation="vertical" className="h-6" />
 
-          {demoMode ? (
+          {demoMode || localAuthBypass ? (
             <div
               className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
-              aria-label="Demo user"
-              title="Demo mode"
+              aria-label={demoMode ? 'Demo user' : 'Local user'}
+              title={demoMode ? 'Demo mode' : 'Local auth bypass'}
             >
-              DM
+              {demoMode ? 'DM' : 'LB'}
             </div>
           ) : (
             <UserButton

@@ -17,33 +17,48 @@ declare global {
  */
 export { clerkMiddleware, requireAuth };
 
+let localBypassWarningLogged = false;
+
+function getLocalAuthBypassUserId(): string | null {
+  if (process.env.NODE_ENV === 'production') return null;
+  if (process.env.ALLOW_LOCAL_AUTH_BYPASS !== 'true') return null;
+
+  const userId = process.env.LOCAL_AUTH_USER_ID?.trim() || 'local-scale-user';
+  if (!localBypassWarningLogged) {
+    logger.warn(`Local auth bypass enabled for ${userId}; never enable this in production.`);
+    localBypassWarningLogged = true;
+  }
+  return userId;
+}
+
 /**
  * Middleware to ensure user exists in database and attach userId to request
  */
 export async function ensureUser(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = getAuth(req);
+    const userId = auth.userId ?? getLocalAuthBypassUserId();
 
-    if (!auth.userId) {
+    if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
     let user = await prisma.user.findUnique({
-      where: { id: auth.userId },
+      where: { id: userId },
     });
 
     if (!user) {
       user = await prisma.user.create({
         data: {
-          id: auth.userId,
-          email: `${auth.userId}@clerk.user`, // Placeholder, will be updated
+          id: userId,
+          email: `${userId}@clerk.user`, // Placeholder, will be updated
           name: null,
         },
       });
     }
 
     // Attach userId to request for use in routes
-    req.userId = auth.userId;
+    req.userId = userId;
     next();
   } catch (error) {
     logger.error('Auth middleware error:', error);

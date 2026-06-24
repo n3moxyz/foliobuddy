@@ -1,9 +1,12 @@
 export function sanitizeNumberInput(value: string, allowNegative = false) {
+  const raw = value.replace(/,/g, '');
+  if (!allowNegative && raw.trimStart().startsWith('-')) return '';
+
   let sanitized = '';
   let hasDecimal = false;
   let hasSign = false;
 
-  for (const char of value.replace(/,/g, '')) {
+  for (const char of raw) {
     if (char >= '0' && char <= '9') {
       sanitized += char;
       continue;

@@ -242,7 +242,7 @@ router.get('/excel', async (req, res, next) => {
       });
     });
 
-    const snapshotsSheet = workbook.addWorksheet('History');
+    const snapshotsSheet = workbook.addWorksheet('Snapshots');
     snapshotsSheet.columns = [
       { header: 'Date', key: 'date', width: 12 },
       { header: 'Type', key: 'type', width: 10 },

@@ -55,7 +55,7 @@ export function PerformersCard({
       <div className="divide-y">
         {performers.map((performer, index) => (
           <div
-            key={performer.assetId}
+            key={`${performer.assetId}-${index}`}
             className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
           >
             <div className="flex items-center gap-3">

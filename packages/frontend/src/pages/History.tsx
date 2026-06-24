@@ -59,6 +59,7 @@ function completedSnapshotsOnly(snapshots: Snapshot[]): Snapshot[] {
 }
 
 type SourceFilter = 'all' | 'AUTOMATIC' | 'MANUAL';
+const HISTORY_SNAPSHOT_LIMIT = 500;
 
 export default function History() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -70,8 +71,12 @@ export default function History() {
 
   const { currency } = useCurrencyStore();
   const { data: summary } = usePortfolioSummary();
-  // Always fetch all snapshots - filter client-side for correct counts
-  const { data: allSnapshots, isLoading } = useSnapshots();
+  // Fetch enough history for source counts and the current local scale dataset.
+  const {
+    data: allSnapshots,
+    error: snapshotsError,
+    isLoading,
+  } = useSnapshots({ limit: HISTORY_SNAPSHOT_LIMIT });
   const deleteSnapshot = useDeleteSnapshot();
   const deleteAllMutation = useDeleteAllSnapshots();
 
@@ -194,6 +199,13 @@ export default function History() {
           <TabsTrigger value="AUTOMATIC">Automatic ({automaticCount})</TabsTrigger>
           <TabsTrigger value="MANUAL">Manual ({manualCount})</TabsTrigger>
         </TabsList>
+
+        {snapshotsError && (
+          <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            Failed to load snapshots:{' '}
+            {snapshotsError instanceof Error ? snapshotsError.message : 'Unknown error'}
+          </div>
+        )}
 
         <div className="mt-4">
           <SnapshotTable

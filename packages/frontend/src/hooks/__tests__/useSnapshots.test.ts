@@ -36,6 +36,16 @@ describe('useSnapshots hooks', () => {
     expect(result.current.data).toEqual(snapshots);
   });
 
+  it('passes snapshot query params through to the API', async () => {
+    vi.mocked(api.getSnapshots).mockResolvedValue([]);
+
+    const queryClient = createTestQueryClient();
+    const wrapper = createQueryClientWrapper(queryClient);
+    renderHook(() => useSnapshots({ limit: 500 }), { wrapper });
+
+    await waitFor(() => expect(api.getSnapshots).toHaveBeenCalledWith({ limit: 500 }));
+  });
+
   it('calls createManualSnapshot API on create mutation', async () => {
     vi.mocked(api.createManualSnapshot).mockResolvedValue({ id: 's2' } as Snapshot);
 

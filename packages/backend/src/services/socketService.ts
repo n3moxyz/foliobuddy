@@ -117,6 +117,11 @@ class SocketService {
   getConnectedCount(): number {
     return this.io?.engine?.clientsCount ?? 0;
   }
+
+  close(): void {
+    this.io?.close();
+    this.io = null;
+  }
 }
 
 export const socketService = new SocketService();

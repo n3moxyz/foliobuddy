@@ -6,6 +6,7 @@ import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { useCreateTrade, useUpdateTrade } from '@/hooks/useTrades';
+import { isOptionalPositiveNumberInput, isPositiveNumberInput } from '@/lib/formValidation';
 import type { Asset, Trade } from '@/lib/types';
 import { TradeImportTab } from './TradeImportTab';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
@@ -47,27 +48,51 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
     return new Date().toISOString().split('T')[0];
   });
   const [notes, setNotes] = useState(trade?.notes || '');
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Hooks
   const createTrade = useCreateTrade();
   const updateTrade = useUpdateTrade();
 
   const isLoading = createTrade.isPending || updateTrade.isPending;
+  const isFormValid =
+    !!assetId &&
+    isPositiveNumberInput(entryPrice) &&
+    isPositiveNumberInput(quantity) &&
+    !!entryDate &&
+    isOptionalPositiveNumberInput(exitPrice);
 
   const handleSelectAsset = (id: string, asset: Asset) => {
     setAssetId(id);
     setSelectedAsset(asset);
+    setValidationError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError(null);
+
+    if (!isFormValid) {
+      if (!assetId) {
+        setValidationError('Please select an asset');
+      } else if (!isPositiveNumberInput(entryPrice)) {
+        setValidationError('Entry price must be greater than 0');
+      } else if (!isPositiveNumberInput(quantity)) {
+        setValidationError('Quantity must be greater than 0');
+      } else if (!entryDate) {
+        setValidationError('Entry date is required');
+      } else if (!isOptionalPositiveNumberInput(exitPrice)) {
+        setValidationError('Exit price must be greater than 0');
+      }
+      return;
+    }
 
     const data = {
       assetId,
       direction,
-      entryPrice: parseFloat(entryPrice),
-      exitPrice: exitPrice ? parseFloat(exitPrice) : undefined,
-      quantity: parseFloat(quantity),
+      entryPrice: Number(entryPrice),
+      exitPrice: exitPrice ? Number(exitPrice) : undefined,
+      quantity: Number(quantity),
       entryDate,
       exitDate: exitDate || undefined,
       notes: notes || undefined,
@@ -166,7 +191,10 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
               <FormattedNumberInput
                 id="entryPrice"
                 value={entryPrice}
-                onValueChange={setEntryPrice}
+                onValueChange={(value) => {
+                  setEntryPrice(value);
+                  setValidationError(null);
+                }}
                 placeholder="0.00"
                 required
               />
@@ -177,7 +205,10 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                 id="entryDate"
                 type="date"
                 value={entryDate}
-                onChange={(e) => setEntryDate(e.target.value)}
+                onChange={(e) => {
+                  setEntryDate(e.target.value);
+                  setValidationError(null);
+                }}
                 required
               />
             </div>
@@ -189,7 +220,10 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
               <FormattedNumberInput
                 id="exitPrice"
                 value={exitPrice}
-                onValueChange={setExitPrice}
+                onValueChange={(value) => {
+                  setExitPrice(value);
+                  setValidationError(null);
+                }}
                 placeholder="Leave empty for open trade"
               />
             </div>
@@ -199,7 +233,10 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                 id="exitDate"
                 type="date"
                 value={exitDate}
-                onChange={(e) => setExitDate(e.target.value)}
+                onChange={(e) => {
+                  setExitDate(e.target.value);
+                  setValidationError(null);
+                }}
               />
             </div>
           </div>
@@ -209,7 +246,10 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             <FormattedNumberInput
               id="quantity"
               value={quantity}
-              onValueChange={setQuantity}
+              onValueChange={(value) => {
+                setQuantity(value);
+                setValidationError(null);
+              }}
               placeholder="0.00"
               required
             />
@@ -225,8 +265,14 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             />
           </div>
 
+          {validationError && (
+            <div role="alert" className="text-sm text-warning bg-warning/10 p-2 rounded-md">
+              {validationError}
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="submit" disabled={isLoading || !assetId}>
+            <Button type="submit" disabled={isLoading || !isFormValid}>
               {isLoading ? 'Saving...' : isEditing ? 'Update Trade' : 'Log Trade'}
             </Button>
           </div>

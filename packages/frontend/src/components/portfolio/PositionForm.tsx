@@ -49,6 +49,7 @@ import { PositionImportTab } from './PositionImportTab';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 import { CustodyCheckbox } from './CustodyCheckbox';
 import { Checkbox } from '@/components/ui/checkbox';
+import { isNonNegativeNumberInput, isPositiveNumberInput } from '@/lib/formValidation';
 import { formatCurrency, formatNumber, isStablecoinCategory, currencyDecimals } from '@/lib/utils';
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
@@ -538,15 +539,30 @@ export function PositionForm({
 
   // Form validation
   const isFormValid = useMemo(() => {
-    if (!quantity || parseFloat(quantity) <= 0) return false;
+    if (!isPositiveNumberInput(quantity)) return false;
     if (category === 'equity' && equityMode === 'fund' && !isEditing) {
       if (!utSymbol.trim() || !utName.trim()) return false;
-      if (!utNav || parseFloat(utNav) <= 0) return false;
+      if (!isPositiveNumberInput(utNav)) return false;
       return true;
     }
     if (!assetId) return false;
     return true;
   }, [assetId, quantity, category, equityMode, isEditing, utSymbol, utName, utNav]);
+
+  const isDeltaFormValid = useMemo(() => {
+    if (!isPositiveNumberInput(additionalQuantity)) return false;
+    if (deltaMode === 'reduce') return true;
+
+    return additionalCostInputMode === 'total'
+      ? isNonNegativeNumberInput(additionalTotalCost)
+      : isNonNegativeNumberInput(additionalAvgCostInput);
+  }, [
+    additionalQuantity,
+    deltaMode,
+    additionalCostInputMode,
+    additionalTotalCost,
+    additionalAvgCostInput,
+  ]);
 
   const handlePaste = async () => {
     try {
@@ -1302,7 +1318,7 @@ export function PositionForm({
     if (!isFormValid) {
       if (!assetId) {
         setValidationError('Please select an asset');
-      } else if (!quantity || parseFloat(quantity) <= 0) {
+      } else if (!isPositiveNumberInput(quantity)) {
         setValidationError('Please enter a valid quantity');
       }
       return;
@@ -1724,6 +1740,7 @@ export function PositionForm({
               validationError={validationError}
               custodySlot={custodyCheckbox}
               isLoading={isLoading}
+              canSubmit={isDeltaFormValid}
               fundingSlot={fundingCashSelector}
             />
           ) : (
@@ -2245,11 +2262,7 @@ export function PositionForm({
               <div className="pt-3 border-t border-border/60">{custodyCheckbox}</div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="submit"
-                  className={!isFormValid && !isLoading ? 'opacity-50 cursor-not-allowed' : ''}
-                  disabled={isLoading}
-                >
+                <Button type="submit" disabled={isLoading || !isFormValid}>
                   {isLoading
                     ? 'Saving...'
                     : isEditing || utStatementMatch

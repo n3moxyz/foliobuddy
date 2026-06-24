@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx src/scripts/seed.ts",
+    "db:seed:scale": "tsx src/scripts/seed-scale.ts",
     "db:studio": "prisma studio",
     "import:excel": "tsx src/scripts/importExcel.ts",
     "test": "vitest run"
@@ -37,6 +38,7 @@
     "@types/node": "^20.11.0",
     "@types/supertest": "^6.0.3",
     "prisma": "^5.10.0",
+    "socket.io-client": "^4.8.3",
     "supertest": "^7.2.2",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",

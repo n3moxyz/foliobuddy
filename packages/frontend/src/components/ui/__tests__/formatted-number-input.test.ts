@@ -16,8 +16,14 @@ describe('formatted number input helpers', () => {
   });
 
   it('only preserves a leading negative sign when allowed', () => {
-    expect(sanitizeNumberInput('-1000')).toBe('1000');
+    expect(sanitizeNumberInput('-1000')).toBe('');
     expect(sanitizeNumberInput('-1000', true)).toBe('-1000');
     expect(formatNumberInputValue('-1000.50')).toBe('-1,000.50');
+  });
+
+  it('does not convert negative-looking values into positive amounts', () => {
+    expect(sanitizeNumberInput('-1')).toBe('');
+    expect(sanitizeNumberInput('-1,234.56')).toBe('');
+    expect(sanitizeNumberInput('1-2')).toBe('12');
   });
 });

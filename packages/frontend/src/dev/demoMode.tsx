@@ -11,8 +11,12 @@ import type {
   AssetPrice,
   BenchmarkHistoricalData,
   BulkImportPosition,
+  BulkImportSnapshot,
+  BulkImportTrade,
   CreateAssetData,
+  CreateInvestorData,
   CreatePositionData,
+  CreateTradeData,
   DbHealth,
   FxRate,
   Investor,
@@ -431,7 +435,7 @@ const initialPositionHistory: PositionHistoryEntry[] = [
   },
 ];
 
-const investors: Investor[] = [
+const initialInvestors: Investor[] = [
   {
     id: 'inv-owner',
     name: 'Nemo',
@@ -473,7 +477,7 @@ const investors: Investor[] = [
   },
 ];
 
-const trades: Trade[] = [
+const initialTrades: Trade[] = [
   {
     id: 'trade-1',
     assetId: 'btc',
@@ -629,41 +633,7 @@ const trades: Trade[] = [
   },
 ];
 
-const tradeAnalytics: TradeAnalytics = {
-  totalTrades: 8,
-  winningTrades: 5,
-  losingTrades: 3,
-  winRate: 62.5,
-  totalPnL: -27831,
-  avgPnL: -3479,
-  profitFactor: 0.63,
-  avgWin: 9184,
-  avgLoss: 24843,
-  breakdown: {
-    long: { count: 7, winRate: 57.1, pnl: -27066 },
-    short: { count: 1, winRate: 0, pnl: -765 },
-  },
-  bestTrade: {
-    id: 'trade-5',
-    asset: 'WLD',
-    pnl: 18849,
-    pnlPct: 8.97,
-    date: '2026-03-27T00:00:00.000Z',
-  },
-  worstTrade: {
-    id: 'trade-9',
-    asset: 'SOL',
-    pnl: -68003,
-    pnlPct: -9.96,
-    date: '2026-02-01T00:00:00.000Z',
-  },
-  monthlyBreakdown: [
-    { month: 'Jan 2026', pnl: 0, count: 0, winRate: 0 },
-    { month: 'Feb 2026', pnl: 8065, count: 3, winRate: 66.7 },
-  ],
-};
-
-const snapshots: Snapshot[] = [
+const initialSnapshots: Snapshot[] = [
   {
     id: 'snap-1',
     timestamp: '2024-08-01T13:00:00.000Z',
@@ -756,7 +726,7 @@ const snapshots: Snapshot[] = [
   },
 ];
 
-const snapshotPositions: Record<string, SnapshotPosition[]> = {
+const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
   'snap-5': [
     {
       id: 'sp-1',
@@ -853,7 +823,7 @@ const snapshotPositions: Record<string, SnapshotPosition[]> = {
   ],
 };
 
-const performance: PerformancePoint[] = [
+const initialPerformance: PerformancePoint[] = [
   {
     timestamp: '2024-08-01T13:00:00.000Z',
     totalValueUsd: 180000,
@@ -979,7 +949,24 @@ const fxRates: FxRate[] = [
 let demoAssets: Asset[] = [...initialAssets];
 let demoPositions: Position[] = [...initialPositions];
 let demoPositionHistory: PositionHistoryEntry[] = [...initialPositionHistory];
+let demoInvestors: Investor[] = [...initialInvestors];
+let demoTrades: Trade[] = [...initialTrades];
+let demoSnapshots: Snapshot[] = [...initialSnapshots];
+let demoSnapshotPositions: Record<string, SnapshotPosition[]> = { ...initialSnapshotPositions };
+let demoPerformance: PerformancePoint[] = [...initialPerformance];
 let demoIdCounter = 0;
+
+export function resetDemoDataForTests() {
+  demoAssets = [...initialAssets];
+  demoPositions = [...initialPositions];
+  demoPositionHistory = [...initialPositionHistory];
+  demoInvestors = [...initialInvestors];
+  demoTrades = [...initialTrades];
+  demoSnapshots = [...initialSnapshots];
+  demoSnapshotPositions = { ...initialSnapshotPositions };
+  demoPerformance = [...initialPerformance];
+  demoIdCounter = 0;
+}
 
 function round(value: number, decimals = 2) {
   const factor = 10 ** decimals;
@@ -1476,6 +1463,431 @@ function createImportedPosition(position: BulkImportPosition) {
   });
 }
 
+function calculateTradePnL(
+  direction: Trade['direction'],
+  entryPrice: number,
+  exitPrice: number,
+  quantity: number
+) {
+  const pnl =
+    direction === 'SHORT'
+      ? (entryPrice - exitPrice) * quantity
+      : (exitPrice - entryPrice) * quantity;
+  const positionSizeUsd = entryPrice * quantity;
+  return {
+    pnl: round(pnl),
+    pnlPct: positionSizeUsd > 0 ? round((pnl / positionSizeUsd) * 100, 2) : 0,
+  };
+}
+
+function assetFromImportedTrade(assetData: BulkImportTrade['asset']) {
+  let asset = demoAssets.find(
+    (item) =>
+      (assetData.coingeckoId && item.coingeckoId === assetData.coingeckoId) ||
+      item.symbol.toLowerCase() === assetData.symbol.toLowerCase()
+  );
+
+  if (!asset) {
+    asset = createDemoAsset({
+      coingeckoId: assetData.coingeckoId ?? assetData.symbol.toLowerCase(),
+      symbol: assetData.symbol,
+      name: assetData.name,
+      category: assetData.category,
+    });
+  }
+
+  return asset;
+}
+
+type DemoTradeInput = {
+  asset?: BulkImportTrade['asset'];
+  assetId?: string;
+  direction?: Trade['direction'];
+  entryPrice?: number;
+  exitPrice?: number | null;
+  quantity?: number;
+  entryDate?: string;
+  exitDate?: string | null;
+  status?: Trade['status'];
+  notes?: string | null;
+  tags?: string[] | null;
+};
+
+function normalizeTradeInput(data: DemoTradeInput, existing?: Trade): Trade {
+  const asset = data.asset
+    ? assetFromImportedTrade(data.asset)
+    : demoAssets.find((item) => item.id === (data.assetId ?? existing?.assetId));
+  if (!asset) throw new Error('Asset not found');
+
+  const direction = data.direction ?? existing?.direction ?? 'LONG';
+  const entryPrice = data.entryPrice ?? existing?.entryPrice ?? 0;
+  const exitPrice = data.exitPrice ?? existing?.exitPrice ?? null;
+  const quantity = data.quantity ?? existing?.quantity ?? 0;
+  const status = data.status ?? (exitPrice ? 'CLOSED' : 'OPEN');
+  const positionSizeUsd = round(entryPrice * quantity);
+  const realized =
+    exitPrice && status === 'CLOSED'
+      ? calculateTradePnL(direction, entryPrice, exitPrice, quantity)
+      : null;
+  const entryDate = data.entryDate ?? existing?.entryDate ?? new Date().toISOString();
+  const exitDate = data.exitDate ?? existing?.exitDate ?? null;
+  const tags = 'tags' in data ? data.tags : undefined;
+
+  return {
+    id: existing?.id ?? nextDemoId('trade'),
+    assetId: asset.id,
+    asset,
+    direction,
+    entryPrice,
+    exitPrice,
+    quantity,
+    positionSizeUsd,
+    entryDate: new Date(entryDate).toISOString(),
+    exitDate: exitDate ? new Date(exitDate).toISOString() : null,
+    status,
+    realizedPnL: realized?.pnl ?? null,
+    realizedPnLPct: realized?.pnlPct ?? null,
+    notes: data.notes ?? existing?.notes ?? null,
+    tags: tags ? JSON.stringify(tags) : (existing?.tags ?? null),
+  };
+}
+
+function createDemoTrade(data: BulkImportTrade | CreateTradeData) {
+  const trade = normalizeTradeInput(data);
+  demoTrades = [trade, ...demoTrades];
+  return trade;
+}
+
+function updateDemoTrade(id: string, data: Partial<CreateTradeData>) {
+  const existing = demoTrades.find((trade) => trade.id === id);
+  if (!existing) throw new Error('Trade not found');
+  const updated = normalizeTradeInput(
+    { ...data, assetId: data.assetId ?? existing.assetId },
+    existing
+  );
+  demoTrades = demoTrades.map((trade) => (trade.id === id ? updated : trade));
+  return updated;
+}
+
+function closeDemoTrade(
+  id: string,
+  data: { exitPrice: number; exitDate?: string; notes?: string }
+) {
+  return updateDemoTrade(id, {
+    exitPrice: data.exitPrice,
+    exitDate: data.exitDate ?? new Date().toISOString(),
+    notes: data.notes,
+  });
+}
+
+function getTradeAnalytics(): TradeAnalytics {
+  const closedTrades = demoTrades.filter((trade) => trade.status === 'CLOSED');
+  const winningTrades = closedTrades.filter((trade) => (trade.realizedPnL ?? 0) > 0);
+  const losingTrades = closedTrades.filter((trade) => (trade.realizedPnL ?? 0) < 0);
+  const totalTrades = closedTrades.length;
+  const totalPnL = round(closedTrades.reduce((sum, trade) => sum + (trade.realizedPnL ?? 0), 0));
+  const totalWins = winningTrades.reduce((sum, trade) => sum + (trade.realizedPnL ?? 0), 0);
+  const totalLosses = Math.abs(
+    losingTrades.reduce((sum, trade) => sum + (trade.realizedPnL ?? 0), 0)
+  );
+  const longTrades = closedTrades.filter((trade) => trade.direction === 'LONG');
+  const shortTrades = closedTrades.filter((trade) => trade.direction === 'SHORT');
+  const sortedByPnl = [...closedTrades].sort((a, b) => (b.realizedPnL ?? 0) - (a.realizedPnL ?? 0));
+  const bestTrade = sortedByPnl[0] ?? null;
+  const worstTrade = sortedByPnl[sortedByPnl.length - 1] ?? null;
+  const monthlyMap = new Map<string, { pnl: number; count: number; wins: number }>();
+
+  for (const trade of closedTrades) {
+    if (!trade.exitDate) continue;
+    const exitDate = new Date(trade.exitDate);
+    const month = `${exitDate.getFullYear()}-${String(exitDate.getMonth() + 1).padStart(2, '0')}`;
+    const existing = monthlyMap.get(month) ?? { pnl: 0, count: 0, wins: 0 };
+    monthlyMap.set(month, {
+      pnl: existing.pnl + (trade.realizedPnL ?? 0),
+      count: existing.count + 1,
+      wins: existing.wins + ((trade.realizedPnL ?? 0) > 0 ? 1 : 0),
+    });
+  }
+
+  const winRate = totalTrades > 0 ? (winningTrades.length / totalTrades) * 100 : 0;
+
+  return {
+    totalTrades,
+    winningTrades: winningTrades.length,
+    losingTrades: losingTrades.length,
+    winRate: round(winRate, 1),
+    totalPnL,
+    avgPnL: totalTrades > 0 ? round(totalPnL / totalTrades) : 0,
+    profitFactor:
+      totalLosses > 0 ? round(totalWins / totalLosses, 2) : totalWins > 0 ? Infinity : 0,
+    avgWin: winningTrades.length > 0 ? round(totalWins / winningTrades.length) : 0,
+    avgLoss: losingTrades.length > 0 ? round(totalLosses / losingTrades.length) : 0,
+    breakdown: {
+      long: {
+        count: longTrades.length,
+        winRate:
+          longTrades.length > 0
+            ? round(
+                (longTrades.filter((trade) => (trade.realizedPnL ?? 0) > 0).length /
+                  longTrades.length) *
+                  100,
+                1
+              )
+            : 0,
+        pnl: round(longTrades.reduce((sum, trade) => sum + (trade.realizedPnL ?? 0), 0)),
+      },
+      short: {
+        count: shortTrades.length,
+        winRate:
+          shortTrades.length > 0
+            ? round(
+                (shortTrades.filter((trade) => (trade.realizedPnL ?? 0) > 0).length /
+                  shortTrades.length) *
+                  100,
+                1
+              )
+            : 0,
+        pnl: round(shortTrades.reduce((sum, trade) => sum + (trade.realizedPnL ?? 0), 0)),
+      },
+    },
+    bestTrade: bestTrade
+      ? {
+          id: bestTrade.id,
+          asset: bestTrade.asset.symbol,
+          pnl: bestTrade.realizedPnL ?? 0,
+          pnlPct: bestTrade.realizedPnLPct ?? 0,
+          date: bestTrade.exitDate ?? bestTrade.entryDate,
+        }
+      : null,
+    worstTrade: worstTrade
+      ? {
+          id: worstTrade.id,
+          asset: worstTrade.asset.symbol,
+          pnl: worstTrade.realizedPnL ?? 0,
+          pnlPct: worstTrade.realizedPnLPct ?? 0,
+          date: worstTrade.exitDate ?? worstTrade.entryDate,
+        }
+      : null,
+    monthlyBreakdown: Array.from(monthlyMap.entries())
+      .map(([month, data]) => ({
+        month,
+        pnl: round(data.pnl),
+        count: data.count,
+        winRate: round((data.wins / data.count) * 100, 1),
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month)),
+  };
+}
+
+function deriveInvestorValues(investor: Investor): Investor {
+  const totalValueUsd = getSummary().totalValueUsd;
+  const currentValue = round((totalValueUsd * investor.stakePercentage) / 100);
+  const capitalAtYearStart = investor.capitalAtYearStart ?? investor.initialCapital ?? 0;
+  const ytdReturn = round(currentValue - capitalAtYearStart);
+
+  return {
+    ...investor,
+    currentValue,
+    capitalAtYearStart,
+    ytdReturn,
+    ytdReturnPct: capitalAtYearStart > 0 ? round((ytdReturn / capitalAtYearStart) * 100, 1) : null,
+  };
+}
+
+function createDemoInvestor(data: CreateInvestorData) {
+  const currentStake = demoInvestors.reduce((sum, investor) => sum + investor.stakePercentage, 0);
+  const stakePercentage = data.stakePercentage ?? Math.max(0, 100 - currentStake);
+  const investor = deriveInvestorValues({
+    id: nextDemoId('inv'),
+    name: data.name,
+    stakePercentage,
+    initialCapital: data.initialCapital ?? 0,
+    currentValue: 0,
+    capitalAtYearStart: data.initialCapital ?? 0,
+    ytdReturn: 0,
+    ytdReturnPct: 0,
+    joinDate: data.joinDate ? new Date(data.joinDate).toISOString() : new Date().toISOString(),
+    notes: data.notes ?? null,
+    isOwner: data.isOwner ?? false,
+  });
+  demoInvestors = [...demoInvestors, investor];
+  return investor;
+}
+
+function updateDemoInvestor(id: string, data: Partial<CreateInvestorData>) {
+  const existing = demoInvestors.find((investor) => investor.id === id);
+  if (!existing) throw new Error('Investor not found');
+  const updated = deriveInvestorValues({
+    ...existing,
+    ...data,
+    initialCapital: data.initialCapital ?? existing.initialCapital,
+    joinDate: data.joinDate ? new Date(data.joinDate).toISOString() : existing.joinDate,
+    notes: data.notes ?? existing.notes,
+    isOwner: data.isOwner ?? existing.isOwner,
+  });
+  demoInvestors = demoInvestors.map((investor) => (investor.id === id ? updated : investor));
+  return updated;
+}
+
+function deleteDemoInvestor(id: string, reassignTo?: string | null) {
+  const deleted = demoInvestors.find((investor) => investor.id === id);
+  if (!deleted) throw new Error('Investor not found');
+
+  demoInvestors = demoInvestors
+    .filter((investor) => investor.id !== id)
+    .map((investor) =>
+      reassignTo && investor.id === reassignTo
+        ? { ...investor, stakePercentage: investor.stakePercentage + deleted.stakePercentage }
+        : investor
+    );
+}
+
+function snapshotToPerformancePoint(snapshot: Snapshot): PerformancePoint {
+  const fxRate = snapshot.usdSgdRate ?? fxRates[0]?.rate ?? 1.3471;
+  return {
+    timestamp: snapshot.timestamp,
+    totalValueUsd: snapshot.totalValueUsd,
+    totalValueSgd: snapshot.totalValueSgd ?? round(snapshot.totalValueUsd * fxRate),
+    unrealizedPnL: round(snapshot.totalValueUsd - (snapshot.totalCostBasis ?? 0)),
+    btcPrice: 100000,
+    ethPrice: 4500,
+  };
+}
+
+function upsertPerformancePoint(snapshot: Snapshot) {
+  const point = snapshotToPerformancePoint(snapshot);
+  demoPerformance = [
+    ...demoPerformance.filter(
+      (item) =>
+        new Date(item.timestamp).toDateString() !== new Date(snapshot.timestamp).toDateString()
+    ),
+    point,
+  ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+}
+
+type DemoSnapshotInput = {
+  timestamp?: string;
+  snapshotType?: Snapshot['snapshotType'];
+  totalValueUsd?: number;
+  totalCostBasis?: number | null;
+  notes?: string | null;
+  manual?: true;
+};
+
+function normalizeSnapshotInput(data: DemoSnapshotInput, existing?: Snapshot): Snapshot {
+  const timestamp = new Date(
+    data.timestamp ?? existing?.timestamp ?? new Date().toISOString()
+  ).toISOString();
+  const fxRate = fxRates[0]?.rate ?? 1.3471;
+  const totalValueUsd = data.totalValueUsd ?? existing?.totalValueUsd ?? getSummary().totalValueUsd;
+  const totalCostBasis = data.totalCostBasis ?? existing?.totalCostBasis ?? null;
+
+  return {
+    id: existing?.id ?? nextDemoId('snap'),
+    timestamp,
+    snapshotType: data.snapshotType ?? existing?.snapshotType ?? 'DAILY',
+    source: 'MANUAL',
+    totalValueUsd,
+    totalValueSgd: round(totalValueUsd * fxRate),
+    usdSgdRate: fxRate,
+    totalCostBasis,
+    monthlyReturn: existing?.monthlyReturn ?? null,
+    ytdReturn: existing?.ytdReturn ?? null,
+    btcOutperform: existing?.btcOutperform ?? null,
+    ethOutperform: existing?.ethOutperform ?? null,
+    notes: data.notes ?? existing?.notes ?? null,
+  };
+}
+
+function createDemoSnapshot(data?: DemoSnapshotInput) {
+  const snapshot = normalizeSnapshotInput({
+    manual: true,
+    timestamp: data?.timestamp ?? new Date().toISOString(),
+    snapshotType: data?.snapshotType ?? 'DAILY',
+    totalValueUsd: data?.totalValueUsd ?? getSummary().totalValueUsd,
+    totalCostBasis: data?.totalCostBasis ?? getSummary().totalCostBasis,
+    notes: data?.notes ?? null,
+  });
+  demoSnapshots = [snapshot, ...demoSnapshots].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+  upsertPerformancePoint(snapshot);
+  return snapshot;
+}
+
+function updateDemoSnapshot(id: string, data: DemoSnapshotInput) {
+  const existing = demoSnapshots.find((snapshot) => snapshot.id === id);
+  if (!existing) throw new Error('Snapshot not found');
+  const updated = normalizeSnapshotInput({ ...existing, ...data, manual: true }, existing);
+  demoSnapshots = demoSnapshots.map((snapshot) => (snapshot.id === id ? updated : snapshot));
+  upsertPerformancePoint(updated);
+  return updated;
+}
+
+function bulkImportDemoSnapshots(imports: BulkImportSnapshot[]) {
+  const results: Array<{ success: boolean; timestamp: string; error?: string }> = [];
+
+  for (const imported of imports) {
+    try {
+      const timestamp = new Date(imported.timestamp);
+      const existing = demoSnapshots.find(
+        (snapshot) => new Date(snapshot.timestamp).toDateString() === timestamp.toDateString()
+      );
+      const snapshot = existing
+        ? updateDemoSnapshot(existing.id, imported)
+        : createDemoSnapshot({ ...imported, timestamp: timestamp.toISOString() });
+      demoSnapshotPositions[snapshot.id] = demoSnapshotPositions[snapshot.id] ?? [];
+      results.push({ success: true, timestamp: imported.timestamp });
+    } catch (error) {
+      results.push({
+        success: false,
+        timestamp: imported.timestamp,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  return {
+    results,
+    successCount: results.filter((result) => result.success).length,
+    totalCount: imports.length,
+  };
+}
+
+function updateDemoAssetNav(id: string, data: { navPrice: number; asOfDate?: string }) {
+  const asset = demoAssets.find((item) => item.id === id);
+  if (!asset) throw new Error('Asset not found');
+  const nativeCurrency = asset.nativeCurrency.toUpperCase();
+  const fxRate =
+    nativeCurrency === 'USD' ? 1 : fxRates.find((rate) => rate.toCcy === nativeCurrency)?.rate;
+  const currentPriceUsd = fxRate && fxRate > 0 ? data.navPrice / fxRate : data.navPrice;
+  const updated: Asset = {
+    ...asset,
+    currentPriceUsd,
+    priceUpdatedAt: data.asOfDate
+      ? new Date(data.asOfDate).toISOString()
+      : new Date().toISOString(),
+  };
+  demoAssets = demoAssets.map((item) => (item.id === id ? updated : item));
+  demoPositions = demoPositions.map((position) =>
+    position.assetId === id
+      ? computePosition(updated, {
+          id: position.id,
+          assetId: position.assetId,
+          quantity: position.quantity,
+          avgCostUsd: position.avgCostUsd,
+          storageType: position.storageType,
+          storageLocation: position.storageLocation,
+          notes: position.notes,
+          custodyOf: position.custodyOf,
+          createdAt: position.createdAt,
+          updatedAt: new Date().toISOString(),
+        })
+      : position
+  );
+  return updated;
+}
+
 function benchmarkHistory(
   id: string,
   provider: 'coingecko' | 'yahoo' = 'coingecko'
@@ -1497,7 +1909,7 @@ function benchmarkHistory(
     provider,
     providerAssetId: id,
     days: 30,
-    data: performance.map((point, index) => ({
+    data: demoPerformance.map((point, index) => ({
       timestamp: new Date(point.timestamp).getTime(),
       price:
         Math.round((start + index * start * 0.018 + Math.sin(index * 0.7) * start * 0.01) * 100) /
@@ -1521,18 +1933,18 @@ function parseUrl(input: string | URL | Request) {
 
 function filterTrades(url: URL) {
   const status = url.searchParams.get('status');
-  return status ? trades.filter((trade) => trade.status === status) : trades;
+  return status ? demoTrades.filter((trade) => trade.status === status) : demoTrades;
 }
 
 function filterPerformance(url: URL) {
-  if (url.searchParams.get('all') === 'true') return performance;
+  if (url.searchParams.get('all') === 'true') return demoPerformance;
 
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   if (from || to) {
     const fromTime = from ? new Date(from).getTime() : Number.NEGATIVE_INFINITY;
     const toTime = to ? new Date(to).getTime() : Number.POSITIVE_INFINITY;
-    return performance.filter((point) => {
+    return demoPerformance.filter((point) => {
       const timestamp = new Date(point.timestamp).getTime();
       return timestamp >= fromTime && timestamp <= toTime;
     });
@@ -1543,7 +1955,7 @@ function filterPerformance(url: URL) {
   const endTime = new Date(NOW).getTime();
   const startTime = endTime - windowDays * 24 * 60 * 60 * 1000;
 
-  return performance.filter((point) => {
+  return demoPerformance.filter((point) => {
     const timestamp = new Date(point.timestamp).getTime();
     return timestamp >= startTime && timestamp <= endTime;
   });
@@ -1553,7 +1965,7 @@ function demoApiPath(url: URL) {
   return url.pathname.replace(/^\/api\/v1(?=\/|$)/, '/api');
 }
 
-async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
+export async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   const path = demoApiPath(url);
 
   if (path === '/api/positions' && method === 'GET') return json(demoPositions);
@@ -1612,14 +2024,142 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
     );
   }
   if (path === '/api/trades' && method === 'GET') return json(filterTrades(url));
-  if (path === '/api/trades/analytics' && method === 'GET') return json(tradeAnalytics);
-  if (path === '/api/investors' && method === 'GET') return json(investors);
-  if (path === '/api/snapshots' && method === 'GET') return json(snapshots);
+  if (path === '/api/trades/analytics' && method === 'GET') return json(getTradeAnalytics());
+  if (path === '/api/trades' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as CreateTradeData;
+    return json(createDemoTrade(body), 201);
+  }
+  if (path === '/api/trades/bulk-import' && method === 'POST') {
+    const imports = JSON.parse((init?.body as string | undefined) ?? '[]') as BulkImportTrade[];
+    const results = imports.map((trade) => {
+      try {
+        createDemoTrade(trade);
+        return { success: true, symbol: trade.asset.symbol };
+      } catch (error) {
+        return {
+          success: false,
+          symbol: trade.asset.symbol,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        };
+      }
+    });
+    return json({ results }, 201);
+  }
+  if (path === '/api/trades' && method === 'DELETE') {
+    const count = demoTrades.length;
+    demoTrades = [];
+    return json({ count });
+  }
+  if (path.startsWith('/api/trades/') && method === 'GET') {
+    const id = path.split('/')[3];
+    const trade = demoTrades.find((item) => item.id === id);
+    return trade ? json(trade) : json({ error: 'Trade not found' }, 404);
+  }
+  if (path.startsWith('/api/trades/') && path.endsWith('/close') && method === 'PATCH') {
+    const id = path.split('/')[3];
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
+      exitPrice: number;
+      exitDate?: string;
+      notes?: string;
+    };
+    return json(closeDemoTrade(id, body));
+  }
+  if (path.startsWith('/api/trades/') && method === 'PUT') {
+    const id = path.split('/')[3];
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as Partial<CreateTradeData>;
+    return json(updateDemoTrade(id, body));
+  }
+  if (path.startsWith('/api/trades/') && method === 'DELETE') {
+    const id = path.split('/')[3];
+    const before = demoTrades.length;
+    demoTrades = demoTrades.filter((trade) => trade.id !== id);
+    return before === demoTrades.length
+      ? json({ error: 'Trade not found' }, 404)
+      : new Response(null, { status: 204 });
+  }
+  if (path === '/api/investors' && method === 'GET')
+    return json(demoInvestors.map(deriveInvestorValues));
+  if (path === '/api/investors' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as CreateInvestorData;
+    return json(createDemoInvestor(body), 201);
+  }
+  if (path.startsWith('/api/investors/') && path.endsWith('/report') && method === 'GET') {
+    const id = path.split('/')[3];
+    const investor = demoInvestors.map(deriveInvestorValues).find((item) => item.id === id);
+    return investor
+      ? json({ investor, snapshots: [], summary: { currentValue: investor.currentValue } })
+      : json({ error: 'Investor not found' }, 404);
+  }
+  if (path.startsWith('/api/investors/') && method === 'GET') {
+    const id = path.split('/')[3];
+    const investor = demoInvestors.map(deriveInvestorValues).find((item) => item.id === id);
+    return investor ? json(investor) : json({ error: 'Investor not found' }, 404);
+  }
+  if (path.startsWith('/api/investors/') && method === 'PUT') {
+    const id = path.split('/')[3];
+    const body = JSON.parse(
+      (init?.body as string | undefined) ?? '{}'
+    ) as Partial<CreateInvestorData>;
+    return json(updateDemoInvestor(id, body));
+  }
+  if (path.startsWith('/api/investors/') && method === 'DELETE') {
+    const id = path.split('/')[3];
+    deleteDemoInvestor(id, url.searchParams.get('reassignTo'));
+    return new Response(null, { status: 204 });
+  }
+  if (path === '/api/snapshots' && method === 'GET') return json(demoSnapshots);
   if (path === '/api/snapshots/performance' && method === 'GET')
     return json(filterPerformance(url));
+  if (path === '/api/snapshots/bulk' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
+      snapshots?: BulkImportSnapshot[];
+    };
+    return json(bulkImportDemoSnapshots(body.snapshots ?? []), 201);
+  }
+  if (path === '/api/snapshots' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as DemoSnapshotInput & {
+      type?: string;
+    };
+    return json(
+      createDemoSnapshot(
+        body.type ? { snapshotType: body.type as Snapshot['snapshotType'] } : body
+      ),
+      201
+    );
+  }
   if (path.startsWith('/api/snapshots/') && path.endsWith('/positions') && method === 'GET') {
     const id = path.split('/')[3];
-    return json(snapshotPositions[id] ?? []);
+    return json(demoSnapshotPositions[id] ?? []);
+  }
+  if (path.startsWith('/api/snapshots/') && method === 'GET') {
+    const id = path.split('/')[3];
+    const snapshot = demoSnapshots.find((item) => item.id === id);
+    return snapshot ? json(snapshot) : json({ error: 'Snapshot not found' }, 404);
+  }
+  if (path.startsWith('/api/snapshots/') && method === 'PUT') {
+    const id = path.split('/')[3];
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as DemoSnapshotInput;
+    return json(updateDemoSnapshot(id, body));
+  }
+  if (path.startsWith('/api/snapshots/') && method === 'DELETE') {
+    const id = path.split('/')[3];
+    const deleted = demoSnapshots.find((snapshot) => snapshot.id === id);
+    const before = demoSnapshots.length;
+    demoSnapshots = demoSnapshots.filter((snapshot) => snapshot.id !== id);
+    delete demoSnapshotPositions[id];
+    if (deleted) {
+      demoPerformance = demoPerformance.filter((point) => point.timestamp !== deleted.timestamp);
+    }
+    return before === demoSnapshots.length
+      ? json({ error: 'Snapshot not found' }, 404)
+      : new Response(null, { status: 204 });
+  }
+  if (path === '/api/snapshots' && method === 'DELETE') {
+    const count = demoSnapshots.length;
+    demoSnapshots = [];
+    demoSnapshotPositions = {};
+    demoPerformance = [];
+    return json({ count });
   }
   if (path === '/api/health/db' && method === 'GET') return json(dbHealth);
   if (path === '/api/fx/rates' && method === 'GET') return json(fxRates);
@@ -1838,8 +2378,31 @@ async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
     demoAssets = demoAssets.map((a) => (a.id === merged.id ? merged : a));
     return json(merged, 201);
   }
-  if (path === '/api/snapshots' && method === 'POST')
-    return json({ ...snapshots[0], id: 'snap-demo-created' });
+  if (path.startsWith('/api/assets/') && path.endsWith('/refresh-price') && method === 'POST') {
+    const id = path.split('/')[3];
+    const asset = demoAssets.find((item) => item.id === id);
+    if (!asset) return json({ error: 'Asset not found' }, 404);
+    const updated: Asset = {
+      ...asset,
+      currentPriceUsd: asset.currentPriceUsd ?? seedDemoPrice(asset.coingeckoId, asset.category),
+      priceUpdatedAt: new Date().toISOString(),
+    };
+    demoAssets = demoAssets.map((item) => (item.id === id ? updated : item));
+    return json(updated);
+  }
+  if (path.startsWith('/api/assets/') && path.endsWith('/nav') && method === 'PATCH') {
+    const id = path.split('/')[3];
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
+      navPrice: number;
+      asOfDate?: string;
+    };
+    return json(updateDemoAssetNav(id, body));
+  }
+  if (path.startsWith('/api/assets/') && method === 'GET') {
+    const id = path.split('/')[3];
+    const asset = demoAssets.find((item) => item.id === id);
+    return asset ? json(asset) : json({ error: 'Asset not found' }, 404);
+  }
   if (path.endsWith('/assets/unit-trust') && method === 'POST') {
     const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
       symbol: string;

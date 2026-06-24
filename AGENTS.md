@@ -28,7 +28,7 @@
 - `src/lib/authorization.ts` - Admin and user-asset ownership guards for global asset catalog routes
 - `src/lib/startupChecks.ts` - Production boot warnings for missing operational config such as `ADMIN_USER_IDS`
 - `src/lib/TTLCache.ts` - Generic TTL cache with LRU eviction (used by priceService)
-- `src/__tests__/` - vitest unit + integration tests. `routes/` = supertest + mocked Prisma; `helpers/` = createTestApp, fixtures; `scheduler.test.ts` + `socketService.test.ts` cover cron price-refresh fanout and WebSocket event payloads
+- `src/__tests__/` - vitest unit + integration tests. `routes/` = supertest + mocked Prisma; `helpers/` = createTestApp, fixtures; `scheduler.test.ts` + `socketService.test.ts` cover cron price-refresh fanout and WebSocket event payloads; `socketService.integration.test.ts` uses real Socket.io clients with mocked Clerk verification for auth/broadcast/user-room coverage
 - `prisma/schema.prisma` - Database schema
 
 ### Frontend
@@ -87,6 +87,7 @@ npm run domain:check     # Verify backend domain constants mirror shared constan
 npm run db:local         # Start local Postgres (Docker, port 5433)
 npm run db:local:stop    # Stop local Postgres
 npm run db:sync          # Pull production data → local DB
+npm run db:seed:scale    # Seed sanitized local production-scale data for local QA
 
 # Database Backups (run on DO droplet, not locally)
 # ./scripts/backup-db.sh daily|weekly|monthly  — dump, compress, upload to DO Spaces
@@ -130,6 +131,16 @@ Background Jobs (node-cron):
 ### Auto-Create User
 
 First-time Clerk users are auto-created in database via `ensureUser` middleware.
+
+### Local QA Auth Bypass
+
+For sanitized real-API browser QA only, run backend with
+`ALLOW_LOCAL_AUTH_BYPASS=true LOCAL_AUTH_USER_ID=local-scale-user` and frontend with
+`VITE_LOCAL_AUTH_BYPASS=true`. Backend bypass is ignored in `NODE_ENV=production`; frontend bypass
+requires Vite dev mode, skips ClerkProvider, installs a no-token API getter, renders an `LB` avatar,
+and leaves websocket status disconnected instead of calling Clerk hooks. Always set
+`ALLOWED_ORIGINS=http://localhost:4000` (or the actual Vite port) or browser API calls will fail
+CORS while the backend still looks healthy. Never use bypass flags with production data.
 
 ### Snapshot System
 
@@ -187,7 +198,8 @@ All pages are lazy-loaded with `React.lazy()` + `Suspense`. Vite `manualChunks` 
 - **Dev-only**: `App.tsx` lazy-loads it only when `import.meta.env.DEV` — the mock payload never ships in prod.
 - Mocks `/api/*` and `/api/v1/*` in-browser; restores the original `fetch` + token getter on unmount (never leave global monkey-patches installed).
 - Child routes render only after the mock installs (else React Query caches empty real responses and demo appears blank). `DemoPages` installs in `useLayoutEffect`, then flips readiness on a short timer (satisfies the `set-state-in-effect` lint).
-- Stateful in-browser CRUD at `/dev/demo/portfolio` (add/edit/delete/import); resets on full refresh.
+- Stateful in-browser CRUD/import coverage for visible workflows (positions, trades, snapshots, investors, manual NAV); resets on full refresh.
+- Demo API handlers must stay in sync with UI workflows that claim success. Add/update `src/dev/__tests__/demoMode.test.ts` when adding mocked write/import routes.
 - Seed data spans all buckets (crypto, equities, unit trust, stables, USD/SGD cash, alternatives, storage types, custody). Keep each seeded `Position.assetId` and embedded `asset` in sync via `demoAsset(id)`, not array indexes; the 4th allocation chart needs stable/cash positions.
 - Demo perf history must honor `/snapshots/performance` params (`days`, `from`, `to`, `all=true`); `Max` includes pre-1Y points.
 - UI/responsive testing only — never point at production write APIs.
@@ -199,6 +211,8 @@ Advisory frontend audit — see the pinned command in Commands. Treat results as
 ### Dependency Audit Notes
 
 Root `package.json` intentionally overrides `exceljs`'s transitive `uuid` to `11.1.1` (ExcelJS 4.4 declares `uuid@^8.3.0`, flagged via `GHSA-w5hq-g745-h8pq`; ExcelJS only uses `v4()`, stable on uuid 11). Do not run `npm audit fix --force` — its suggested fix is a major ExcelJS downgrade to 3.4.0. Keep `npm audit` clean after dependency updates.
+
+ExcelJS treats worksheet name `History` as protected; portfolio workbook exports use `Snapshots` for the snapshot sheet. Keep `export.test.ts` coverage so export bugs don't hide behind browser download flows.
 
 ### Ownership Checks on Mutations
 
@@ -246,6 +260,12 @@ Use `formatQuantity()` for read-only quantity displays (tables, detail dialogs, 
 ### Formatted Amount Inputs
 
 Use `FormattedNumberInput` for editable money/quantity/unit/NAV/capital/exposure fields. Renders `10000` as `10,000` while keeping state as the raw string (`"10000"`) so `parseFloat()` and API payloads stay safe. Don't use raw `type="number"` for finance amounts unless the field needs native min/max semantics (e.g. bounded percentages).
+
+For non-negative finance fields, never coerce leading-negative input into a positive value. `sanitizeNumberInput('-1')` intentionally returns `''`; forms with positive-only values (snapshots, prices, quantities) should keep submit disabled until parsed values satisfy the backend constraint.
+
+Use `isPositiveNumberInput()` / `isNonNegativeNumberInput()` from `src/lib/formValidation.ts` when
+submit gating finance forms. Do not rely on `required`, `parseFloat`, or disabled-looking CSS alone;
+the UI guard should match the backend Zod rule before a mutation can fire.
 
 ### Trades Review Lenses
 
@@ -371,6 +391,8 @@ CLERK_SECRET_KEY=          # Clerk backend key
 ADMIN_USER_IDS=            # Comma-separated Clerk user IDs allowed to edit/delete global Asset catalog records
 ALLOWED_ORIGINS=http://localhost:4000
 RATE_LIMIT_MAX=10000       # Local dev override (production defaults to 200)
+ALLOW_LOCAL_AUTH_BYPASS=false  # Local scale QA only; ignored when NODE_ENV=production
+LOCAL_AUTH_USER_ID=local-scale-user
 SENTRY_DSN=                # Optional — error tracking (skipped if empty)
 ```
 
@@ -382,11 +404,14 @@ Production boot logs warn when `ADMIN_USER_IDS` is empty because global Asset ca
 VITE_API_URL=http://localhost:4001/api/v1    # Backend API URL (or prod URL for frontend-only dev)
 VITE_WS_BACKEND_URL=http://localhost:4001    # WebSocket URL
 VITE_CLERK_PUBLISHABLE_KEY=                  # Clerk frontend key
+VITE_LOCAL_AUTH_BYPASS=false                 # Local scale QA only; requires Vite DEV mode
 ```
 
 ### Frontend-Only Development / UI Testing
 
 For layout and interaction work without Docker, a backend, or real auth, use the dev demo route: run `npm run dev --workspace=@foliobuddy/frontend`, open `http://localhost:4000/dev/demo` (`/dev/demo/portfolio` for position form and edit-flow testing). Dev-mode only, mocked `/api` responses. If you must point `VITE_API_URL` at a live backend, use one you control; keep production-origin allowlist notes in private ops docs.
+
+For sanitized real-API local scale QA, pair backend `ALLOW_LOCAL_AUTH_BYPASS=true` with frontend `VITE_LOCAL_AUTH_BYPASS=true`, local `VITE_API_URL=http://localhost:4001/api/v1`, and an `ALLOWED_ORIGINS` entry for the Vite port. Never use those bypass flags with production data or production builds.
 
 ## Deployment
 
