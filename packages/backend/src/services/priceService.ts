@@ -105,7 +105,62 @@ class PriceService {
     providerAssetId: string,
     days: number
   ): Promise<ProviderHistoricalPoint[]> {
-    return this.providers[providerName].getHistoricalPrices(providerAssetId, days);
+    try {
+      const providerHistory = await this.providers[providerName].getHistoricalPrices(
+        providerAssetId,
+        days
+      );
+      if (providerHistory.length > 0) return providerHistory;
+    } catch (error) {
+      logger.warn(
+        `[Price History] ${providerName} provider failed for ${providerAssetId}; trying stored history fallback`,
+        error
+      );
+    }
+
+    return this.getStoredAssetHistory(providerName, providerAssetId, days);
+  }
+
+  private async getStoredAssetHistory(
+    providerName: ProviderName,
+    providerAssetId: string,
+    days: number
+  ): Promise<ProviderHistoricalPoint[]> {
+    const asset = await prisma.asset.findFirst({
+      where: {
+        priceProvider: providerName,
+        providerAssetId,
+      },
+      select: { id: true },
+    });
+    if (!asset) return [];
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const rows = await prisma.priceHistory.findMany({
+      where: {
+        assetId: asset.id,
+        timestamp: { gte: startDate },
+      },
+      orderBy: { timestamp: 'asc' },
+      select: {
+        timestamp: true,
+        priceUsd: true,
+        nativePrice: true,
+      },
+    });
+
+    const latestRowByDay = new Map<string, (typeof rows)[number]>();
+    for (const row of rows) {
+      latestRowByDay.set(row.timestamp.toISOString().slice(0, 10), row);
+    }
+
+    return Array.from(latestRowByDay.values()).map((row) => ({
+      timestamp: row.timestamp.getTime(),
+      priceUsd: row.priceUsd,
+      nativePrice: row.nativePrice,
+    }));
   }
 
   async refreshAllPrices(providerFilter?: ProviderName): Promise<RefreshResult> {

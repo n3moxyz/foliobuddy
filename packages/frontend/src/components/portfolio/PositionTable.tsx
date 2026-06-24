@@ -50,6 +50,7 @@ import type { Position, PositionHistoryEntry } from '@/lib/types';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboard';
 import {
+  localAmountLabel,
   localPriceLabel,
   type UsdFxRatesByCurrency,
 } from '@/components/portfolio/positionPriceDisplay';
@@ -476,6 +477,46 @@ export function PositionTable({
     );
   };
 
+  const nativeAmountLabelFor = (
+    position: Position,
+    usdValue: number | null | undefined
+  ): string | null =>
+    localAmountLabel({
+      usdValue,
+      nativeCurrency: position.asset.nativeCurrency,
+      displayCurrency: currency,
+      usdFxRates: priceFxRates,
+    });
+
+  const nativePriceLabelFor = (
+    position: Position,
+    usdPrice: number | null | undefined
+  ): string | null =>
+    localPriceLabel({
+      usdPrice,
+      nativeCurrency: position.asset.nativeCurrency,
+      displayCurrency: currency,
+      usdFxRates: priceFxRates,
+    });
+
+  const renderNativeHint = (
+    label: string | null,
+    className = 'font-mono text-[11px] leading-none text-muted-foreground/80'
+  ) => (label ? <p className={className}>{label}</p> : null);
+
+  const renderAmountWithNative = (
+    position: Position,
+    usdValue: number | null | undefined,
+    options: { className?: string; decimals?: number; nativeClassName?: string } = {}
+  ) => (
+    <>
+      <p className={options.className ?? 'font-mono'}>
+        {formatCurrency(convert(usdValue), currency, options.decimals ?? 0)}
+      </p>
+      {renderNativeHint(nativeAmountLabelFor(position, usdValue), options.nativeClassName)}
+    </>
+  );
+
   const renderTableHeader = (sortState: {
     sortKey: string | null;
     sortDirection: SortDirection;
@@ -744,71 +785,85 @@ export function PositionTable({
     const activityRowCount = previousRows.length + currentRows.length;
 
     const renderActivityRows = (rows: ActivityRow[]) =>
-      rows.map((entry) => (
-        <div
-          key={entry.id}
-          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5"
-        >
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className={`text-xs font-medium uppercase ${entry.toneClass}`}>
-                {entry.label}
-              </span>
-              <span className="text-xs text-muted-foreground">{formatDateTime(entry.date)}</span>
+      rows.map((entry) => {
+        const localExecutionPrice = nativePriceLabelFor(viewPosition, entry.priceUsd);
+        const localNextAvgCost = nativePriceLabelFor(viewPosition, entry.nextAvgCostUsd);
+
+        return (
+          <div
+            key={entry.id}
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5"
+          >
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className={`text-xs font-medium uppercase ${entry.toneClass}`}>
+                  {entry.label}
+                </span>
+                <span className="text-xs text-muted-foreground">{formatDateTime(entry.date)}</span>
+              </div>
+              <div className="mt-0.5 text-sm leading-snug">
+                <p className="flex min-w-0 flex-wrap items-start gap-x-1">
+                  <span className={`font-mono font-medium ${entry.toneClass}`}>
+                    {entry.quantityPrefix}
+                    {formatQuantity(entry.quantity, viewPosition.asset.category)}
+                  </span>
+                  <span>{viewPosition.asset.symbol}</span>
+                  <span className="text-muted-foreground"> @ </span>
+                  <span className="inline-flex min-w-0 flex-col">
+                    <span className="font-mono">
+                      {formatCurrency(
+                        convert(entry.priceUsd),
+                        currency,
+                        getSmartDecimals(convert(entry.priceUsd))
+                      )}
+                    </span>
+                    {renderNativeHint(
+                      localExecutionPrice,
+                      'font-mono text-[11px] leading-none text-muted-foreground/80'
+                    )}
+                  </span>
+                </p>
+              </div>
+              {entry.detail && (
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{entry.detail}</p>
+              )}
             </div>
-            <p className="mt-0.5 truncate text-sm">
-              <span className={`font-mono font-medium ${entry.toneClass}`}>
-                {entry.quantityPrefix}
-                {formatQuantity(entry.quantity, viewPosition.asset.category)}
-              </span>{' '}
-              <span>{viewPosition.asset.symbol}</span>
-              <span className="text-muted-foreground"> @ </span>
-              <span className="font-mono">
-                {formatCurrency(
-                  convert(entry.priceUsd),
-                  currency,
-                  getSmartDecimals(convert(entry.priceUsd))
-                )}
-              </span>
-            </p>
-            {entry.detail && (
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">{entry.detail}</p>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center justify-end gap-2 text-right">
-            <div>
-              <p className="font-mono text-sm font-medium">
-                {formatQuantity(entry.nextQuantity, viewPosition.asset.category)}
-              </p>
-              <p className="font-mono text-xs text-muted-foreground">
-                avg{' '}
-                {formatCurrency(
-                  convert(entry.nextAvgCostUsd),
-                  currency,
-                  getSmartDecimals(convert(entry.nextAvgCostUsd))
-                )}
-              </p>
+            <div className="flex shrink-0 items-center justify-end gap-2 text-right">
+              <div>
+                <p className="font-mono text-sm font-medium">
+                  {formatQuantity(entry.nextQuantity, viewPosition.asset.category)}
+                </p>
+                <p className="font-mono text-xs text-muted-foreground">
+                  avg{' '}
+                  {formatCurrency(
+                    convert(entry.nextAvgCostUsd),
+                    currency,
+                    getSmartDecimals(convert(entry.nextAvgCostUsd))
+                  )}
+                </p>
+                {renderNativeHint(localNextAvgCost)}
+              </div>
+              {entry.canCancel && entry.historyEntry && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="-mr-1 h-9 w-9 shrink-0 text-destructive touch-manipulation hover:text-destructive sm:h-8 sm:w-8"
+                  aria-label={`Delete ${entry.label.toLowerCase()} history entry`}
+                  title="Delete history entry"
+                  onClick={() => {
+                    cancelPositionHistoryMutation.reset();
+                    setCancelHistoryEntry(entry.historyEntry);
+                  }}
+                  disabled={cancelPositionHistoryMutation.isPending}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
-            {entry.canCancel && entry.historyEntry && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="-mr-1 h-9 w-9 shrink-0 text-destructive touch-manipulation hover:text-destructive sm:h-8 sm:w-8"
-                aria-label={`Delete ${entry.label.toLowerCase()} history entry`}
-                title="Delete history entry"
-                onClick={() => {
-                  cancelPositionHistoryMutation.reset();
-                  setCancelHistoryEntry(entry.historyEntry);
-                }}
-                disabled={cancelPositionHistoryMutation.isPending}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
           </div>
-        </div>
-      ));
+        );
+      });
 
     return (
       <div className="border-t pt-4">
@@ -1069,19 +1124,16 @@ export function PositionTable({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Total Cost</p>
-                  <p className="font-mono">
-                    {formatCurrency(
-                      convert(viewPosition.quantity * viewPosition.avgCostUsd),
-                      currency,
-                      0
-                    )}
-                  </p>
+                  {renderAmountWithNative(
+                    viewPosition,
+                    viewPosition.quantity * viewPosition.avgCostUsd
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Market Value</p>
-                  <p className="font-mono font-medium">
-                    {formatCurrency(convert(viewPosition.marketValueUsd), currency, 0)}
-                  </p>
+                  {renderAmountWithNative(viewPosition, viewPosition.marketValueUsd, {
+                    className: 'font-mono font-medium',
+                  })}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Unrealized P&L</p>
@@ -1093,6 +1145,12 @@ export function PositionTable({
                       ({formatPercent(viewPosition.unrealizedPnLPct)})
                     </span>
                   </p>
+                  {renderNativeHint(
+                    nativeAmountLabelFor(viewPosition, viewPosition.unrealizedPnL),
+                    `font-mono text-[11px] leading-none ${getPnLColorClass(
+                      viewPosition.unrealizedPnL
+                    )}`
+                  )}
                 </div>
               </div>
 
@@ -1228,6 +1286,9 @@ export function PositionTable({
                       getSmartDecimals(convert(cancelHistoryEntry.nextAvgCostUsd))
                     )}
                   </p>
+                  {renderNativeHint(
+                    nativePriceLabelFor(viewPosition, cancelHistoryEntry.nextAvgCostUsd)
+                  )}
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Restored avg</p>
@@ -1238,6 +1299,9 @@ export function PositionTable({
                       getSmartDecimals(convert(cancelHistoryEntry.previousAvgCostUsd))
                     )}
                   </p>
+                  {renderNativeHint(
+                    nativePriceLabelFor(viewPosition, cancelHistoryEntry.previousAvgCostUsd)
+                  )}
                 </div>
               </div>
             </div>

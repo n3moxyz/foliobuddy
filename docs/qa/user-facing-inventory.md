@@ -93,22 +93,22 @@ bugs found during that pass are fixed with regression tests, and the inventory r
 
 ## Latest Rerun Status
 
-2026-06-23 corrected compact rerun evidence:
+2026-06-24 final cleanup rerun evidence:
 
 - Full evidence:
-  `C:\Users\User\AppData\Local\Temp\foliobuddy-corrected-inventory-2026-06-23T10-50-23-409Z.json`
+  `C:\Users\User\dev\ClaudeProjs\projects\foliobuddy\.codex-qa\clean-inventory-2026-06-24T12-46-01\evidence.json`
 - Screenshots:
-  `C:\Users\User\AppData\Local\Temp\foliobuddy-corrected-inventory-2026-06-23T10-50-23-409Z`
-- Targeted Trades row-detail evidence:
-  `C:\Users\User\AppData\Local\Temp\foliobuddy-trade-detail-2026-06-23T10-51-19-074Z.json`
+  `C:\Users\User\dev\ClaudeProjs\projects\foliobuddy\.codex-qa\clean-inventory-2026-06-24T12-46-01`
 
-Result: route matrix `6/6`, seeded API counts matched (`63` positions, `240` trades, `391`
-snapshots, `5` investors), export HEAD checks all returned `200`, relevant console/network
-failures were `0`, and the safe pass recorded `0` write-method API requests.
+Result: route checks `7/7` (six desktop routes plus mobile Portfolio), seeded API counts matched
+(`63` positions, `240` trades, `390` snapshots, `377` automatic snapshots, `13` manual snapshots,
+`5` investors), the approved BUG-006 repro row was absent, export HEAD checks were `5/5`,
+interaction checks were `5/5`, relevant console/network/API failures were `0`, and the safe pass
+recorded `0` write-method API requests. BUG-009 was found and fixed during final rerun: benchmark
+history now falls back to stored `PriceHistory` rows when live providers fail, compacted to one point
+per UTC day.
 `socketService.integration.test.ts` now supplies the explicit websocket harness: real Socket.io
 clients connect with mocked Clerk verification, price broadcasts reach all clients, portfolio
 broadcasts stay scoped to the target user room, and unauthenticated sockets are rejected.
-`useWebSocket.test.ts` covers reconnect status transitions and price/portfolio invalidation. The
-remaining caveat is the one BUG-006 local sanitized repro snapshot
-`cmqqh3rx00001hvcsy0mnf62e`, which still needs deletion approval before the local scale dataset is
-pristine again.
+`useWebSocket.test.ts` covers reconnect status transitions and price/portfolio invalidation. No
+remaining caveats are known from the local scale pass.

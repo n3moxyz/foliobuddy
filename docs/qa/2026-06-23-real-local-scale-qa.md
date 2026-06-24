@@ -51,15 +51,15 @@ exercised the route matrix, modal/open states, invalid numeric guards, export en
 actions, mobile smoke, and targeted row-detail behavior against the real local API with zero
 application API mutations.
 
-| Route        | Real local evidence                                                                                              | Status                                                            |
-| ------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `/`          | Dashboard rendered, `Net Worth (Scale Owner)`, charts, allocation cards, performers, no sign-in gate             | Pass after local auth bypass fix                                  |
-| `/portfolio` | `63 positions`; `Crypto (24)`, `Equities (26)`, `Cash (10)`, `Held for Others (3)`; 60 owned hero positions      | Pass                                                              |
-| `/trades`    | `All (240)`, `Open (40)`, `Closed (200)`; Review/Ticker/Monthly lenses render from one fetched dataset           | Pass                                                              |
-| `/history`   | `Snapshot History`; `All (391)`, `Automatic (377)`, `Manual (14)` after explicit frontend limit                  | Pass; includes the one BUG-006 repro row pending cleanup approval |
-| `/investors` | 5 investor rows, including Scale Owner and zero-stake observer                                                   | Pass                                                              |
-| `/settings`  | Display/Data/Export/About controls render; refresh copy shows 81 assets from real API-backed state               | Pass                                                              |
-| mobile       | 390px Portfolio and Trades routes load; drawer navigation reaches Trades; Compact/All columns toggles are usable | Pass                                                              |
+| Route        | Real local evidence                                                                                              | Status                              |
+| ------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `/`          | Dashboard rendered, `Net Worth (Scale Owner)`, charts, allocation cards, performers, no sign-in gate             | Pass after local auth bypass fix    |
+| `/portfolio` | `63 positions`; `Crypto (24)`, `Equities (26)`, `Cash (10)`, `Held for Others (3)`; 60 owned hero positions      | Pass                                |
+| `/trades`    | `All (240)`, `Open (40)`, `Closed (200)`; Review/Ticker/Monthly lenses render from one fetched dataset           | Pass                                |
+| `/history`   | `Snapshot History`; `All (390)`, `Automatic (377)`, `Manual (13)` after explicit frontend limit                  | Pass after approved BUG-006 cleanup |
+| `/investors` | 5 investor rows, including Scale Owner and zero-stake observer                                                   | Pass                                |
+| `/settings`  | Display/Data/Export/About controls render; refresh copy shows 81 assets from real API-backed state               | Pass                                |
+| mobile       | 390px Portfolio and Trades routes load; drawer navigation reaches Trades; Compact/All columns toggles are usable | Pass                                |
 
 Corrected compact evidence:
 
@@ -71,6 +71,20 @@ Corrected compact evidence:
 Corrected compact summary: counts matched (`positions=63`, `trades=240`, `snapshots=391`,
 `investors=5`), route matrix was `6/6`, export HEAD checks were all `200`, relevant console errors
 were `0`, relevant network failures were `0`, and Playwright recorded `0`
+`POST`/`PUT`/`PATCH`/`DELETE` API requests during the safe pass.
+
+Final cleanup evidence after approved BUG-006 row deletion:
+
+- Full JSON:
+  `C:\Users\User\dev\ClaudeProjs\projects\foliobuddy\.codex-qa\clean-inventory-2026-06-24T12-46-01\evidence.json`
+- Screenshots:
+  `C:\Users\User\dev\ClaudeProjs\projects\foliobuddy\.codex-qa\clean-inventory-2026-06-24T12-46-01`
+
+Final summary: API counts matched (`positions=63`, `trades=240`, `snapshots=390`,
+`automaticSnapshots=377`, `manualSnapshots=13`, `investors=5`), BUG-006 row
+`cmqqh3rx00001hvcsy0mnf62e` was absent, route checks were `7/7` (six desktop routes plus mobile
+Portfolio), export HEAD checks were `5/5`, interaction checks were `5/5`, relevant
+console/network/API failures were `0`, and Playwright recorded `0`
 `POST`/`PUT`/`PATCH`/`DELETE` API requests during the safe pass.
 
 ## Interaction Evidence
@@ -122,6 +136,8 @@ actions or triggering exports:
 - History copy/expand: Copy All wrote the current 391 local snapshots after BUG-006 reproduction;
   row Copy wrote a snapshot object; clicking an automatic snapshot row expanded 12 nested positions;
   Copy Positions wrote those positions to clipboard and showed `Copied!`.
+- Final cleanup rerun: after approved deletion of the BUG-006 repro row, History rendered `All
+(390)`, `Automatic (377)`, and `Manual (13)`.
 - Export endpoints: HEAD checks returned 200 and attachment headers for positions CSV, trades CSV,
   open trades CSV, closed trades CSV, and Excel after BUG-005 was fixed. Bodies were not printed or
   saved.
@@ -207,10 +223,9 @@ actions or triggering exports:
   verifies negative-looking values are not converted into positive amounts.
 - Rerun: Pass; entering `-1` clears the field, submit remains disabled, and no additional snapshot is
   created.
-- Cleanup note: one erroneous local sanitized manual snapshot remains from the reproduction. Deleting
-  it is a destructive local DB action and needs approval. Current non-destructive DB check confirms:
-  `id=cmqqh3rx00001hvcsy0mnf62e`, `userId=local-scale-user`,
-  `timestamp=2026-06-23T00:00:00.000Z`, `source=MANUAL`, `totalValueUsd=1`.
+- Cleanup: after explicit user approval, the one erroneous local sanitized manual snapshot was
+  deleted from local DB `pa_portfolio` only. Verification returned `deletedCount=1` and `after=null`
+  for `id=cmqqh3rx00001hvcsy0mnf62e`, `userId=local-scale-user`.
 
 ### BUG-007 - Local auth bypass still depended on Clerk at runtime
 
@@ -247,14 +262,36 @@ actions or triggering exports:
 - Rerun: Pass; invalid finance inputs remain disabled and no mutation requests were emitted during
   the validation/cancel pass.
 
-## Remaining Caveats Before Clean Goal Pass
+### BUG-009 - Benchmark history still depended on external providers during local scale QA
 
-- Corrected full-inventory-safe rerun passed for route matrix, invalid numeric states, destructive
-  cancel paths, copy/export/auth/API checks, and mobile smoke.
+- Evidence: final local inventory rerun saw browser 500 responses from
+  `GET /api/v1/prices/historical/bitcoin?days=175&provider=coingecko` and the ETH equivalent when
+  CoinGecko history could not be reached, even though the sanitized DB already contained stored
+  `PriceHistory` rows for BTC/ETH.
+- Repro: run the local stack in a network-restricted environment, open Dashboard, and watch the
+  benchmark history requests fail while route data otherwise renders.
+- Shared cause: `priceService.getAssetHistory()` delegated directly to live providers. The local
+  scale seed had durable stored history, but provider-history callers had no DB fallback.
+- Fix: `packages/backend/src/services/priceService.ts` now falls back to stored `PriceHistory` for
+  the matching `priceProvider + providerAssetId` when a provider fails or returns no points, and
+  compacts stored fallback rows to the latest point per UTC day.
+- Regression: `packages/backend/src/__tests__/priceService.test.ts` covers provider success,
+  provider-failure fallback, and same-day compaction.
+- Rerun: Pass; final inventory evidence recorded zero relevant bad API responses or console/network
+  failures.
+
+## Clean Goal Pass
+
+- Final full-inventory-safe rerun passed for route matrix, invalid numeric states, destructive
+  cancel paths, copy/export/auth/API checks, provider-history fallback, and mobile smoke.
+- Final gates passed: touched-file Prettier check, full `npm test`, full `npm run build`,
+  `npm run scripts:check`, `npm run domain:check`, `git diff --check`, and the full Prettier scope
+  with `--end-of-line auto`. The default `npm run format:check` still reports existing Windows
+  line-ending warnings in unrelated files, so unrelated repo-wide formatting churn was intentionally
+  avoided.
 - Websocket behavior is covered by explicit harness tests without production credentials:
   `socketService.integration.test.ts` opens real Socket.io clients with mocked Clerk verification,
   proves all-client price broadcasts, proves user-scoped portfolio broadcasts, and rejects missing
   auth; `useWebSocket.test.ts` covers reconnect state transitions and invalidation behavior. Local
   bypass intentionally still renders disconnected websocket status without calling Clerk.
-- Cleanup approval is still needed before deleting the one local sanitized BUG-006 repro snapshot:
-  `cmqqh3rx00001hvcsy0mnf62e`.
+- No production, sensitive, or real user data was touched.

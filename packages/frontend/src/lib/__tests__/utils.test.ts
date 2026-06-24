@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatNativePrice, formatQuantity, isMarketExposureCategory } from '@/lib/utils';
-import { localPriceLabel } from '@/components/portfolio/positionPriceDisplay';
+import {
+  formatNativeAmount,
+  formatNativePrice,
+  formatQuantity,
+  isMarketExposureCategory,
+} from '@/lib/utils';
+import { localAmountLabel, localPriceLabel } from '@/components/portfolio/positionPriceDisplay';
 
 describe('isMarketExposureCategory', () => {
   it('includes market-risk assets and excludes stablecoins and cash', () => {
@@ -19,6 +24,13 @@ describe('formatNativePrice', () => {
   it('uses ISO currency labels for local price hints', () => {
     expect(formatNativePrice(65.25, 'SGD')).toBe('SGD\u00a065.25');
     expect(formatNativePrice(2400, 'JPY')).toBe('JPY\u00a02,400');
+  });
+});
+
+describe('formatNativeAmount', () => {
+  it('uses currency-specific decimals for local total amounts', () => {
+    expect(formatNativeAmount(65.25, 'NOK')).toBe('NOK\u00a065.25');
+    expect(formatNativeAmount(2400.8, 'JPY')).toBe('JPY\u00a02,401');
   });
 });
 
@@ -68,5 +80,18 @@ describe('localPriceLabel', () => {
         usdFxRates: { USD: 1, SGD: 1.3 },
       })
     ).toBeNull();
+  });
+});
+
+describe('localAmountLabel', () => {
+  it('shows native total amounts using amount decimals', () => {
+    expect(
+      localAmountLabel({
+        usdValue: 50,
+        nativeCurrency: 'JPY',
+        displayCurrency: 'USD',
+        usdFxRates: { USD: 1, JPY: 160 },
+      })
+    ).toBe('(JPY\u00a08,000)');
   });
 });

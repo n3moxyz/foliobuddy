@@ -150,6 +150,21 @@ export function formatNativePrice(
 
   const code = currency.toUpperCase();
   const decimals = priceDecimals(value, code);
+  return formatNativeCurrency(value, code, decimals);
+}
+
+export function formatNativeAmount(
+  value: number | null | undefined,
+  currency: string | null | undefined
+): string {
+  if (value === null || value === undefined || !currency) return '-';
+
+  const code = currency.toUpperCase();
+  const decimals = currencyDecimals(code);
+  return formatNativeCurrency(value, code, decimals);
+}
+
+function formatNativeCurrency(value: number, code: string, decimals: number): string {
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
