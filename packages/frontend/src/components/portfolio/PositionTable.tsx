@@ -609,11 +609,9 @@ export function PositionTable({
             {label}
           </p>
           <span className="text-xs text-muted-foreground">({count})</span>
-          {!isExpanded(sectionId) && (
-            <span className="ml-auto text-xs font-mono text-muted-foreground">
-              {formatCurrency(convertSub(total), currency, 0)}
-            </span>
-          )}
+          <span className="ml-auto text-xs font-mono text-muted-foreground">
+            {formatCurrency(convertSub(total), currency, 0)}
+          </span>
         </button>
       </CollapsibleTrigger>
       <HelpTooltip content={helpContent} />
