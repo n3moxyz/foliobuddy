@@ -2081,6 +2081,14 @@ Recently completed:
   - Excel export failed only when the real export endpoint was exercised: ExcelJS rejects a worksheet literally named `History`. The workbook now uses `Snapshots`, and `export.test.ts` loads the generated XLSX so this can't regress unseen behind a browser download.
   - A negative snapshot value (`-1`) was silently sanitized to `1` by `FormattedNumberInput`, creating a bad manual snapshot during QA. Non-negative formatted inputs now drop leading-negative input instead of converting it to a positive number, and `SnapshotForm` disables submit until the value is greater than 0.
   - Lesson: production-scale QA is valuable because it tests boring seams unit tests often skip — clipboard size, Excel sheet names, attachment headers, route guards, and form sanitizers under realistic data volume.
+- [x] **Mobile portfolio layout overhaul:**
+  - The portfolio page was rebuilt for phones. The old approach reused the desktop section cards and let the wide position table scroll sideways, which on a phone meant pinch-zoom and lost columns. Mobile now renders a single flat `PositionTable` over all owned positions grouped by broker, and `PositionTable` swaps its `<Table>` for stacked card rows below `md` entirely — no more horizontal table scroll unless you explicitly tap "All columns."
+  - Each card row is one tap to open the detail dialog, with the row actions (Details/Copy/Update NAV/Edit/Delete) tucked behind a single `⋮` menu so the row stays uncluttered and every hit area clears 44px. Two densities are baked in via a `mobileVariant` prop: `focus` (with a Qty·Price·Avg·storage meta line) for in-section lists, and `compact` (value + P&L only) for the all-positions phone view.
+  - The hero shrank too: instead of the full four-stat grid, phones get a compact card showing just Total Value, YTD P&L, and an inline Add button. The full grid stays on `sm+`. `PageActionHeader` grew a `stickyOnMobile={false}` switch so the header scrolls away on mobile instead of pinning the compact hero over the list.
+  - Content-heavy detail dialogs (position detail) now slide up as a bottom sheet on mobile and revert to a centered modal on desktop — friendlier for thumbs.
+  - Section subtotals are now always visible on the secondary group headers (previously only when collapsed), so you can read each broker/exchange's total without expanding it.
+  - Known tradeoff / follow-up: the mobile single-table view feeds only owned positions, so "Held for Others" (custody) currently shows on desktop only, and the header overflow menu (which holds "Delete All") is `sm+`-only. Revisit if mobile users need either.
+  - Lesson: "make the table responsive" often really means "stop showing a table." A grouped card list with a per-row action menu reads far better on a phone than a faithfully-shrunk spreadsheet — and the cleanest way to support both is one component that renders cards below a breakpoint and the real table above it.
 
 ---
 

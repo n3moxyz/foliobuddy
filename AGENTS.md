@@ -232,7 +232,8 @@ Delete mutations in `usePortfolio`, `useTrades`, `useSnapshots` use optimistic u
 
 iOS HIG-inspired patterns on all pages:
 
-- **Column toggle**: Portfolio/Trades tables have a mobile-only "All columns"/"Compact" toggle — Compact hides secondary columns (`hidden md:table-cell`); expanded scrolls horizontally (`overflow-x-auto` + `min-w-[700px]`).
+- **Mobile tables → card rows**: Below `md`, `PositionTable` renders stacked card rows (`renderMobilePositionRow`) instead of the `<Table>`; the full table (`md:block`, horizontal scroll) appears only when "All columns" is toggled on. `mobileVariant` sets row density — `focus` (symbol+name, value, P&L pill, a Qty·Price·Avg·storage meta line) or `compact` (value + P&L text, no meta line). Per-row actions collapse into a `⋮` `DropdownMenu` (`renderMobileActionMenu`: Details/Copy/Update NAV/Edit/Delete, 44px targets). The "All columns"/"Compact" toggle is an icon-only button gated by `showMobileColumnToggle`. The Trades table still column-hides (`hidden md:table-cell`) rather than using card rows.
+- **Mobile dialogs → bottom sheet**: Content-heavy detail dialogs (e.g. position detail) dock to the bottom edge full-width on mobile (`!bottom-0 … rounded-t-lg`) and revert to a centered modal at `sm+`.
 - **Touch targets**: shared `Button` sizes give 44px mobile hit areas, compacting at `sm+`/`md+`. Dense row actions need `shrink-0`. Sortable headers, allocation legends, and `HelpTooltip` also need 44px mobile hit areas.
 - **Responsive headers**: stack vertically on mobile (`flex-col gap-3 sm:flex-row`); secondary actions move to `DropdownMenu` overflow.
 - **Dialog safety**: `w-[calc(100%-2rem)]` margins + `max-h-[85vh] overflow-y-auto`.
@@ -279,11 +280,11 @@ Fetches all trades once via `useTrades()`, filtering table status locally so len
 
 ### Portfolio Hero Summary
 
-Borderless hero (matching Net Worth). Large bold tabular Total Value with inline YTD P&L trend arrow. Secondary stats in a `divide-x` grid (YTD Start, Exposure, Positions, YTD P&L) — 4 cols desktop, 2 mobile; all labels have `HelpTooltip`. Exposure = owned non-stable/non-cash value + local perp exposure ÷ total; custody excluded.
+Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large bold tabular Total Value with inline YTD P&L trend arrow, then a 4-col `divide-x` grid (YTD Start, Exposure, Positions, YTD P&L) with `HelpTooltip` on every label. **Mobile** (`sm:hidden`): a compact bordered card with three cells — Total Value, YTD P&L ($ + %), and an inline "Add" button — replacing the full stat grid to save vertical space. Exposure = owned non-stable/non-cash value + local perp exposure ÷ total (computed once as `exposurePct`); custody excluded.
 
 ### Portfolio Section Headers
 
-Two-level grouping: **Crypto/Equities/Cash** (primary, `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, `PositionTable`). `CollapsibleCard` takes `icon` + `accentColor` props (blue Crypto, amber Equities, green Cash, purple Custody); accents use full hairline borders + subtle bg tints (`border-blue-500/40 bg-blue-500/5`), not colored side stripes.
+Two-level grouping: **Crypto/Equities/Cash** (primary, `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, `PositionTable`). `CollapsibleCard` takes `icon` + `accentColor` props (blue Crypto, amber Equities, green Cash, purple Custody); accents use full hairline borders + subtle bg tints (`border-blue-500/40 bg-blue-500/5`), not colored side stripes. Secondary section triggers always show their dollar total (not only when collapsed). **Mobile/desktop split**: desktop (`hidden sm:block`) keeps the per-category `CollapsibleCard` stack plus the custody card; mobile (`sm:hidden`) renders a single flat `PositionTable` over all owned positions with `groupBy="broker"` + `mobileVariant="compact"` + `showMobileColumnToggle={false}` — one scannable grouped list instead of nested collapsibles. Custody ("Held for Others") currently renders in the desktop wrapper only, so mobile shows owned positions only.
 
 ### Custody Positions ("Held for Others")
 
@@ -364,7 +365,7 @@ Settings: flat layout, `<h2>` headings + `<Separator>` between sections, no Card
 
 ### Consistent Page Headers
 
-All pages MUST use the same header pattern: a `flex-col gap-3 sm:flex-row ... justify-between` wrapper, `text-2xl font-bold` title (no responsive upsizing) + `text-sm text-muted-foreground` subtitle, and `size="sm"` buttons with `mr-1` icon spacing. Pages with high-scroll primary data use `PageActionHeader` so the header sticks below the app shell (`top-14 sm:top-16`). `PageActionHeader` can take a body section for the page's always-visible control/summary pane: Portfolio keeps the top portfolio hero stats, Trades keeps the Review/Ticker/Monthly lens tabs, History keeps Total/Automatic/Manual counts, and Investors keeps Total Investors/Allocated Stake/Total Current Value. Dashboard intentionally uses a normal scrolling header and Net Worth hero.
+All pages MUST use the same header pattern: a `flex-col gap-3 sm:flex-row ... justify-between` wrapper, `text-2xl font-bold` title (no responsive upsizing) + `text-sm text-muted-foreground` subtitle, and `size="sm"` buttons with `mr-1` icon spacing. Pages with high-scroll primary data use `PageActionHeader` so the header sticks below the app shell (`top-14 sm:top-16`); pass `stickyOnMobile={false}` (Portfolio does) to make it `relative` on mobile and sticky only at `sm+`, so a compact mobile hero isn't pinned over the scrolling list. `PageActionHeader` can take a body section for the page's always-visible control/summary pane: Portfolio keeps the top portfolio hero stats, Trades keeps the Review/Ticker/Monthly lens tabs, History keeps Total/Automatic/Manual counts, and Investors keeps Total Investors/Allocated Stake/Total Current Value. Dashboard intentionally uses a normal scrolling header and Net Worth hero.
 
 ### Destructive Actions in Headers
 
