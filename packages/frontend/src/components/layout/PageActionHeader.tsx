@@ -25,7 +25,9 @@ export function PageActionHeader({
       data-page-sticky-header
       className={cn(
         '-mx-4 -mt-4 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:-mx-6 lg:-mt-6 lg:px-6',
-        stickyOnMobile ? 'sticky top-14 z-20 sm:top-16' : 'relative z-10 sm:sticky sm:top-16 sm:z-20',
+        stickyOnMobile
+          ? 'sticky top-14 z-20 sm:top-16'
+          : 'relative z-10 sm:sticky sm:top-16 sm:z-20',
         className
       )}
     >
