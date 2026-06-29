@@ -36,7 +36,7 @@ export function CollapsibleCard({
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
-                  className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left"
+                  className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <ChevronRight
                     className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${

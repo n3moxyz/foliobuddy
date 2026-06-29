@@ -453,7 +453,7 @@ export function PositionTable({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-11 w-9 shrink-0 touch-manipulation text-muted-foreground"
+          className="shrink-0 touch-manipulation text-muted-foreground"
           aria-label={`Actions for ${position.asset.symbol}`}
           onClick={(event) => event.stopPropagation()}
         >
@@ -542,7 +542,7 @@ export function PositionTable({
           key={position.id}
           role="button"
           tabIndex={0}
-          className="group relative cursor-pointer py-2.5 pl-3 pr-10 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          className="group relative cursor-pointer py-2.5 pl-3 pr-12 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           aria-label={`View ${position.asset.symbol} position`}
           onClick={() => setViewPosition(position)}
           onKeyDown={(event) => {
@@ -559,7 +559,10 @@ export function PositionTable({
                   {position.asset.symbol}
                 </p>
                 {options.showUnitTrustBadge && isUnitTrust && (
-                  <span className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning">
+                  <span
+                    className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
+                    aria-label="Unit Trust"
+                  >
                     UT
                   </span>
                 )}
@@ -593,7 +596,7 @@ export function PositionTable({
         key={position.id}
         role="button"
         tabIndex={0}
-        className="group relative cursor-pointer py-2 pl-3 pr-10 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        className="group relative cursor-pointer py-2 pl-3 pr-12 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         aria-label={`View ${position.asset.symbol} position`}
         onClick={() => setViewPosition(position)}
         onKeyDown={(event) => {
@@ -610,7 +613,10 @@ export function PositionTable({
                 {position.asset.symbol}
               </p>
               {options.showUnitTrustBadge && isUnitTrust && (
-                <span className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning">
+                <span
+                  className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
+                  aria-label="Unit Trust"
+                >
                   UT
                 </span>
               )}
@@ -857,7 +863,7 @@ export function PositionTable({
             type="button"
             className={cn(
               'group flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left',
-              isCompactMobile ? 'min-h-10' : 'min-h-11'
+              'min-h-11'
             )}
           >
             <ChevronRight
@@ -1124,7 +1130,7 @@ export function PositionTable({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="-mr-1 h-9 w-9 shrink-0 text-destructive touch-manipulation hover:text-destructive sm:h-8 sm:w-8"
+                  className="-mr-1 shrink-0 text-destructive touch-manipulation hover:text-destructive"
                   aria-label={`Delete ${entry.label.toLowerCase()} history entry`}
                   title="Delete history entry"
                   onClick={() => {
@@ -1172,7 +1178,8 @@ export function PositionTable({
             <div>
               {previousRows.length > 0 && (
                 <details className="border-b bg-background/50">
-                  <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide [&::-webkit-details-marker]:hidden">
+                  <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide [&::-webkit-details-marker]:hidden">
+                    <ChevronRight className="h-3 w-3 shrink-0" aria-hidden="true" />
                     Previous history before manual correction ({previousRows.length})
                   </summary>
                   <div className="divide-y border-t">{renderActivityRows(previousRows)}</div>
@@ -1194,7 +1201,7 @@ export function PositionTable({
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-muted-foreground touch-manipulation"
+              className="text-muted-foreground touch-manipulation"
               onClick={() => setShowAllColumns(!showAllColumns)}
               aria-label={showAllColumns ? 'Show compact mobile list' : 'Show all table columns'}
               title={showAllColumns ? 'Compact' : 'All columns'}

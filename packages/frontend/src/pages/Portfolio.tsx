@@ -334,22 +334,6 @@ export default function Portfolio() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  className="sm:hidden min-h-11"
-                  onClick={async () => {
-                    if (positions && positions.length > 0) {
-                      const success = await copyPositionsToClipboard(positions);
-                      if (success) {
-                        setCopiedAll(true);
-                        setTimeout(() => setCopiedAll(false), 2000);
-                      }
-                    }
-                  }}
-                  disabled={!positions || positions.length === 0}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy All
-                </DropdownMenuItem>
-                <DropdownMenuItem
                   className="text-destructive"
                   onClick={() => setShowDeleteAllConfirm(true)}
                   disabled={!positions || positions.length === 0}
@@ -364,6 +348,62 @@ export default function Portfolio() {
                 <DropdownMenuItem onClick={() => window.open(api.exportExcel(), '_blank')}>
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Export Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="touch-manipulation sm:hidden"
+                  aria-label="More actions"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="min-h-11"
+                  onClick={async () => {
+                    if (positions && positions.length > 0) {
+                      const success = await copyPositionsToClipboard(positions);
+                      if (success) {
+                        setCopiedAll(true);
+                        setTimeout(() => setCopiedAll(false), 2000);
+                      }
+                    }
+                  }}
+                  disabled={!positions || positions.length === 0}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy All
+                </DropdownMenuItem>
+                <DropdownMenuItem className="min-h-11" onClick={() => handlePerpEdit()}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="min-h-11"
+                  onClick={() => window.open(api.exportPositionsCsv(), '_blank')}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="min-h-11"
+                  onClick={() => window.open(api.exportExcel(), '_blank')}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="min-h-11 text-destructive"
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  disabled={!positions || positions.length === 0}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete All
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -392,7 +432,7 @@ export default function Portfolio() {
                   {formatPercent(summary.unrealizedPnLPct)}
                 </p>
               </div>
-              <Button size="sm" className="h-9 shrink-0 px-3" onClick={() => setShowAddForm(true)}>
+              <Button size="sm" className="shrink-0 px-3" onClick={() => setShowAddForm(true)}>
                 <Plus className="h-4 w-4 mr-1" />
                 Add
               </Button>
@@ -492,7 +532,7 @@ export default function Portfolio() {
       {!positionsLoading && (!positions || positions.length === 0) && (
         <div className="py-16 text-center">
           <Wallet className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-1">No positions yet</h3>
+          <h2 className="text-lg font-semibold mb-1">No positions yet</h2>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
             Add your first crypto or cash position to start tracking your portfolio value and P&L.
           </p>
@@ -515,6 +555,28 @@ export default function Portfolio() {
             mobileVariant="compact"
             showMobileColumnToggle={false}
             onUpdateNav={(p) => setNavAsset(p.asset)}
+          />
+        </div>
+      )}
+
+      {!positionsLoading && custodyPositions.length > 0 && (
+        <div className="mt-6 sm:hidden">
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <Users className="h-4 w-4 shrink-0 text-purple-500" />
+            <span className="text-sm font-semibold">Held for Others</span>
+            <HelpTooltip content="Positions you're holding on behalf of other people. Excluded from your net worth and P&L" />
+            <span className="ml-auto shrink-0 text-sm font-semibold text-muted-foreground">
+              {formatCurrency(convertValue(custodyTotal), currency, 0)}
+            </span>
+          </div>
+          <PositionTable
+            positions={custodyPositions}
+            currency={currency}
+            fxRate={fxRate}
+            usdFxRates={usdFxRates}
+            sectionPrefix="mobile-custody"
+            mobileVariant="compact"
+            showMobileColumnToggle={false}
           />
         </div>
       )}
