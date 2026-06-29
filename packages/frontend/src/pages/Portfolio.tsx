@@ -200,9 +200,12 @@ export default function Portfolio() {
     saveEquityGroupBy(value);
   };
 
-  const renderEquityGroupToggle = () => (
+  const renderEquityGroupToggle = (className?: string) => (
     <div
-      className="inline-flex min-h-11 shrink-0 items-center rounded-md border bg-background p-0.5 sm:min-h-9"
+      className={cn(
+        'inline-flex min-h-11 shrink-0 items-center rounded-md border bg-background p-0.5 sm:min-h-9',
+        className
+      )}
       role="group"
       aria-label="Equities grouping"
     >
@@ -275,12 +278,17 @@ export default function Portfolio() {
       .filter((position) => isMarketExposureCategory(position.asset.category))
       .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
   }, [ownedPositions]);
+  const exposurePct =
+    summary && summary.totalValueUsd > 0
+      ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
+      : '0%';
 
   return (
     <div className="space-y-6">
       <PageActionHeader
         title="Portfolio"
         subtitle={`${positions?.length ?? 0} positions`}
+        stickyOnMobile={false}
         actions={
           <>
             <Button
@@ -305,7 +313,11 @@ export default function Portfolio() {
               )}
               {copiedAll ? 'Copied!' : 'Copy All'}
             </Button>
-            <Button size="sm" className="touch-manipulation" onClick={() => setShowAddForm(true)}>
+            <Button
+              size="sm"
+              className="hidden touch-manipulation sm:inline-flex"
+              onClick={() => setShowAddForm(true)}
+            >
               <Plus className="h-4 w-4 mr-1" />
               Add Position
             </Button>
@@ -314,7 +326,7 @@ export default function Portfolio() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="touch-manipulation"
+                  className="hidden touch-manipulation sm:inline-flex"
                   aria-label="More options"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -360,106 +372,88 @@ export default function Portfolio() {
       >
         {summary && (
           <div className="pb-1">
-            <div className="flex items-baseline gap-3 flex-wrap">
-              <p className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums">
-                {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
-              </p>
-              {summary.unrealizedPnL !== 0 && (
-                <span
-                  className={`inline-flex items-center gap-1 text-sm font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-border/80 bg-card/50 p-3 shadow-sm sm:hidden">
+              <div className="min-w-0">
+                <p className="text-xs leading-none text-muted-foreground">Total Value</p>
+                <p className="mt-1 truncate font-mono text-base font-semibold tabular-nums">
+                  {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
+                </p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs leading-none text-muted-foreground">YTD P&L</p>
+                <p
+                  className={`mt-1 truncate font-mono text-base font-semibold tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
                 >
-                  {summary.unrealizedPnL >= 0 ? (
-                    <TrendingUp className="h-4 w-4" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4" />
-                  )}
-                  {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)} (
-                  {formatPercent(summary.unrealizedPnLPct)})
-                </span>
-              )}
+                  {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}
+                </p>
+                <p
+                  className={`font-mono text-[11px] leading-none tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
+                >
+                  {formatPercent(summary.unrealizedPnLPct)}
+                </p>
+              </div>
+              <Button size="sm" className="h-9 shrink-0 px-3" onClick={() => setShowAddForm(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
             </div>
 
-            <div className="mt-4 hidden sm:grid sm:grid-cols-4 divide-x divide-border">
-              <div className="pr-4">
-                <div className="flex items-center gap-1">
-                  <p className="text-muted-foreground text-sm">YTD Start</p>
-                  <HelpTooltip content="Your total cost basis: how much you invested" />
-                </div>
-                <p className="font-medium tabular-nums">
-                  {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
+            <div className="hidden sm:block">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <p className="text-[2rem] font-bold leading-none tracking-tight tabular-nums sm:text-4xl">
+                  {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
                 </p>
+                {summary.unrealizedPnL !== 0 && (
+                  <span
+                    className={`inline-flex items-center gap-1 text-sm font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}
+                  >
+                    {summary.unrealizedPnL >= 0 ? (
+                      <TrendingUp className="h-4 w-4" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4" />
+                    )}
+                    {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)} (
+                    {formatPercent(summary.unrealizedPnLPct)})
+                  </span>
+                )}
               </div>
-              <div className="px-4">
-                <div className="flex items-center gap-1">
-                  <p className="text-muted-foreground text-sm">Exposure</p>
-                  <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
-                </div>
-                <p className="font-medium tabular-nums">
-                  {summary.totalValueUsd > 0
-                    ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
-                    : '0%'}
-                </p>
-              </div>
-              <div className="px-4">
-                <div className="flex items-center gap-1">
-                  <p className="text-muted-foreground text-sm">Positions</p>
-                  <HelpTooltip content="Number of assets you currently hold" />
-                </div>
-                <p className="font-medium tabular-nums">{summary.positionCount}</p>
-              </div>
-              <div className="pl-4">
-                <div className="flex items-center gap-1">
-                  <p className="text-muted-foreground text-sm">YTD P&L</p>
-                  <HelpTooltip content="Unrealized profit or loss since the start of the year" />
-                </div>
-                <p
-                  className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
-                >
-                  {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
-                  <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
-                </p>
-              </div>
-            </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-4 sm:hidden">
-              <div>
-                <div className="flex items-center gap-1">
-                  <p className="text-muted-foreground text-sm">YTD Start</p>
-                  <HelpTooltip content="Your total cost basis: how much you invested" />
+              <div className="mt-4 grid grid-cols-4 divide-x divide-border">
+                <div className="pr-4">
+                  <div className="flex items-center gap-1">
+                    <p className="text-muted-foreground text-sm">YTD Start</p>
+                    <HelpTooltip content="Your total cost basis: how much you invested" />
+                  </div>
+                  <p className="font-medium tabular-nums">
+                    {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
+                  </p>
                 </div>
-                <p className="font-medium tabular-nums">
-                  {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
-                </p>
-              </div>
-              <div>
-                <div className="flex items-center gap-1">
-                  <p className="text-muted-foreground text-sm">Exposure</p>
-                  <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
+                <div className="px-4">
+                  <div className="flex items-center gap-1">
+                    <p className="text-muted-foreground text-sm">Exposure</p>
+                    <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
+                  </div>
+                  <p className="font-medium tabular-nums">{exposurePct}</p>
                 </div>
-                <p className="font-medium tabular-nums">
-                  {summary.totalValueUsd > 0
-                    ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
-                    : '0%'}
-                </p>
-              </div>
-              <div>
-                <div className="flex items-center gap-1">
-                  <p className="text-muted-foreground text-sm">Positions</p>
-                  <HelpTooltip content="Number of assets you currently hold" />
+                <div className="px-4">
+                  <div className="flex items-center gap-1">
+                    <p className="text-muted-foreground text-sm">Positions</p>
+                    <HelpTooltip content="Number of assets you currently hold" />
+                  </div>
+                  <p className="font-medium tabular-nums">{summary.positionCount}</p>
                 </div>
-                <p className="font-medium tabular-nums">{summary.positionCount}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-1">
-                  <p className="text-muted-foreground text-sm">YTD P&L</p>
-                  <HelpTooltip content="Unrealized profit or loss since the start of the year" />
+                <div className="pl-4">
+                  <div className="flex items-center gap-1">
+                    <p className="text-muted-foreground text-sm">YTD P&L</p>
+                    <HelpTooltip content="Unrealized profit or loss since the start of the year" />
+                  </div>
+                  <p
+                    className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
+                  >
+                    {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
+                    <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
+                  </p>
                 </div>
-                <p
-                  className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
-                >
-                  {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
-                  <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
-                </p>
               </div>
             </div>
           </div>
@@ -509,109 +503,137 @@ export default function Portfolio() {
         </div>
       )}
 
-      {!positionsLoading &&
-        sections.map((section) => (
-          <CollapsibleCard
-            key={section.id}
-            title={`${section.label} (${section.positions.length})`}
-            icon={section.icon}
-            accentColor={section.accentColor}
-            isExpanded={isExpanded(section.id)}
-            onToggle={() => toggle(section.id)}
-            headerRight={
-              <div className="flex items-center gap-3">
-                {!isExpanded(section.id) && (
-                  <>
-                    <span className="text-xs text-muted-foreground">
-                      {section.positions.length} position{section.positions.length !== 1 ? 's' : ''}
-                    </span>
-                    {section.pnl !== 0 && (
-                      <span className={`text-xs font-medium ${getPnLColorClass(section.pnl)}`}>
-                        {formatCurrency(convertValue(section.pnl), currency, 0)}
-                      </span>
-                    )}
-                  </>
-                )}
-                {section.id === 'cash' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 shrink-0 text-xs text-muted-foreground hover:text-foreground sm:h-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePerpEdit();
-                    }}
-                  >
-                    <Pencil className="h-3 w-3 mr-1" />
-                    {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
-                  </Button>
-                )}
-                {section.id === 'equities' && renderEquityGroupToggle()}
-                <span className="text-sm font-semibold text-muted-foreground">
-                  {formatCurrency(convertValue(section.total), currency, 0)}
-                </span>
-              </div>
-            }
-            headerExtra={
-              section.id === 'cash' && perpExposure > 0 ? (
-                <div className="flex items-center justify-end gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground">
-                    Available:{' '}
-                    {formatCurrency(convertValue(section.total - perpExposure), currency, 0)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Perp:
-                    <HelpTooltip content="Open perpetual futures position size: adds to your crypto exposure calculation" />{' '}
-                    {formatCurrency(convertValue(perpExposure), currency, 0)}
-                  </span>
-                </div>
-              ) : undefined
-            }
-          >
-            <PositionTable
-              positions={section.positions}
-              currency={currency}
-              fxRate={fxRate}
-              usdFxRates={usdFxRates}
-              sectionPrefix={section.id}
-              groupBy={section.id === 'equities' ? equityGroupBy : 'storage'}
-              onUpdateNav={section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined}
-            />
-          </CollapsibleCard>
-        ))}
-
-      {!positionsLoading && custodyPositions.length > 0 && (
-        <CollapsibleCard
-          title={`Held for Others (${custodyPositions.length})`}
-          titleHelp={
-            <HelpTooltip content="Positions you're holding on behalf of other people. These are excluded from your personal net worth and P&L" />
-          }
-          icon={<Users className="h-4 w-4 text-purple-500" />}
-          accentColor="border-purple-500/40 bg-purple-500/5"
-          isExpanded={isExpanded('custody')}
-          onToggle={() => toggle('custody')}
-          headerRight={
-            <div className="flex items-center gap-3">
-              {!isExpanded('custody') && (
-                <span className="text-xs text-muted-foreground">
-                  {custodyPositions.length} position{custodyPositions.length !== 1 ? 's' : ''}
-                </span>
-              )}
-              <span className="text-sm font-semibold text-muted-foreground">
-                {formatCurrency(convertValue(custodyTotal), currency, 0)}
-              </span>
-            </div>
-          }
-        >
+      {!positionsLoading && ownedPositions.length > 0 && (
+        <div className="sm:hidden">
           <PositionTable
-            positions={custodyPositions}
+            positions={ownedPositions}
             currency={currency}
             fxRate={fxRate}
             usdFxRates={usdFxRates}
-            sectionPrefix="custody"
+            sectionPrefix="mobile-owned"
+            groupBy="broker"
+            mobileVariant="compact"
+            showMobileColumnToggle={false}
+            onUpdateNav={(p) => setNavAsset(p.asset)}
           />
-        </CollapsibleCard>
+        </div>
       )}
+
+      <div className="hidden space-y-6 sm:block">
+        {!positionsLoading &&
+          sections.map((section) => (
+            <CollapsibleCard
+              key={section.id}
+              title={`${section.label} (${section.positions.length})`}
+              icon={section.icon}
+              accentColor={section.accentColor}
+              isExpanded={isExpanded(section.id)}
+              onToggle={() => toggle(section.id)}
+              headerRight={
+                <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+                  {!isExpanded(section.id) && (
+                    <>
+                      <span className="hidden text-xs text-muted-foreground sm:inline">
+                        {section.positions.length} position
+                        {section.positions.length !== 1 ? 's' : ''}
+                      </span>
+                      {section.pnl !== 0 && (
+                        <span
+                          className={`hidden text-xs font-medium sm:inline ${getPnLColorClass(section.pnl)}`}
+                        >
+                          {formatCurrency(convertValue(section.pnl), currency, 0)}
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {section.id === 'cash' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 shrink-0 text-xs text-muted-foreground hover:text-foreground sm:h-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePerpEdit();
+                      }}
+                    >
+                      <Pencil className="h-3 w-3 mr-1" />
+                      {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
+                    </Button>
+                  )}
+                  {section.id === 'equities' && renderEquityGroupToggle('hidden sm:inline-flex')}
+                  <span className="shrink-0 text-sm font-semibold text-muted-foreground">
+                    {formatCurrency(convertValue(section.total), currency, 0)}
+                  </span>
+                </div>
+              }
+              headerExtra={
+                <>
+                  {section.id === 'equities' && (
+                    <div className="mt-2 flex justify-end sm:hidden">
+                      {renderEquityGroupToggle()}
+                    </div>
+                  )}
+                  {section.id === 'cash' && perpExposure > 0 && (
+                    <div className="flex items-center justify-end gap-2 mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        Available:{' '}
+                        {formatCurrency(convertValue(section.total - perpExposure), currency, 0)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Perp:
+                        <HelpTooltip content="Open perpetual futures position size: adds to your crypto exposure calculation" />{' '}
+                        {formatCurrency(convertValue(perpExposure), currency, 0)}
+                      </span>
+                    </div>
+                  )}
+                </>
+              }
+            >
+              <PositionTable
+                positions={section.positions}
+                currency={currency}
+                fxRate={fxRate}
+                usdFxRates={usdFxRates}
+                sectionPrefix={section.id}
+                groupBy={section.id === 'equities' ? equityGroupBy : 'storage'}
+                onUpdateNav={section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined}
+              />
+            </CollapsibleCard>
+          ))}
+
+        {!positionsLoading && custodyPositions.length > 0 && (
+          <CollapsibleCard
+            title={`Held for Others (${custodyPositions.length})`}
+            titleHelp={
+              <HelpTooltip content="Positions you're holding on behalf of other people. These are excluded from your personal net worth and P&L" />
+            }
+            icon={<Users className="h-4 w-4 text-purple-500" />}
+            accentColor="border-purple-500/40 bg-purple-500/5"
+            isExpanded={isExpanded('custody')}
+            onToggle={() => toggle('custody')}
+            headerRight={
+              <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+                {!isExpanded('custody') && (
+                  <span className="hidden text-xs text-muted-foreground sm:inline">
+                    {custodyPositions.length} position{custodyPositions.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                <span className="shrink-0 text-sm font-semibold text-muted-foreground">
+                  {formatCurrency(convertValue(custodyTotal), currency, 0)}
+                </span>
+              </div>
+            }
+          >
+            <PositionTable
+              positions={custodyPositions}
+              currency={currency}
+              fxRate={fxRate}
+              usdFxRates={usdFxRates}
+              sectionPrefix="custody"
+            />
+          </CollapsibleCard>
+        )}
+      </div>
 
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">

@@ -31,7 +31,7 @@ export function CollapsibleCard({
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <Card className={cn(accentColor)}>
         <CardHeader className="py-3 px-4 hover:bg-muted/30 transition-colors select-none">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <CollapsibleTrigger asChild>
                 <button
@@ -49,9 +49,11 @@ export function CollapsibleCard({
               </CollapsibleTrigger>
               {titleHelp}
             </div>
-            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
-              {headerRight}
-            </div>
+            {headerRight ? (
+              <div className="flex max-w-[48%] shrink-0 flex-wrap items-center justify-end gap-2 sm:max-w-none">
+                {headerRight}
+              </div>
+            ) : null}
           </div>
           {headerExtra}
         </CardHeader>

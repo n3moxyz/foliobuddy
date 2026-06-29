@@ -23,6 +23,7 @@ import {
   formatDateTime,
   formatQuantity,
   getPnLColorClass,
+  cn,
 } from '@/lib/utils';
 import {
   useCancelPositionHistory,
@@ -40,9 +41,17 @@ import {
   Columns3,
   Columns2,
   History,
+  MoreVertical,
+  RefreshCw,
 } from 'lucide-react';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
@@ -58,6 +67,7 @@ import {
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
 type PositionGroupBy = 'storage' | 'equityType' | 'broker';
+type MobilePositionVariant = 'focus' | 'compact';
 
 interface BrokerGroupMeta {
   id: string;
@@ -85,6 +95,8 @@ interface PositionTableProps {
    * - 'broker': individual broker/fund platform names — used for Equities
    */
   groupBy?: PositionGroupBy;
+  mobileVariant?: MobilePositionVariant;
+  showMobileColumnToggle?: boolean;
 }
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
@@ -138,6 +150,8 @@ export function PositionTable({
   sectionPrefix,
   onUpdateNav,
   groupBy = 'storage',
+  mobileVariant = 'focus',
+  showMobileColumnToggle = true,
 }: PositionTableProps) {
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
@@ -423,6 +437,241 @@ export function PositionTable({
     ]
   );
 
+  const mobileStorageLabelFor = (position: Position) => {
+    if (position.storageType === 'BROKERAGE') {
+      return position.storageLocation || 'Broker account';
+    }
+
+    const storageType = STORAGE_TYPE_LABELS[position.storageType] || position.storageType;
+    return position.storageLocation ? `${storageType} · ${position.storageLocation}` : storageType;
+  };
+
+  const renderMobileActionMenu = (position: Position) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-11 w-9 shrink-0 touch-manipulation text-muted-foreground"
+          aria-label={`Actions for ${position.asset.symbol}`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          className="min-h-11"
+          onClick={(event) => {
+            event.stopPropagation();
+            setViewPosition(position);
+          }}
+        >
+          <History className="h-4 w-4 mr-2" />
+          Details
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="min-h-11"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleCopy(position, event);
+          }}
+        >
+          {copiedId === position.id ? (
+            <Check className="h-4 w-4 mr-2 text-profit" />
+          ) : (
+            <Copy className="h-4 w-4 mr-2" />
+          )}
+          {copiedId === position.id ? 'Copied' : 'Copy'}
+        </DropdownMenuItem>
+        {onUpdateNav && position.asset.category === 'UNIT_TRUST' && (
+          <DropdownMenuItem
+            className="min-h-11"
+            onClick={(event) => {
+              event.stopPropagation();
+              onUpdateNav(position);
+            }}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Update NAV
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          className="min-h-11"
+          onClick={(event) => {
+            event.stopPropagation();
+            setEditPosition(position);
+          }}
+        >
+          <Pencil className="h-4 w-4 mr-2" />
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="min-h-11 text-destructive focus:text-destructive"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleDeleteClick(position);
+          }}
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const renderMobilePositionRow = (
+    position: Position,
+    options: { showUnitTrustBadge?: boolean } = {}
+  ) => {
+    const priceValue = convert(position.asset.currentPriceUsd);
+    const avgCostValue = convert(position.avgCostUsd);
+    const marketValue = convert(position.marketValueUsd);
+    const pnlValue = convert(position.unrealizedPnL);
+    const isUnitTrust = position.asset.category === 'UNIT_TRUST';
+    const pnlTextClass = getPnLColorClass(position.unrealizedPnL);
+    const pnlPillClass =
+      (position.unrealizedPnL ?? 0) >= 0
+        ? 'border-profit/25 bg-profit text-profit'
+        : 'border-loss/25 bg-loss text-loss';
+
+    if (mobileVariant === 'compact') {
+      return (
+        <div
+          key={position.id}
+          role="button"
+          tabIndex={0}
+          className="group relative cursor-pointer py-2.5 pl-3 pr-10 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          aria-label={`View ${position.asset.symbol} position`}
+          onClick={() => setViewPosition(position)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              setViewPosition(position);
+            }
+          }}
+        >
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-baseline gap-1.5">
+                <p className="min-w-0 truncate text-sm font-semibold leading-tight">
+                  {position.asset.symbol}
+                </p>
+                {options.showUnitTrustBadge && isUnitTrust && (
+                  <span className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning">
+                    UT
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 truncate text-xs leading-snug text-muted-foreground">
+                {position.asset.name}
+              </p>
+            </div>
+
+            <p className="shrink-0 text-right font-mono text-sm font-semibold leading-tight tabular-nums">
+              {formatCurrency(marketValue, currency, 0)}
+            </p>
+
+            <div
+              className={`min-w-[4.25rem] shrink-0 text-right font-mono text-xs font-medium leading-tight tabular-nums ${pnlTextClass}`}
+            >
+              <p>{formatCurrency(pnlValue, currency, 0)}</p>
+              <p>{formatPercent(position.unrealizedPnLPct)}</p>
+            </div>
+          </div>
+
+          <div className="absolute right-1 top-1/2 -translate-y-1/2">
+            {renderMobileActionMenu(position)}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        key={position.id}
+        role="button"
+        tabIndex={0}
+        className="group relative cursor-pointer py-2 pl-3 pr-10 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        aria-label={`View ${position.asset.symbol} position`}
+        onClick={() => setViewPosition(position)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setViewPosition(position);
+          }
+        }}
+      >
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-baseline gap-1.5">
+              <p className="max-w-[5.75rem] shrink-0 truncate text-sm font-semibold leading-tight">
+                {position.asset.symbol}
+              </p>
+              {options.showUnitTrustBadge && isUnitTrust && (
+                <span className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning">
+                  UT
+                </span>
+              )}
+              <p className="min-w-0 truncate text-xs leading-snug text-muted-foreground">
+                {position.asset.name}
+              </p>
+            </div>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <p className="font-mono text-sm font-semibold leading-tight tabular-nums">
+              {formatCurrency(marketValue, currency, 0)}
+            </p>
+          </div>
+
+          <span
+            className={`min-w-[3.625rem] shrink-0 rounded-md border px-1.5 py-0.5 text-right font-mono text-[10px] font-medium leading-tight tabular-nums ${pnlPillClass}`}
+          >
+            <span className="block">{formatCurrency(pnlValue, currency, 0)}</span>
+            <span className="block">{formatPercent(position.unrealizedPnLPct)}</span>
+          </span>
+        </div>
+
+        <div className="absolute right-1 top-1/2 -translate-y-1/2">
+          {renderMobileActionMenu(position)}
+        </div>
+
+        <div className="mt-1 flex min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden whitespace-nowrap text-[11px] leading-snug text-muted-foreground">
+          <span className="inline-flex shrink-0 gap-1">
+            Qty
+            <span className="font-mono text-foreground">
+              {formatQuantity(position.quantity, position.asset.category)}
+            </span>
+          </span>
+          <span aria-hidden="true" className="shrink-0">
+            ·
+          </span>
+          <span className="inline-flex shrink-0 gap-1">
+            Price
+            <span className="font-mono text-foreground">
+              {formatCurrency(priceValue, currency, getSmartDecimals(priceValue))}
+            </span>
+          </span>
+          <span aria-hidden="true" className="shrink-0">
+            ·
+          </span>
+          <span className="inline-flex shrink-0 gap-1">
+            Avg
+            <span className="font-mono text-foreground">
+              {formatCurrency(avgCostValue, currency, getSmartDecimals(avgCostValue))}
+            </span>
+          </span>
+          <span aria-hidden="true" className="shrink-0">
+            ·
+          </span>
+          <span className="min-w-0 truncate">{mobileStorageLabelFor(position)}</span>
+        </div>
+      </div>
+    );
+  };
+
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
 
   const renderCurrentPrice = (position: Position) => {
@@ -593,30 +842,42 @@ export function PositionTable({
     helpContent: string,
     count: number,
     total: number
-  ) => (
-    <div className="mb-2 flex items-center gap-2">
-      <CollapsibleTrigger asChild>
-        <button
-          type="button"
-          className="group flex min-h-11 min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left"
-        >
-          <ChevronRight
-            className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
-              isExpanded(sectionId) ? 'rotate-90' : ''
-            }`}
-          />
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide transition-colors group-hover:text-foreground">
-            {label}
-          </p>
-          <span className="text-xs text-muted-foreground">({count})</span>
-          <span className="ml-auto text-xs font-mono text-muted-foreground">
-            {formatCurrency(convertSub(total), currency, 0)}
-          </span>
-        </button>
-      </CollapsibleTrigger>
-      <HelpTooltip content={helpContent} />
-    </div>
-  );
+  ) => {
+    const isCompactMobile = mobileVariant === 'compact';
+
+    return (
+      <div
+        className={cn(
+          'flex items-center gap-2',
+          isCompactMobile ? 'mb-0 rounded-md bg-muted/25 px-2' : 'mb-2'
+        )}
+      >
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              'group flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left',
+              isCompactMobile ? 'min-h-10' : 'min-h-11'
+            )}
+          >
+            <ChevronRight
+              className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${
+                isExpanded(sectionId) ? 'rotate-90' : ''
+              }`}
+            />
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide transition-colors group-hover:text-foreground">
+              {label}
+            </p>
+            <span className="text-xs text-muted-foreground">({count})</span>
+            <span className="ml-auto text-xs font-mono text-muted-foreground">
+              {formatCurrency(convertSub(total), currency, 0)}
+            </span>
+          </button>
+        </CollapsibleTrigger>
+        {!isCompactMobile && <HelpTooltip content={helpContent} />}
+      </div>
+    );
+  };
 
   const renderPositionSection = ({
     id,
@@ -642,7 +903,9 @@ export function PositionTable({
     <Collapsible key={id} open={isExpanded(id)} onOpenChange={() => toggle(id)}>
       {renderSectionTrigger(id, label, helpContent, sectionPositions.length, total)}
       <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-        <div className="rounded-md border overflow-x-auto">
+        <div
+          className={`rounded-md border overflow-x-auto ${showAllColumns ? '' : 'hidden md:block'}`}
+        >
           <Table className={tableClass}>
             {renderTableHeader(sortState)}
             <TableBody>
@@ -652,6 +915,20 @@ export function PositionTable({
             </TableBody>
           </Table>
         </div>
+        {!showAllColumns && (
+          <div
+            className={cn(
+              'divide-y divide-border/70 md:hidden',
+              mobileVariant === 'compact'
+                ? 'overflow-hidden rounded-b-md bg-muted/10'
+                : 'border-y border-border/70 bg-transparent'
+            )}
+          >
+            {sectionPositions.map((position) =>
+              renderMobilePositionRow(position, { showUnitTrustBadge })
+            )}
+          </div>
+        )}
       </CollapsibleContent>
     </Collapsible>
   );
@@ -815,9 +1092,10 @@ export function PositionTable({
                         getSmartDecimals(convert(entry.priceUsd))
                       )}
                     </span>
-                    {renderNativeHint(
-                      localExecutionPrice,
-                      'font-mono text-[11px] leading-none text-muted-foreground/80'
+                    {localExecutionPrice && (
+                      <span className="font-mono text-[11px] leading-none text-muted-foreground/80">
+                        {localExecutionPrice}
+                      </span>
                     )}
                   </span>
                 </p>
@@ -911,24 +1189,20 @@ export function PositionTable({
   return (
     <>
       <div className="space-y-4">
-        <div className="flex justify-end md:hidden">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-11 text-xs text-muted-foreground touch-manipulation"
-            onClick={() => setShowAllColumns(!showAllColumns)}
-          >
-            {showAllColumns ? (
-              <>
-                <Columns2 className="h-3.5 w-3.5 mr-1" /> Compact
-              </>
-            ) : (
-              <>
-                <Columns3 className="h-3.5 w-3.5 mr-1" /> All columns
-              </>
-            )}
-          </Button>
-        </div>
+        {showMobileColumnToggle && (
+          <div className="-mb-2 -mt-1 flex justify-end md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground touch-manipulation"
+              onClick={() => setShowAllColumns(!showAllColumns)}
+              aria-label={showAllColumns ? 'Show compact mobile list' : 'Show all table columns'}
+              title={showAllColumns ? 'Compact' : 'All columns'}
+            >
+              {showAllColumns ? <Columns2 className="h-4 w-4" /> : <Columns3 className="h-4 w-4" />}
+            </Button>
+          </div>
+        )}
 
         {groupBy === 'storage' &&
           cexPositions.length > 0 &&
@@ -1093,7 +1367,7 @@ export function PositionTable({
           setCancelHistoryEntry(null);
         }}
       >
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="!bottom-0 !left-0 !top-auto max-h-[85vh] w-full max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg sm:!bottom-auto sm:!left-[50%] sm:!top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span>{viewPosition?.asset.symbol}</span>
