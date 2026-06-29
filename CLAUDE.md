@@ -2,9 +2,9 @@
 
 > **Maintenance rules**:
 >
-> - **Self-update**: Update this file when patterns, key files, commands, gotchas, or env vars change.
+> - **Self-update**: update this file when patterns, key files, commands, gotchas, or env vars change.
 > - **Sync with AGENTS.md**: Mirror changes to both files (only title + agent name differ).
-> - **FORET.md**: After significant changes, update `FORET.md` with new features, bugs/fixes, lessons, and tech changes. Keep the conversational, teaching tone.
+> - **FORET.md**: after significant changes, add features/fixes/lessons/tech changes (keep the conversational tone).
 
 ## Project Overview
 
@@ -12,39 +12,33 @@
 
 ## Tech Stack
 
-- **Backend** (`packages/backend/`): Node.js + TypeScript (ES2022 modules), Express 4.18, PostgreSQL (private production host, local via Docker), Prisma 5.10, Clerk auth, node-cron 4, Zod
-- **Frontend** (`packages/frontend/`): React 18 + TypeScript, Vite 8, React Router v6, TanStack React Query (server state), Zustand (client state), shadcn/ui + Radix UI + Tailwind CSS 3.4, Recharts, Plus Jakarta Sans (body) + JetBrains Mono (numbers) via Google Fonts. Design context: `PRODUCT.md` at project root
+- **Backend** (`packages/backend/`): Node.js + TypeScript (ES2022), Express 4.18, PostgreSQL (prod private host, local via Docker), Prisma 5.10, Clerk auth, node-cron 4, Zod
+- **Frontend** (`packages/frontend/`): React 18 + TS, Vite 8, React Router v6, TanStack React Query (server state) + Zustand (client state), shadcn/ui + Radix + Tailwind 3.4, Recharts, Plus Jakarta Sans + JetBrains Mono. Design context: `PRODUCT.md`
 
 ## Key Files
 
 ### Backend
 
 - `src/index.ts` - Server entry (rate limiting, logger, FX job init, `/api/v1` prefix)
-- `src/routes/` / `src/services/` / `src/middleware/` - API endpoints; business logic (portfolioService, priceService, snapshotService); auth + error handling
-- `src/lib/` - Shared utilities (constants, logger, pagination, tradePnL, sentry, TTLCache, fxConstants)
-- `src/lib/constants.ts` - Domain enums (AssetCategory, StorageType, TradeDirection, TradeStatus, SnapshotType, SnapshotSource)
-- `src/lib/fxConstants.ts` - Shared USD→native FX-rate fields + `usdRateEntries()`; imported by the `/fx` route and scheduler so adding a currency is one edit, not two
-- `src/lib/domain.ts` - Backend-owned copy of core financial/domain helpers (position value math, add/reduce cost-basis math, provider/category compatibility)
-- `src/lib/authorization.ts` - Admin and user-asset ownership guards for global asset catalog routes
-- `src/lib/startupChecks.ts` - Production boot warnings for missing operational config such as `ADMIN_USER_IDS`
-- `src/lib/TTLCache.ts` - Generic TTL cache with LRU eviction (used by priceService)
-- `src/__tests__/` - vitest unit + integration tests. `routes/` = supertest + mocked Prisma; `helpers/` = createTestApp, fixtures; `scheduler.test.ts` + `socketService.test.ts` cover cron price-refresh fanout and WebSocket event payloads; `socketService.integration.test.ts` uses real Socket.io clients with mocked Clerk verification for auth/broadcast/user-room coverage
+- `src/routes/`/`src/services/`/`src/middleware/` - endpoints; business logic (portfolio/price/snapshot services); auth + error handling
+- `src/lib/` - Shared utilities: `constants.ts` (domain enums: AssetCategory/StorageType/TradeDirection/TradeStatus/SnapshotType/SnapshotSource), `fxConstants.ts` (USD→native FX fields + `usdRateEntries()`, shared by `/fx` route + scheduler so adding a currency is one edit), `domain.ts` (backend copy of value/cost-basis math + provider/category compat), `authorization.ts` (admin + user-asset guards for the global asset catalog), `startupChecks.ts` (boot warnings, e.g. missing `ADMIN_USER_IDS`), `TTLCache.ts` (LRU TTL cache), plus pagination/tradePnL/sentry/logger
+- `src/__tests__/` - vitest unit + integration tests (`routes/` = supertest + mocked Prisma; `helpers/` = createTestApp/fixtures). `scheduler.test.ts` + `socketService.test.ts` cover cron fanout + WS payloads; `socketService.integration.test.ts` uses real Socket.io clients (mocked Clerk) for auth/broadcast/user-room
 - `prisma/schema.prisma` - Database schema
 
 ### Frontend
 
 - `src/App.tsx` (routing); `src/pages/` (Dashboard, Portfolio, Trades, Investors, Settings); `src/stores/` (Zustand)
-- `src/hooks/` - React Query hooks (usePortfolio, useTrades, etc.) + `useAnimatedNumber` (rAF number ticker); tests in `__tests__/`
-- `src/lib/api.ts` - API client methods; `src/lib/types.ts` - frontend types; `src/lib/chartColors.ts` - OKLCH CSS-variable chart colors; `src/lib/chartUtils.ts` - time-period date helpers shared by PortfolioChart/BenchmarkComparisonChart
-- `src/components/ui/` - `skeleton.tsx` (shimmer), `HelpTooltip.tsx` (? tooltips), `creatable-select.tsx` ("+ Add new ..." Radix Select), `formatted-number-input.tsx` (thousands-separator amount input; pure helpers in `-utils.ts` for Fast Refresh)
+- `src/hooks/` - React Query hooks (usePortfolio, useTrades, …) + `useAnimatedNumber` (rAF ticker); tests in `__tests__/`
+- `src/lib/api.ts` (API client), `types.ts` (frontend types), `chartColors.ts` (OKLCH CSS-var chart colors), `chartUtils.ts` (time-period date helpers for PortfolioChart/BenchmarkComparisonChart)
+- `src/components/ui/` - `skeleton.tsx`, `HelpTooltip.tsx`, `creatable-select.tsx` ("+ Add new ..." Radix Select), `formatted-number-input.tsx` (thousands-separator input; pure helpers in `-utils.ts` for Fast Refresh)
 - `src/components/layout/PageActionHeader.tsx` - Sticky title/action header for high-scroll data pages
-- `src/components/trades/` - `Trades.tsx` page is split into `TradeTable.tsx` (sortable tape + row actions), `TradeTapeSection.tsx` (status filter + ticker chip wrapper), `TradeDetailDialog.tsx` (row detail dialog + `formatTradeTags`), `tradeClipboard.ts` (copy/format helpers), `TradeLensViews.tsx` (lens UI) + `tradeLensModels.ts` (pure aggregation). Page keeps shared state + the create/edit/delete dialogs.
-- `src/components/portfolio/` - `positionClipboard.ts` (copy JSON), `positionOptions.ts` (storage location options + localStorage customs), `positionFormMath.ts` (pure cost/add-reduce preview math on shared domain helpers), `PositionDeltaEditor.tsx` (add/reduce edit UI; submit logic stays in PositionForm), `PositionCostFields.tsx` + `PositionStorageFields.tsx` (extracted field groups)
+- `src/components/trades/` - `Trades.tsx` split into `TradeTable.tsx`, `TradeTapeSection.tsx`, `TradeDetailDialog.tsx` (+ `formatTradeTags`), `tradeClipboard.ts`, `TradeLensViews.tsx` (lens UI) + `tradeLensModels.ts` (pure aggregation). Page keeps shared state + create/edit/delete dialogs.
+- `src/components/portfolio/` - `positionClipboard.ts`, `positionOptions.ts` (storage options + localStorage customs), `positionFormMath.ts` (pure cost/add-reduce preview math), `PositionDeltaEditor.tsx` (add/reduce UI; submit stays in PositionForm), `PositionCostFields.tsx` + `PositionStorageFields.tsx`
 - `react-doctor.config.json` - Root-level React Doctor triage policy
 
 ### Shared
 
-- `packages/shared/src/types.ts` - Cross-package types, domain enums (`AssetCategory`, `StorageType`, `TradeStatus`, etc.), `categoryGroup()`, core position math helpers, `USD_SGD_FALLBACK_RATE`, `MAX_POSITIONS_PER_CATEGORY`. Frontend is the only runtime consumer — see Gotchas re: backend Docker isolation.
+- `packages/shared/src/types.ts` - Cross-package types, domain enums, `categoryGroup()`, position math helpers, `USD_SGD_FALLBACK_RATE`, `MAX_POSITIONS_PER_CATEGORY`. Frontend is the only runtime consumer (see Gotchas re: backend Docker isolation).
 
 ### E2E
 
@@ -53,58 +47,34 @@
 ## First Run Setup
 
 ```bash
-# 1. Install all dependencies (from root)
+# 1. From root
 npm install
 
-# 2. Backend
-cd packages/backend && cp .env.example .env
-# Fill in: DATABASE_URL, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, ALLOWED_ORIGINS
-npx prisma migrate dev   # Creates tables
+# 2. Backend — fill DATABASE_URL, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, ALLOWED_ORIGINS
+cd packages/backend && cp .env.example .env && npx prisma migrate dev   # migrate creates tables
 
-# 3. Frontend
+# 3. Frontend — fill VITE_API_URL, VITE_CLERK_PUBLISHABLE_KEY
 cd ../frontend && cp .env.example .env
-# Fill in: VITE_API_URL, VITE_CLERK_PUBLISHABLE_KEY
 
-# 4. Start both servers (separate terminals)
-cd packages/backend && npm run dev
-cd packages/frontend && npm run dev
+# 4. Run both (separate terminals): npm run dev in packages/backend and packages/frontend
 ```
 
 ## Commands
 
 ```bash
 # Root (monorepo)
-npm install              # Install all dependencies
-npm audit                # Should report 0 vulnerabilities
-npm test                 # Run backend + frontend unit/integration tests
-npm run build            # Build/type-check all workspaces
-npm run format           # Format all files with Prettier
-npm run format:check     # Check formatting, shell script syntax, and domain constant parity
-npm run scripts:check    # Syntax-check root shell scripts (bash -n); skips cleanly on Windows
-npm run domain:check     # Verify backend domain constants mirror shared constants
+npm install · npm audit (0 vulns) · npm test (backend + frontend) · npm run build (build/typecheck all)
+npm run format · npm run format:check (formatting + shell syntax + domain parity)
+npm run scripts:check (bash -n root scripts; skips on Windows) · npm run domain:check (backend↔shared parity)
 
 # Local Database
-npm run db:local         # Start local Postgres (Docker, port 5433)
-npm run db:local:stop    # Stop local Postgres
-npm run db:sync          # Pull production data → local DB
-npm run db:seed:scale    # Seed sanitized local production-scale data for local QA
+npm run db:local (start local Postgres, Docker 5433) · db:local:stop · db:sync (pull prod → local) · db:seed:scale (sanitized scale data)
 
-# Database Backups (run on DO droplet, not locally)
-# ./scripts/backup-db.sh daily|weekly|monthly  — dump, compress, upload to DO Spaces
-# ./scripts/restore-db.sh [path]               — list or restore backups
+# DB backups (on droplet): ./scripts/backup-db.sh daily|weekly|monthly · ./scripts/restore-db.sh [path]
 
-# Backend (packages/backend/)
-npm run dev              # Start dev server (port 4001)
-npm run build            # Compile TypeScript
-npm test                 # Run unit tests (vitest)
-npx prisma migrate dev   # Run migrations
-npx prisma studio        # Database GUI
-
-# Frontend (packages/frontend/)
-npm run dev              # Start Vite dev server (port 4000)
-npm run build            # Production build
-npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none
-                         # Optional React quality/a11y scan (pinned, offline, advisory)
+# Backend (packages/backend/): npm run dev (4001) · build · test · npx prisma migrate dev · npx prisma studio
+# Frontend (packages/frontend/): npm run dev (4000) · build
+npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none  # optional a11y/quality scan (advisory)
 
 # Frontend demo route (dev-only, mocked API): http://localhost:4000/dev/demo
 ```
@@ -118,49 +88,38 @@ Node host (Backend: Express.js)
     ↓ Prisma ORM
 PostgreSQL 17 (private network)
 
-Background Jobs (node-cron):
-├── Price refresh (every minute)
-├── Daily snapshots (midnight UTC)
-├── Weekly snapshots (Sundays)
-├── Monthly snapshots (1st of month)
-└── FX rate updates (hourly)
+Background Jobs (node-cron): price refresh (every min), snapshots (daily midnight UTC / weekly Sun / monthly 1st), FX rates (hourly)
 ```
 
 ## Key Patterns
 
 ### Auto-Create User
 
-First-time Clerk users are auto-created in database via `ensureUser` middleware.
+First-time Clerk users are auto-created via `ensureUser` middleware.
 
 ### Local QA Auth Bypass
 
-For sanitized real-API browser QA only, run backend with
-`ALLOW_LOCAL_AUTH_BYPASS=true LOCAL_AUTH_USER_ID=local-scale-user` and frontend with
-`VITE_LOCAL_AUTH_BYPASS=true`. Backend bypass is ignored in `NODE_ENV=production`; frontend bypass
-requires Vite dev mode, skips ClerkProvider, installs a no-token API getter, renders an `LB` avatar,
-and leaves websocket status disconnected instead of calling Clerk hooks. Always set
-`ALLOWED_ORIGINS=http://localhost:4000` (or the actual Vite port) or browser API calls will fail
-CORS while the backend still looks healthy. Never use bypass flags with production data.
+For sanitized real-API browser QA only: backend `ALLOW_LOCAL_AUTH_BYPASS=true LOCAL_AUTH_USER_ID=local-scale-user` + frontend `VITE_LOCAL_AUTH_BYPASS=true`. Backend bypass is ignored when `NODE_ENV=production`; frontend bypass requires Vite dev mode (skips ClerkProvider, no-token API getter, `LB` avatar). Always set `ALLOWED_ORIGINS` to the Vite origin or browser calls fail CORS while the backend looks healthy. Never use with production data.
 
 ### Snapshot System
 
-Captures portfolio state at points in time. Calculates daily/weekly/monthly/YTD returns and benchmark outperformance vs BTC/ETH. All return fields stored as `percent × 100` (`12` = 12%, not `0.12`). YTD anchor = first snapshot of the _current calendar year_, scoped via `timestamp >= Jan 1 UTC` in `portfolioService.getSummary()` — not `findFirst orderBy:asc` without a date filter, which would pin YTD to a stale pre-year snapshot in future years.
+Captures portfolio state over time; calculates daily/weekly/monthly/YTD returns + benchmark outperformance vs BTC/ETH. Return fields stored as `percent × 100` (`12` = 12%). YTD anchor = first snapshot of the _current calendar year_, scoped via `timestamp >= Jan 1 UTC` in `portfolioService.getSummary()` — not an unfiltered `findFirst orderBy:asc`, which would pin YTD to a stale pre-year snapshot.
 
 ### Snapshot Backfill Script
 
-`packages/backend/scripts/backfill-equity-snapshots.ts` — one-shot for retroactively inserting positions into historical snapshots. Read the script header for usage (`--dry`/`--apply`/`--rollback`), `BACKFILLS` semantics (additive deltas, not states), and Yahoo-fallback interpolation.
+`packages/backend/scripts/backfill-equity-snapshots.ts` — one-shot for retroactively inserting positions into historical snapshots. See the script header for usage (`--dry`/`--apply`/`--rollback`), `BACKFILLS` semantics (additive deltas), and Yahoo-fallback interpolation.
 
 ### Yahoo Search & Local-Currency Equities
 
-Yahoo's `/v1/finance/search` IP-filters by caller region even with `region=US` (our Singapore droplet got only cross-listings for US ETFs). `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` for queries matching `/^[A-Z0-9.-]{1,10}$/` with no exact-symbol match. Supported local-currency suffixes: Singapore `.SI`→SGD, Japan `.T`→JPY (Kioxia `285A.T`), Taiwan `.TW`/`.TWO`→TWD, Korea `.KS`/`.KQ`→KRW, Oslo `.OL`→NOK. Search fans out across US/JP/TW/KR/NO; numeric-ticker lookups try the Asian suffixes; short alphabetic ticker lookups also try `.OL`; ranking intentionally prefers primary local exchanges over OTC/Frankfurt/Stuttgart/Munich/Hamburg cross-listings. Keep the Kioxia and Oslo coverage in `YahooFinanceProvider.test.ts` so name searches don't regress to cross-listings or USD fallback.
+Yahoo's `/v1/finance/search` IP-filters by caller region (SG droplet got only US-ETF cross-listings); `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` for ticker-shaped queries (`/^[A-Z0-9.-]{1,10}$/`) with no exact match. Local-currency suffixes: `.SI`→SGD, `.T`→JPY, `.TW`/`.TWO`→TWD, `.KS`/`.KQ`→KRW, `.OL`→NOK; search fans out US/JP/TW/KR/NO and ranking prefers primary local exchanges over OTC/European cross-listings. Keep Kioxia (`285A.T`) + Oslo coverage in `YahooFinanceProvider.test.ts`. Full story: FORET.md.
 
 ### Unit Trust Statement Parsers (PDF Import)
 
-`POST /assets/parse-unit-trust-statement` extracts text via `pdf-parse`, then walks broker parsers in `src/services/statementParsers/` until one succeeds. PDF text flattens table columns into a token stream, so each parser anchors on a deterministic marker (ISIN or value-block regex) and reads fixed fields after it. Supported: **UOB Kay Hian** (`uobKayHian.ts`), **FSMOne / iFAST** (`fsmOne.ts`). Parsed holdings are reconciled against existing unit-trust positions by `PositionForm.tsx` + `statementMatching.ts` (ISIN first, provider/Yahoo symbol, exact symbol, exact name; broker storage location breaks ties). Add a broker: new file alongside, append to `parsers` in `routes/assets.ts`, update the supported-formats error string, add the broker→`storageLocation` mapping in `statementMatching.ts`, and keep `statementMatching.test.ts` coverage for matching/tie-break behavior.
+`POST /assets/parse-unit-trust-statement` extracts text via `pdf-parse`, then walks broker parsers in `src/services/statementParsers/` until one succeeds (each anchors on a deterministic ISIN/value marker since PDF text flattens columns). Supported: **UOB Kay Hian** (`uobKayHian.ts`), **FSMOne / iFAST** (`fsmOne.ts`). Parsed holdings reconcile against existing UT positions via `statementMatching.ts` (ISIN → provider/Yahoo symbol → exact symbol → exact name; broker storage breaks ties). **Add a broker**: new file alongside, append to `parsers` in `routes/assets.ts`, update the supported-formats error string, add the broker→`storageLocation` mapping in `statementMatching.ts`, keep `statementMatching.test.ts` coverage.
 
 ### CoinGecko Rate Limiting
 
-Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. Batch requests up to 50 coins.
+Queue-based, 2.1s between calls, 30s in-memory cache, batch up to 50 coins.
 
 ### TTLCache
 
@@ -168,20 +127,20 @@ Queue-based requests with 2.1s delays between calls. 30-second in-memory cache. 
 
 ### React Query + Zustand Split
 
-- React Query: server state. No global `refetchInterval`; global `refetchOnWindowFocus` stays `false`. Money-sensitive portfolio queries in `usePortfolio.ts` opt into `refetchOnWindowFocus` + `refetchOnReconnect` so stale figures refresh when the browser regains focus.
+- React Query: server state. No global `refetchInterval`; global `refetchOnWindowFocus` stays `false`. Money-sensitive `usePortfolio.ts` queries opt into `refetchOnWindowFocus` + `refetchOnReconnect`.
 - Zustand: client state (currency preference)
 
 ### Structured Logging
 
-All backend code uses `logger` from `src/lib/logger.ts` — no `console.log` in production code. Respects `LOG_LEVEL` (debug/info/warn/error); invalid values fall back to `info` so a typo cannot suppress warn/error output.
+All backend code uses `logger` (`src/lib/logger.ts`) — no `console.log` in prod. Respects `LOG_LEVEL` (debug/info/warn/error); invalid values fall back to `info` so a typo can't suppress warn/error.
 
 ### Rate Limiting
 
-Express-rate-limit applied globally to `/api` routes. Default 200 requests per 15 minutes; override with `RATE_LIMIT_MAX` (local dev uses 10000). Constants in `src/lib/constants.ts`.
+Global express-rate-limit on `/api`: 200 req / 15 min, override `RATE_LIMIT_MAX` (local dev 10000). Constants in `src/lib/constants.ts`.
 
 ### Request Payload Limit
 
-Express JSON payload cap is **1mb** (`MAX_PAYLOAD_SIZE` in `src/lib/constants.ts`), deliberately tight. If a legitimate bulk import ever 413s, bump the constant rather than widening globally.
+Express JSON cap **1mb** (`MAX_PAYLOAD_SIZE`), deliberately tight; if a bulk import 413s, bump the constant rather than widening globally.
 
 ### Pagination (Backend)
 
@@ -189,44 +148,41 @@ Trades and snapshots routes support optional `?page=1&limit=50`; returns the ful
 
 ### Lazy-Loaded Routes
 
-All pages are lazy-loaded with `React.lazy()` + `Suspense`. Vite `manualChunks` splits heavy vendors (recharts, socket.io-client, @sentry/react, @clerk/clerk-react) into separate chunks.
+All pages lazy-loaded (`React.lazy()` + `Suspense`); Vite `manualChunks` splits heavy vendors (recharts, socket.io-client, @sentry/react, @clerk/clerk-react).
 
 ### Dev Demo Route
 
 `src/dev/demoMode.tsx` — local-only `/dev/demo` route for UI testing without Clerk or a backend:
 
-- **Dev-only**: `App.tsx` lazy-loads it only when `import.meta.env.DEV` — the mock payload never ships in prod.
-- Mocks `/api/*` and `/api/v1/*` in-browser; restores the original `fetch` + token getter on unmount (never leave global monkey-patches installed).
-- Child routes render only after the mock installs (else React Query caches empty real responses and demo appears blank). `DemoPages` installs in `useLayoutEffect`, then flips readiness on a short timer (satisfies the `set-state-in-effect` lint).
-- Stateful in-browser CRUD/import coverage for visible workflows (positions, trades, snapshots, investors, manual NAV); resets on full refresh.
-- Demo API handlers must stay in sync with UI workflows that claim success. Add/update `src/dev/__tests__/demoMode.test.ts` when adding mocked write/import routes.
-- Seed data spans all buckets (crypto, equities, unit trust, stables, USD/SGD cash, alternatives, storage types, custody). Keep each seeded `Position.assetId` and embedded `asset` in sync via `demoAsset(id)`, not array indexes; the 4th allocation chart needs stable/cash positions.
-- Demo perf history must honor `/snapshots/performance` params (`days`, `from`, `to`, `all=true`); `Max` includes pre-1Y points.
+- **Dev-only**: `App.tsx` lazy-loads it only when `import.meta.env.DEV` — never ships in prod. Don't add extra env gates.
+- Mocks `/api/*` + `/api/v1/*` in-browser; restores original `fetch` + token getter on unmount. Child routes render only after the mock installs (`DemoPages` `useLayoutEffect` + short readiness timer) else React Query caches empty responses.
+- Stateful CRUD/import for visible workflows (positions, trades, snapshots, investors, NAV); resets on refresh. Handlers must stay in sync with UI workflows that claim success — update `src/dev/__tests__/demoMode.test.ts` when adding mocked write/import routes.
+- Seed data spans all buckets; keep each `Position.assetId`/embedded `asset` in sync via `demoAsset(id)`, not array indexes (the 4th allocation chart needs stable/cash). Perf history honors `/snapshots/performance` params (`days`/`from`/`to`/`all=true`; `Max` includes pre-1Y).
 - UI/responsive testing only — never point at production write APIs.
 
 ### React Doctor Quality Scan
 
-Advisory frontend audit — see the pinned command in Commands. Treat results as triage input, not a refactor plan; be skeptical of React 19 advice while on React 18. `react-doctor.config.json` suppresses reviewed noise (React 19 migration advice, conflicting design-opinion checks, risky architectural nudges). Do not add suppressions for new accessibility, keyboard, ownership, render-correctness, or data-integrity findings without documenting why they are false positives. Known false positive: `apiMockReady` in `demoMode.tsx` ("updated but never read") — it gates rendering until the fetch mock is installed.
+Advisory frontend audit — see the pinned command in Commands. Triage input, not a refactor plan; be skeptical of React 19 advice on React 18. `react-doctor.config.json` suppresses reviewed noise. Don't suppress new accessibility/keyboard/ownership/render-correctness/data-integrity findings without documenting why they're false positives. Known FP: `apiMockReady` in `demoMode.tsx` ("updated but never read") — it gates rendering until the fetch mock installs.
 
 ### Dependency Audit Notes
 
-Root `package.json` intentionally overrides `exceljs`'s transitive `uuid` to `11.1.1` (ExcelJS 4.4 declares `uuid@^8.3.0`, flagged via `GHSA-w5hq-g745-h8pq`; ExcelJS only uses `v4()`, stable on uuid 11). Do not run `npm audit fix --force` — its suggested fix is a major ExcelJS downgrade to 3.4.0. Keep `npm audit` clean after dependency updates.
+Root `package.json` overrides `exceljs`'s transitive `uuid` to `11.1.1` (ExcelJS 4.4 declares `uuid@^8.3.0`, `GHSA-w5hq-g745-h8pq`; ExcelJS only uses `v4()`). Do not `npm audit fix --force` — it downgrades ExcelJS to 3.4.0. Keep `npm audit` clean.
 
-ExcelJS treats worksheet name `History` as protected; portfolio workbook exports use `Snapshots` for the snapshot sheet. Keep `export.test.ts` coverage so export bugs don't hide behind browser download flows.
+ExcelJS treats worksheet name `History` as protected; exports use `Snapshots`. Keep `export.test.ts` coverage.
 
 ### Ownership Checks on Mutations
 
-Protected update/delete routes must filter by both `id` and `req.userId!`, never `id` alone — prevents cross-user mutation if an ID is guessed.
+Protected update/delete routes must filter by both `id` and `req.userId!`, never `id` alone (prevents cross-user mutation via guessed IDs).
 
-Global Asset catalog rows are shared across users, so they follow split rules instead (guards in `src/lib/authorization.ts`): `PUT`/`DELETE /assets/:id` require an admin user from `ADMIN_USER_IDS`; per-user flows (`POST /assets/:id/refresh-price`, `PATCH /assets/:id/nav`) return 403 unless the authenticated user actually holds the asset. `GET /assets/:id` includes only the current user's positions.
+Global Asset catalog rows are shared, so they follow split rules (`src/lib/authorization.ts`): `PUT`/`DELETE /assets/:id` require an admin from `ADMIN_USER_IDS`; per-user flows (`POST /assets/:id/refresh-price`, `PATCH /assets/:id/nav`) 403 unless the user holds the asset. `GET /assets/:id` includes only the user's positions.
 
 ### WebSocket CORS
 
-Socket.io origin validation uses exact origin matching (`origin === allowed`), same as the Express CORS middleware. Never prefix-match trusted origins.
+Socket.io origin validation uses exact matching (`origin === allowed`), same as Express CORS. Never prefix-match trusted origins.
 
 ### Optimistic Deletes
 
-Delete mutations in `usePortfolio`, `useTrades`, `useSnapshots` use optimistic updates with rollback on error.
+Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic updates with rollback on error.
 
 ### Responsive Mobile Design
 
@@ -240,7 +196,7 @@ iOS HIG-inspired patterns on all pages:
 
 ### Smart Price Formatting
 
-`formatPrice()` in `lib/utils.ts` — use for per-unit prices (entry/exit, current price) instead of `formatCurrency(..., 0)`. Decimals by magnitude:
+`formatPrice()` (`lib/utils.ts`) — per-unit prices (entry/exit, current) instead of `formatCurrency(..., 0)`. Decimals by magnitude:
 
 | Price Range | Decimals | Example  |
 | ----------- | -------- | -------- |
@@ -250,33 +206,29 @@ iOS HIG-inspired patterns on all pages:
 | < $1,000    | 2        | $32.15   |
 | >= $1,000   | 0        | $67,200  |
 
-Use `formatCurrency` for totals, sizes, and P&L. For cost/total _amounts_ in a currency use `currencyDecimals(currency)` (0 for zero-decimal JPY/KRW, else 2) — not magnitude-based `priceDecimals`.
+Use `formatCurrency` for totals/sizes/P&L. For cost/total _amounts_ use `currencyDecimals(currency)` (0 for JPY/KRW, else 2) — not magnitude-based `priceDecimals`.
 
-Portfolio rows keep the selected app currency as the primary current price and average cost. If `asset.nativeCurrency` differs, show a muted second line under **Price** and **Avg Cost** via `localPriceLabel()` / `formatNativePrice()` and the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW/NOK). Do not add native labels under total cost or value, and do not store native current price on `Asset`; derive labels from USD × USD/native FX.
+Portfolio rows keep the app currency as primary price + avg cost. If `asset.nativeCurrency` differs, show a muted second line under **Price**/**Avg Cost** via `localPriceLabel()`/`formatNativePrice()` + the `/fx/rates` USD→native map (SGD/JPY/TWD/KRW/NOK). No native labels under total cost/value; never store native current price on `Asset` — derive from USD × USD/native FX.
 
 ### Smart Quantity Formatting
 
-Use `formatQuantity()` for read-only quantity displays (tables, detail dialogs, history, add/reduce previews). It trims trailing zeroes while capping precision by asset type: equities max 4 decimals, unit trusts max 3, crypto max 8, cash/stables max 2. Keep editable fields as raw `FormattedNumberInput` strings so precision survives typing and saving.
+Use `formatQuantity()` for read-only quantity displays (tables, dialogs, history, previews) — trims trailing zeroes, caps precision by asset type (equities 4, UT 3, crypto 8, cash 2). Keep editable fields as raw `FormattedNumberInput` strings so precision survives typing/saving.
 
 ### Formatted Amount Inputs
 
-Use `FormattedNumberInput` for editable money/quantity/unit/NAV/capital/exposure fields. Renders `10000` as `10,000` while keeping state as the raw string (`"10000"`) so `parseFloat()` and API payloads stay safe. Don't use raw `type="number"` for finance amounts unless the field needs native min/max semantics (e.g. bounded percentages).
+Use `FormattedNumberInput` for editable money/quantity/unit/NAV/capital/exposure fields — renders `10000` as `10,000` while keeping state as the raw string (`"10000"`) so `parseFloat()`/payloads stay safe. Don't use raw `type="number"` for finance amounts unless the field needs native min/max (e.g. bounded percentages).
 
-For non-negative finance fields, never coerce leading-negative input into a positive value. `sanitizeNumberInput('-1')` intentionally returns `''`; forms with positive-only values (snapshots, prices, quantities) should keep submit disabled until parsed values satisfy the backend constraint.
-
-Use `isPositiveNumberInput()` / `isNonNegativeNumberInput()` from `src/lib/formValidation.ts` when
-submit gating finance forms. Do not rely on `required`, `parseFloat`, or disabled-looking CSS alone;
-the UI guard should match the backend Zod rule before a mutation can fire.
+Never coerce leading-negative input positive: `sanitizeNumberInput('-1')` returns `''`. Gate submit on `isPositiveNumberInput()`/`isNonNegativeNumberInput()` (`src/lib/formValidation.ts`) — not `required`/`parseFloat`/disabled-looking CSS — so the UI guard matches the backend Zod rule before a mutation fires.
 
 ### Trades Review Lenses
 
-`Trades.tsx` is one page with three lenses above the shared Trade Tape table:
+`Trades.tsx` — three lenses above the shared Trade Tape table:
 
-- **Review** (default `/trades`): collapsed `TradeStatsCard`, collapsed `TickerPnLCard`, then the All/Open/Closed table.
-- **Ticker Dossier** (`?ticker=SOL`): ticker P&L, win rate, average hold, largest win/loss, tags, recent closed trades, focused table. The ticker chip clears the query param.
-- **Monthly Postmortem** (`?view=monthly`): selectable month summaries, repeatable-edge tags, loss review, open-trade watchlist.
+- **Review** (default `/trades`): collapsed `TradeStatsCard` + `TickerPnLCard`, then the All/Open/Closed table.
+- **Ticker Dossier** (`?ticker=SOL`): ticker P&L, win rate, avg hold, largest win/loss, tags, recent closed, focused table. The ticker chip clears the query param.
+- **Monthly Postmortem** (`?view=monthly`): month summaries, repeatable-edge tags, loss review, open-trade watchlist.
 
-Fetches all trades once via `useTrades()`, filtering table status locally so lens summaries survive tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with seeded rows. Trade form defaults entry date to 5 days ago, exit to today. Trade Tape rows are clickable + keyboard-activatable (Enter/Space) to open a detail dialog; row action cells use `stopPropagation()`. Keep lens UI in `TradeLensViews.tsx`, pure aggregation in `tradeLensModels.ts`.
+Fetches all trades once via `useTrades()`, filtering status locally so lens summaries survive tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with seeded rows. Trade form defaults entry to 5 days ago, exit to today. Tape rows are clickable + keyboard-activatable (Enter/Space); row action cells use `stopPropagation()`. Lens UI in `TradeLensViews.tsx`, pure aggregation in `tradeLensModels.ts`.
 
 ### Portfolio Hero Summary
 
@@ -288,23 +240,22 @@ Two-level grouping: **Crypto/Equities/Cash** (primary, `Portfolio.tsx` via `Coll
 
 ### Custody Positions ("Held for Others")
 
-Positions held for others (e.g. "bought BTC for Mum"). `Position.custodyOf String?` — `null`=owned, non-null=custody. Custody is excluded from net worth, P&L, allocations, snapshots, and exposure: backend services filter `custodyOf: null`; Zod schema is `z.string().nullable().optional()` (empty string → null). `Portfolio.tsx` splits owned vs custody (purple "Held for Others" `CollapsibleCard`, collapsed by default). `CustodyCheckbox.tsx` renders at the bottom of every form with a name dropdown (positions + localStorage `foliobuddy-custody-names` + "Add new person"); edit sends empty string to clear. Clipboard JSON includes `custodyOf` when set.
+Positions held for others (e.g. "bought BTC for Mum"). `Position.custodyOf String?` — `null`=owned, non-null=custody. Excluded from net worth, P&L, allocations, snapshots, exposure: backend services filter `custodyOf: null`; Zod is `z.string().nullable().optional()` (empty string → null). `Portfolio.tsx` splits owned vs custody (purple "Held for Others" `CollapsibleCard`). `CustodyCheckbox.tsx` renders at the bottom of every form with a name dropdown (positions + `foliobuddy-custody-names` + "Add new person"); edit sends empty string to clear. Clipboard JSON includes `custodyOf` when set.
 
 ### Creatable Storage Location Dropdowns
 
-CEX exchanges, onchain wallets, brokers, and banks use `CreatableSelect` (no generic "Others") with a "+ Add new ..." row and pencil/trash actions for custom options:
+CEX exchanges, wallets, brokers, banks use `CreatableSelect` (no generic "Others") with a "+ Add new ..." row + pencil/trash for custom options:
 
-- Default options are protected (no edit/delete); only user-added localStorage options are manageable. Customs persist under `foliobuddy-storage-location-options`, bucketed by storage type (`CEX`, `WALLET`, `BROKERAGE`, `BANK`), merged with defaults via `positionOptions.ts`.
-- Deleting an option only removes it from the dropdown; existing positions keep their value, and edit forms include the current value as a one-off option.
+- Default options are protected; user-added customs persist under `foliobuddy-storage-location-options`, bucketed by storage type (`CEX`/`WALLET`/`BROKERAGE`/`BANK`), merged via `positionOptions.ts`. Deleting only removes from the dropdown — existing positions keep their value, and edit forms include the current value as a one-off option.
 - Keep fixed domain selects fixed (Category, storage type, fiat currency, trade direction, theme) — only free-text location dropdowns are creatable.
-- Radix Select can emit a trailing empty value after the create row closes — creatable `onValueChange` handlers must ignore empty values.
-- Shared `SelectContent` sizes the popper viewport to its content (with max-height) and sits above dialogs (`z-[60]`); never force `h-[var(--radix-select-trigger-height)]` or share the dialog's `z-50`, or menus appear open but clipped.
+- Radix Select can emit a trailing empty value after the create row closes — creatable `onValueChange` must ignore empty values.
+- Shared `SelectContent` sizes the popper to its content (with max-height) and sits above dialogs (`z-[60]`); never force `h-[var(--radix-select-trigger-height)]` or share the dialog's `z-50`, or menus appear open but clipped.
 
 ### Cash Positions (Stablecoins + Fiat)
 
-The former Stables category is labeled **Cash**. In `PositionForm.tsx`, Cash shows a **Type** dropdown (USDT, USDC, USDe, FDUSD, DAI, **Cash (fiat)**); Cash (fiat) reveals a **Currency** dropdown (`USD`, `SGD`, `GBP`, default USD) and creates/reuses a `CASH` asset with that symbol. SGD is priced from the current USD/SGD summary rate at creation; all fiat cash uses `priceProvider='manual'`. Rows show the symbol on top, subtitle simply `Cash`.
+The former Stables category is labeled **Cash**. In `PositionForm.tsx`, Cash shows a **Type** dropdown (USDT, USDC, USDe, FDUSD, DAI, **Cash (fiat)**); Cash (fiat) reveals a **Currency** dropdown (`USD`/`SGD`/`GBP`, default USD) and creates/reuses a `CASH` asset. SGD is priced from the current USD/SGD summary rate at creation; all fiat cash uses `priceProvider='manual'`. Subtitle is simply `Cash`.
 
-Storage depends on Type: stablecoins → **CEX**/**Onchain**; Cash (fiat) → **Broker account**/**Bank**. Broker locations share the alphabetized `BROKER_LOCATIONS` defaults (`FSMOne`, `IBKR`, `Tiger`, `UOB KH` — never `DBS`); bank defaults `Citi`, `DBS`, `SCB`, `Trust+`, `UOB`. `PositionForm` guards cash storage-type validity when Type changes, so Cash (fiat) can't keep a crypto-only location.
+Storage depends on Type: stablecoins → **CEX**/**Onchain**; Cash (fiat) → **Broker account**/**Bank**. Broker defaults are the alphabetized `BROKER_LOCATIONS` (`FSMOne`, `IBKR`, `Tiger`, `UOB KH` — never `DBS`); bank defaults `Citi`, `DBS`, `SCB`, `Trust+`, `UOB`. `PositionForm` guards cash storage-type validity when Type changes.
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
@@ -313,39 +264,36 @@ Two sub-types via UI toggle (enums unchanged):
 - **Stock / ETF**: `equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'`. ETFs go here (live ticker prices), not Unit Trust.
 - **Unit Trust**: `equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`.
 
-**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown; `storageType` stays `'BROKERAGE'`. Cost currency follows supported `asset.nativeCurrency` — listed equities in SGD/JPY/TWD/KRW/NOK show local cost inputs with a USD conversion note; SGD unit trusts use their statement/parser FX path. Backend stores USD. Fallback FX may be used for display hints while rates load, but create/edit/add-position submits for non-USD listed equities MUST wait for a real `/fx/rates` row (or real SGD summary rate) before converting and persisting cost basis. Edit converts stored USD → local inputs via the `costInitialized` flag.
+**Form:** Category = Crypto / Cash / Equities. Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown (`storageType` stays `'BROKERAGE'`). Cost currency follows `asset.nativeCurrency` — SGD/JPY/TWD/KRW/NOK equities show local cost inputs with a USD conversion note; backend stores USD. Fallback FX is display-hint only: non-USD create/edit/add submits MUST wait for a real `/fx/rates` row (or real SGD summary rate) before persisting cost basis. Edit converts stored USD → local via `costInitialized`.
 
-**Display:** Equities `PositionTable` defaults to `groupBy='broker'`; unit trusts show a `Unit Trust` badge. Header segmented control switches to `groupBy='equityType'`; choice persists in localStorage (`foliobuddy-equity-group-by`). **NAV-age badge** under the symbol appears for unit trusts OR manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers and fiat cash skip it.
+**Display:** Equities `PositionTable` defaults to `groupBy='broker'`; UT shows a `Unit Trust` badge. Header control switches to `groupBy='equityType'` (persists in `foliobuddy-equity-group-by`). **NAV-age badge** under the symbol for UT or manual-priced non-cash positions; color via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null). Live tickers + fiat cash skip it.
 
-**Statement upload:** Dashed card is a `<label>` wrapping the file input — click or drag-drop PDF both work (`utDragOver` highlights). Validates `application/pdf`/`.pdf`. Monthly statement uploads should update a matched existing unit-trust `Position` instead of creating a duplicate line: when `statementMatching.ts` finds a match, submit calls `PUT /positions/:id` with the parsed units/cost basis and records a normal `mode='reset'` history boundary; manual-priced assets also get the parsed NAV via `PATCH /assets/:id/nav`. Cash funding is intentionally disabled for matched statements because the statement is a reconciliation/reset, not a new funded purchase.
+**Statement upload:** Dashed card is a `<label>` wrapping the file input (click or drag-drop PDF). A matched existing UT position is updated, not duplicated: `statementMatching.ts` match → `PUT /positions/:id` with parsed units/cost + a `mode='reset'` boundary; manual-priced assets also get parsed NAV via `PATCH /assets/:id/nav`. Cash funding is disabled for matched statements (reconciliation, not a funded purchase).
 
-**Copy/Paste round-trip:** Clipboard includes `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` for non-coingecko assets. Bulk import honors these only when creating a new Asset (defaults: `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`); existing symbols match by symbol first.
+**Copy/Paste:** Clipboard includes `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` for non-coingecko assets. Bulk import honors these only when creating a new Asset (defaults `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`); existing symbols match by symbol first.
 
 ### Position Edit Modes
 
-`PositionForm.tsx` edit mode has two tabs: `Edit Totals` (manual corrections to quantity/cost basis) and `Add/Reduce Position` (normal changes without hand-editing aggregates). Rules:
+`PositionForm.tsx` edit has two tabs — `Edit Totals` (manual corrections) and `Add/Reduce Position` (normal changes without editing aggregates):
 
-- `Add` asks for additional quantity + additional total cost, then recomputes weighted average cost automatically.
-- `Reduce` asks for quantity only and removes cost basis at the current average cost, so average cost stays unchanged unless the position goes to zero.
-- Custody changes made from either edit tab must persist.
-- The confirmation preview uses an Old/New comparison table for quantity, avg cost, and total cost.
-- Both preview and submit go through the shared `applyPositionDelta()` helper (via `positionFormMath.ts`) — do not hand-roll cost-basis arithmetic in the form.
-- Keep add/reduce rendering in `PositionDeltaEditor.tsx`, pure math in `positionFormMath.ts`, API submit/mutation logic in `PositionForm.tsx`.
+- `Add` asks for additional quantity + total cost, recomputes weighted average cost automatically.
+- `Reduce` asks for quantity only, removes cost basis at current avg cost, so avg cost is unchanged unless the position hits zero.
+- Custody changes from either tab must persist. Confirmation preview uses an Old/New comparison table (quantity, avg cost, total cost).
+- Preview + submit both go through shared `applyPositionDelta()` (via `positionFormMath.ts`) — never hand-roll cost-basis math in the form. Rendering in `PositionDeltaEditor.tsx`, math in `positionFormMath.ts`, submit/mutation in `PositionForm.tsx`.
 
 ### Position Add/Reduce History
 
-Add/reduce edits are persisted as `PositionHistory` rows through `PUT /positions/:id` when the request includes `positionDelta`. Funded adds tag the target add row and paired cash-pile reduce row with the same `operationId`, so canceling that add restores both positions together. Manual `Edit Totals` corrections that change quantity, average cost, or asset create a `mode='reset'` history row instead of deleting old history; the detail dialog collapses prior rows under "Previous history before manual correction" and starts the active ledger from the reset baseline. The backend validates submitted add/reduce next quantity/cost basis against delta metadata before updating the position and writing history in one transaction. The newest add/reduce row can be canceled through `DELETE /positions/:id/history/:historyId`, which restores the prior quantity/avg cost and deletes that history row only when it is still the latest entry and the current position still matches the row's next totals; older rows and reset rows are intentionally blocked so the ledger is not replayed incorrectly. `/dev/demo/portfolio` mirrors this with in-browser mock history, resets, linked funded-add cancellation, and cancellation.
+Add/reduce edits persist as `PositionHistory` rows via `PUT /positions/:id` when the request includes `positionDelta`; the backend validates submitted next quantity/cost basis against delta metadata before updating the position + writing history in one transaction. Funded adds tag the add row and paired cash-pile reduce row with one `operationId` so canceling restores both. Manual `Edit Totals` changes to quantity/avg cost/asset write a `mode='reset'` row (old rows collapse under "Previous history before manual correction") instead of deleting history. `DELETE /positions/:id/history/:historyId` cancels only the newest add/reduce row when the position still matches its next totals; older/reset rows are blocked. `/dev/demo/portfolio` mirrors this. Full narrative + rationale: FORET.md.
 
 ### Dashboard Charts
 
-- **Portfolio $ Value**: Recharts AreaChart, gradient fill, period selector (7D/1M/3M/1Y/YTD/Max), reference line at start value, end-of-line label; loading uses `isFetching` for period-change refetches. `getDateRange('Max')` MUST send `all=true` to `/snapshots/performance` (empty query falls back to the backend's 30-day default).
-- **Portfolio % vs Benchmarks**: normalized % vs default BTC/ETH/SPX + custom benchmarks; each stores `provider` + `providerAssetId` (crypto→CoinGecko, TradFi/index→Yahoo). SPX default uses Yahoo `SPY` (prod history unreliable for `^GSPC`); use `yahooFinance.chart()` first (raw fetches fail on datacenter IPs). If live provider history fails or returns empty, `priceService.getAssetHistory()` falls back to stored `PriceHistory` for the same `priceProvider + providerAssetId`, compacted to one point per UTC day; local scale QA depends on this so Dashboard benchmark charts do not require external network. Baseline = price at first portfolio timestamp (not first provider price), via binary search + dynamic threshold. Portfolio line color = `PORTFOLIO_LINE_COLOR` from `chartColors.ts`, never inline hex.
-- **Allocation donuts** (4, `grid sm:grid-cols-2 lg:grid-cols-4` in `AllocationCharts.tsx`): **By Asset** (Crypto/Equities/Cash via `bucketFor()`→`categoryGroup()`); **By Detailed Asset** ("All" shows crypto by symbol, Equities+Cash bundled; category dropdown switches to symbol-level; sub-2% crypto slices group into "Other" once 2+ exist, `OTHER_THRESHOLD_PCT = 2`); **By Storage** (brokerage positions by exact broker/location, plus CEX/Bank/Onchain/Onchain Ledger); **Cash Breakdown** (by stable/fiat symbol, only when cash positions exist). Custody filtered out first (`positions.filter((p) => !p.custodyOf)`).
-- Layout: legend right of donut at sm/md, below at lg+. Titles show compact USD totals in parens (Cash Breakdown = total cash; rest = total owned). Center label = top item's % + truncated name. Hover shows `name · $value · %`; no Recharts Tooltip (overlaps legend). Colors from `chartColors.ts`; legend toggles keep 44px mobile hit areas.
+- **Portfolio $ Value**: Recharts AreaChart, period selector (7D/1M/3M/1Y/YTD/Max), reference line at start, end-of-line label; loading uses `isFetching`. `getDateRange('Max')` MUST send `all=true` to `/snapshots/performance` (empty query falls back to the backend's 30-day default).
+- **Portfolio % vs Benchmarks**: normalized % vs BTC/ETH/SPX + custom; each stores `provider` + `providerAssetId` (crypto→CoinGecko, TradFi→Yahoo). SPX uses Yahoo `SPY` (not `^GSPC`); use `yahooFinance.chart()` (raw fetches fail on datacenter IPs). On live-history failure/empty, `priceService.getAssetHistory()` falls back to stored `PriceHistory` (same `priceProvider + providerAssetId`, one point per UTC day) — local scale QA depends on this. Baseline = price at first portfolio timestamp. Line color = `PORTFOLIO_LINE_COLOR` from `chartColors.ts`, never inline hex.
+- **Allocation donuts** (4, in `AllocationCharts.tsx`): **By Asset** (Crypto/Equities/Cash via `bucketFor()`); **By Detailed Asset** (crypto by symbol; sub-2% crypto slices group into "Other" once 2+ exist, `OTHER_THRESHOLD_PCT = 2`); **By Storage** (brokerage by exact location + CEX/Bank/Onchain); **Cash Breakdown** (by symbol, only when cash exists). Custody filtered out first. Center label = top item's %; hover shows `name · $value · %`; no Recharts Tooltip (overlaps legend); colors from `chartColors.ts`; legend toggles keep 44px mobile hit areas.
 
 ### Dashboard Investor Default
 
-The dashboard investor filter defaults to the primary owner investor (`isOwner = true`) rather than "all investors" when an owner record exists.
+Dashboard investor filter defaults to the primary owner (`isOwner = true`), not "all investors", when an owner record exists.
 
 ### Net Worth Card
 
@@ -353,7 +301,7 @@ Borderless hero with merged stats; title shows the investor label (`Net Worth (N
 
 ### Performers Card
 
-Borderless `divide-y` list with profit/loss-tinted title icons and muted tabular rank numbers. **Ranking** (backend `getTopPerformers`/`getWorstPerformers`): sort by absolute `unrealizedPnL` in USD, not percent — surfaces the positions actually moving net worth.
+Borderless `divide-y` list, profit/loss-tinted title icons, muted tabular ranks. **Ranking** (`getTopPerformers`/`getWorstPerformers`): sort by absolute `unrealizedPnL` in USD, not percent.
 
 ### Page Entrance Animations
 
@@ -361,24 +309,23 @@ Borderless `divide-y` list with profit/loss-tinted title icons and muted tabular
 
 ### Settings & Investors Page Layouts
 
-Settings: flat layout, `<h2>` headings + `<Separator>` between sections, no Card wrappers (utility pages stay lighter than data pages). Investors: summary stats in a flat inline row, matching the History page pattern.
+Settings: flat layout, `<h2>` headings + `<Separator>`, no Card wrappers (utility pages stay lighter than data pages). Investors: summary stats in a flat inline row (matches History).
 
 ### Consistent Page Headers
 
-All pages MUST use the same header pattern: a `flex-col gap-3 sm:flex-row ... justify-between` wrapper, `text-2xl font-bold` title (no responsive upsizing) + `text-sm text-muted-foreground` subtitle, and `size="sm"` buttons with `mr-1` icon spacing. Pages with high-scroll primary data use `PageActionHeader` so the header sticks below the app shell (`top-14 sm:top-16`); pass `stickyOnMobile={false}` (Portfolio does) to make it `relative` on mobile and sticky only at `sm+`, so a compact mobile hero isn't pinned over the scrolling list. `PageActionHeader` can take a body section for the page's always-visible control/summary pane: Portfolio keeps the top portfolio hero stats, Trades keeps the Review/Ticker/Monthly lens tabs, History keeps Total/Automatic/Manual counts, and Investors keeps Total Investors/Allocated Stake/Total Current Value. Dashboard intentionally uses a normal scrolling header and Net Worth hero.
+All pages MUST use the same header pattern: a `flex-col gap-3 sm:flex-row ... justify-between` wrapper, `text-2xl font-bold` title (no responsive upsizing) + `text-sm text-muted-foreground` subtitle, `size="sm"` buttons with `mr-1` icon spacing. High-scroll data pages use `PageActionHeader` so the header sticks below the app shell (`top-14 sm:top-16`); pass `stickyOnMobile={false}` (Portfolio does) to make it `relative` on mobile, sticky only at `sm+`. `PageActionHeader` can host an always-visible body pane (Portfolio hero stats, Trades lens tabs, History counts, Investors stats). Dashboard intentionally uses a normal scrolling header + Net Worth hero.
 
 ### Destructive Actions in Headers
 
-"Delete All" buttons MUST live inside the overflow `DropdownMenu` (⋮), never as standalone header buttons (Portfolio, Trades, History). Only non-destructive actions (Copy All, Add/Log) appear as visible header buttons.
+"Delete All" MUST live inside the overflow `DropdownMenu` (⋮), never a standalone header button (Portfolio, Trades, History). Only non-destructive actions (Copy All, Add/Log) are visible header buttons.
 
 ### Design System & Visual Identity
 
-- **Colors**: indigo-tinted neutrals — `--primary: 234 89% 55%` (light), `234 89% 62%` (dark, AA-safe). Profit/loss via `text-profit`/`text-loss`, backed by contrast-safe CSS vars (`--profit`/`--loss` + `-foreground`). `text-warning`/`text-info` are overridden in `index.css` to their `-foreground` variants (AA-safe in light) — use these tokens for semantic-state text (never raw amber/green/blue palette); use `bg-warning`/`bg-info` (base token) for fills. Chart colors only from `chartColors.ts` — never inline hex.
-- **Fonts**: Plus Jakarta Sans (body/headings) + JetBrains Mono (tabular numbers). **Skeleton**: `.skeleton` CSS shimmer on all pages/charts.
-- **HelpTooltip**: `?` tooltips on finance terms; controlled open state, tap-to-toggle for touch, `stopPropagation` on pointer events so taps don't toggle `CollapsibleCard`.
-- **Sidebar**: Linear-style active state (`border border-primary/30 bg-primary/10 text-primary font-semibold`, no side stripe); desktop collapses to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed`), mobile stays a full-width drawer.
-- **Scrollbars**: thin 6px, rounded thumb. **Empty states**: icon + heading + description + action CTA.
-- **Design context**: `PRODUCT.md` at project root; legacy `.impeccable.md` was migrated — do not recreate or maintain both.
+- **Colors**: indigo-tinted neutrals — `--primary: 234 89% 55%`/`62%` (light/dark, AA-safe). Profit/loss via `text-profit`/`text-loss` (contrast-safe `--profit`/`--loss` + `-foreground`). `text-warning`/`text-info` are overridden in `index.css` to their `-foreground` variants — use these tokens for semantic-state text (never raw amber/green/blue palette); use `bg-warning`/`bg-info` for fills. Chart colors only from `chartColors.ts` — never inline hex.
+- **Fonts**: Plus Jakarta Sans (body) + JetBrains Mono (numbers). **Skeleton**: `.skeleton` shimmer everywhere.
+- **HelpTooltip**: `?` tooltips on finance terms; controlled open, tap-to-toggle, `stopPropagation` on pointer events so taps don't toggle `CollapsibleCard`.
+- **Sidebar**: Linear-style active state (`border border-primary/30 bg-primary/10 text-primary font-semibold`, no side stripe); desktop collapses to a persisted 72px icon rail (`foliobuddy-sidebar-collapsed`), mobile is a full-width drawer.
+- **Scrollbars**: thin 6px rounded thumb. **Empty states**: icon + heading + description + CTA. **Design context**: `PRODUCT.md` (legacy `.impeccable.md` migrated — don't recreate both).
 
 ## Environment Variables
 
@@ -386,18 +333,18 @@ All pages MUST use the same header pattern: a `flex-col gap-3 sm:flex-row ... ju
 
 ```
 DATABASE_URL=              # Local: postgresql://dev:dev@localhost:5433/example_portfolio_db
-PRODUCTION_DATABASE_URL=   # Optional private DB mirror source; never commit a real value
-PORT=4001                  # Backend port (DO NOT use 3001 — reserved for other projects)
-CLERK_SECRET_KEY=          # Clerk backend key
-ADMIN_USER_IDS=            # Comma-separated Clerk user IDs allowed to edit/delete global Asset catalog records
+PRODUCTION_DATABASE_URL=   # Optional DB mirror source; never commit a real value
+PORT=4001                  # DO NOT use 3001 (reserved for other projects)
+CLERK_SECRET_KEY=
+ADMIN_USER_IDS=            # Clerk IDs allowed to edit/delete the global Asset catalog
 ALLOWED_ORIGINS=http://localhost:4000
-RATE_LIMIT_MAX=10000       # Local dev override (production defaults to 200)
+RATE_LIMIT_MAX=10000       # Local dev override (prod defaults to 200)
 ALLOW_LOCAL_AUTH_BYPASS=false  # Local scale QA only; ignored when NODE_ENV=production
 LOCAL_AUTH_USER_ID=local-scale-user
-SENTRY_DSN=                # Optional — error tracking (skipped if empty)
+SENTRY_DSN=                # Optional error tracking (skipped if empty)
 ```
 
-Production boot logs warn when `ADMIN_USER_IDS` is empty because global Asset catalog edit/delete routes will otherwise return 403 for every user.
+Boot warns when `ADMIN_USER_IDS` is empty (else global catalog edit/delete 403s for every user).
 
 ### Frontend (`.env`)
 
@@ -410,62 +357,58 @@ VITE_LOCAL_AUTH_BYPASS=false                 # Local scale QA only; requires Vit
 
 ### Frontend-Only Development / UI Testing
 
-For layout and interaction work without Docker, a backend, or real auth, use the dev demo route: run `npm run dev --workspace=@foliobuddy/frontend`, open `http://localhost:4000/dev/demo` (`/dev/demo/portfolio` for position form and edit-flow testing). Dev-mode only, mocked `/api` responses. If you must point `VITE_API_URL` at a live backend, use one you control; keep production-origin allowlist notes in private ops docs.
-
-For sanitized real-API local scale QA, pair backend `ALLOW_LOCAL_AUTH_BYPASS=true` with frontend `VITE_LOCAL_AUTH_BYPASS=true`, local `VITE_API_URL=http://localhost:4001/api/v1`, and an `ALLOWED_ORIGINS` entry for the Vite port. Never use those bypass flags with production data or production builds.
+See **Dev Demo Route** (UI without a backend, mocked `/api`, `/dev/demo`) and **Local QA Auth Bypass** (sanitized real-API scale QA). Never use bypass flags with production data/builds.
 
 ## Deployment
 
-- **Backend**: Node API host — `https://api.foliobuddy.xyz`. **Frontend**: static host — `https://foliobuddy.xyz` (rewrites API calls to backend). **Database**: PostgreSQL on a private network.
-- **Auto-deploy**: Backend via GitHub Actions on push to main (backend files); frontend via Vercel.
-- **DB Backups**: automated daily/weekly/monthly to private object storage.
-- **Uptime monitoring**: `.github/workflows/uptime.yml` hits `https://foliobuddy.xyz/api/v1/health/db` every 10 min; non-200 fails the job and GitHub emails the repo owner.
-- **Public deployment docs**: `DEPLOYMENT.md` lists variable names and deployment shape. Keep real host details, dashboard URLs, project IDs, and secrets in private ops notes.
-- **Env var writes**: pipe values through `printf` (not `echo`) for `vercel env add` — `echo` appends `\n`, which breaks URL construction while still passing `if (value)` guards.
+- **Hosts**: backend `https://api.foliobuddy.xyz` (Node), frontend `https://foliobuddy.xyz` (static, rewrites API calls), DB PostgreSQL on a private network.
+- **Auto-deploy**: backend via GitHub Actions on push to main (backend files); frontend via Vercel. DB backups daily/weekly/monthly to private object storage.
+- **Uptime**: `.github/workflows/uptime.yml` hits `/api/v1/health/db` every 10 min; non-200 fails the job + emails the owner.
+- **Public docs**: `DEPLOYMENT.md` (variable names + shape only; real hosts/IDs/secrets in private ops notes).
+- **Env var writes**: pipe through `printf` (not `echo`) for `vercel env add` — `echo` appends `\n`, breaking URL construction while still passing `if (value)` guards.
 
 ### Copy/Paste JSON Import Pattern
 
-All data tables (Portfolio, Trades, History) share the same pattern: per-row clipboard icon (single item as JSON), Copy All header button (JSON array), Import tab in the Add/Log dialog (paste JSON), one unified JSON format for both copy and import.
+Portfolio/Trades/History share one pattern: per-row clipboard icon (item JSON), Copy All header button (JSON array), Import tab in the Add/Log dialog (paste JSON) — one unified format for copy + import.
 
 ### Trade Form Editing
 
-`TradeForm` accepts an optional `trade` prop — pass it for edit mode, omit for create.
+`TradeForm` takes an optional `trade` prop — present = edit, absent = create.
 
 ## Local Database Setup
 
-Prereq: Docker Desktop. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env`; `DATABASE_URL` defaults to `postgresql://dev:dev@localhost:5433/example_portfolio_db`. Then `npm run db:local` (Postgres on 5433) → `npm run db:sync` (pull prod data → local, re-runnable anytime) → `npm run dev`. Local backend hits local Postgres; production is untouched.
+Prereq: Docker Desktop. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env` (`DATABASE_URL` defaults to local 5433). Then `npm run db:local` → `npm run db:sync` (pull prod → local, re-runnable) → `npm run dev`. Local backend hits local Postgres; production is untouched.
 
 ### Branding
 
-- **App name**: FolioBuddy. **Logo**: growth-chart SVG (`public/logo.svg`, indigo→purple gradient); sidebar icon uses inline SVG with `bg-primary` for theme adaptivity.
-- **Package scope**: `@foliobuddy/*` (root: `foliobuddy`); GitHub repo: `n3moxyz/foliobuddy`.
-- Local DB name: `example_portfolio_db`. Production storage/bucket names live in private ops notes.
+- **App name**: FolioBuddy. **Logo**: `public/logo.svg` (indigo→purple gradient); sidebar icon is inline SVG with `bg-primary` for theme adaptivity.
+- **Package scope**: `@foliobuddy/*` (root `foliobuddy`); repo `n3moxyz/foliobuddy`. Local DB `example_portfolio_db`; prod storage/bucket names in private ops notes.
 
 ### Clickable Snapshot Rows
 
-History page snapshot rows (AUTOMATIC source) are clickable anywhere to expand/collapse positions — not just the chevron. Action buttons use `stopPropagation` to avoid triggering the row toggle.
+History snapshot rows (AUTOMATIC) are clickable anywhere to expand/collapse (not just the chevron); action buttons use `stopPropagation`.
 
 ## Design Context
 
-See `PRODUCT.md` at project root — source of truth for users, brand personality, aesthetic direction, and design principles. Dark mode primary; Linear/Raycast polish crossed with Dune data-density. If an old tool asks for `.impeccable.md`, point it at `PRODUCT.md`.
+See `PRODUCT.md` — source of truth for users, brand, aesthetic, design principles. Dark mode primary; Linear/Raycast polish × Dune data-density. Old tool asks for `.impeccable.md`? Point it at `PRODUCT.md`.
 
 ## Gotchas & Notes
 
-- `.env.local` overrides `.env` in Vite — if you see wrong ports or "DB Down", check `.env.local` first
-- Always define `onDelete: Cascade` in Prisma relations to avoid FK errors
-- FX rates may use fallback values for read-only display hints while the API is slow, but persisted non-USD cost-basis conversions must wait for real rates.
-- Snapshots use unique constraint + check-before-create to prevent duplicates
-- Position P&L should display as percentage for clarity
-- Bulk import endpoints skip price fetching (`skipPriceFetch: true`) to avoid rate limiting — the scheduler updates prices within 1 minute
-- Backend `LOG_LEVEL` controls logging verbosity (default: `info` in prod, `debug` in dev)
-- GitHub Actions CI runs type checking, the full test suite, the frontend build, and `npm run format:check` (formatting + shell script syntax + domain constant parity) on push/PR
-- Sentry backend captures only unexpected 500-level errors (Zod 400s and AppErrors < 500 are skipped)
-- `console.error` crashes when inspecting ZodError objects in Node — integration tests must mock the logger
-- vitest `exclude: ['dist/**']` prevents duplicate test runs after `npm run build`
-- If a protected route mutates by `id` only, treat it as a security bug — all writes for positions/trades/investors must be ownership-scoped
-- Do not gate the dev demo route with extra env flags; `import.meta.env.DEV` is the safe default because it cannot be enabled in production accidentally
-- `VITE_WS_BACKEND_URL` must be set in Vercel env vars for production WebSocket (warns + disables if missing)
-- When deploying: backend must deploy before frontend when API versioning paths change (frontend uses `/api/v1`)
-- Workspace-package imports (`@foliobuddy/shared`, etc.) MUST be declared in the consumer's `package.json` — local install hoisting masks the missing dep but Vercel's `npm ci` rejects it. CI guards via `npm ls --workspaces --depth=0`.
-- Backend Dockerfile is package-isolated, so `@foliobuddy/shared` is not resolvable at runtime. `src/lib/constants.ts` and `src/lib/domain.ts` intentionally duplicate shared enums/helpers — `npm run domain:check` enforces parity.
-- `VITE_API_URL` in Vercel must be the full resolved path (`/api/v1`), not `/api` — a stale value silently broke prod. Verify with `curl https://foliobuddy.xyz/api/v1/health/db` after any change.
+- `.env.local` overrides `.env` in Vite — wrong ports / "DB Down"? check it first.
+- Always `onDelete: Cascade` in Prisma relations (avoids FK errors).
+- FX fallback rates are display-hint only; persisted non-USD cost-basis conversions must wait for real rates.
+- Snapshots use unique constraint + check-before-create to prevent duplicates.
+- Position P&L displays as percentage for clarity.
+- Bulk import skips price fetching (`skipPriceFetch: true`); the scheduler updates within 1 minute.
+- `LOG_LEVEL` controls backend verbosity (default `info` prod, `debug` dev).
+- CI runs typecheck + full test suite + frontend build + `npm run format:check` (formatting + shell syntax + domain parity) on push/PR.
+- Sentry captures only unexpected 500s (Zod 400s + AppErrors < 500 skipped).
+- `console.error` crashes on ZodError in Node — integration tests must mock the logger.
+- vitest `exclude: ['dist/**']` prevents duplicate runs after `npm run build`.
+- Protected routes mutating by `id` only = security bug — positions/trades/investors writes must be ownership-scoped.
+- Don't gate the dev demo route with extra env flags; `import.meta.env.DEV` can't be enabled in prod accidentally.
+- `VITE_WS_BACKEND_URL` must be set in Vercel for prod WebSocket (warns + disables if missing).
+- Deploy backend before frontend when API version paths change (frontend uses `/api/v1`).
+- Workspace-package imports (`@foliobuddy/shared`) MUST be in the consumer's `package.json` — hoisting masks it locally but Vercel's `npm ci` rejects it (CI guards via `npm ls --workspaces`).
+- Backend Dockerfile is package-isolated, so `@foliobuddy/shared` isn't resolvable at runtime — `src/lib/constants.ts`/`domain.ts` duplicate shared enums/helpers; `npm run domain:check` enforces parity.
+- `VITE_API_URL` in Vercel must be the full path (`/api/v1`), not `/api` — a stale value silently broke prod. Verify with `curl .../api/v1/health/db`.
