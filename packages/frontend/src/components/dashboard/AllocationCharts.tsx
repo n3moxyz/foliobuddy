@@ -25,11 +25,12 @@ interface ChartData {
 }
 
 type CategoryBucket = 'Crypto' | 'Equities' | 'Cash';
-type DetailedAssetFilter = 'all' | CategoryBucket;
+type DetailedAssetFilter = 'auto' | 'all' | CategoryBucket;
 
 const ALLOCATION_CHART_SKELETON_KEYS = ['asset', 'detailed', 'storage', 'cash'] as const;
 const ALLOCATION_LEGEND_SKELETON_KEYS = ['first', 'second', 'third', 'fourth'] as const;
 const DETAILED_ASSET_FILTER_OPTIONS: Array<{ value: DetailedAssetFilter; label: string }> = [
+  { value: 'auto', label: 'Auto' },
   { value: 'all', label: 'All' },
   { value: 'Crypto', label: 'Crypto' },
   { value: 'Cash', label: 'Cash' },
@@ -73,6 +74,33 @@ function groupSmallDetailedSlices(data: ChartData[]): ChartData[] {
   ];
 }
 
+// Storage donut keeps the meaningful custody anchors and rolls tiny custodians into "Other"
+// so the chart stays readable as accounts are added.
+const STORAGE_PROTECTED_SLICES = new Set([
+  'CEX Cash',
+  'CEX Crypto',
+  'Onchain',
+  'Onchain Ledger',
+]);
+
+function groupSmallStorageSlices(data: ChartData[]): ChartData[] {
+  const OTHER_THRESHOLD_PCT = 3;
+  const smallSlices = data.filter(
+    (d) => d.percentage < OTHER_THRESHOLD_PCT && !STORAGE_PROTECTED_SLICES.has(d.name)
+  );
+
+  if (smallSlices.length < 2) return data;
+
+  return [
+    ...data.filter((d) => d.percentage >= OTHER_THRESHOLD_PCT || STORAGE_PROTECTED_SLICES.has(d.name)),
+    {
+      name: 'Other',
+      value: smallSlices.reduce((sum, d) => sum + d.value, 0),
+      percentage: smallSlices.reduce((sum, d) => sum + d.percentage, 0),
+    },
+  ];
+}
+
 interface AllocationDonutProps {
   data: ChartData[];
   colors: string[];
@@ -81,6 +109,7 @@ interface AllocationDonutProps {
   title: string;
   totalValue: number;
   headerControl?: React.ReactNode;
+  onSliceClick?: (name: string) => void;
 }
 
 const AllocationDonut = memo(function AllocationDonut({
@@ -91,6 +120,7 @@ const AllocationDonut = memo(function AllocationDonut({
   title,
   totalValue,
   headerControl,
+  onSliceClick,
 }: AllocationDonutProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -159,6 +189,7 @@ const AllocationDonut = memo(function AllocationDonut({
                         key={`cell-${entry.name}`}
                         fill={colors[originalIndex % colors.length]}
                         onMouseEnter={() => setHoveredIndex(i)}
+                        onClick={onSliceClick ? () => onSliceClick(entry.name) : undefined}
                         style={{ cursor: 'pointer' }}
                       />
                     );
@@ -228,7 +259,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
   const [hiddenDetailed, setHiddenDetailed] = useState<Set<string>>(new Set());
   const [hiddenStorage, setHiddenStorage] = useState<Set<string>>(new Set());
   const [hiddenCash, setHiddenCash] = useState<Set<string>>(new Set());
-  const [detailedFilter, setDetailedFilter] = useState<DetailedAssetFilter>('all');
+  const [detailedFilter, setDetailedFilter] = useState<DetailedAssetFilter>('auto');
 
   // Calculate all allocations from positions
   const {
@@ -315,9 +346,12 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     const detailedData = groupSmallDetailedSlices(rawDetailed);
     const cryptoDetailedData = groupSmallDetailedSlices(mapToChartData(cryptoMap, cryptoTotal));
     const cashDetailedData = mapToChartData(cashMap, cashTotal);
-    const equitiesDetailedData = mapToChartData(equitiesMap, equitiesTotal);
+    // Group equities too: once equities is the dominant bucket a many-ticker book
+    // would otherwise render an unreadable donut of tiny arcs.
+    const equitiesDetailedData = groupSmallDetailedSlices(mapToChartData(equitiesMap, equitiesTotal));
 
-    // Storage allocation: broker accounts by exact broker, plus CEX, Bank, Onchain, Onchain Ledger.
+    // Storage allocation: broker accounts by exact broker, plus CEX (split cash/crypto),
+    // Bank, Onchain, Onchain Ledger; sub-3% custodians roll into "Other".
     const storageMap = new Map<string, number>();
 
     positions.forEach((p) => {
@@ -325,7 +359,9 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
       let storageLabel: string;
 
       if (p.storageType === 'CEX') {
-        storageLabel = 'CEX';
+        // Split exchange holdings: stablecoin dry powder vs actual crypto exposure read
+        // as very different counterparty risks even though they share a venue.
+        storageLabel = bucketFor(p.asset.category) === 'Cash' ? 'CEX Cash' : 'CEX Crypto';
       } else if (p.storageType === 'BROKERAGE') {
         storageLabel = p.storageLocation?.trim() || 'Broker account';
       } else if (p.storageType === 'BANK') {
@@ -339,13 +375,15 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
       storageMap.set(storageLabel, (storageMap.get(storageLabel) || 0) + value);
     });
 
-    const storageData: ChartData[] = Array.from(storageMap.entries())
-      .map(([name, value]) => ({
-        name,
-        value,
-        percentage: total > 0 ? (value / total) * 100 : 0,
-      }))
-      .sort((a, b) => b.value - a.value);
+    const storageData: ChartData[] = groupSmallStorageSlices(
+      Array.from(storageMap.entries())
+        .map(([name, value]) => ({
+          name,
+          value,
+          percentage: total > 0 ? (value / total) * 100 : 0,
+        }))
+        .sort((a, b) => b.value - a.value)
+    );
 
     // Cash by type
     const cashData = cashDetailedData;
@@ -406,17 +444,35 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     setHiddenDetailed(new Set());
   };
 
+  // Clicking a slice in the "By Asset" donut drills the detail chart into that bucket.
+  const focusDetailedBucket = (name: string) => {
+    if (name === 'Crypto' || name === 'Cash' || name === 'Equities') {
+      setDetailedFilter(name);
+      setHiddenDetailed(new Set());
+    }
+  };
+
+  // "auto" follows the largest bucket so the detail view never goes stale as the
+  // allocation rotates. Resolved at render time because it depends on loaded positions.
+  const dominantBucket: CategoryBucket =
+    (categoryAllocation[0]?.name as CategoryBucket) ?? 'Equities';
+  const effectiveBucket: CategoryBucket =
+    detailedFilter === 'auto' || detailedFilter === 'all' ? dominantBucket : detailedFilter;
+
   const selectedDetailedAllocation =
-    detailedFilter === 'all' ? detailedAllocation : detailedByBucket[detailedFilter];
+    detailedFilter === 'all' ? detailedAllocation : detailedByBucket[effectiveBucket];
   const selectedDetailedTotal =
     detailedFilter === 'all'
       ? totals.portfolio
-      : detailedFilter === 'Crypto'
+      : effectiveBucket === 'Crypto'
         ? totals.crypto
-        : detailedFilter === 'Cash'
+        : effectiveBucket === 'Cash'
           ? totals.cash
           : totals.equities;
-  const selectedDetailedColors = detailedFilter === 'Cash' ? STABLES_COLORS : ASSET_COLORS;
+  const selectedDetailedColors =
+    detailedFilter !== 'all' && effectiveBucket === 'Cash' ? STABLES_COLORS : ASSET_COLORS;
+  const detailedTitle =
+    detailedFilter === 'all' ? 'By Detailed Asset' : `${effectiveBucket} Breakdown`;
   const detailedHeaderControl = (
     <Select value={detailedFilter} onValueChange={handleDetailedFilterChange}>
       <SelectTrigger
@@ -444,13 +500,14 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         setHidden={setHiddenCategory}
         title="By Asset"
         totalValue={totals.portfolio}
+        onSliceClick={focusDetailedBucket}
       />
       <AllocationDonut
         data={selectedDetailedAllocation}
         colors={selectedDetailedColors}
         hidden={hiddenDetailed}
         setHidden={setHiddenDetailed}
-        title="By Detailed Asset"
+        title={detailedTitle}
         totalValue={selectedDetailedTotal}
         headerControl={detailedHeaderControl}
       />
