@@ -453,8 +453,10 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
 
   // "auto" follows the largest bucket so the detail view never goes stale as the
   // allocation rotates. Resolved at render time because it depends on loaded positions.
+  // Cash is skipped here — it already has its own dedicated "Cash Breakdown" donut —
+  // so auto never duplicates that chart (Cash stays reachable via the dropdown).
   const dominantBucket: CategoryBucket =
-    (categoryAllocation[0]?.name as CategoryBucket) ?? 'Equities';
+    (categoryAllocation.find((c) => c.name !== 'Cash')?.name as CategoryBucket) ?? 'Equities';
   const effectiveBucket: CategoryBucket =
     detailedFilter === 'auto' || detailedFilter === 'all' ? dominantBucket : detailedFilter;
 
