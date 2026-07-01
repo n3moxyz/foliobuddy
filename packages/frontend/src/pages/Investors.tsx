@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { usePortfolioSummary } from '@/hooks/usePortfolio';
+import { useCurrencyStore } from '@/stores/currencyStore';
+import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import type { CreateInvestorData, Investor } from '@/lib/types';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,6 +68,19 @@ export default function Investors() {
     queryKey: ['investors'],
     queryFn: api.getInvestors,
   });
+
+  // Currency display: convert USD figures to the selected currency, matching History/Portfolio.
+  const { currency } = useCurrencyStore();
+  const { data: summary } = usePortfolioSummary();
+  const fxRate =
+    summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0
+      ? summary.totalValueSgd / summary.totalValueUsd
+      : USD_SGD_FALLBACK_RATE;
+
+  const displayValue = (value: number | null | undefined) =>
+    currency === 'SGD'
+      ? formatCurrency(value == null ? value : value * fxRate, 'SGD', 0)
+      : formatCurrency(value, 'USD', 0);
 
   const createMutation = useMutation({
     mutationFn: (data: CreateInvestorData) => api.createInvestor(data),
@@ -134,7 +150,7 @@ export default function Investors() {
               <HelpTooltip content="Combined current value of all investor stakes" />
             </p>
             <p className="text-lg font-semibold tabular-nums">
-              {formatCurrency(totalCurrentValue, 'USD', 0)}
+              {displayValue(totalCurrentValue)}
             </p>
           </div>
         </div>
@@ -191,17 +207,17 @@ export default function Investors() {
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-right font-mono">
                         {investor.capitalAtYearStart
-                          ? formatCurrency(investor.capitalAtYearStart, 'USD', 0)
+                          ? displayValue(investor.capitalAtYearStart)
                           : '-'}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-right font-mono">
-                        {formatCurrency(investor.currentValue, 'USD', 0)}
+                        {displayValue(investor.currentValue)}
                       </TableCell>
                       <TableCell className="text-right">
                         {investor.ytdReturn !== null ? (
                           <div className={getPnLColorClass(investor.ytdReturn)}>
                             <p className="font-mono">
-                              {formatCurrency(investor.ytdReturn, 'USD', 0)}
+                              {displayValue(investor.ytdReturn)}
                             </p>
                             <p className="text-xs">{formatPercent(investor.ytdReturnPct)}</p>
                           </div>
