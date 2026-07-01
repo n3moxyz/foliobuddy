@@ -24,6 +24,15 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
   BROKERAGE: 'Broker account',
 };
 
+function storageLabelForPosition(position: Position): string {
+  if (position.storageType === 'BROKERAGE') {
+    return position.storageLocation || 'Broker account';
+  }
+
+  const storageType = STORAGE_TYPE_LABELS[position.storageType] || position.storageType;
+  return position.storageLocation ? `${storageType} · ${position.storageLocation}` : storageType;
+}
+
 function UnitTrustBadge() {
   return (
     <TooltipProvider delayDuration={150}>
@@ -47,6 +56,97 @@ function UnitTrustBadge() {
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+}
+
+interface PositionPreviewProps {
+  position: Position;
+  currency: 'USD' | 'SGD';
+  convert: (usdValue: number | null | undefined) => number | null | undefined;
+  getSmartDecimals: (value: number | null | undefined) => number;
+  totalCost: number;
+  storageLabel: string;
+  localCurrentPrice: string | null;
+  localAvgCost: string | null;
+}
+
+function PositionPreview({
+  position,
+  currency,
+  convert,
+  getSmartDecimals,
+  totalCost,
+  storageLabel,
+  localCurrentPrice,
+  localAvgCost,
+}: PositionPreviewProps) {
+  const pnlClass = getPnLColorClass(position.unrealizedPnL);
+  const currentPrice = convert(position.asset.currentPriceUsd);
+  const avgCost = convert(position.avgCostUsd);
+
+  return (
+    <div className="w-72 space-y-3 p-1 text-xs">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{position.asset.symbol}</p>
+          <p className="truncate text-muted-foreground">{position.asset.name}</p>
+        </div>
+        <div className={`shrink-0 text-right font-mono tabular-nums ${pnlClass}`}>
+          <p>{formatCurrency(convert(position.unrealizedPnL), currency, 0)}</p>
+          <p>{formatPercent(position.unrealizedPnLPct)}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-md border bg-muted/20 px-2 py-1.5">
+          <p className="text-muted-foreground">Value</p>
+          <p className="font-mono font-medium tabular-nums">
+            {formatCurrency(convert(position.marketValueUsd), currency, 0)}
+          </p>
+        </div>
+        <div className="rounded-md border bg-muted/20 px-2 py-1.5">
+          <p className="text-muted-foreground">Cost</p>
+          <p className="font-mono font-medium tabular-nums">
+            {formatCurrency(convert(totalCost), currency, 0)}
+          </p>
+        </div>
+        <div className="rounded-md border bg-muted/20 px-2 py-1.5">
+          <p className="text-muted-foreground">Qty</p>
+          <p className="truncate font-mono font-medium tabular-nums">
+            {formatQuantity(position.quantity, position.asset.category)}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-1.5 border-t pt-2">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Price</span>
+          <span className="font-mono tabular-nums">
+            {formatCurrency(currentPrice, currency, getSmartDecimals(currentPrice))}
+          </span>
+        </div>
+        {localCurrentPrice && (
+          <p className="text-right font-mono text-[11px] leading-none text-muted-foreground">
+            {localCurrentPrice}
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Avg cost</span>
+          <span className="font-mono tabular-nums">
+            {formatCurrency(avgCost, currency, getSmartDecimals(avgCost))}
+          </span>
+        </div>
+        {localAvgCost && (
+          <p className="text-right font-mono text-[11px] leading-none text-muted-foreground">
+            {localAvgCost}
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Storage</span>
+          <span className="max-w-[11rem] truncate text-right">{storageLabel}</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -79,6 +179,8 @@ export const PositionRow = React.memo(function PositionRow({
   onUpdateNav,
   showUnitTrustBadge = false,
 }: PositionRowProps) {
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+
   // Helper to convert USD values to selected currency
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
@@ -114,14 +216,24 @@ export const PositionRow = React.memo(function PositionRow({
     displayCurrency: currency,
     usdFxRates,
   });
+  const storageLabel = storageLabelForPosition(position);
 
   // Match PositionTable: hidden on mobile unless toggle is on
   const HIDDEN_MOBILE = showAllColumns ? '' : 'hidden md:table-cell';
 
   return (
     <TableRow
-      className="cursor-pointer hover:bg-muted/50"
+      className="cursor-pointer transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       onClick={() => onView(position)}
+      onMouseEnter={() => setPreviewOpen(true)}
+      onMouseLeave={() => setPreviewOpen(false)}
+      onFocus={() => setPreviewOpen(true)}
+      onBlur={(event) => {
+        const nextTarget = event.relatedTarget;
+        if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+          setPreviewOpen(false);
+        }
+      }}
       tabIndex={0}
       aria-label={`View ${position.asset.symbol} position`}
       onKeyDown={(e) => {
@@ -132,21 +244,44 @@ export const PositionRow = React.memo(function PositionRow({
       }}
     >
       <TableCell>
-        <div className="truncate">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <p className="truncate text-sm font-medium">{position.asset.symbol}</p>
-            {showUnitTrustBadge && isUnitTrust && <UnitTrustBadge />}
-          </div>
-          <p className="text-xs text-muted-foreground truncate">{assetNameLabel}</p>
-          {ageInfo && (
-            <p
-              className={`text-xs ${priceAgeClass(ageInfo.severity)} truncate`}
-              title={priceUpdatedTitle}
+        <TooltipProvider delayDuration={150}>
+          <Tooltip open={previewOpen}>
+            <TooltipTrigger asChild>
+              <div className="truncate">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <p className="truncate text-sm font-medium">{position.asset.symbol}</p>
+                  {showUnitTrustBadge && isUnitTrust && <UnitTrustBadge />}
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{assetNameLabel}</p>
+                {ageInfo && (
+                  <p
+                    className={`text-xs ${priceAgeClass(ageInfo.severity)} truncate`}
+                    title={priceUpdatedTitle}
+                  >
+                    NAV {ageInfo.label}
+                  </p>
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              align="start"
+              sideOffset={12}
+              className="hidden border bg-popover/95 p-2 text-popover-foreground shadow-xl shadow-black/15 backdrop-blur supports-[backdrop-filter]:bg-popover/90 md:block"
             >
-              NAV {ageInfo.label}
-            </p>
-          )}
-        </div>
+              <PositionPreview
+                position={position}
+                currency={currency}
+                convert={convert}
+                getSmartDecimals={getSmartDecimals}
+                totalCost={totalCost}
+                storageLabel={storageLabel}
+                localCurrentPrice={localCurrentPrice}
+                localAvgCost={localAvgCost}
+              />
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         {formatQuantity(position.quantity, position.asset.category)}
@@ -195,7 +330,7 @@ export const PositionRow = React.memo(function PositionRow({
         <div className="min-w-0">
           {position.storageType === 'BROKERAGE' ? (
             <p className="max-w-[9rem] whitespace-normal break-words text-sm leading-snug">
-              {position.storageLocation || 'Broker account'}
+              {storageLabel}
             </p>
           ) : (
             <>

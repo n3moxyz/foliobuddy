@@ -240,12 +240,29 @@
   animation: fade-in-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Chart period changes: quick orientation cue, not page choreography */
+@keyframes chart-period-change {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-chart-period-change {
+  animation: chart-period-change 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up {
     animation: none;
     opacity: 1;
     transform: none;
   }
+  .animate-chart-period-change,
   .animate-highlight-flash,
   .animate-ping {
     animation: none !important;
