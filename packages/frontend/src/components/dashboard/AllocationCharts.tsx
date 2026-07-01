@@ -76,12 +76,7 @@ function groupSmallDetailedSlices(data: ChartData[]): ChartData[] {
 
 // Storage donut keeps the meaningful custody anchors and rolls tiny custodians into "Other"
 // so the chart stays readable as accounts are added.
-const STORAGE_PROTECTED_SLICES = new Set([
-  'CEX Cash',
-  'CEX Crypto',
-  'Onchain',
-  'Onchain Ledger',
-]);
+const STORAGE_PROTECTED_SLICES = new Set(['CEX Cash', 'CEX Crypto', 'Onchain', 'Onchain Ledger']);
 
 function groupSmallStorageSlices(data: ChartData[]): ChartData[] {
   const OTHER_THRESHOLD_PCT = 3;
@@ -92,7 +87,9 @@ function groupSmallStorageSlices(data: ChartData[]): ChartData[] {
   if (smallSlices.length < 2) return data;
 
   return [
-    ...data.filter((d) => d.percentage >= OTHER_THRESHOLD_PCT || STORAGE_PROTECTED_SLICES.has(d.name)),
+    ...data.filter(
+      (d) => d.percentage >= OTHER_THRESHOLD_PCT || STORAGE_PROTECTED_SLICES.has(d.name)
+    ),
     {
       name: 'Other',
       value: smallSlices.reduce((sum, d) => sum + d.value, 0),
@@ -348,7 +345,9 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     const cashDetailedData = mapToChartData(cashMap, cashTotal);
     // Group equities too: once equities is the dominant bucket a many-ticker book
     // would otherwise render an unreadable donut of tiny arcs.
-    const equitiesDetailedData = groupSmallDetailedSlices(mapToChartData(equitiesMap, equitiesTotal));
+    const equitiesDetailedData = groupSmallDetailedSlices(
+      mapToChartData(equitiesMap, equitiesTotal)
+    );
 
     // Storage allocation: broker accounts by exact broker, plus CEX (split cash/crypto),
     // Bank, Onchain, Onchain Ledger; sub-3% custodians roll into "Other".

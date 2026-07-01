@@ -149,9 +149,7 @@ export default function Investors() {
               Total Current Value
               <HelpTooltip content="Combined current value of all investor stakes" />
             </p>
-            <p className="text-lg font-semibold tabular-nums">
-              {displayValue(totalCurrentValue)}
-            </p>
+            <p className="text-lg font-semibold tabular-nums">{displayValue(totalCurrentValue)}</p>
           </div>
         </div>
       </PageActionHeader>
@@ -216,9 +214,7 @@ export default function Investors() {
                       <TableCell className="text-right">
                         {investor.ytdReturn !== null ? (
                           <div className={getPnLColorClass(investor.ytdReturn)}>
-                            <p className="font-mono">
-                              {displayValue(investor.ytdReturn)}
-                            </p>
+                            <p className="font-mono">{displayValue(investor.ytdReturn)}</p>
                             <p className="text-xs">{formatPercent(investor.ytdReturnPct)}</p>
                           </div>
                         ) : (
