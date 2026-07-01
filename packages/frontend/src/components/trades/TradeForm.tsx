@@ -110,10 +110,13 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
   return (
     <div className="space-y-3">
       {!isEditing && (
-        <div className="flex border-b mb-2">
+        <div role="tablist" aria-label="Trade entry mode" className="flex border-b mb-2">
           <button
             type="button"
-            aria-pressed={mode === 'add'}
+            role="tab"
+            id="trade-tab-add"
+            aria-selected={mode === 'add'}
+            aria-controls="trade-entry-panel"
             onClick={() => setMode('add')}
             className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'add'
@@ -125,7 +128,10 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
           </button>
           <button
             type="button"
-            aria-pressed={mode === 'import'}
+            role="tab"
+            id="trade-tab-import"
+            aria-selected={mode === 'import'}
+            aria-controls="trade-entry-panel"
             onClick={() => setMode('import')}
             className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'import'
@@ -138,146 +144,152 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
         </div>
       )}
 
-      {mode === 'import' && !isEditing ? (
-        <TradeImportTab onSuccess={onSuccess} />
-      ) : (
-        /* Add/Edit Mode - Form */
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="trade-asset">Asset</Label>
-            <AssetSearchDropdown
-              id="trade-asset"
-              selectedAsset={selectedAsset}
-              onSelectAsset={handleSelectAsset}
-              disabled={isEditing}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="trade-direction">Direction</Label>
-            <Select value={direction} onValueChange={(v) => setDirection(v as 'LONG' | 'SHORT')}>
-              <SelectTrigger id="trade-direction">
-                <span
-                  className={`inline-flex items-center gap-1 font-medium ${direction === 'LONG' ? 'text-profit' : 'text-loss'}`}
-                >
-                  {direction === 'LONG' ? (
-                    <TrendingUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <TrendingDown className="h-3.5 w-3.5" />
-                  )}
-                  {direction}
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="LONG">
-                  <span className="inline-flex items-center gap-1 text-profit font-medium">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    LONG
-                  </span>
-                </SelectItem>
-                <SelectItem value="SHORT">
-                  <span className="inline-flex items-center gap-1 text-loss font-medium">
-                    <TrendingDown className="h-3.5 w-3.5" />
-                    SHORT
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div
+        id={!isEditing ? 'trade-entry-panel' : undefined}
+        role={!isEditing ? 'tabpanel' : undefined}
+        aria-labelledby={!isEditing ? `trade-tab-${mode}` : undefined}
+      >
+        {mode === 'import' && !isEditing ? (
+          <TradeImportTab onSuccess={onSuccess} />
+        ) : (
+          /* Add/Edit Mode - Form */
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="entryPrice">Entry Price</Label>
+              <Label htmlFor="trade-asset">Asset</Label>
+              <AssetSearchDropdown
+                id="trade-asset"
+                selectedAsset={selectedAsset}
+                onSelectAsset={handleSelectAsset}
+                disabled={isEditing}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="trade-direction">Direction</Label>
+              <Select value={direction} onValueChange={(v) => setDirection(v as 'LONG' | 'SHORT')}>
+                <SelectTrigger id="trade-direction">
+                  <span
+                    className={`inline-flex items-center gap-1 font-medium ${direction === 'LONG' ? 'text-profit' : 'text-loss'}`}
+                  >
+                    {direction === 'LONG' ? (
+                      <TrendingUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <TrendingDown className="h-3.5 w-3.5" />
+                    )}
+                    {direction}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LONG">
+                    <span className="inline-flex items-center gap-1 text-profit font-medium">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      LONG
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="SHORT">
+                    <span className="inline-flex items-center gap-1 text-loss font-medium">
+                      <TrendingDown className="h-3.5 w-3.5" />
+                      SHORT
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="entryPrice">Entry Price</Label>
+                <FormattedNumberInput
+                  id="entryPrice"
+                  value={entryPrice}
+                  onValueChange={(value) => {
+                    setEntryPrice(value);
+                    setValidationError(null);
+                  }}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="entryDate">Entry Date</Label>
+                <Input
+                  id="entryDate"
+                  type="date"
+                  value={entryDate}
+                  onChange={(e) => {
+                    setEntryDate(e.target.value);
+                    setValidationError(null);
+                  }}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="exitPrice">Exit Price (Optional)</Label>
+                <FormattedNumberInput
+                  id="exitPrice"
+                  value={exitPrice}
+                  onValueChange={(value) => {
+                    setExitPrice(value);
+                    setValidationError(null);
+                  }}
+                  placeholder="Leave empty for open trade"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="exitDate">Exit Date</Label>
+                <Input
+                  id="exitDate"
+                  type="date"
+                  value={exitDate}
+                  onChange={(e) => {
+                    setExitDate(e.target.value);
+                    setValidationError(null);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="quantity">Quantity</Label>
               <FormattedNumberInput
-                id="entryPrice"
-                value={entryPrice}
+                id="quantity"
+                value={quantity}
                 onValueChange={(value) => {
-                  setEntryPrice(value);
+                  setQuantity(value);
                   setValidationError(null);
                 }}
                 placeholder="0.00"
                 required
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="entryDate">Entry Date</Label>
+              <Label htmlFor="notes">Notes (Optional)</Label>
               <Input
-                id="entryDate"
-                type="date"
-                value={entryDate}
-                onChange={(e) => {
-                  setEntryDate(e.target.value);
-                  setValidationError(null);
-                }}
-                required
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Trade reasoning, strategy, etc."
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="exitPrice">Exit Price (Optional)</Label>
-              <FormattedNumberInput
-                id="exitPrice"
-                value={exitPrice}
-                onValueChange={(value) => {
-                  setExitPrice(value);
-                  setValidationError(null);
-                }}
-                placeholder="Leave empty for open trade"
-              />
+            {validationError && (
+              <div role="alert" className="text-sm text-warning bg-warning/10 p-2 rounded-md">
+                {validationError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="submit" disabled={isLoading || !isFormValid}>
+                {isLoading ? 'Saving...' : isEditing ? 'Update Trade' : 'Log Trade'}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="exitDate">Exit Date</Label>
-              <Input
-                id="exitDate"
-                type="date"
-                value={exitDate}
-                onChange={(e) => {
-                  setExitDate(e.target.value);
-                  setValidationError(null);
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity</Label>
-            <FormattedNumberInput
-              id="quantity"
-              value={quantity}
-              onValueChange={(value) => {
-                setQuantity(value);
-                setValidationError(null);
-              }}
-              placeholder="0.00"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes (Optional)</Label>
-            <Input
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Trade reasoning, strategy, etc."
-            />
-          </div>
-
-          {validationError && (
-            <div role="alert" className="text-sm text-warning bg-warning/10 p-2 rounded-md">
-              {validationError}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="submit" disabled={isLoading || !isFormValid}>
-              {isLoading ? 'Saving...' : isEditing ? 'Update Trade' : 'Log Trade'}
-            </Button>
-          </div>
-        </form>
-      )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   AreaChart,
   Area,
@@ -7,6 +7,7 @@ import {
   Tooltip,
   ReferenceLine,
   ResponsiveContainer,
+  type TooltipProps,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -43,6 +44,30 @@ export function PortfolioChart({
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const { data: performanceData, isLoading, isFetching } = usePerformanceHistory(dateRange);
+
+  // Stable tooltip renderer — an inline arrow here would change identity every render
+  // and defeat Recharts' internal memoization on mouse-move.
+  const renderTooltip = useCallback(
+    ({ active, payload }: TooltipProps<number, string>) => {
+      if (!active || !payload?.length) return null;
+      const data = payload[0].payload;
+      return (
+        <div className="rounded-lg border bg-background p-3 shadow-md">
+          <p className="text-xs text-muted-foreground mb-1">
+            {data.tooltipDate}
+            {data.isLive && <span className="ml-1 text-profit">(Live)</span>}
+          </p>
+          <p className="font-mono font-medium">{formatCurrency(data.value, currency, 0)}</p>
+          {stakeMultiplier < 1 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Full portfolio: {formatCurrency(data.fullValue, currency, 0)}
+            </p>
+          )}
+        </div>
+      );
+    },
+    [currency, stakeMultiplier]
+  );
 
   // Calculate the date range span in days
   const dataSpanDays = useMemo(() => {
@@ -165,7 +190,7 @@ export function PortfolioChart({
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
-            <CardTitle>Portfolio $ Value</CardTitle>
+            <CardTitle className="text-base">Portfolio $ Value</CardTitle>
             {valueChange && (
               <div className={`text-sm ${valueChange.change >= 0 ? 'text-profit' : 'text-loss'}`}>
                 <span className="font-medium">
@@ -255,28 +280,7 @@ export function PortfolioChart({
                   className="text-muted-foreground"
                   width={56}
                 />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const data = payload[0].payload;
-                    return (
-                      <div className="rounded-lg border bg-background p-3 shadow-md">
-                        <p className="text-xs text-muted-foreground mb-1">
-                          {data.tooltipDate}
-                          {data.isLive && <span className="ml-1 text-profit">(Live)</span>}
-                        </p>
-                        <p className="font-mono font-medium">
-                          {formatCurrency(data.value, currency, 0)}
-                        </p>
-                        {stakeMultiplier < 1 && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Full portfolio: {formatCurrency(data.fullValue, currency, 0)}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  }}
-                />
+                <Tooltip content={renderTooltip} />
                 {chartData.length > 0 && (
                   <ReferenceLine
                     y={chartData[0].value}

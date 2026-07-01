@@ -4,7 +4,7 @@ import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
-import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
+import { useAnimatedNumbers } from '@/hooks/useAnimatedNumber';
 import type { PortfolioSummary } from '@/lib/types';
 
 interface NetWorthCardProps {
@@ -46,9 +46,18 @@ export function NetWorthCard({
   const costBasisValue = convert(summary.totalCostBasis);
   const isPositive = summary.unrealizedPnL >= 0;
 
-  const animatedValue = useAnimatedNumber(value);
-  const animatedPnl = useAnimatedNumber(pnlValue);
-  const animatedCostBasis = useAnimatedNumber(costBasisValue);
+  const altValue =
+    currency === 'USD'
+      ? summary.totalValueSgd * stakeMultiplier
+      : summary.totalValueUsd * stakeMultiplier;
+
+  // One shared rAF loop for all four headline figures (previously four separate loops)
+  const [animatedValue, animatedPnl, animatedCostBasis, animatedAltValue] = useAnimatedNumbers([
+    value,
+    pnlValue,
+    costBasisValue,
+    altValue,
+  ]);
 
   const change30d = useMemo(() => {
     if (valueUsd30dAgo === undefined || valueUsd30dAgo === 0) return null;
@@ -58,12 +67,6 @@ export function NetWorthCard({
     const pct = (diff / previousUsd) * 100;
     return { diff, pct };
   }, [summary.totalValueUsd, valueUsd30dAgo, stakeMultiplier]);
-
-  const altValue =
-    currency === 'USD'
-      ? summary.totalValueSgd * stakeMultiplier
-      : summary.totalValueUsd * stakeMultiplier;
-  const animatedAltValue = useAnimatedNumber(altValue);
 
   return (
     <div className="pb-6 mb-2 border-b">

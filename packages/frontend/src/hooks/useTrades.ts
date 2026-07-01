@@ -11,6 +11,7 @@ export function useTrades(params?: {
   return useQuery({
     queryKey: ['trades', params],
     queryFn: () => api.getTrades(params),
+    staleTime: 60 * 1000,
   });
 }
 
@@ -18,6 +19,7 @@ export function useTradeAnalytics(params?: { from?: string; to?: string }) {
   return useQuery({
     queryKey: ['trades', 'analytics', params],
     queryFn: () => api.getTradeAnalytics(params),
+    staleTime: 60 * 1000,
   });
 }
 

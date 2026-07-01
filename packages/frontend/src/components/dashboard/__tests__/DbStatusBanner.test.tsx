@@ -46,8 +46,8 @@ describe('DbStatusBanner', () => {
     renderBanner();
 
     expect(screen.getByText('DB OK')).toBeInTheDocument();
-    const dot = document.querySelector('[class*="--profit"]');
-    expect(dot).not.toBeNull();
+    const dots = document.querySelectorAll('.bg-profit');
+    expect(dots.length).toBeGreaterThan(0);
   });
 
   it('shows unhealthy state with red dot and "DB Down" when status is error', () => {

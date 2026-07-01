@@ -211,6 +211,7 @@ function AppShellContent({
                   )}
                   onClick={() => setSidebarOpen(false)}
                   aria-label={sidebarCollapsed ? item.name : undefined}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <item.icon className="h-5 w-5 shrink-0" />
@@ -219,6 +220,7 @@ function AppShellContent({
                     </span>
                   </span>
                   <kbd
+                    aria-hidden="true"
                     className={cn(
                       'hidden lg:inline-block text-xs px-1.5 py-0.5 rounded',
                       sidebarCollapsed && 'lg:hidden',

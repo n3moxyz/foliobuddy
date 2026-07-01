@@ -55,6 +55,10 @@ export default {
         loss: 'hsl(var(--loss) / <alpha-value>)',
         warning: 'hsl(var(--warning) / <alpha-value>)',
         info: 'hsl(var(--info) / <alpha-value>)',
+        crypto: 'hsl(var(--accent-crypto) / <alpha-value>)',
+        equities: 'hsl(var(--accent-equities) / <alpha-value>)',
+        cash: 'hsl(var(--accent-cash) / <alpha-value>)',
+        custody: 'hsl(var(--accent-custody) / <alpha-value>)',
       },
       borderRadius: {
         lg: 'var(--radius)',

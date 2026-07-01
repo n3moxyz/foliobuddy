@@ -29,7 +29,7 @@ export function SortableHeader({
     ? sortDirection === 'asc'
       ? ('ascending' as const)
       : ('descending' as const)
-    : undefined;
+    : ('none' as const);
 
   return (
     <TableHead

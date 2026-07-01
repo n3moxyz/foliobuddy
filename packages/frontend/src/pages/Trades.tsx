@@ -82,13 +82,20 @@ export default function Trades() {
     searchParams.get('view') === 'monthly' ? 'monthly' : tickerFilter ? 'ticker' : 'review';
   const selectedTicker =
     tickerDossiers.find((ticker) => ticker.symbol === tickerFilter) ?? tickerDossiers[0] ?? null;
-  const filteredTrades = tickerFilter
-    ? allTrades.filter((trade) => trade.asset.symbol === tickerFilter)
-    : allTrades;
-  const openTrades = filteredTrades.filter((trade) => trade.status === 'OPEN');
-  const closedTrades = filteredTrades.filter((trade) => trade.status === 'CLOSED');
-  const visibleTrades =
-    filter === 'OPEN' ? openTrades : filter === 'CLOSED' ? closedTrades : filteredTrades;
+  const { filteredTrades, openTrades, closedTrades, visibleTrades } = useMemo(() => {
+    const filtered = tickerFilter
+      ? allTrades.filter((trade) => trade.asset.symbol === tickerFilter)
+      : allTrades;
+    const open = filtered.filter((trade) => trade.status === 'OPEN');
+    const closed = filtered.filter((trade) => trade.status === 'CLOSED');
+    const visible = filter === 'OPEN' ? open : filter === 'CLOSED' ? closed : filtered;
+    return {
+      filteredTrades: filtered,
+      openTrades: open,
+      closedTrades: closed,
+      visibleTrades: visible,
+    };
+  }, [allTrades, tickerFilter, filter]);
 
   const setLens = useCallback(
     (lens: TradeLens) => {

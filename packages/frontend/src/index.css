@@ -32,6 +32,13 @@
     --warning-foreground: 38 92% 30%;
     --info: 217 91% 60%;
     --info-foreground: 217 91% 35%;
+    /* Portfolio category accent tokens (Crypto / Equities / Cash / Custody).
+       Mode-invariant: defined once in :root so both themes share the hue,
+       matching the prior raw Tailwind-500 behaviour but now token-backed. */
+    --accent-crypto: 217 91% 60%;
+    --accent-equities: 38 92% 50%;
+    --accent-cash: 142 71% 45%;
+    --accent-custody: 271 91% 65%;
     --chart-portfolio: 0.51 0.05 260;
     --chart-portfolio-foreground: 0.39 0.05 260;
     --chart-btc: 0.57 0.17 58;

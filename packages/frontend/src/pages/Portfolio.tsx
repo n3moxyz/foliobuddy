@@ -85,24 +85,31 @@ const SECTION_CONFIG: SectionConfig[] = [
       p.asset.category !== 'EQUITY' &&
       p.asset.category !== 'UNIT_TRUST' &&
       !isStablecoinCategory(p.asset.category),
-    icon: <Coins className="h-4 w-4 text-blue-500" />,
-    accentColor: 'border-blue-500/40 bg-blue-500/5',
+    icon: <Coins className="h-4 w-4 text-crypto" />,
+    accentColor: 'border-crypto/40 bg-crypto/5',
   },
   {
     id: 'equities',
     label: 'Equities',
     filter: (p) => p.asset.category === 'EQUITY' || p.asset.category === 'UNIT_TRUST',
-    icon: <LineChart className="h-4 w-4 text-amber-500" />,
-    accentColor: 'border-amber-500/40 bg-amber-500/5',
+    icon: <LineChart className="h-4 w-4 text-equities" />,
+    accentColor: 'border-equities/40 bg-equities/5',
   },
   {
     id: 'cash',
     label: 'Cash',
     filter: (p) => isStablecoinCategory(p.asset.category),
-    icon: <Banknote className="h-4 w-4 text-green-500" />,
-    accentColor: 'border-green-500/40 bg-green-500/5',
+    icon: <Banknote className="h-4 w-4 text-cash" />,
+    accentColor: 'border-cash/40 bg-cash/5',
   },
 ];
+
+// Custody ("Held for Others") accent — single source of truth, mirrored across
+// the mobile heading and the desktop CollapsibleCard render paths.
+const CUSTODY_CONFIG = {
+  iconClass: 'h-4 w-4 shrink-0 text-custody',
+  accentColor: 'border-custody/40 bg-custody/5',
+};
 
 function loadEquityGroupBy(): EquityGroupBy {
   try {
@@ -562,7 +569,7 @@ export default function Portfolio() {
       {!positionsLoading && custodyPositions.length > 0 && (
         <div className="mt-6 sm:hidden">
           <div className="mb-2 flex items-center gap-2 px-1">
-            <Users className="h-4 w-4 shrink-0 text-purple-500" />
+            <Users className={CUSTODY_CONFIG.iconClass} />
             <span className="text-sm font-semibold">Held for Others</span>
             <HelpTooltip content="Positions you're holding on behalf of other people. Excluded from your net worth and P&L" />
             <span className="ml-auto shrink-0 text-sm font-semibold text-muted-foreground">
@@ -669,8 +676,8 @@ export default function Portfolio() {
             titleHelp={
               <HelpTooltip content="Positions you're holding on behalf of other people. These are excluded from your personal net worth and P&L" />
             }
-            icon={<Users className="h-4 w-4 text-purple-500" />}
-            accentColor="border-purple-500/40 bg-purple-500/5"
+            icon={<Users className={CUSTODY_CONFIG.iconClass} />}
+            accentColor={CUSTODY_CONFIG.accentColor}
             isExpanded={isExpanded('custody')}
             onToggle={() => toggle('custody')}
             headerRight={

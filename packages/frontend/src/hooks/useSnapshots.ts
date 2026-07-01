@@ -12,6 +12,7 @@ export function useSnapshots(params?: {
   return useQuery({
     queryKey: ['snapshots', params],
     queryFn: () => api.getSnapshots(params),
+    staleTime: 60 * 1000,
   });
 }
 

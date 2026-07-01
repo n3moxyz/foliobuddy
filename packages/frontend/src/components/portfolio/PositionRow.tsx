@@ -50,7 +50,7 @@ function UnitTrustBadge() {
         <TooltipContent
           side="top"
           sideOffset={6}
-          className="border-warning/25 bg-background/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-lg shadow-black/20 backdrop-blur supports-[backdrop-filter]:bg-background/90"
+          className="border-warning/25 bg-background/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-lg shadow-[hsl(234_45%_7%/0.3)] backdrop-blur supports-[backdrop-filter]:bg-background/90"
         >
           Unit Trust
         </TooltipContent>
@@ -267,7 +267,7 @@ export const PositionRow = React.memo(function PositionRow({
               side="right"
               align="start"
               sideOffset={12}
-              className="hidden border bg-popover/95 p-2 text-popover-foreground shadow-xl shadow-black/15 backdrop-blur supports-[backdrop-filter]:bg-popover/90 md:block"
+              className="hidden border bg-popover/95 p-2 text-popover-foreground shadow-xl shadow-[hsl(234_45%_7%/0.25)] backdrop-blur supports-[backdrop-filter]:bg-popover/90 md:block"
             >
               <PositionPreview
                 position={position}

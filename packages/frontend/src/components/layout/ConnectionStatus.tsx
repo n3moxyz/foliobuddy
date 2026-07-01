@@ -10,7 +10,7 @@ interface ConnectionStatusProps {
 const statusConfig = {
   connected: {
     label: 'Live',
-    dotClass: 'bg-[hsl(var(--profit))]',
+    dotClass: 'bg-profit',
     pulseClass: 'animate-pulse',
   },
   connecting: {
@@ -42,39 +42,41 @@ export function ConnectionStatus({ status, lastUpdate }: ConnectionStatusProps) 
   const config = statusConfig[status];
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md cursor-default hover:bg-muted/50 transition-colors"
-        >
-          <span className="relative flex h-2 w-2">
-            {status === 'connected' && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-profit/60 opacity-75" />
-            )}
-            <span className={cn('relative inline-flex rounded-full h-2 w-2', config.dotClass)} />
-          </span>
-          <span
-            role="status"
-            aria-live={status === 'disconnected' ? 'assertive' : 'polite'}
-            className="text-xs font-medium text-muted-foreground"
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md cursor-default hover:bg-muted/50 transition-colors"
           >
-            {config.label}
-          </span>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <div className="text-xs">
-          <p className="font-medium">
-            {status === 'connected'
-              ? 'Real-time updates active'
-              : status === 'connecting'
-                ? 'Establishing connection...'
-                : 'Using polling fallback'}
-          </p>
-          <p className="text-muted-foreground mt-1">Last update: {formatLastUpdate(lastUpdate)}</p>
-        </div>
-      </TooltipContent>
-    </Tooltip>
+            <span className="relative flex h-2 w-2">
+              {status === 'connected' && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-profit/60 opacity-75" />
+              )}
+              <span className={cn('relative inline-flex rounded-full h-2 w-2', config.dotClass)} />
+            </span>
+            <span className="text-xs font-medium text-muted-foreground">{config.label}</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="text-xs">
+            <p className="font-medium">
+              {status === 'connected'
+                ? 'Real-time updates active'
+                : status === 'connecting'
+                  ? 'Establishing connection...'
+                  : 'Using polling fallback'}
+            </p>
+            <p className="text-muted-foreground mt-1">
+              Last update: {formatLastUpdate(lastUpdate)}
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+      {/* Politely announce connection changes without interrupting the screen reader */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {`Connection status: ${config.label}`}
+      </span>
+    </>
   );
 }

@@ -260,6 +260,11 @@ export function SnapshotTable({
                           ? expandedSnapshots.has(snapshot.id)
                           : undefined
                       }
+                      aria-controls={
+                        snapshot.source === 'AUTOMATIC'
+                          ? `snapshot-detail-${snapshot.id}`
+                          : undefined
+                      }
                       onKeyDown={
                         snapshot.source === 'AUTOMATIC'
                           ? (e) => {
@@ -380,7 +385,7 @@ export function SnapshotTable({
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow>
+                      <TableRow id={`snapshot-detail-${snapshot.id}`}>
                         <TableCell colSpan={6} className="bg-muted/30 p-0">
                           <div className="p-4">
                             {isLoadingPos ? (

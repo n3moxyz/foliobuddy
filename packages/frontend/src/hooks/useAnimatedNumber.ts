@@ -52,3 +52,65 @@ export function useAnimatedNumber(target: number | null | undefined, durationMs 
 
   return display;
 }
+
+/**
+ * Multi-value variant of {@link useAnimatedNumber}: animates an array of targets
+ * with a single shared requestAnimationFrame loop (one re-render per frame) rather
+ * than N independent loops. The array length and ordering must be stable across renders.
+ *
+ * Respects prefers-reduced-motion — returns the raw values instantly.
+ */
+export function useAnimatedNumbers(
+  targets: Array<number | null | undefined>,
+  durationMs = 600
+): number[] {
+  const normalized = targets.map((t) => t ?? 0);
+  const [display, setDisplay] = useState<number[]>(normalized);
+  const prevTargets = useRef<number[]>(normalized);
+  const rafId = useRef(0);
+  const prefersReducedMotion = useRef(
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+
+  // Stable primitive key encoding every value — the effect fires only on real changes
+  // and fully reconstructs the values from it, so no array identity leaks into deps.
+  const key = normalized.join('|');
+
+  useEffect(() => {
+    const values = key.split('|').map(Number);
+    const from = prevTargets.current;
+    prevTargets.current = values;
+
+    if (prefersReducedMotion.current) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(() => setDisplay(values));
+      return () => cancelAnimationFrame(rafId.current);
+    }
+
+    const hasChange = values.some((v, i) => v !== (from[i] ?? 0));
+    if (!hasChange) return;
+
+    const start = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / durationMs, 1);
+      const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      setDisplay(
+        values.map((v, i) => {
+          const f = from[i] ?? 0;
+          return f + (v - f) * eased;
+        })
+      );
+      if (progress < 1) {
+        rafId.current = requestAnimationFrame(tick);
+      }
+    };
+
+    cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(rafId.current);
+  }, [key, durationMs]);
+
+  return display;
+}

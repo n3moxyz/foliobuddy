@@ -151,7 +151,7 @@ const AllocationDonut = memo(function AllocationDonut({
             </span>
           </CardTitle>
         </div>
-        <div className="flex min-h-11 items-center gap-2 sm:min-h-6">
+        <div className="flex min-h-11 items-center gap-2 sm:min-h-8">
           <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground tabular-nums">
             {hoveredIndex != null && visibleData[hoveredIndex] ? (
               <>
@@ -210,6 +210,13 @@ const AllocationDonut = memo(function AllocationDonut({
                 );
               })()}
           </div>
+
+          {onSliceClick && (
+            <p className="sr-only">
+              Select a segment to filter the detailed breakdown. The category dropdown above the
+              detailed chart provides the same filtering via keyboard.
+            </p>
+          )}
 
           <div className="flex min-w-0 flex-col gap-1.5 flex-1">
             {data.map((item, index) => {
@@ -478,7 +485,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
     <Select value={detailedFilter} onValueChange={handleDetailedFilterChange}>
       <SelectTrigger
         aria-label="Detailed asset category"
-        className="h-11 w-[88px] border-0 bg-transparent px-1 text-xs text-muted-foreground shadow-none hover:bg-muted/40 focus:ring-1 focus:ring-ring focus:ring-offset-0 sm:h-6 sm:w-[78px] [&>svg]:h-3 [&>svg]:w-3"
+        className="h-11 w-[88px] border-0 bg-transparent px-1 text-xs text-muted-foreground shadow-none hover:bg-muted/40 focus:ring-1 focus:ring-ring focus:ring-offset-0 sm:h-8 sm:w-[78px] [&>svg]:h-3 [&>svg]:w-3"
       >
         <SelectValue />
       </SelectTrigger>

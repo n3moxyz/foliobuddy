@@ -157,6 +157,7 @@ export function usePerformanceHistory(params?: {
   return useQuery({
     queryKey: ['portfolio', 'performance', params],
     queryFn: () => api.getPerformanceHistory(params),
+    staleTime: 5 * 60 * 1000,
     ...portfolioFocusRefreshOptions,
   });
 }

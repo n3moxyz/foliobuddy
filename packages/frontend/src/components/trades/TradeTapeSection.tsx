@@ -67,9 +67,10 @@ export function TradeTapeSection({
                 size="sm"
                 className="min-h-11 rounded-full text-xs gap-1 sm:h-8 sm:min-h-8"
                 onClick={onClearTicker}
+                aria-label={`Clear ${tickerFilter} filter`}
               >
                 {tickerFilter}
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden="true" />
               </Button>
             )}
           </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -11,7 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, type UseQueryResult } from '@tanstack/react-query';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
 import { api } from '@/lib/api';
 import type { ProviderName, ProviderSearchResult, TimePeriod } from '@/lib/types';
@@ -130,6 +130,17 @@ export function BenchmarkComparisonChart() {
     isFetching: perfFetching,
   } = usePerformanceHistory(dateRange);
 
+  // Collapse each useQueries result into a data-only array + isFetching flag.
+  // React Query memoizes the combined output (structural sharing), so `.data`
+  // stays referentially stable across renders unless the benchmark data changes —
+  // this is what keeps the expensive chartData useMemo below from re-running every render.
+  const combineBenchmarkResults = useCallback(
+    (results: UseQueryResult<Awaited<ReturnType<typeof api.getBenchmarkHistory>>>[]) => ({
+      data: results.map((r) => r.data),
+      isFetching: results.some((r) => r.isFetching),
+    }),
+    []
+  );
   const benchmarkQueries = useQueries({
     queries: benchmarks.map((b) => ({
       queryKey: ['benchmark', 'history', b.provider, b.providerAssetId, days],
@@ -142,6 +153,7 @@ export function BenchmarkComparisonChart() {
       enabled: b.enabled,
       staleTime: 5 * 60 * 1000,
     })),
+    combine: combineBenchmarkResults,
   });
   const additionalQueries = useQueries({
     queries: additionalBenchmarks.map((b) => ({
@@ -155,11 +167,10 @@ export function BenchmarkComparisonChart() {
       enabled: b.enabled,
       staleTime: 5 * 60 * 1000,
     })),
+    combine: combineBenchmarkResults,
   });
   const isBenchmarkFetching =
-    perfFetching ||
-    benchmarkQueries.some((query) => query.isFetching) ||
-    additionalQueries.some((query) => query.isFetching);
+    perfFetching || benchmarkQueries.isFetching || additionalQueries.isFetching;
 
   // Calculate the date range span in days
   const dataSpanDays = useMemo(() => {
@@ -178,17 +189,17 @@ export function BenchmarkComparisonChart() {
 
     // Merge default benchmarks
     benchmarks.forEach((benchmark, index) => {
-      const queryResult = benchmarkQueries[index];
-      if (queryResult?.data && benchmark.enabled) {
-        normalized = mergeAdditionalBenchmark(normalized, queryResult.data, benchmark.id);
+      const benchmarkData = benchmarkQueries.data[index];
+      if (benchmarkData && benchmark.enabled) {
+        normalized = mergeAdditionalBenchmark(normalized, benchmarkData, benchmark.id);
       }
     });
 
     // Merge custom benchmarks
     additionalBenchmarks.forEach((benchmark, index) => {
-      const queryResult = additionalQueries[index];
-      if (queryResult?.data && benchmark.enabled) {
-        normalized = mergeAdditionalBenchmark(normalized, queryResult.data, benchmark.id);
+      const benchmarkData = additionalQueries.data[index];
+      if (benchmarkData && benchmark.enabled) {
+        normalized = mergeAdditionalBenchmark(normalized, benchmarkData, benchmark.id);
       }
     });
 
@@ -212,9 +223,9 @@ export function BenchmarkComparisonChart() {
   }, [
     performanceData,
     benchmarks,
-    benchmarkQueries,
+    benchmarkQueries.data,
     additionalBenchmarks,
-    additionalQueries,
+    additionalQueries.data,
     dataSpanDays,
   ]);
 
@@ -309,7 +320,7 @@ export function BenchmarkComparisonChart() {
     <Card className="col-span-2">
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <CardTitle>Portfolio % vs Benchmarks</CardTitle>
+          <CardTitle className="text-base">Portfolio % vs Benchmarks</CardTitle>
 
           <div className="-mx-1 overflow-x-auto pb-1">
             <div className="flex w-max rounded-md border">
