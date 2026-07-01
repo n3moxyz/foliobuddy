@@ -155,6 +155,10 @@ export function PortfolioChart({
   }, [chartData.length]);
 
   const periods: TimePeriod[] = ['7D', '1M', '3M', '1Y', 'YTD', 'Max'];
+  const lastChartPoint = chartData[chartData.length - 1];
+  const chartAnimationKey = `${period}-${chartData[0]?.timestamp ?? 'empty'}-${
+    lastChartPoint?.timestamp ?? 'empty'
+  }`;
 
   return (
     <Card className="col-span-2">
@@ -182,7 +186,7 @@ export function PortfolioChart({
                   key={p}
                   variant={period === p ? 'secondary' : 'ghost'}
                   size="sm"
-                  className={`h-11 px-3 rounded-none first:rounded-l-md last:rounded-r-md sm:h-8 ${
+                  className={`h-11 px-3 rounded-none transition-colors duration-200 first:rounded-l-md last:rounded-r-md sm:h-8 ${
                     period === p ? '' : 'hover:bg-muted'
                   }`}
                   onClick={() => setPeriod(p)}
@@ -220,7 +224,7 @@ export function PortfolioChart({
             </div>
           </div>
         ) : (
-          <div className="relative">
+          <div key={chartAnimationKey} className="relative animate-chart-period-change">
             {isFetching && (
               <div className="absolute inset-0 z-10 flex items-center justify-center">
                 <span className="text-sm text-muted-foreground animate-pulse">Loading...</span>
