@@ -1,0 +1,190 @@
+{
+  "capturedAt": "2026-07-02T05:55:25.590Z",
+  "sourceUrl": "http://127.0.0.1:4002/dev/demo",
+  "browser": "Playwright Chromium using system Chrome channel",
+  "captures": [
+    {
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      "finalUrl": "http://127.0.0.1:4002/dev/demo",
+      "title": "FolioBuddy",
+      "documentSize": {
+        "width": 1440,
+        "height": 2201
+      },
+      "textSample": [
+        "FolioBuddyDashboardDPortfolioPTradesTHistoryHInvestorsISettingsSUSDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+        "FolioBuddy",
+        "DashboardD",
+        "Dashboard",
+        "PortfolioP",
+        "Portfolio",
+        "TradesT",
+        "Trades",
+        "HistoryH",
+        "History",
+        "InvestorsI",
+        "Investors",
+        "SettingsS",
+        "Settings",
+        "USDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+        "USD",
+        "Dev ModeConnection status: Dev Mode",
+        "Dev Mode",
+        "Connection status: Dev Mode",
+        "DM",
+        "DashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+        "DashboardDB OKNemo",
+        "DashboardDB OK",
+        "DB OK",
+        "Nemo",
+        "Net Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017",
+        "Net Worth (Nemo)",
+        "$314,021+26.20%",
+        "$314,021",
+        "+26.20%"
+      ],
+      "elements": 87,
+      "motions": 87,
+      "consoleMessages": [
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+        },
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+        },
+        {
+          "type": "warning",
+          "text": "Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "tablet",
+        "width": 834,
+        "height": 1112
+      },
+      "finalUrl": "http://127.0.0.1:4002/dev/demo",
+      "title": "FolioBuddy",
+      "documentSize": {
+        "width": 834,
+        "height": 2409
+      },
+      "textSample": [
+        "FolioBuddyDashboardDPortfolioPTradesTHistoryHInvestorsISettingsSUSDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+        "FolioBuddy",
+        "DashboardD",
+        "Dashboard",
+        "PortfolioP",
+        "Portfolio",
+        "TradesT",
+        "Trades",
+        "HistoryH",
+        "History",
+        "InvestorsI",
+        "Investors",
+        "SettingsS",
+        "Settings",
+        "USDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+        "USD",
+        "Dev ModeConnection status: Dev Mode",
+        "Dev Mode",
+        "Connection status: Dev Mode",
+        "DM",
+        "DashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+        "DashboardDB OKNemo",
+        "DashboardDB OK",
+        "DB OK",
+        "Nemo",
+        "Net Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017",
+        "Net Worth (Nemo)",
+        "$314,021+26.20%",
+        "$314,021",
+        "+26.20%"
+      ],
+      "elements": 88,
+      "motions": 87,
+      "consoleMessages": [
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+        },
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+        },
+        {
+          "type": "warning",
+          "text": "Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "finalUrl": "http://127.0.0.1:4002/dev/demo",
+      "title": "FolioBuddy",
+      "documentSize": {
+        "width": 390,
+        "height": 4825
+      },
+      "textSample": [
+        "FolioBuddyDashboardDPortfolioPTradesTHistoryHInvestorsISettingsSUSDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+        "FolioBuddy",
+        "DashboardD",
+        "Dashboard",
+        "PortfolioP",
+        "Portfolio",
+        "TradesT",
+        "Trades",
+        "HistoryH",
+        "History",
+        "InvestorsI",
+        "Investors",
+        "SettingsS",
+        "Settings",
+        "USDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+        "USD",
+        "Dev ModeConnection status: Dev Mode",
+        "Dev Mode",
+        "Connection status: Dev Mode",
+        "DM",
+        "DashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+        "DashboardDB OKNemo",
+        "DashboardDB OK",
+        "DB OK",
+        "Nemo",
+        "Net Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017",
+        "Net Worth (Nemo)",
+        "$314,021+26.20%",
+        "$314,021",
+        "+26.20%"
+      ],
+      "elements": 80,
+      "motions": 87,
+      "consoleMessages": [
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+        },
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+        },
+        {
+          "type": "warning",
+          "text": "Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview"
+        }
+      ]
+    }
+  ]
+}

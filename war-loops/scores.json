@@ -1,0 +1,333 @@
+{
+  "generatedAt": "2026-07-02T06:04:14.739Z",
+  "gates": {
+    "visualScoreMinimum": 78,
+    "layoutScoreMinimum": 85,
+    "contentScoreMinimum": 95,
+    "motion": "Pencil should have no active CSS animations; Forge should expose active animations and settle to the Pencil layout."
+  },
+  "results": [
+    {
+      "target": "pencil",
+      "viewport": "desktop",
+      "passed": true,
+      "overall": 97,
+      "visual": {
+        "score": 96,
+        "meanPixelDelta": 0.0254,
+        "sourceSize": {
+          "width": 1440,
+          "height": 2201
+        },
+        "renderSize": {
+          "width": 1440,
+          "height": 2265
+        },
+        "heightPenalty": 0.0283
+      },
+      "layout": 97,
+      "content": {
+        "score": 100,
+        "matched": 24,
+        "total": 24,
+        "missing": []
+      },
+      "motion": {
+        "score": 100,
+        "detail": "0 active at start, 0 settled"
+      },
+      "pageData": {
+        "title": "War Loops Pencil - FolioBuddy",
+        "url": "file:///C:/Users/User/dev/ClaudeProjs/projects/foliobuddy/war-loops/pencil/index.html",
+        "text": "FolioBuddy\nDashboard\nD\nPortfolio\nP\nTrades\nT\nHistory\nH\nInvestors\nI\nSettings\nS\nUSD\nDev Mode\nDM\nDashboard\nDB OK\nNemo\n\nNet Worth (Nemo)\n\n$314,021\n+26.20%\nYTD P&L\n?\n$65,195 +26.20%\nYTD Start\n?\n$248,826\nvs 30D ago\n?\n+13.47%\nExposure\n?\n88.4%\nPositions\n?\n14\nTrades\n?\n8\nSGD Value: S$423,017\nPortfolio $ Value\n+$99,896 (+46.65%)\n7D\n1M\n3M\n1Y\nYTD\nMax\n$204.1K\n$234.1K\n$264.1K\n$294.1K\n$324K\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n$314K\nPortfolio % vs Benchmarks\nBTC +13.9%\nETH +13.9%\nSPX +13.9%\n+ Add\n7D\n1M\n3M\n1Y\nYTD\nMax\nPortfolio\n+43.8%\n+0%\n+15%\n+30%\n+45%\n+60%\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n+43.8%\n+13.9%\nBy Asset ($502.4K)\n59%\nCrypto\nCrypto\n59%\nEquities\n29%\nCash\n12%\nCrypto Breakdown ($297.2K)\nAuto\n39%\nBTC\nBTC\n39%\nETH\n17%\nANGEL-AI\n17%\nSOL\n13%\nHYPE\n10%\nPUNK-7614\n4%\nBy Storage ($502.4K)\n25%\nOnchain...\nOnchain Ledger\n25%\nOnchain\n18%\nUOB Kay Hian\n12%\nInteractive Brokers\n10%\nCarta\n10%\nCEX Crypto\n8%\nTiger Brokers\n5%\nCEX Cash\n5%\nFSMOne\n4%\nBank\n3%\nCash Breakdown ($58.3K)\n42%\nUSDC\nUSDC\n42%\nSGD\n23%\nUSDT\n21%\nUSD\n15%\n~^\nTop Performers\n1\nBTC\nBitcoin\n$25,631\n+55.10%\n2\nETH\nEthereum\n$10,841\n+51.50%\n3\nANGEL-AI\nAI Infrastructure SAFE\n$9,375\n+42.90%\n4\nSOL\nSolana\n$6,325\n+34.90%\n5\nUT-GI-SGD\nGlobal Income Fund SGD\n$4,750\n+14.80%\n~v\nWorst Performers\n1\nPUNK-7614\nCryptoPunk 7614\n-$4,063\n-35.10%\n2\nUSDC\nUSD Coin\n$0\n+0.00%\n3\nUSDT\nTether\n$0\n+0.00%\n4\nUSD\nCash USD\n$0\n+0.00%\n5\nSGD\nCash SGD\n$56\n+0.70%\n\nLast updated: 2 Jul 2026, 13:55",
+        "documentSize": {
+          "width": 1440,
+          "height": 2265
+        },
+        "activeAnimations": 0,
+        "panelCount": 6,
+        "sidebarVisible": true,
+        "donutCards": 4
+      },
+      "consoleMessages": [],
+      "render": "renders/pencil-desktop.png",
+      "motionRender": null
+    },
+    {
+      "target": "pencil",
+      "viewport": "tablet",
+      "passed": true,
+      "overall": 96,
+      "visual": {
+        "score": 94,
+        "meanPixelDelta": 0.0396,
+        "sourceSize": {
+          "width": 834,
+          "height": 2409
+        },
+        "renderSize": {
+          "width": 834,
+          "height": 2501
+        },
+        "heightPenalty": 0.0368
+      },
+      "layout": 97,
+      "content": {
+        "score": 100,
+        "matched": 24,
+        "total": 24,
+        "missing": []
+      },
+      "motion": {
+        "score": 100,
+        "detail": "0 active at start, 0 settled"
+      },
+      "pageData": {
+        "title": "War Loops Pencil - FolioBuddy",
+        "url": "file:///C:/Users/User/dev/ClaudeProjs/projects/foliobuddy/war-loops/pencil/index.html",
+        "text": "USD\nDev Mode\nDM\nDashboard\nDB OK\nNemo\n\nNet Worth (Nemo)\n\n$314,021\n+26.20%\nYTD P&L\n?\n$65,195 +26.20%\nYTD Start\n?\n$248,826\nvs 30D ago\n?\n+13.47%\nExposure\n?\n88.4%\nPositions\n?\n14\nTrades\n?\n8\nSGD Value: S$423,017\nPortfolio $ Value\n+$99,896 (+46.65%)\n7D\n1M\n3M\n1Y\nYTD\nMax\n$204.1K\n$234.1K\n$264.1K\n$294.1K\n$324K\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n$314K\nPortfolio % vs Benchmarks\nBTC +13.9%\nETH +13.9%\nSPX +13.9%\n+ Add\n7D\n1M\n3M\n1Y\nYTD\nMax\nPortfolio\n+43.8%\n+0%\n+15%\n+30%\n+45%\n+60%\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n+43.8%\n+13.9%\nBy Asset ($502.4K)\n59%\nCrypto\nCrypto\n59%\nEquities\n29%\nCash\n12%\nCrypto Breakdown ($297.2K)\nAuto\n39%\nBTC\nBTC\n39%\nETH\n17%\nANGEL-AI\n17%\nSOL\n13%\nHYPE\n10%\nPUNK-7614\n4%\nBy Storage ($502.4K)\n25%\nOnchain...\nOnchain Ledger\n25%\nOnchain\n18%\nUOB Kay Hian\n12%\nInteractive Brokers\n10%\nCarta\n10%\nCEX Crypto\n8%\nTiger Brokers\n5%\nCEX Cash\n5%\nFSMOne\n4%\nBank\n3%\nCash Breakdown ($58.3K)\n42%\nUSDC\nUSDC\n42%\nSGD\n23%\nUSDT\n21%\nUSD\n15%\n~^\nTop Performers\n1\nBTC\nBitcoin\n$25,631\n+55.10%\n2\nETH\nEthereum\n$10,841\n+51.50%\n3\nANGEL-AI\nAI Infrastructure SAFE\n$9,375\n+42.90%\n4\nSOL\nSolana\n$6,325\n+34.90%\n5\nUT-GI-SGD\nGlobal Income Fund SGD\n$4,750\n+14.80%\n~v\nWorst Performers\n1\nPUNK-7614\nCryptoPunk 7614\n-$4,063\n-35.10%\n2\nUSDC\nUSD Coin\n$0\n+0.00%\n3\nUSDT\nTether\n$0\n+0.00%\n4\nUSD\nCash USD\n$0\n+0.00%\n5\nSGD\nCash SGD\n$56\n+0.70%\n\nLast updated: 2 Jul 2026, 13:55",
+        "documentSize": {
+          "width": 834,
+          "height": 2501
+        },
+        "activeAnimations": 0,
+        "panelCount": 6,
+        "sidebarVisible": false,
+        "donutCards": 4
+      },
+      "consoleMessages": [],
+      "render": "renders/pencil-tablet.png",
+      "motionRender": null
+    },
+    {
+      "target": "pencil",
+      "viewport": "mobile",
+      "passed": true,
+      "overall": 96,
+      "visual": {
+        "score": 94,
+        "meanPixelDelta": 0.0375,
+        "sourceSize": {
+          "width": 390,
+          "height": 4825
+        },
+        "renderSize": {
+          "width": 390,
+          "height": 4907
+        },
+        "heightPenalty": 0.0167
+      },
+      "layout": 98,
+      "content": {
+        "score": 100,
+        "matched": 24,
+        "total": 24,
+        "missing": []
+      },
+      "motion": {
+        "score": 100,
+        "detail": "0 active at start, 0 settled"
+      },
+      "pageData": {
+        "title": "War Loops Pencil - FolioBuddy",
+        "url": "file:///C:/Users/User/dev/ClaudeProjs/projects/foliobuddy/war-loops/pencil/index.html",
+        "text": "USD\nDM\nDashboard\nDB OK\nNemo\n\nNet Worth (Nemo)\n\n$314,021\n+26.20%\nYTD P&L\n?\n$65,195 +26.20%\nYTD Start\n?\n$248,826\nvs 30D ago\n?\n+13.47%\nExposure\n?\n88.4%\nPositions\n?\n14\nTrades\n?\n8\nSGD Value: S$423,017\nPortfolio $ Value\n+$99,896 (+46.65%)\n7D\n1M\n3M\n1Y\nYTD\nMax\n$204.1K\n$234.1K\n$264.1K\n$294.1K\n$324K\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n$314K\nPortfolio % vs Benchmarks\nBTC +13.9%\nETH +13.9%\nSPX +13.9%\n+ Add\n7D\n1M\n3M\n1Y\nYTD\nMax\nPortfolio\n+43.8%\n+0%\n+15%\n+30%\n+45%\n+60%\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n+43.8%\n+13.9%\nBy Asset ($502.4K)\n59%\nCrypto\nCrypto\n59%\nEquities\n29%\nCash\n12%\nCrypto Breakdown ($297.2K)\nAuto\n39%\nBTC\nBTC\n39%\nETH\n17%\nANGEL-AI\n17%\nSOL\n13%\nHYPE\n10%\nPUNK-7614\n4%\nBy Storage ($502.4K)\n25%\nOnchain...\nOnchain Ledger\n25%\nOnchain\n18%\nUOB Kay Hian\n12%\nInteractive Brokers\n10%\nCarta\n10%\nCEX Crypto\n8%\nTiger Brokers\n5%\nCEX Cash\n5%\nFSMOne\n4%\nBank\n3%\nCash Breakdown ($58.3K)\n42%\nUSDC\nUSDC\n42%\nSGD\n23%\nUSDT\n21%\nUSD\n15%\n~^\nTop Performers\n1\nBTC\nBitcoin\n$25,631\n+55.10%\n2\nETH\nEthereum\n$10,841\n+51.50%\n3\nANGEL-AI\nAI Infrastructure SAFE\n$9,375\n+42.90%\n4\nSOL\nSolana\n$6,325\n+34.90%\n5\nUT-GI-SGD\nGlobal Income Fund SGD\n$4,750\n+14.80%\n~v\nWorst Performers\n1\nPUNK-7614\nCryptoPunk 7614\n-$4,063\n-35.10%\n2\nUSDC\nUSD Coin\n$0\n+0.00%\n3\nUSDT\nTether\n$0\n+0.00%\n4\nUSD\nCash USD\n$0\n+0.00%\n5\nSGD\nCash SGD\n$56\n+0.70%\n\nLast updated: 2 Jul 2026, 13:55",
+        "documentSize": {
+          "width": 390,
+          "height": 4907
+        },
+        "activeAnimations": 0,
+        "panelCount": 6,
+        "sidebarVisible": false,
+        "donutCards": 4
+      },
+      "consoleMessages": [],
+      "render": "renders/pencil-mobile.png",
+      "motionRender": null
+    },
+    {
+      "target": "forge",
+      "viewport": "desktop",
+      "passed": true,
+      "overall": 97,
+      "visual": {
+        "score": 96,
+        "meanPixelDelta": 0.0254,
+        "sourceSize": {
+          "width": 1440,
+          "height": 2201
+        },
+        "renderSize": {
+          "width": 1440,
+          "height": 2265
+        },
+        "heightPenalty": 0.0283
+      },
+      "layout": 97,
+      "content": {
+        "score": 100,
+        "matched": 24,
+        "total": 24,
+        "missing": []
+      },
+      "motion": {
+        "score": 100,
+        "detail": "32 active at start, 1 settled"
+      },
+      "pageData": {
+        "title": "War Loops Forge - FolioBuddy",
+        "url": "file:///C:/Users/User/dev/ClaudeProjs/projects/foliobuddy/war-loops/forge/index.html",
+        "text": "FolioBuddy\nDashboard\nD\nPortfolio\nP\nTrades\nT\nHistory\nH\nInvestors\nI\nSettings\nS\nUSD\nDev Mode\nDM\nDashboard\nDB OK\nNemo\n\nNet Worth (Nemo)\n\n$314,021\n+26.20%\nYTD P&L\n?\n$65,195 +26.20%\nYTD Start\n?\n$248,826\nvs 30D ago\n?\n+13.47%\nExposure\n?\n88.4%\nPositions\n?\n14\nTrades\n?\n8\nSGD Value: S$423,017\nPortfolio $ Value\n+$99,896 (+46.65%)\n7D\n1M\n3M\n1Y\nYTD\nMax\n$204.1K\n$234.1K\n$264.1K\n$294.1K\n$324K\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n$314K\nPortfolio % vs Benchmarks\nBTC +13.9%\nETH +13.9%\nSPX +13.9%\n+ Add\n7D\n1M\n3M\n1Y\nYTD\nMax\nPortfolio\n+43.8%\n+0%\n+15%\n+30%\n+45%\n+60%\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n+43.8%\n+13.9%\nBy Asset ($502.4K)\n59%\nCrypto\nCrypto\n59%\nEquities\n29%\nCash\n12%\nCrypto Breakdown ($297.2K)\nAuto\n39%\nBTC\nBTC\n39%\nETH\n17%\nANGEL-AI\n17%\nSOL\n13%\nHYPE\n10%\nPUNK-7614\n4%\nBy Storage ($502.4K)\n25%\nOnchain...\nOnchain Ledger\n25%\nOnchain\n18%\nUOB Kay Hian\n12%\nInteractive Brokers\n10%\nCarta\n10%\nCEX Crypto\n8%\nTiger Brokers\n5%\nCEX Cash\n5%\nFSMOne\n4%\nBank\n3%\nCash Breakdown ($58.3K)\n42%\nUSDC\nUSDC\n42%\nSGD\n23%\nUSDT\n21%\nUSD\n15%\n~^\nTop Performers\n1\nBTC\nBitcoin\n$25,631\n+55.10%\n2\nETH\nEthereum\n$10,841\n+51.50%\n3\nANGEL-AI\nAI Infrastructure SAFE\n$9,375\n+42.90%\n4\nSOL\nSolana\n$6,325\n+34.90%\n5\nUT-GI-SGD\nGlobal Income Fund SGD\n$4,750\n+14.80%\n~v\nWorst Performers\n1\nPUNK-7614\nCryptoPunk 7614\n-$4,063\n-35.10%\n2\nUSDC\nUSD Coin\n$0\n+0.00%\n3\nUSDT\nTether\n$0\n+0.00%\n4\nUSD\nCash USD\n$0\n+0.00%\n5\nSGD\nCash SGD\n$56\n+0.70%\n\nLast updated: 2 Jul 2026, 13:55",
+        "documentSize": {
+          "width": 1440,
+          "height": 2265
+        },
+        "activeAnimations": 1,
+        "panelCount": 6,
+        "sidebarVisible": true,
+        "donutCards": 4
+      },
+      "consoleMessages": [],
+      "render": "renders/forge-desktop.png",
+      "motionRender": "renders/forge-desktop-motion.png"
+    },
+    {
+      "target": "forge",
+      "viewport": "tablet",
+      "passed": true,
+      "overall": 96,
+      "visual": {
+        "score": 94,
+        "meanPixelDelta": 0.0396,
+        "sourceSize": {
+          "width": 834,
+          "height": 2409
+        },
+        "renderSize": {
+          "width": 834,
+          "height": 2501
+        },
+        "heightPenalty": 0.0368
+      },
+      "layout": 97,
+      "content": {
+        "score": 100,
+        "matched": 24,
+        "total": 24,
+        "missing": []
+      },
+      "motion": {
+        "score": 100,
+        "detail": "32 active at start, 1 settled"
+      },
+      "pageData": {
+        "title": "War Loops Forge - FolioBuddy",
+        "url": "file:///C:/Users/User/dev/ClaudeProjs/projects/foliobuddy/war-loops/forge/index.html",
+        "text": "USD\nDev Mode\nDM\nDashboard\nDB OK\nNemo\n\nNet Worth (Nemo)\n\n$314,021\n+26.20%\nYTD P&L\n?\n$65,195 +26.20%\nYTD Start\n?\n$248,826\nvs 30D ago\n?\n+13.47%\nExposure\n?\n88.4%\nPositions\n?\n14\nTrades\n?\n8\nSGD Value: S$423,017\nPortfolio $ Value\n+$99,896 (+46.65%)\n7D\n1M\n3M\n1Y\nYTD\nMax\n$204.1K\n$234.1K\n$264.1K\n$294.1K\n$324K\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n$314K\nPortfolio % vs Benchmarks\nBTC +13.9%\nETH +13.9%\nSPX +13.9%\n+ Add\n7D\n1M\n3M\n1Y\nYTD\nMax\nPortfolio\n+43.8%\n+0%\n+15%\n+30%\n+45%\n+60%\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n+43.8%\n+13.9%\nBy Asset ($502.4K)\n59%\nCrypto\nCrypto\n59%\nEquities\n29%\nCash\n12%\nCrypto Breakdown ($297.2K)\nAuto\n39%\nBTC\nBTC\n39%\nETH\n17%\nANGEL-AI\n17%\nSOL\n13%\nHYPE\n10%\nPUNK-7614\n4%\nBy Storage ($502.4K)\n25%\nOnchain...\nOnchain Ledger\n25%\nOnchain\n18%\nUOB Kay Hian\n12%\nInteractive Brokers\n10%\nCarta\n10%\nCEX Crypto\n8%\nTiger Brokers\n5%\nCEX Cash\n5%\nFSMOne\n4%\nBank\n3%\nCash Breakdown ($58.3K)\n42%\nUSDC\nUSDC\n42%\nSGD\n23%\nUSDT\n21%\nUSD\n15%\n~^\nTop Performers\n1\nBTC\nBitcoin\n$25,631\n+55.10%\n2\nETH\nEthereum\n$10,841\n+51.50%\n3\nANGEL-AI\nAI Infrastructure SAFE\n$9,375\n+42.90%\n4\nSOL\nSolana\n$6,325\n+34.90%\n5\nUT-GI-SGD\nGlobal Income Fund SGD\n$4,750\n+14.80%\n~v\nWorst Performers\n1\nPUNK-7614\nCryptoPunk 7614\n-$4,063\n-35.10%\n2\nUSDC\nUSD Coin\n$0\n+0.00%\n3\nUSDT\nTether\n$0\n+0.00%\n4\nUSD\nCash USD\n$0\n+0.00%\n5\nSGD\nCash SGD\n$56\n+0.70%\n\nLast updated: 2 Jul 2026, 13:55",
+        "documentSize": {
+          "width": 834,
+          "height": 2501
+        },
+        "activeAnimations": 1,
+        "panelCount": 6,
+        "sidebarVisible": false,
+        "donutCards": 4
+      },
+      "consoleMessages": [],
+      "render": "renders/forge-tablet.png",
+      "motionRender": "renders/forge-tablet-motion.png"
+    },
+    {
+      "target": "forge",
+      "viewport": "mobile",
+      "passed": true,
+      "overall": 95,
+      "visual": {
+        "score": 94,
+        "meanPixelDelta": 0.0375,
+        "sourceSize": {
+          "width": 390,
+          "height": 4825
+        },
+        "renderSize": {
+          "width": 390,
+          "height": 4907
+        },
+        "heightPenalty": 0.0167
+      },
+      "layout": 98,
+      "content": {
+        "score": 100,
+        "matched": 24,
+        "total": 24,
+        "missing": []
+      },
+      "motion": {
+        "score": 85,
+        "detail": "30 active at start, 0 settled"
+      },
+      "pageData": {
+        "title": "War Loops Forge - FolioBuddy",
+        "url": "file:///C:/Users/User/dev/ClaudeProjs/projects/foliobuddy/war-loops/forge/index.html",
+        "text": "USD\nDM\nDashboard\nDB OK\nNemo\n\nNet Worth (Nemo)\n\n$314,021\n+26.20%\nYTD P&L\n?\n$65,195 +26.20%\nYTD Start\n?\n$248,826\nvs 30D ago\n?\n+13.47%\nExposure\n?\n88.4%\nPositions\n?\n14\nTrades\n?\n8\nSGD Value: S$423,017\nPortfolio $ Value\n+$99,896 (+46.65%)\n7D\n1M\n3M\n1Y\nYTD\nMax\n$204.1K\n$234.1K\n$264.1K\n$294.1K\n$324K\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n$314K\nPortfolio % vs Benchmarks\nBTC +13.9%\nETH +13.9%\nSPX +13.9%\n+ Add\n7D\n1M\n3M\n1Y\nYTD\nMax\nPortfolio\n+43.8%\n+0%\n+15%\n+30%\n+45%\n+60%\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n+43.8%\n+13.9%\nBy Asset ($502.4K)\n59%\nCrypto\nCrypto\n59%\nEquities\n29%\nCash\n12%\nCrypto Breakdown ($297.2K)\nAuto\n39%\nBTC\nBTC\n39%\nETH\n17%\nANGEL-AI\n17%\nSOL\n13%\nHYPE\n10%\nPUNK-7614\n4%\nBy Storage ($502.4K)\n25%\nOnchain...\nOnchain Ledger\n25%\nOnchain\n18%\nUOB Kay Hian\n12%\nInteractive Brokers\n10%\nCarta\n10%\nCEX Crypto\n8%\nTiger Brokers\n5%\nCEX Cash\n5%\nFSMOne\n4%\nBank\n3%\nCash Breakdown ($58.3K)\n42%\nUSDC\nUSDC\n42%\nSGD\n23%\nUSDT\n21%\nUSD\n15%\n~^\nTop Performers\n1\nBTC\nBitcoin\n$25,631\n+55.10%\n2\nETH\nEthereum\n$10,841\n+51.50%\n3\nANGEL-AI\nAI Infrastructure SAFE\n$9,375\n+42.90%\n4\nSOL\nSolana\n$6,325\n+34.90%\n5\nUT-GI-SGD\nGlobal Income Fund SGD\n$4,750\n+14.80%\n~v\nWorst Performers\n1\nPUNK-7614\nCryptoPunk 7614\n-$4,063\n-35.10%\n2\nUSDC\nUSD Coin\n$0\n+0.00%\n3\nUSDT\nTether\n$0\n+0.00%\n4\nUSD\nCash USD\n$0\n+0.00%\n5\nSGD\nCash SGD\n$56\n+0.70%\n\nLast updated: 2 Jul 2026, 13:55",
+        "documentSize": {
+          "width": 390,
+          "height": 4907
+        },
+        "activeAnimations": 0,
+        "panelCount": 6,
+        "sidebarVisible": false,
+        "donutCards": 4
+      },
+      "consoleMessages": [],
+      "render": "renders/forge-mobile.png",
+      "motionRender": "renders/forge-mobile-motion.png"
+    }
+  ],
+  "weakest": {
+    "target": "forge",
+    "viewport": "mobile",
+    "passed": true,
+    "overall": 95,
+    "visual": {
+      "score": 94,
+      "meanPixelDelta": 0.0375,
+      "sourceSize": {
+        "width": 390,
+        "height": 4825
+      },
+      "renderSize": {
+        "width": 390,
+        "height": 4907
+      },
+      "heightPenalty": 0.0167
+    },
+    "layout": 98,
+    "content": {
+      "score": 100,
+      "matched": 24,
+      "total": 24,
+      "missing": []
+    },
+    "motion": {
+      "score": 85,
+      "detail": "30 active at start, 0 settled"
+    },
+    "pageData": {
+      "title": "War Loops Forge - FolioBuddy",
+      "url": "file:///C:/Users/User/dev/ClaudeProjs/projects/foliobuddy/war-loops/forge/index.html",
+      "text": "USD\nDM\nDashboard\nDB OK\nNemo\n\nNet Worth (Nemo)\n\n$314,021\n+26.20%\nYTD P&L\n?\n$65,195 +26.20%\nYTD Start\n?\n$248,826\nvs 30D ago\n?\n+13.47%\nExposure\n?\n88.4%\nPositions\n?\n14\nTrades\n?\n8\nSGD Value: S$423,017\nPortfolio $ Value\n+$99,896 (+46.65%)\n7D\n1M\n3M\n1Y\nYTD\nMax\n$204.1K\n$234.1K\n$264.1K\n$294.1K\n$324K\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n$314K\nPortfolio % vs Benchmarks\nBTC +13.9%\nETH +13.9%\nSPX +13.9%\n+ Add\n7D\n1M\n3M\n1Y\nYTD\nMax\nPortfolio\n+43.8%\n+0%\n+15%\n+30%\n+45%\n+60%\nJan 2026\nMar 2026\nMay 2026\nMay 2026\nJun 2026\n+43.8%\n+13.9%\nBy Asset ($502.4K)\n59%\nCrypto\nCrypto\n59%\nEquities\n29%\nCash\n12%\nCrypto Breakdown ($297.2K)\nAuto\n39%\nBTC\nBTC\n39%\nETH\n17%\nANGEL-AI\n17%\nSOL\n13%\nHYPE\n10%\nPUNK-7614\n4%\nBy Storage ($502.4K)\n25%\nOnchain...\nOnchain Ledger\n25%\nOnchain\n18%\nUOB Kay Hian\n12%\nInteractive Brokers\n10%\nCarta\n10%\nCEX Crypto\n8%\nTiger Brokers\n5%\nCEX Cash\n5%\nFSMOne\n4%\nBank\n3%\nCash Breakdown ($58.3K)\n42%\nUSDC\nUSDC\n42%\nSGD\n23%\nUSDT\n21%\nUSD\n15%\n~^\nTop Performers\n1\nBTC\nBitcoin\n$25,631\n+55.10%\n2\nETH\nEthereum\n$10,841\n+51.50%\n3\nANGEL-AI\nAI Infrastructure SAFE\n$9,375\n+42.90%\n4\nSOL\nSolana\n$6,325\n+34.90%\n5\nUT-GI-SGD\nGlobal Income Fund SGD\n$4,750\n+14.80%\n~v\nWorst Performers\n1\nPUNK-7614\nCryptoPunk 7614\n-$4,063\n-35.10%\n2\nUSDC\nUSD Coin\n$0\n+0.00%\n3\nUSDT\nTether\n$0\n+0.00%\n4\nUSD\nCash USD\n$0\n+0.00%\n5\nSGD\nCash SGD\n$56\n+0.70%\n\nLast updated: 2 Jul 2026, 13:55",
+      "documentSize": {
+        "width": 390,
+        "height": 4907
+      },
+      "activeAnimations": 0,
+      "panelCount": 6,
+      "sidebarVisible": false,
+      "donutCards": 4
+    },
+    "consoleMessages": [],
+    "render": "renders/forge-mobile.png",
+    "motionRender": "renders/forge-mobile-motion.png"
+  }
+}

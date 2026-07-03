@@ -1,0 +1,4189 @@
+{
+  "url": "http://127.0.0.1:4002/dev/demo",
+  "title": "FolioBuddy",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "documentSize": {
+    "width": 390,
+    "height": 4825
+  },
+  "bodyClass": "",
+  "rootClass": "",
+  "visibleText": [
+    "FolioBuddyDashboardDPortfolioPTradesTHistoryHInvestorsISettingsSUSDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+    "FolioBuddy",
+    "DashboardD",
+    "Dashboard",
+    "PortfolioP",
+    "Portfolio",
+    "TradesT",
+    "Trades",
+    "HistoryH",
+    "History",
+    "InvestorsI",
+    "Investors",
+    "SettingsS",
+    "Settings",
+    "USDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+    "USD",
+    "Dev ModeConnection status: Dev Mode",
+    "Dev Mode",
+    "Connection status: Dev Mode",
+    "DM",
+    "DashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314KPortfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$4,063-35.10%2USDCUSD Coin$0+0.00%3USDTTether$0+0.00%4USDCash USD$0+0.00%5SGDCash SGD$56+0.70%Last updated: 2 Jul 2026, 13:55",
+    "DashboardDB OKNemo",
+    "DashboardDB OK",
+    "DB OK",
+    "Nemo",
+    "Net Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8SGD Value: S$423,017",
+    "Net Worth (Nemo)",
+    "$314,021+26.20%",
+    "$314,021",
+    "+26.20%",
+    "YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8",
+    "YTD P&L$65,195+26.20%",
+    "YTD P&L",
+    "$65,195+26.20%",
+    "YTD Start$248,826",
+    "YTD Start",
+    "$248,826",
+    "vs 30D ago+13.47%",
+    "vs 30D ago",
+    "+13.47%",
+    "Exposure88.4%",
+    "Exposure",
+    "88.4%",
+    "Positions14",
+    "Positions",
+    "14",
+    "Trades8",
+    "8",
+    "YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8",
+    "SGD Value: S$423,017",
+    "Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMaxJan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314K",
+    "Portfolio $ Value+$99,896(+46.65%)7D1M3M1YYTDMax",
+    "Portfolio $ Value+$99,896(+46.65%)",
+    "Portfolio $ Value",
+    "+$99,896(+46.65%)",
+    "+$99,896",
+    "(+46.65%)",
+    "7D1M3M1YYTDMax",
+    "7D",
+    "1M",
+    "3M",
+    "1Y",
+    "YTD",
+    "Max",
+    "Jan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314K",
+    "Portfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%",
+    "Portfolio % vs Benchmarks7D1M3M1YYTDMaxBTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%",
+    "Portfolio % vs Benchmarks7D1M3M1YYTDMax",
+    "Portfolio % vs Benchmarks",
+    "BTC+13.9%ETH+13.9%SPX+13.9%AddPortfolio+43.8%",
+    "BTC+13.9%",
+    "+13.9%",
+    "ETH+13.9%",
+    "SPX+13.9%",
+    "Add",
+    "Portfolio+43.8%",
+    "+43.8%",
+    "Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%",
+    "By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%",
+    "By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%",
+    "By Asset ($502.4K)",
+    "($502.4K)",
+    "59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%",
+    "59%Crypto",
+    "59%",
+    "Crypto",
+    "Select a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.",
+    "Crypto59%Equities29%Cash12%",
+    "Crypto59%",
+    "Equities29%",
+    "Equities",
+    "29%",
+    "Cash12%",
+    "Cash",
+    "12%",
+    "Crypto Breakdown ($297.2K)Auto39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%",
+    "Crypto Breakdown ($297.2K)Auto",
+    "Crypto Breakdown ($297.2K)",
+    "($297.2K)",
+    "Auto",
+    "39%BTCBTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%",
+    "39%BTC",
+    "39%",
+    "BTC",
+    "BTC39%ETH17%ANGEL-AI17%SOL13%HYPE10%PUNK-76144%",
+    "BTC39%",
+    "ETH17%",
+    "ETH",
+    "17%",
+    "ANGEL-AI17%",
+    "ANGEL-AI",
+    "SOL13%",
+    "SOL",
+    "13%",
+    "HYPE10%",
+    "HYPE",
+    "10%",
+    "PUNK-76144%",
+    "PUNK-7614",
+    "4%",
+    "By Storage ($502.4K)25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%",
+    "By Storage ($502.4K)",
+    "25%Onchain…Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%",
+    "25%Onchain…",
+    "25%",
+    "Onchain…",
+    "Onchain Ledger25%Onchain18%UOB Kay Hian12%Interactive Brokers10%Carta10%CEX Crypto8%Tiger Brokers5%CEX Cash5%FSMOne4%Bank3%",
+    "Onchain Ledger25%",
+    "Onchain Ledger",
+    "Onchain18%",
+    "Onchain",
+    "18%",
+    "UOB Kay Hian12%",
+    "UOB Kay Hian",
+    "Interactive Brokers10%",
+    "Interactive Brokers",
+    "Carta10%",
+    "Carta",
+    "CEX Crypto8%",
+    "CEX Crypto",
+    "8%",
+    "Tiger Brokers5%",
+    "Tiger Brokers",
+    "5%",
+    "CEX Cash5%",
+    "CEX Cash",
+    "FSMOne4%",
+    "FSMOne",
+    "Bank3%",
+    "Bank",
+    "3%",
+    "Cash Breakdown ($58.3K)42%USDCUSDC42%SGD23%USDT21%USD15%",
+    "Cash Breakdown ($58.3K)",
+    "($58.3K)",
+    "42%USDCUSDC42%SGD23%USDT21%USD15%",
+    "42%USDC",
+    "42%",
+    "USDC",
+    "USDC42%SGD23%USDT21%USD15%",
+    "USDC42%"
+  ],
+  "elements": [
+    {
+      "tag": "body",
+      "selector": "body",
+      "className": "",
+      "text": "FolioBuddyDashboardDPortfolioPTradesTHistoryHInvestorsISettingsSUSDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 4825
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgb(252, 252, 253)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "aside",
+      "selector": "aside",
+      "className": "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-card border-r transition-[transform,width] duration-200 ease-out lg:translate-x-0 lg:w-64 -translate-x-full",
+      "text": "FolioBuddyDashboardDPortfolioPTradesTHistoryHInvestorsISettingsS",
+      "box": {
+        "x": -256,
+        "y": 0,
+        "width": 256,
+        "height": 844
+      },
+      "style": {
+        "display": "flex",
+        "position": "fixed",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgb(245, 246, 249)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "matrix(1, 0, 0, 1, -256, 0)"
+      }
+    },
+    {
+      "tag": "main",
+      "selector": "main",
+      "className": "p-4 lg:p-6",
+      "text": "DashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$248,826vs 30D ago+13.47%Exposure88.4%Positions14Trades8YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades",
+      "box": {
+        "x": 0,
+        "y": 56,
+        "width": 390,
+        "height": 4769
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "16px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "header",
+      "selector": "header",
+      "className": "sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-3 sm:h-16 sm:gap-4 sm:px-4 lg:px-6",
+      "text": "USDDev ModeConnection status: Dev ModeDM",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 56
+      },
+      "style": {
+        "display": "flex",
+        "position": "sticky",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgb(252, 252, 253)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h1",
+      "selector": "h1",
+      "className": "text-2xl font-bold",
+      "text": "Dashboard",
+      "box": {
+        "x": 16,
+        "y": 72,
+        "width": 358,
+        "height": 32
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "24px",
+        "fontWeight": "700",
+        "lineHeight": "32px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h2",
+      "selector": "h2",
+      "className": "text-sm font-medium text-muted-foreground mb-2",
+      "text": "Net Worth (Nemo)",
+      "box": {
+        "x": 16,
+        "y": 208,
+        "width": 358,
+        "height": 20
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(100, 106, 135)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px 0px 8px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h2",
+      "selector": "h2",
+      "className": "font-semibold tracking-tight text-base",
+      "text": "Portfolio $ Value",
+      "box": {
+        "x": 41,
+        "y": 614,
+        "width": 308,
+        "height": 24
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h2",
+      "selector": "h2",
+      "className": "font-semibold tracking-tight text-base",
+      "text": "Portfolio % vs Benchmarks",
+      "box": {
+        "x": 41,
+        "y": 1114,
+        "width": 308,
+        "height": 24
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h2",
+      "selector": "h2",
+      "className": "font-semibold tracking-tight min-w-0 truncate text-base",
+      "text": "By Asset ($502.4K)",
+      "box": {
+        "x": 41,
+        "y": 1724,
+        "width": 128,
+        "height": 24
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h2",
+      "selector": "h2",
+      "className": "font-semibold tracking-tight min-w-0 truncate text-base",
+      "text": "Crypto Breakdown ($297.2K)",
+      "box": {
+        "x": 41,
+        "y": 2180,
+        "width": 204,
+        "height": 24
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h2",
+      "selector": "h2",
+      "className": "font-semibold tracking-tight min-w-0 truncate text-base",
+      "text": "By Storage ($502.4K)",
+      "box": {
+        "x": 41,
+        "y": 2786,
+        "width": 146,
+        "height": 24
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h2",
+      "selector": "h2",
+      "className": "font-semibold tracking-tight min-w-0 truncate text-base",
+      "text": "Cash Breakdown ($58.3K)",
+      "box": {
+        "x": 41,
+        "y": 3592,
+        "width": 181,
+        "height": 24
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h2",
+      "selector": "h2",
+      "className": "flex items-center gap-2 font-medium mb-3",
+      "text": "Top Performers",
+      "box": {
+        "x": 16,
+        "y": 4077,
+        "width": 358,
+        "height": 24
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "500",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px 0px 12px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "h2",
+      "selector": "h2",
+      "className": "flex items-center gap-2 font-medium mb-3",
+      "text": "Worst Performers",
+      "box": {
+        "x": 16,
+        "y": 4429,
+        "width": 358,
+        "height": 24
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "500",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px 0px 12px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex h-11 w-11 items-center justify-center rounded-md lg:hidden",
+      "text": "",
+      "box": {
+        "x": -69,
+        "y": 10,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "-ml-3 flex h-11 w-11 items-center justify-center rounded-md touch-manipulation lg:hidden",
+      "text": "",
+      "box": {
+        "x": 0,
+        "y": 6,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px 0px 0px -12px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "USD",
+      "box": {
+        "x": 161,
+        "y": 6,
+        "width": 52,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgb(252, 252, 253)",
+        "borderColor": "rgb(218, 220, 231)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none foc",
+      "text": "",
+      "box": {
+        "x": 221,
+        "y": 6,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none foc",
+      "text": "",
+      "box": {
+        "x": 273,
+        "y": 6,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex items-center gap-1.5 px-2 py-1 rounded-md cursor-default hover:bg-muted/50 transition-colors",
+      "text": "DB OK",
+      "box": {
+        "x": 16,
+        "y": 104,
+        "width": 68,
+        "height": 24
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "4px 8px",
+        "margin": "0px",
+        "gap": "6px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-vi",
+      "text": "Nemo",
+      "box": {
+        "x": 16,
+        "y": 140,
+        "width": 358,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgb(252, 252, 253)",
+        "borderColor": "rgb(218, 220, 231)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "7D",
+      "box": {
+        "x": 38,
+        "y": 675,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "4px 0px 0px 4px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "1M",
+      "box": {
+        "x": 82,
+        "y": 675,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "3M",
+      "box": {
+        "x": 126,
+        "y": 675,
+        "width": 45,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "1Y",
+      "box": {
+        "x": 171,
+        "y": 675,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "YTD",
+      "box": {
+        "x": 215,
+        "y": 675,
+        "width": 51,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgb(236, 237, 244)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "Max",
+      "box": {
+        "x": 265,
+        "y": 675,
+        "width": 51,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px 4px 4px 0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "7D",
+      "box": {
+        "x": 38,
+        "y": 1151,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "4px 0px 0px 4px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "1M",
+      "box": {
+        "x": 82,
+        "y": 1151,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "3M",
+      "box": {
+        "x": 126,
+        "y": 1151,
+        "width": 45,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "1Y",
+      "box": {
+        "x": 171,
+        "y": 1151,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "YTD",
+      "box": {
+        "x": 215,
+        "y": 1151,
+        "width": 51,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgb(236, 237, 244)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "Max",
+      "box": {
+        "x": 265,
+        "y": 1151,
+        "width": 51,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px 4px 4px 0px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 f",
+      "text": "BTC+13.9%",
+      "box": {
+        "x": 41,
+        "y": 1206,
+        "width": 96,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "500",
+        "lineHeight": "16px",
+        "color": "oklch(0.42 0.15 58)",
+        "backgroundColor": "oklch(0.57 0.17 58 / 0.16)",
+        "borderColor": "oklch(0.57 0.17 58)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 f",
+      "text": "ETH+13.9%",
+      "box": {
+        "x": 145,
+        "y": 1206,
+        "width": 95,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "500",
+        "lineHeight": "16px",
+        "color": "oklch(0.44 0.15 275)",
+        "backgroundColor": "oklch(0.55 0.15 275 / 0.16)",
+        "borderColor": "oklch(0.55 0.15 275)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 f",
+      "text": "SPX+13.9%",
+      "box": {
+        "x": 247,
+        "y": 1206,
+        "width": 95,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "500",
+        "lineHeight": "16px",
+        "color": "oklch(0.39 0.12 190)",
+        "backgroundColor": "oklch(0.53 0.13 190 / 0.16)",
+        "borderColor": "oklch(0.53 0.13 190)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 f",
+      "text": "Add",
+      "box": {
+        "x": 41,
+        "y": 1258,
+        "width": 66,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "500",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgb(252, 252, 253)",
+        "borderColor": "rgb(218, 220, 231)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "0px 12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Crypto59%",
+      "box": {
+        "x": 41,
+        "y": 1966,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Equities29%",
+      "box": {
+        "x": 41,
+        "y": 2016,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Cash12%",
+      "box": {
+        "x": 41,
+        "y": 2066,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex items-center justify-between rounded-md border-input py-2 ring-offset-background placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-a",
+      "text": "Auto",
+      "box": {
+        "x": 261,
+        "y": 2214,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(100, 106, 135)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(218, 220, 231)",
+        "borderRadius": "4px",
+        "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "padding": "8px 4px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "BTC39%",
+      "box": {
+        "x": 41,
+        "y": 2422,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "ETH17%",
+      "box": {
+        "x": 41,
+        "y": 2472,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "ANGEL-AI17%",
+      "box": {
+        "x": 41,
+        "y": 2522,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "SOL13%",
+      "box": {
+        "x": 41,
+        "y": 2572,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "HYPE10%",
+      "box": {
+        "x": 41,
+        "y": 2622,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "PUNK-76144%",
+      "box": {
+        "x": 41,
+        "y": 2672,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Onchain Ledger25%",
+      "box": {
+        "x": 41,
+        "y": 3028,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Onchain18%",
+      "box": {
+        "x": 41,
+        "y": 3078,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "UOB Kay Hian12%",
+      "box": {
+        "x": 41,
+        "y": 3128,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Interactive Brokers10%",
+      "box": {
+        "x": 41,
+        "y": 3178,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Carta10%",
+      "box": {
+        "x": 41,
+        "y": 3228,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "CEX Crypto8%",
+      "box": {
+        "x": 41,
+        "y": 3278,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Tiger Brokers5%",
+      "box": {
+        "x": 41,
+        "y": 3328,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "CEX Cash5%",
+      "box": {
+        "x": 41,
+        "y": 3378,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "FSMOne4%",
+      "box": {
+        "x": 41,
+        "y": 3428,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Bank3%",
+      "box": {
+        "x": 41,
+        "y": 3478,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "USDC42%",
+      "box": {
+        "x": 41,
+        "y": 3834,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "SGD23%",
+      "box": {
+        "x": 41,
+        "y": 3884,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "USDT21%",
+      "box": {
+        "x": 41,
+        "y": 3934,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "button",
+      "selector": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "USD15%",
+      "box": {
+        "x": 41,
+        "y": 3984,
+        "width": 308,
+        "height": 44
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "flex min-w-0 items-center gap-2",
+      "text": "FolioBuddy",
+      "box": {
+        "x": -232,
+        "y": 16,
+        "width": 140,
+        "height": 32
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "8px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "flex items-center justify-between rounded-md border px-3 py-3 text-sm transition-colors touch-manipulation border-primary/30 bg-primary/10 text-primary font-sem",
+      "text": "DashboardD",
+      "box": {
+        "x": -240,
+        "y": 80,
+        "width": 223,
+        "height": 46
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "600",
+        "lineHeight": "20px",
+        "color": "rgb(38, 59, 242)",
+        "backgroundColor": "rgba(38, 59, 242, 0.1)",
+        "borderColor": "rgba(38, 59, 242, 0.3)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "12px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "PortfolioP",
+      "box": {
+        "x": -240,
+        "y": 130,
+        "width": 223,
+        "height": 46
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(100, 106, 135)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "12px",
+        "margin": "4px 0px 0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "TradesT",
+      "box": {
+        "x": -240,
+        "y": 180,
+        "width": 223,
+        "height": 46
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(100, 106, 135)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "12px",
+        "margin": "4px 0px 0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "HistoryH",
+      "box": {
+        "x": -240,
+        "y": 230,
+        "width": 223,
+        "height": 46
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(100, 106, 135)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "12px",
+        "margin": "4px 0px 0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "InvestorsI",
+      "box": {
+        "x": -240,
+        "y": 280,
+        "width": 223,
+        "height": 46
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(100, 106, 135)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "12px",
+        "margin": "4px 0px 0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "SettingsS",
+      "box": {
+        "x": -240,
+        "y": 330,
+        "width": 223,
+        "height": 46
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "14px",
+        "fontWeight": "500",
+        "lineHeight": "20px",
+        "color": "rgb(100, 106, 135)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "4px",
+        "boxShadow": "none",
+        "padding": "12px",
+        "margin": "4px 0px 0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "hover:text-primary transition-colors",
+      "text": "Exposure88.4%",
+      "box": {
+        "x": 16,
+        "y": 404,
+        "width": 171,
+        "height": 44
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "hover:text-primary transition-colors",
+      "text": "Positions14",
+      "box": {
+        "x": 203,
+        "y": 404,
+        "width": 171,
+        "height": 44
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "a",
+      "selector": "a",
+      "className": "hover:text-primary transition-colors",
+      "text": "Trades8",
+      "box": {
+        "x": 203,
+        "y": 464,
+        "width": 171,
+        "height": 44
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "div",
+      "selector": ".recharts-wrapper",
+      "className": "recharts-wrapper",
+      "text": "Jan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314K",
+      "box": {
+        "x": 41,
+        "y": 740,
+        "width": 308,
+        "height": 300
+      },
+      "style": {
+        "display": "block",
+        "position": "relative",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "div",
+      "selector": ".recharts-wrapper",
+      "className": "recharts-wrapper",
+      "text": "Jan 2026Mar 2026May 2026May 2026Jun 2026+0%+15%+30%+45%+60%+43.8%+13.9%+13.9%+13.9%",
+      "box": {
+        "x": 41,
+        "y": 1346,
+        "width": 308,
+        "height": 300
+      },
+      "style": {
+        "display": "block",
+        "position": "relative",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "div",
+      "selector": ".recharts-wrapper",
+      "className": "recharts-wrapper",
+      "text": "",
+      "box": {
+        "x": 125,
+        "y": 1810,
+        "width": 140,
+        "height": 140
+      },
+      "style": {
+        "display": "block",
+        "position": "relative",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "div",
+      "selector": ".recharts-wrapper",
+      "className": "recharts-wrapper",
+      "text": "",
+      "box": {
+        "x": 125,
+        "y": 2266,
+        "width": 140,
+        "height": 140
+      },
+      "style": {
+        "display": "block",
+        "position": "relative",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "div",
+      "selector": ".recharts-wrapper",
+      "className": "recharts-wrapper",
+      "text": "",
+      "box": {
+        "x": 125,
+        "y": 2872,
+        "width": 140,
+        "height": 140
+      },
+      "style": {
+        "display": "block",
+        "position": "relative",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "div",
+      "selector": ".recharts-wrapper",
+      "className": "recharts-wrapper",
+      "text": "",
+      "box": {
+        "x": 125,
+        "y": 3678,
+        "width": 140,
+        "height": 140
+      },
+      "style": {
+        "display": "block",
+        "position": "relative",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "div",
+      "selector": "[class*=\"grid\"]",
+      "className": "mt-4 sm:hidden grid grid-cols-2 gap-4",
+      "text": "YTD P&L$65,195+26.20%YTD Start$248,826Exposure88.4%Positions14vs 30D ago+13.47%Trades8",
+      "box": {
+        "x": 16,
+        "y": 328,
+        "width": 358,
+        "height": 180
+      },
+      "style": {
+        "display": "grid",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "16px 0px 0px",
+        "gap": "16px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "div",
+      "selector": "[class*=\"grid\"]",
+      "className": "grid gap-4 sm:grid-cols-2 lg:grid-cols-4",
+      "text": "By Asset ($502.4K)59%CryptoSelect a segment to filter the detailed breakdown. The category dropdown above the detailed chart provides the same filtering via keyboard.Crypto59%Equities29%Cash12%Crypto Breakdown ($297.2K)A",
+      "box": {
+        "x": 16,
+        "y": 1695,
+        "width": 358,
+        "height": 2358
+      },
+      "style": {
+        "display": "grid",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "16px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    },
+    {
+      "tag": "div",
+      "selector": "[class*=\"grid\"]",
+      "className": "grid gap-4 sm:gap-6 md:grid-cols-2",
+      "text": "Top Performers1BTCBitcoin$25,631+55.10%2ETHEthereum$10,841+51.50%3ANGEL-AIAI Infrastructure SAFE$9,375+42.90%4SOLSolana$6,325+34.90%5UT-GI-SGDGlobal Income Fund SGD$4,750+14.80%Worst Performers1PUNK-7614CryptoPunk 7614-$",
+      "box": {
+        "x": 16,
+        "y": 4077,
+        "width": 358,
+        "height": 688
+      },
+      "style": {
+        "display": "grid",
+        "position": "static",
+        "fontFamily": "\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px",
+        "color": "rgb(15, 17, 36)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderColor": "rgb(224, 226, 235)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "24px 0px 0px",
+        "gap": "16px",
+        "opacity": "1",
+        "transform": "none"
+      }
+    }
+  ],
+  "motions": [
+    {
+      "tag": "aside",
+      "className": "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-card border-r transition-[transform,width] duration-200 ease-out lg:translate-x-0 lg:w-64 -translate-x-full",
+      "text": "FolioBuddyDashboardDPortfolioPTradesTHistoryHInvestorsISettingsS",
+      "box": {
+        "x": -256,
+        "y": 0,
+        "width": 256,
+        "height": 844
+      },
+      "animationName": "none",
+      "animationDuration": "0.2s",
+      "animationTimingFunction": "cubic-bezier(0, 0, 0.2, 1)",
+      "transitionProperty": "transform, width",
+      "transitionDuration": "0.2s",
+      "transitionTimingFunction": "cubic-bezier(0, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "flex items-center justify-between rounded-md border px-3 py-3 text-sm transition-colors touch-manipulation border-primary/30 bg-primary/10 text-primary font-sem",
+      "text": "DashboardD",
+      "box": {
+        "x": -240,
+        "y": 80,
+        "width": 223,
+        "height": 46
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "PortfolioP",
+      "box": {
+        "x": -240,
+        "y": 130,
+        "width": 223,
+        "height": 46
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "TradesT",
+      "box": {
+        "x": -240,
+        "y": 180,
+        "width": 223,
+        "height": 46
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "HistoryH",
+      "box": {
+        "x": -240,
+        "y": 230,
+        "width": 223,
+        "height": 46
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "InvestorsI",
+      "box": {
+        "x": -240,
+        "y": 280,
+        "width": 223,
+        "height": 46
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation text-muted-foreground hover:bg-mut",
+      "text": "SettingsS",
+      "box": {
+        "x": -240,
+        "y": 330,
+        "width": 223,
+        "height": 46
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "transition-[padding] duration-200 ease-out lg:pl-64",
+      "text": "USDDev ModeConnection status: Dev ModeDMDashboardDB OKNemoNet Worth (Nemo)$314,021+26.20%YTD P&L$65,195+26.20%YTD Start$",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 4825
+      },
+      "animationName": "none",
+      "animationDuration": "0.2s",
+      "animationTimingFunction": "cubic-bezier(0, 0, 0.2, 1)",
+      "transitionProperty": "padding",
+      "transitionDuration": "0.2s",
+      "transitionTimingFunction": "cubic-bezier(0, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:r",
+      "text": "",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "USD",
+      "box": {
+        "x": 161,
+        "y": 6,
+        "width": 52,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none foc",
+      "text": "",
+      "box": {
+        "x": 221,
+        "y": 6,
+        "width": 44,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex items-center gap-1.5 px-2 py-1 rounded-md cursor-default hover:bg-muted/50 transition-colors",
+      "text": "Dev Mode",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:r",
+      "text": "",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:r",
+      "text": "",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none foc",
+      "text": "",
+      "box": {
+        "x": 273,
+        "y": 6,
+        "width": 44,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex items-center gap-1.5 px-2 py-1 rounded-md cursor-default hover:bg-muted/50 transition-colors",
+      "text": "DB OK",
+      "box": {
+        "x": 16,
+        "y": 104,
+        "width": 68,
+        "height": 24
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "span",
+      "className": "animate-ping absolute inline-flex h-full w-full rounded-full bg-profit/60 opacity-75",
+      "text": "",
+      "box": {
+        "x": 23,
+        "y": 111,
+        "width": 9,
+        "height": 9
+      },
+      "animationName": "ping",
+      "animationDuration": "1s",
+      "animationTimingFunction": "cubic-bezier(0, 0, 0.2, 1)",
+      "transitionProperty": "all",
+      "transitionDuration": "0s",
+      "transitionTimingFunction": "ease"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-vi",
+      "text": "Nemo",
+      "box": {
+        "x": 16,
+        "y": 140,
+        "width": 358,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "px-4 hover:text-primary transition-colors",
+      "text": "Exposure88.4%",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "px-4 hover:text-primary transition-colors",
+      "text": "Positions14",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "pl-4 hover:text-primary transition-colors",
+      "text": "Trades8",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "hover:text-primary transition-colors",
+      "text": "Exposure88.4%",
+      "box": {
+        "x": 16,
+        "y": 404,
+        "width": 171,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "hover:text-primary transition-colors",
+      "text": "Positions14",
+      "box": {
+        "x": 203,
+        "y": 404,
+        "width": 171,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "a",
+      "className": "hover:text-primary transition-colors",
+      "text": "Trades8",
+      "box": {
+        "x": 203,
+        "y": 464,
+        "width": 171,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "7D",
+      "box": {
+        "x": 38,
+        "y": 675,
+        "width": 44,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0.2s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.2s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "1M",
+      "box": {
+        "x": 82,
+        "y": 675,
+        "width": 44,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0.2s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.2s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "3M",
+      "box": {
+        "x": 126,
+        "y": 675,
+        "width": 45,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0.2s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.2s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "1Y",
+      "box": {
+        "x": 171,
+        "y": 675,
+        "width": 44,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0.2s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.2s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "YTD",
+      "box": {
+        "x": 215,
+        "y": 675,
+        "width": 51,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0.2s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.2s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visib",
+      "text": "Max",
+      "box": {
+        "x": 265,
+        "y": 675,
+        "width": 51,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0.2s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.2s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "relative animate-chart-period-change",
+      "text": "Jan 2026Mar 2026May 2026May 2026Jun 2026$204.1K$234.1K$264.1K$294.1K$324K$314K",
+      "box": {
+        "x": 41,
+        "y": 740,
+        "width": 308,
+        "height": 300
+      },
+      "animationName": "chart-period-change",
+      "animationDuration": "0.22s",
+      "animationTimingFunction": "cubic-bezier(0.16, 1, 0.3, 1)",
+      "transitionProperty": "all",
+      "transitionDuration": "0s",
+      "transitionTimingFunction": "ease"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "7D",
+      "box": {
+        "x": 38,
+        "y": 1151,
+        "width": 44,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "1M",
+      "box": {
+        "x": 82,
+        "y": 1151,
+        "width": 44,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "3M",
+      "box": {
+        "x": 126,
+        "y": 1151,
+        "width": 45,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "1Y",
+      "box": {
+        "x": 171,
+        "y": 1151,
+        "width": 44,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "YTD",
+      "box": {
+        "x": 215,
+        "y": 1151,
+        "width": 51,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:",
+      "text": "Max",
+      "box": {
+        "x": 265,
+        "y": 1151,
+        "width": 51,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 f",
+      "text": "BTC+13.9%",
+      "box": {
+        "x": 41,
+        "y": 1206,
+        "width": 96,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 f",
+      "text": "ETH+13.9%",
+      "box": {
+        "x": 145,
+        "y": 1206,
+        "width": 95,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 f",
+      "text": "SPX+13.9%",
+      "box": {
+        "x": 247,
+        "y": 1206,
+        "width": 95,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 f",
+      "text": "Add",
+      "box": {
+        "x": 41,
+        "y": 1258,
+        "width": 66,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Crypto59%",
+      "box": {
+        "x": 41,
+        "y": 1966,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 1983,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Equities29%",
+      "box": {
+        "x": 41,
+        "y": 2016,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 2033,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Cash12%",
+      "box": {
+        "x": 41,
+        "y": 2066,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 2083,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "BTC39%",
+      "box": {
+        "x": 41,
+        "y": 2422,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 2439,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "ETH17%",
+      "box": {
+        "x": 41,
+        "y": 2472,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 2489,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "ANGEL-AI17%",
+      "box": {
+        "x": 41,
+        "y": 2522,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 2539,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "SOL13%",
+      "box": {
+        "x": 41,
+        "y": 2572,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 2589,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "HYPE10%",
+      "box": {
+        "x": 41,
+        "y": 2622,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 2639,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "PUNK-76144%",
+      "box": {
+        "x": 41,
+        "y": 2672,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 2689,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Onchain Ledger25%",
+      "box": {
+        "x": 41,
+        "y": 3028,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3045,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Onchain18%",
+      "box": {
+        "x": 41,
+        "y": 3078,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3095,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "UOB Kay Hian12%",
+      "box": {
+        "x": 41,
+        "y": 3128,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3145,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Interactive Brokers10%",
+      "box": {
+        "x": 41,
+        "y": 3178,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3195,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Carta10%",
+      "box": {
+        "x": 41,
+        "y": 3228,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3245,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "CEX Crypto8%",
+      "box": {
+        "x": 41,
+        "y": 3278,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3295,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Tiger Brokers5%",
+      "box": {
+        "x": 41,
+        "y": 3328,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3345,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "CEX Cash5%",
+      "box": {
+        "x": 41,
+        "y": 3378,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3395,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "FSMOne4%",
+      "box": {
+        "x": 41,
+        "y": 3428,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3445,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "Bank3%",
+      "box": {
+        "x": 41,
+        "y": 3478,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3495,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "USDC42%",
+      "box": {
+        "x": 41,
+        "y": 3834,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3851,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "SGD23%",
+      "box": {
+        "x": 41,
+        "y": 3884,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3901,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "USDT21%",
+      "box": {
+        "x": 41,
+        "y": 3934,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 3951,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "button",
+      "className": "flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ",
+      "text": "USD15%",
+      "box": {
+        "x": 41,
+        "y": 3984,
+        "width": 308,
+        "height": 44
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    {
+      "tag": "div",
+      "className": "w-2.5 h-2.5 rounded-full flex-shrink-0 transition-opacity ",
+      "text": "",
+      "box": {
+        "x": 41,
+        "y": 4001,
+        "width": 10,
+        "height": 10
+      },
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transitionProperty": "opacity",
+      "transitionDuration": "0.15s",
+      "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)"
+    }
+  ],
+  "palette": [
+    {
+      "color": "rgb(224, 226, 235)",
+      "count": 796
+    },
+    {
+      "color": "rgb(15, 17, 36)",
+      "count": 528
+    },
+    {
+      "color": "rgb(100, 106, 135)",
+      "count": 185
+    },
+    {
+      "color": "rgb(11, 127, 88)",
+      "count": 36
+    },
+    {
+      "color": "rgba(100, 106, 135, 0.7)",
+      "count": 24
+    },
+    {
+      "color": "rgb(0, 0, 0)",
+      "count": 13
+    },
+    {
+      "color": "rgb(38, 59, 242)",
+      "count": 10
+    },
+    {
+      "color": "rgb(245, 246, 249)",
+      "count": 7
+    },
+    {
+      "color": "rgb(252, 252, 253)",
+      "count": 6
+    },
+    {
+      "color": "rgb(237, 238, 243)",
+      "count": 6
+    },
+    {
+      "color": "rgb(175, 29, 29)",
+      "count": 5
+    },
+    {
+      "color": "rgb(218, 220, 231)",
+      "count": 4
+    },
+    {
+      "color": "rgb(249, 249, 251)",
+      "count": 3
+    },
+    {
+      "color": "oklch(0.48 0.12 75)",
+      "count": 3
+    },
+    {
+      "color": "rgb(236, 237, 244)",
+      "count": 2
+    },
+    {
+      "color": "oklch(0.42 0.15 58)",
+      "count": 2
+    },
+    {
+      "color": "oklch(0.44 0.15 275)",
+      "count": 2
+    },
+    {
+      "color": "oklch(0.39 0.12 190)",
+      "count": 2
+    },
+    {
+      "color": "oklch(0.51 0.05 260)",
+      "count": 2
+    },
+    {
+      "color": "oklch(0.46 0.18 357)",
+      "count": 2
+    },
+    {
+      "color": "oklch(0.49 0.16 257)",
+      "count": 2
+    },
+    {
+      "color": "oklch(0.51 0.14 164)",
+      "count": 2
+    },
+    {
+      "color": "oklch(0.53 0.14 154)",
+      "count": 2
+    },
+    {
+      "color": "oklch(0.47 0.18 357)",
+      "count": 2
+    },
+    {
+      "color": "rgba(38, 59, 242, 0.1)",
+      "count": 1
+    },
+    {
+      "color": "rgba(38, 59, 242, 0.3)",
+      "count": 1
+    },
+    {
+      "color": "rgba(38, 59, 242, 0.15)",
+      "count": 1
+    },
+    {
+      "color": "rgb(60, 131, 246)",
+      "count": 1
+    },
+    {
+      "color": "rgba(13, 150, 104, 0.6)",
+      "count": 1
+    },
+    {
+      "color": "rgba(13, 150, 104, 0.12)",
+      "count": 1
+    },
+    {
+      "color": "oklch(0.57 0.17 58 / 0.16)",
+      "count": 1
+    },
+    {
+      "color": "oklch(0.57 0.17 58)",
+      "count": 1
+    }
+  ]
+}

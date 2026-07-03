@@ -1,0 +1,93 @@
+{
+  "name": "War Loops - FolioBuddy Dashboard Mirror",
+  "source": {
+    "authorizedTarget": "Owned local FolioBuddy dev demo route",
+    "url": "http://127.0.0.1:4002/dev/demo",
+    "captureBrowser": "Playwright Chromium using installed Google Chrome channel",
+    "inAppBrowserBlocker": "The in-app browser refused localhost, 127.0.0.1, and the exposed Vite network URLs for port 4002.",
+    "capturedAt": "2026-07-02T05:55:25.590Z"
+  },
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "sourceDocument": {
+        "width": 1440,
+        "height": 2201
+      },
+      "sourceRender": "renders/source-desktop.png"
+    },
+    {
+      "name": "tablet",
+      "width": 834,
+      "height": 1112,
+      "sourceDocument": {
+        "width": 834,
+        "height": 2409
+      },
+      "sourceRender": "renders/source-tablet.png"
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "sourceDocument": {
+        "width": 390,
+        "height": 4825
+      },
+      "sourceRender": "renders/source-mobile.png"
+    }
+  ],
+  "layout": {
+    "shell": "Fixed top bar. Desktop adds a 256px fixed left rail; tablet and mobile collapse to a top hamburger.",
+    "desktop": "Main content starts at x=256 with 24px gutters, borderless net-worth hero, two full-width chart cards, four allocation cards in one row, performers in two columns.",
+    "tablet": "No side rail. Top bar spans viewport. Main content uses 16px gutters, stat row remains horizontal, allocation cards are two columns.",
+    "mobile": "390px viewport. Top controls compress, investor selector becomes full-width below the title, stats wrap into two columns, every card stacks vertically."
+  },
+  "styles": {
+    "font": "Plus Jakarta Sans with system fallback; tabular figures for numeric values.",
+    "background": "rgb(252, 252, 253)",
+    "card": "rgb(245, 246, 249)",
+    "border": "rgb(224, 226, 235)",
+    "foreground": "rgb(15, 17, 36)",
+    "muted": "rgb(100, 106, 135)",
+    "primary": "rgb(38, 59, 242)",
+    "profit": "rgb(11, 127, 88)",
+    "loss": "rgb(175, 29, 29)",
+    "radius": "6px cards and controls, matching shadcn rounded-md scale"
+  },
+  "content": {
+    "pageTitle": "Dashboard",
+    "netWorth": "$314,021",
+    "netWorthChange": "+26.20%",
+    "stats": [
+      "YTD P&L $65,195 +26.20%",
+      "YTD Start $248,826",
+      "vs 30D ago +13.47%",
+      "Exposure 88.4%",
+      "Positions 14",
+      "Trades 8"
+    ],
+    "charts": [
+      "Portfolio $ Value",
+      "Portfolio % vs Benchmarks",
+      "By Asset",
+      "Crypto Breakdown",
+      "By Storage",
+      "Cash Breakdown"
+    ],
+    "lists": ["Top Performers", "Worst Performers"]
+  },
+  "motion": {
+    "sourceObserved": "Source exposes common transition classes and a page-entry fade-up. Chart and number data are stable after load.",
+    "pencil": "Static mirror disables non-essential motion.",
+    "forge": "Animated version draws chart paths, fades chart areas, animates donut stroke offsets, lifts cards on entry, and pulses Dev Mode. Reduced-motion media query disables these effects."
+  },
+  "gates": {
+    "visualScoreMinimum": 78,
+    "layoutScoreMinimum": 85,
+    "contentScoreMinimum": 95,
+    "motion": "Pencil should have no active CSS animations; Forge should expose active animations and settle to the Pencil layout."
+  }
+}

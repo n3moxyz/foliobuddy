@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>War Loops Pencil - FolioBuddy</title>
+    <link rel="stylesheet" href="../war-loops.css" />
+  </head>
+  <body class="pencil">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path
+                d="M4 12.5 7.5 9l2.4 2.2L14 5.5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M11 5.5h3v3"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+          <span>FolioBuddy</span>
+        </div>
+        <nav class="nav">
+          <div class="nav-item active">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M4 4h4v4H4V4Zm8 0h4v4h-4V4ZM4 12h4v4H4v-4Zm8 0h4v4h-4v-4Z"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+            </svg>
+            <span>Dashboard</span>
+            <span class="hotkey">D</span>
+          </div>
+          <div class="nav-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M4 7h12v9H4V7Zm2-3h8l2 3H4l2-3Z"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>Portfolio</span>
+            <span class="hotkey">P</span>
+          </div>
+          <div class="nav-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M3 13l4-4 3 3 6-7"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>Trades</span>
+            <span class="hotkey">T</span>
+          </div>
+          <div class="nav-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M10 4a6 6 0 1 1-5.2 3M10 7v4l3 2"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span>History</span>
+            <span class="hotkey">H</span>
+          </div>
+          <div class="nav-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M7 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm6 2a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM2.5 17a4.5 4.5 0 0 1 9 0M11.5 16a3.5 3.5 0 0 1 6 0"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span>Investors</span>
+            <span class="hotkey">I</span>
+          </div>
+          <div class="nav-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M10 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0-4v2m0 10v2m7-7h-2M5 10H3m11.9-4.9-1.4 1.4M6.5 13.5l-1.4 1.4m9.8 0-1.4-1.4M6.5 6.5 5.1 5.1"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span>Settings</span>
+            <span class="hotkey">S</span>
+          </div>
+        </nav>
+      </aside>
+
+      <header class="topbar">
+        <div class="menu-left">
+          <button class="icon-button mobile-menu" aria-label="Menu">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path
+                d="M3 5h12M3 9h12M3 13h12"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+          <button class="icon-button only-desktop" aria-label="Collapse sidebar">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M5 4h8v10H5V4Zm3 0v10" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+          </button>
+        </div>
+        <div class="top-actions">
+          <button class="currency">USD</button>
+          <button class="icon-button" aria-label="Theme">
+            <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+              <path
+                d="M8.5 5.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0-3v1.4m0 9.2v1.4m6-6h-1.4M3.9 8.5H2.5m10.2-4.2-1 1M5.3 11.7l-1 1m8.4 0-1-1M5.3 5.3l-1-1"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+          <span class="status"><span class="status-dot"></span>Dev Mode</span>
+          <span class="divider"></span>
+          <button class="icon-button hide-mobile" aria-label="Refresh">
+            <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+              <path
+                d="M13 5.5A5 5 0 1 0 14 9m-1-3.5V2.8h2.8"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <button class="icon-button" aria-label="Download">
+            <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+              <path
+                d="M8.5 3v7m0 0 3-3m-3 3-3-3M4 13.5h9"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <span class="divider"></span>
+          <span class="avatar">DM</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <div class="page-head">
+          <div>
+            <h1>Dashboard</h1>
+            <div class="db">DB OK</div>
+          </div>
+          <button class="investor">
+            <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+              <path
+                d="M6.5 8.3a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm-4 6.2a4 4 0 0 1 8 0M12.2 6.2a2 2 0 1 1 0 4M12.8 11.5a3.2 3.2 0 0 1 1.7 3"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span>Nemo</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path
+                d="m3 4.5 3 3 3-3"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <section class="hero" aria-label="Net Worth">
+          <p class="hero-label">Net Worth (Nemo)</p>
+          <div class="net-row">
+            <div class="net-value">$314,021</div>
+            <div class="net-change gain">+26.20%</div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-label">YTD P&amp;L <span class="help">?</span></div>
+              <div class="stat-value gain">$65,195 <span class="stat-extra">+26.20%</span></div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">YTD Start <span class="help">?</span></div>
+              <div class="stat-value">$248,826</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">vs 30D ago <span class="help">?</span></div>
+              <div class="stat-value gain">+13.47%</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Exposure <span class="help">?</span></div>
+              <div class="stat-value">88.4%</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Positions <span class="help">?</span></div>
+              <div class="stat-value">14</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Trades <span class="help">?</span></div>
+              <div class="stat-value">8</div>
+            </div>
+          </div>
+          <div class="sgd">SGD Value: S$423,017</div>
+        </section>
+
+        <div class="stack">
+          <section class="panel chart-card">
+            <div class="chart-head">
+              <div class="title-row">
+                <h2 class="card-title">Portfolio $ Value</h2>
+                <span class="delta">+$99,896 <small>(+46.65%)</small></span>
+              </div>
+              <div class="segments">
+                <span>7D</span><span>1M</span><span>3M</span><span>1Y</span
+                ><span class="selected">YTD</span><span>Max</span>
+              </div>
+            </div>
+            <svg
+              class="chart-svg"
+              viewBox="0 0 980 300"
+              role="img"
+              aria-label="Portfolio value chart"
+            >
+              <defs>
+                <linearGradient id="areaFadeA" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stop-color="#72819c" stop-opacity="0.28" />
+                  <stop offset="1" stop-color="#72819c" stop-opacity="0.02" />
+                </linearGradient>
+              </defs>
+              <path class="gridline" d="M70 248H940" />
+              <text class="axis" x="18" y="252">$204.1K</text>
+              <text class="axis" x="18" y="195">$234.1K</text>
+              <text class="axis" x="18" y="139">$264.1K</text>
+              <text class="axis" x="18" y="82">$294.1K</text>
+              <text class="axis" x="18" y="26">$324K</text>
+              <text class="axis" x="72" y="286">Jan 2026</text>
+              <text class="axis" x="292" y="286">Mar 2026</text>
+              <text class="axis" x="517" y="286">May 2026</text>
+              <text class="axis" x="704" y="286">May 2026</text>
+              <text class="axis" x="858" y="286">Jun 2026</text>
+              <path
+                class="portfolio-area"
+                fill="url(#areaFadeA)"
+                d="M72 230 C150 190 206 186 260 166 C340 133 371 76 450 104 C504 121 530 130 575 86 C625 39 690 63 746 48 C806 34 866 22 930 13 L930 248 L72 248 Z"
+              />
+              <path
+                class="portfolio-line"
+                d="M72 230 C150 190 206 186 260 166 C340 133 371 76 450 104 C504 121 530 130 575 86 C625 39 690 63 746 48 C806 34 866 22 930 13"
+              />
+              <circle class="dot" cx="930" cy="13" r="3.5" />
+              <text class="axis" x="940" y="18">$314K</text>
+            </svg>
+          </section>
+
+          <section class="panel chart-card">
+            <div class="chart-head">
+              <div>
+                <div class="title-row">
+                  <h2 class="card-title">Portfolio % vs Benchmarks</h2>
+                </div>
+                <div class="chips">
+                  <span class="chip chip-btc">BTC +13.9%</span
+                  ><span class="chip chip-eth">ETH +13.9%</span
+                  ><span class="chip chip-spx">SPX +13.9%</span
+                  ><span class="chip chip-add">+ Add</span>
+                </div>
+              </div>
+              <div>
+                <div class="segments">
+                  <span>7D</span><span>1M</span><span>3M</span><span>1Y</span
+                  ><span class="selected">YTD</span><span>Max</span>
+                </div>
+                <div class="bench-meta" style="margin-top: 16px">
+                  <span class="legend-dot"></span>Portfolio <span class="gain">+43.8%</span>
+                </div>
+              </div>
+            </div>
+            <svg
+              class="chart-svg"
+              viewBox="0 0 980 300"
+              role="img"
+              aria-label="Portfolio benchmark chart"
+            >
+              <path class="gridline" d="M70 248H940" />
+              <text class="axis" x="22" y="252">+0%</text>
+              <text class="axis" x="22" y="196">+15%</text>
+              <text class="axis" x="22" y="140">+30%</text>
+              <text class="axis" x="22" y="84">+45%</text>
+              <text class="axis" x="22" y="28">+60%</text>
+              <text class="axis" x="72" y="286">Jan 2026</text>
+              <text class="axis" x="292" y="286">Mar 2026</text>
+              <text class="axis" x="517" y="286">May 2026</text>
+              <text class="axis" x="704" y="286">May 2026</text>
+              <text class="axis" x="858" y="286">Jun 2026</text>
+              <path
+                class="portfolio-line"
+                d="M72 248 C150 205 210 200 265 174 C333 128 382 92 455 116 C505 133 548 135 590 94 C644 42 702 69 758 54 C815 41 875 32 930 21"
+              />
+              <path
+                class="bench-line"
+                d="M72 248 C210 232 330 218 450 200 C584 180 710 163 930 142"
+              />
+              <circle class="dot" cx="930" cy="21" r="3.5" />
+              <circle cx="930" cy="142" r="3.5" fill="var(--teal)" />
+              <text class="axis" x="940" y="26">+43.8%</text>
+              <text class="axis" x="940" y="147">+13.9%</text>
+            </svg>
+          </section>
+
+          <section class="donut-grid" aria-label="Allocations">
+            <article class="panel donut-card">
+              <h2 class="card-title">By Asset <span class="title-muted">($502.4K)</span></h2>
+              <div class="donut-layout">
+                <div class="donut-wrap">
+                  <svg class="donut" viewBox="0 0 150 150" aria-hidden="true">
+                    <circle class="track" cx="75" cy="75" r="38" />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 140.87 97.89; --offset: 0; stroke: var(--magenta)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 69.24 169.52; --offset: -140.87; stroke: var(--blue)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 28.65 210.11; --offset: -210.11; stroke: var(--green)"
+                    />
+                  </svg>
+                  <div class="center-label"><strong>59%</strong><span>Crypto</span></div>
+                </div>
+                <div class="legend">
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--magenta)"></i><span>Crypto</span
+                    ><span>59%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--blue)"></i><span>Equities</span
+                    ><span>29%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--green)"></i><span>Cash</span
+                    ><span>12%</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel donut-card">
+              <h2 class="card-title">
+                Crypto Breakdown <span class="title-muted">($297.2K)</span>
+              </h2>
+              <div class="select-note">Auto</div>
+              <div class="donut-layout">
+                <div class="donut-wrap">
+                  <svg class="donut" viewBox="0 0 150 150" aria-hidden="true">
+                    <circle class="track" cx="75" cy="75" r="38" />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 93.12 145.64; --offset: 0; stroke: var(--magenta)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 40.59 198.17; --offset: -93.12; stroke: var(--blue)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 40.59 198.17; --offset: -133.71; stroke: var(--green)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 31.04 207.72; --offset: -174.3; stroke: var(--purple)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 23.88 214.88; --offset: -205.34; stroke: var(--teal)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 9.55 229.21; --offset: -229.22; stroke: var(--gold)"
+                    />
+                  </svg>
+                  <div class="center-label"><strong>39%</strong><span>BTC</span></div>
+                </div>
+                <div class="legend">
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--magenta)"></i><span>BTC</span
+                    ><span>39%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--blue)"></i><span>ETH</span
+                    ><span>17%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--green)"></i><span>ANGEL-AI</span
+                    ><span>17%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--purple)"></i><span>SOL</span
+                    ><span>13%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--teal)"></i><span>HYPE</span
+                    ><span>10%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--gold)"></i><span>PUNK-7614</span
+                    ><span>4%</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel donut-card">
+              <h2 class="card-title">By Storage <span class="title-muted">($502.4K)</span></h2>
+              <div class="donut-layout">
+                <div class="donut-wrap">
+                  <svg class="donut" viewBox="0 0 150 150" aria-hidden="true">
+                    <circle class="track" cx="75" cy="75" r="38" />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 59.69 179.07; --offset: 0; stroke: var(--green)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 42.98 195.78; --offset: -59.69; stroke: #087da0"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 28.65 210.11; --offset: -102.67; stroke: var(--purple)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 23.88 214.88; --offset: -131.32; stroke: var(--magenta)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 23.88 214.88; --offset: -155.2; stroke: var(--slate)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 19.1 219.66; --offset: -179.08; stroke: var(--gold)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 11.94 226.82; --offset: -198.18; stroke: #516072"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 11.94 226.82; --offset: -210.12; stroke: var(--red)"
+                    />
+                  </svg>
+                  <div class="center-label"><strong>25%</strong><span>Onchain...</span></div>
+                </div>
+                <div class="legend">
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--green)"></i
+                    ><span>Onchain Ledger</span><span>25%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: #087da0"></i><span>Onchain</span
+                    ><span>18%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--purple)"></i><span>UOB Kay Hian</span
+                    ><span>12%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--magenta)"></i
+                    ><span>Interactive Brokers</span><span>10%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--slate)"></i><span>Carta</span
+                    ><span>10%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--gold)"></i><span>CEX Crypto</span
+                    ><span>8%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: #516072"></i><span>Tiger Brokers</span
+                    ><span>5%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--red)"></i><span>CEX Cash</span
+                    ><span>5%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: #5656c7"></i><span>FSMOne</span
+                    ><span>4%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: #527b08"></i><span>Bank</span
+                    ><span>3%</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel donut-card">
+              <h2 class="card-title">Cash Breakdown <span class="title-muted">($58.3K)</span></h2>
+              <div class="donut-layout">
+                <div class="donut-wrap">
+                  <svg class="donut" viewBox="0 0 150 150" aria-hidden="true">
+                    <circle class="track" cx="75" cy="75" r="38" />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 100.28 138.48; --offset: 0; stroke: #087da0"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 54.91 183.85; --offset: -100.28; stroke: var(--green)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 50.14 188.62; --offset: -155.19; stroke: var(--magenta)"
+                    />
+                    <circle
+                      class="seg"
+                      cx="75"
+                      cy="75"
+                      r="38"
+                      style="--dash: 35.81 202.95; --offset: -205.33; stroke: var(--gold)"
+                    />
+                  </svg>
+                  <div class="center-label"><strong>42%</strong><span>USDC</span></div>
+                </div>
+                <div class="legend">
+                  <div class="legend-row">
+                    <i class="swatch" style="background: #087da0"></i><span>USDC</span
+                    ><span>42%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--green)"></i><span>SGD</span
+                    ><span>23%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--magenta)"></i><span>USDT</span
+                    ><span>21%</span>
+                  </div>
+                  <div class="legend-row">
+                    <i class="swatch" style="background: var(--gold)"></i><span>USD</span
+                    ><span>15%</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="performers">
+            <article>
+              <h2 class="list-title"><span class="gain">~^</span> Top Performers</h2>
+              <div class="rows">
+                <div class="row">
+                  <span class="rank">1</span>
+                  <div>
+                    <div class="symbol">BTC</div>
+                    <div class="name">Bitcoin</div>
+                  </div>
+                  <div class="amount gain">
+                    $25,631
+                    <div class="pct">+55.10%</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="rank">2</span>
+                  <div>
+                    <div class="symbol">ETH</div>
+                    <div class="name">Ethereum</div>
+                  </div>
+                  <div class="amount gain">
+                    $10,841
+                    <div class="pct">+51.50%</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="rank">3</span>
+                  <div>
+                    <div class="symbol">ANGEL-AI</div>
+                    <div class="name">AI Infrastructure SAFE</div>
+                  </div>
+                  <div class="amount gain">
+                    $9,375
+                    <div class="pct">+42.90%</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="rank">4</span>
+                  <div>
+                    <div class="symbol">SOL</div>
+                    <div class="name">Solana</div>
+                  </div>
+                  <div class="amount gain">
+                    $6,325
+                    <div class="pct">+34.90%</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="rank">5</span>
+                  <div>
+                    <div class="symbol">UT-GI-SGD</div>
+                    <div class="name">Global Income Fund SGD</div>
+                  </div>
+                  <div class="amount gain">
+                    $4,750
+                    <div class="pct">+14.80%</div>
+                  </div>
+                </div>
+              </div>
+            </article>
+            <article>
+              <h2 class="list-title"><span class="loss">~v</span> Worst Performers</h2>
+              <div class="rows">
+                <div class="row">
+                  <span class="rank">1</span>
+                  <div>
+                    <div class="symbol">PUNK-7614</div>
+                    <div class="name">CryptoPunk 7614</div>
+                  </div>
+                  <div class="amount loss">
+                    -$4,063
+                    <div class="pct">-35.10%</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="rank">2</span>
+                  <div>
+                    <div class="symbol">USDC</div>
+                    <div class="name">USD Coin</div>
+                  </div>
+                  <div class="amount gain">
+                    $0
+                    <div class="pct">+0.00%</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="rank">3</span>
+                  <div>
+                    <div class="symbol">USDT</div>
+                    <div class="name">Tether</div>
+                  </div>
+                  <div class="amount gain">
+                    $0
+                    <div class="pct">+0.00%</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="rank">4</span>
+                  <div>
+                    <div class="symbol">USD</div>
+                    <div class="name">Cash USD</div>
+                  </div>
+                  <div class="amount gain">
+                    $0
+                    <div class="pct">+0.00%</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="rank">5</span>
+                  <div>
+                    <div class="symbol">SGD</div>
+                    <div class="name">Cash SGD</div>
+                  </div>
+                  <div class="amount gain">
+                    $56
+                    <div class="pct">+0.70%</div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+        </div>
+        <p class="updated">Last updated: 2 Jul 2026, 13:55</p>
+      </main>
+    </div>
+  </body>
+</html>
