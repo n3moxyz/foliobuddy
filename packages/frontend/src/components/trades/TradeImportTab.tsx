@@ -102,6 +102,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
       </div>
 
       <Textarea
+        aria-label="Trade JSON to import"
         placeholder='[{"asset": {"symbol": "BTC", "name": "Bitcoin", "category": "LIQUID_CRYPTO"}, "direction": "LONG", "entryPrice": 50000, "quantity": 0.5, "entryDate": "2026-01-15"}, ...]'
         value={jsonInput}
         onChange={(e) => {

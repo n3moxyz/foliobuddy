@@ -53,6 +53,8 @@ export function PerformersCard({
         {title}
       </h2>
       <div className="divide-y">
+        {/* Index suffix is required: the same asset can appear twice (multiple
+            positions per asset) — see PerformersCard.test duplicate-keys case. */}
         {performers.map((performer, index) => (
           <div
             key={`${performer.assetId}-${index}`}

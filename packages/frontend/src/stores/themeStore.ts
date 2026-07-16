@@ -1,7 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'system';
+export type ResolvedTheme = 'light' | 'dark';
+
+/** Resolve 'system' to the OS preference; concrete themes pass through. */
+export function resolveTheme(theme: Theme): ResolvedTheme {
+  if (theme === 'system') {
+    return typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+  }
+  return theme;
+}
 
 interface ThemeState {
   theme: Theme;
@@ -11,7 +23,7 @@ interface ThemeState {
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
-  if (theme === 'dark') {
+  if (resolveTheme(theme) === 'dark') {
     root.classList.add('dark');
   } else {
     root.classList.remove('dark');
@@ -27,7 +39,8 @@ export const useThemeStore = create<ThemeState>()(
         applyTheme(theme);
       },
       cycleTheme: () => {
-        const next: Theme = get().theme === 'light' ? 'dark' : 'light';
+        // From 'system', flip relative to the currently resolved appearance.
+        const next: Theme = resolveTheme(get().theme) === 'light' ? 'dark' : 'light';
         set({ theme: next });
         applyTheme(next);
       },

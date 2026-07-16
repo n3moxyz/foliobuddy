@@ -33,20 +33,24 @@ export function CollapsibleCard({
         <CardHeader className="py-3 px-4 hover:bg-muted/30 transition-colors select-none">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <CollapsibleTrigger asChild>
-                <button
-                  type="button"
-                  className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <ChevronRight
-                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                      isExpanded ? 'rotate-90' : ''
-                    }`}
-                  />
-                  {icon}
-                  <CardTitle className="min-w-0 text-base truncate">{title}</CardTitle>
-                </button>
-              </CollapsibleTrigger>
+              {/* Heading wraps the trigger button (not the reverse): <button><h2> is
+                  invalid HTML and hides the heading from screen-reader navigation. */}
+              <CardTitle className="min-w-0 flex-1 text-base">
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <ChevronRight
+                      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
+                        isExpanded ? 'rotate-90' : ''
+                      }`}
+                    />
+                    {icon}
+                    <span className="min-w-0 truncate">{title}</span>
+                  </button>
+                </CollapsibleTrigger>
+              </CardTitle>
               {titleHelp}
             </div>
             {headerRight ? (

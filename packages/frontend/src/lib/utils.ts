@@ -164,15 +164,24 @@ export function formatNativeAmount(
   return formatNativeCurrency(value, code, decimals);
 }
 
+// Cached: Intl constructors are expensive and this runs per table cell per render.
+const NATIVE_CURRENCY_FORMATTERS = new Map<string, Intl.NumberFormat>();
+
 function formatNativeCurrency(value: number, code: string, decimals: number): string {
   try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: code,
-      currencyDisplay: 'code',
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }).format(value);
+    const key = `${code}:${decimals}`;
+    let formatter = NATIVE_CURRENCY_FORMATTERS.get(key);
+    if (!formatter) {
+      formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: code,
+        currencyDisplay: 'code',
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      });
+      NATIVE_CURRENCY_FORMATTERS.set(key, formatter);
+    }
+    return formatter.format(value);
   } catch {
     return `${code} ${formatNumber(value, decimals)}`;
   }

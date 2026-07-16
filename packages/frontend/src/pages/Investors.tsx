@@ -38,6 +38,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
 const EMPTY_INVESTORS: Investor[] = [];
 const INVESTOR_TABLE_HEADER_SKELETON_KEYS = [
@@ -57,6 +58,7 @@ function formatStakePercentage(value: number): string {
 }
 
 export default function Investors() {
+  usePageTitle('Investors');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editInvestor, setEditInvestor] = useState<Investor | null>(null);
   const [deleteInvestor, setDeleteInvestor] = useState<Investor | null>(null);
@@ -128,14 +130,20 @@ export default function Investors() {
           <div>
             <p className="text-sm text-muted-foreground mb-0.5">
               Total Investors
-              <HelpTooltip content="Number of investors with portfolio stakes" />
+              <HelpTooltip
+                label="Total Investors"
+                content="Number of investors with portfolio stakes"
+              />
             </p>
             <p className="text-lg font-semibold tabular-nums">{investors?.length || 0}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground mb-0.5">
               Allocated Stake
-              <HelpTooltip content="Total percentage of portfolio allocated to investors" />
+              <HelpTooltip
+                label="Allocated Stake"
+                content="Total percentage of portfolio allocated to investors"
+              />
             </p>
             <p className="text-lg font-semibold tabular-nums">
               {formatStakePercentage(totalStake)}%
@@ -147,7 +155,10 @@ export default function Investors() {
           <div>
             <p className="text-sm text-muted-foreground mb-0.5">
               Total Current Value
-              <HelpTooltip content="Combined current value of all investor stakes" />
+              <HelpTooltip
+                label="Total Current Value"
+                content="Combined current value of all investor stakes"
+              />
             </p>
             <p className="text-lg font-semibold tabular-nums">{displayValue(totalCurrentValue)}</p>
           </div>
@@ -268,12 +279,11 @@ export default function Investors() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Investor</DialogTitle>
-            {totalStake >= 100 && (
-              <DialogDescription>
-                Total stake is currently {formatStakePercentage(totalStake)}%. You may need to
-                rebalance existing investors after adding.
-              </DialogDescription>
-            )}
+            <DialogDescription>
+              {totalStake >= 100
+                ? `Total stake is currently ${formatStakePercentage(totalStake)}%. You may need to rebalance existing investors after adding.`
+                : 'Add an investor with their stake percentage and starting capital.'}
+            </DialogDescription>
           </DialogHeader>
           <InvestorForm
             onSubmit={(data) => createMutation.mutate(data)}
@@ -288,6 +298,9 @@ export default function Investors() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Investor</DialogTitle>
+            <DialogDescription className="sr-only">
+              Update the selected investor's stake and details.
+            </DialogDescription>
           </DialogHeader>
           {editInvestor && (
             <InvestorForm
@@ -497,7 +510,7 @@ function InvestorForm({
               </p>
             )}
             {exceedsTotal ? (
-              <p className="text-xs text-warning">
+              <p role="alert" className="text-xs text-warning">
                 Total will be {formatStakePercentage(projectedTotal)}% - rebalancing needed
               </p>
             ) : null}

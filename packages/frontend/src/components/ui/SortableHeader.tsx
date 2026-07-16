@@ -51,7 +51,7 @@ export function SortableHeader({
             <ChevronDown className="h-3.5 w-3.5 text-foreground" />
           )
         ) : (
-          <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
+          <ArrowUpDown className="h-3 w-3 text-muted-foreground/80" />
         )}
       </button>
     </TableHead>

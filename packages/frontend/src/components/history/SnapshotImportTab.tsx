@@ -90,6 +90,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
       </div>
 
       <Textarea
+        aria-label="Snapshot JSON to import"
         value={jsonInput}
         onChange={(e) => handleJsonChange(e.target.value)}
         placeholder='[{"timestamp": "2026-01-01", "totalValueUsd": 100000}, ...]'

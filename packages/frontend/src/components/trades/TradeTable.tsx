@@ -32,6 +32,7 @@ import type { ColumnConfig } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { copyTradeToClipboard } from '@/components/trades/tradeClipboard';
+import { toast } from 'sonner';
 import { TradeDetailDialog } from '@/components/trades/TradeDetailDialog';
 
 const TRADE_TABLE_HEADER_SKELETON_KEYS = ['asset', 'side', 'entry', 'exit', 'pnl'] as const;
@@ -107,6 +108,9 @@ export function TradeTable({
     if (success) {
       setCopiedId(trade.id);
       setTimeout(() => setCopiedId(null), 2000);
+      toast.success('Trade copied to clipboard');
+    } else {
+      toast.error('Copy failed', { description: 'Clipboard access was denied.' });
     }
   };
 

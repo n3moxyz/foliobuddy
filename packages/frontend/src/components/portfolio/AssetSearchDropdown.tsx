@@ -130,7 +130,7 @@ export function AssetSearchDropdown({
                 type="button"
                 role="option"
                 aria-selected={index === highlightedIndex}
-                className={`w-full px-3 py-2 text-left flex items-center justify-between ${
+                className={`flex min-h-11 w-full items-center justify-between px-3 py-2 text-left sm:min-h-0 ${
                   index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
                 }`}
                 onClick={() => {

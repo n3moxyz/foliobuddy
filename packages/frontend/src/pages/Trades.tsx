@@ -42,6 +42,7 @@ import {
   Target,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import type { Trade } from '@/lib/types';
 import {
   DropdownMenu,
@@ -51,6 +52,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export default function Trades() {
+  usePageTitle('Trade Journal');
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);

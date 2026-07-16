@@ -151,7 +151,8 @@ describe('useWebSocket', () => {
     expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['portfolio'] });
     expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['positions'] });
     expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['prices'] });
-    expect(mocks.invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['dashboard'] });
+    // ['dashboard'] was removed — no query uses that key; invalidating it was dead work.
+    expect(mocks.invalidateQueriesMock).not.toHaveBeenCalledWith({ queryKey: ['dashboard'] });
   });
 
   it('invalidates portfolio, positions, and snapshots when the portfolio is updated', async () => {

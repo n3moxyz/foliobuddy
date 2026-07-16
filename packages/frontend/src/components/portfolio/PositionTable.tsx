@@ -54,6 +54,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { toast } from 'sonner';
 import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
 import type { Position, PositionHistoryEntry } from '@/lib/types';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
@@ -191,6 +192,9 @@ export function PositionTable({
     if (success) {
       setCopiedId(position.id);
       setTimeout(() => setCopiedId(null), 2000);
+      toast.success('Position copied to clipboard');
+    } else {
+      toast.error('Copy failed', { description: 'Clipboard access was denied.' });
     }
   }, []);
 
@@ -699,7 +703,7 @@ export function PositionTable({
           )}
         </p>
         {localCurrentPrice && (
-          <p className="font-mono text-[11px] leading-none text-muted-foreground/80">
+          <p className="font-mono text-[11px] leading-none text-muted-foreground">
             {localCurrentPrice}
           </p>
         )}
@@ -725,9 +729,7 @@ export function PositionTable({
           )}
         </p>
         {localAvgCost && (
-          <p className="font-mono text-[11px] leading-none text-muted-foreground/80">
-            {localAvgCost}
-          </p>
+          <p className="font-mono text-[11px] leading-none text-muted-foreground">{localAvgCost}</p>
         )}
       </>
     );
@@ -757,7 +759,7 @@ export function PositionTable({
 
   const renderNativeHint = (
     label: string | null,
-    className = 'font-mono text-[11px] leading-none text-muted-foreground/80'
+    className = 'font-mono text-[11px] leading-none text-muted-foreground'
   ) => (label ? <p className={className}>{label}</p> : null);
 
   const renderAmountWithNative = (
@@ -1118,7 +1120,7 @@ export function PositionTable({
                       )}
                     </span>
                     {localExecutionPrice && (
-                      <span className="font-mono text-[11px] leading-none text-muted-foreground/80">
+                      <span className="font-mono text-[11px] leading-none text-muted-foreground">
                         {localExecutionPrice}
                       </span>
                     )}
@@ -1393,7 +1395,7 @@ export function PositionTable({
           setCancelHistoryEntry(null);
         }}
       >
-        <DialogContent className="!bottom-0 !left-0 !top-auto max-h-[85vh] w-full max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg sm:!bottom-auto sm:!left-[50%] sm:!top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-lg">
+        <DialogContent className="!bottom-0 !left-0 !top-auto max-h-[85vh] w-full max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg pb-[max(1rem,env(safe-area-inset-bottom))] sm:!bottom-auto sm:!left-[50%] sm:!top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-lg sm:pb-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span>{viewPosition?.asset.symbol}</span>

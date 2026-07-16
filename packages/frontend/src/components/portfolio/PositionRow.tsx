@@ -12,7 +12,7 @@ import {
   isStablecoinCategory,
   priceAgeClass,
 } from '@/lib/utils';
-import { Pencil, Trash2, Copy, Check, RefreshCw } from 'lucide-react';
+import { Pencil, Trash2, Copy, Check, RefreshCw, Eye } from 'lucide-react';
 import type { Position } from '@/lib/types';
 import { localPriceLabel, type UsdFxRatesByCurrency } from './positionPriceDisplay';
 
@@ -41,7 +41,7 @@ function UnitTrustBadge() {
         <TooltipContent
           side="top"
           sideOffset={6}
-          className="border-warning/25 bg-background/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-lg shadow-[hsl(234_45%_7%/0.3)] backdrop-blur supports-[backdrop-filter]:bg-background/90"
+          className="border-warning/25 bg-background/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/90"
         >
           Unit Trust
         </TooltipContent>
@@ -125,7 +125,10 @@ export const PositionRow = React.memo(function PositionRow({
       tabIndex={0}
       aria-label={`View ${position.asset.symbol} position`}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        // Only when the row itself is focused — without this guard, Enter/Space on
+        // nested action buttons bubbles here, preventDefault() cancels the button's
+        // native activation, and the row action fires instead (WCAG 2.1.1).
+        if (e.currentTarget === e.target && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           onView(position);
         }
@@ -211,8 +214,18 @@ export const PositionRow = React.memo(function PositionRow({
           )}
         </div>
       </TableCell>
-      <TableCell onClick={(e) => e.stopPropagation()}>
+      <TableCell onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
+            onClick={() => onView(position)}
+            title="View details"
+            aria-label="View details"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

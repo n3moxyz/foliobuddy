@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
+import { useShortcutsStore } from '@/stores/shortcutsStore';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -17,9 +20,11 @@ import { Separator } from '@/components/ui/separator';
 import { RefreshCw, Download, Camera } from 'lucide-react';
 
 export default function Settings() {
+  usePageTitle('Settings');
   const queryClient = useQueryClient();
   const { currency, setCurrency } = useCurrencyStore();
   const { theme, setTheme } = useThemeStore();
+  const { enabled: shortcutsEnabled, setEnabled: setShortcutsEnabled } = useShortcutsStore();
   const [refreshingPrices, setRefreshingPrices] = useState(false);
   const [refreshingFx, setRefreshingFx] = useState(false);
   const [creatingSnapshot, setCreatingSnapshot] = useState(false);
@@ -39,8 +44,12 @@ export default function Settings() {
     try {
       await api.refreshPrices();
       queryClient.invalidateQueries();
+      toast.success('Prices refreshed');
     } catch (error) {
       console.error('Failed to refresh prices:', error);
+      toast.error('Price refresh failed', {
+        description: error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setRefreshingPrices(false);
     }
@@ -51,8 +60,12 @@ export default function Settings() {
     try {
       await api.refreshFxRates();
       queryClient.invalidateQueries({ queryKey: ['fx'] });
+      toast.success('FX rates refreshed');
     } catch (error) {
       console.error('Failed to refresh FX rates:', error);
+      toast.error('FX refresh failed', {
+        description: error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setRefreshingFx(false);
     }
@@ -63,8 +76,12 @@ export default function Settings() {
     try {
       await api.createSnapshot();
       queryClient.invalidateQueries({ queryKey: ['snapshots'] });
+      toast.success('Snapshot created');
     } catch (error) {
       console.error('Failed to create snapshot:', error);
+      toast.error('Snapshot failed', {
+        description: error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setCreatingSnapshot(false);
     }
@@ -128,6 +145,29 @@ export default function Settings() {
                 <SelectItem value="light">Light</SelectItem>
                 <SelectItem value="dark">Dark</SelectItem>
                 <SelectItem value="system">System</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Label htmlFor="shortcuts-select">Keyboard Shortcuts</Label>
+              <p className="text-sm text-muted-foreground">
+                Single-key navigation (D, P, T, H, I, S) and / for theme
+              </p>
+            </div>
+            <Select
+              value={shortcutsEnabled ? 'on' : 'off'}
+              onValueChange={(v) => setShortcutsEnabled(v === 'on')}
+            >
+              <SelectTrigger id="shortcuts-select" className="w-full sm:w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="on">On</SelectItem>
+                <SelectItem value="off">Off</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -4,9 +4,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface HelpTooltipProps {
   content: string;
+  /** What the tooltip explains, e.g. "Exposure" — differentiates the accessible
+   * name ("Help: Exposure") so screen-reader control lists aren't all "Help". */
+  label?: string;
 }
 
-export function HelpTooltip({ content }: HelpTooltipProps) {
+export function HelpTooltip({ content, label }: HelpTooltipProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -15,7 +18,7 @@ export function HelpTooltip({ content }: HelpTooltipProps) {
         <TooltipTrigger asChild>
           <button
             type="button"
-            aria-label="Help"
+            aria-label={label ? `Help: ${label}` : 'Help'}
             className="-my-3 -ml-2 -mr-3 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full align-middle touch-manipulation hover:bg-muted/50"
             onClick={(e) => {
               e.preventDefault();
@@ -24,7 +27,7 @@ export function HelpTooltip({ content }: HelpTooltipProps) {
             }}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/70" />
+            <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/80" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">

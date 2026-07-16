@@ -75,8 +75,9 @@ export function PositionDeltaEditor({
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
+          aria-pressed={deltaMode === 'add'}
           onClick={() => onDeltaModeChange('add')}
-          className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+          className={`flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors sm:min-h-9 ${
             deltaMode === 'add'
               ? 'border-primary bg-primary/10 text-primary'
               : 'border-border text-muted-foreground hover:text-foreground'
@@ -87,8 +88,9 @@ export function PositionDeltaEditor({
         </button>
         <button
           type="button"
+          aria-pressed={deltaMode === 'reduce'}
           onClick={() => onDeltaModeChange('reduce')}
-          className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+          className={`flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors sm:min-h-9 ${
             deltaMode === 'reduce'
               ? 'border-primary bg-primary/10 text-primary'
               : 'border-border text-muted-foreground hover:text-foreground'
@@ -116,7 +118,7 @@ export function PositionDeltaEditor({
         <div className="space-y-2">
           <div className="flex items-center gap-4 text-sm">
             <span className="text-muted-foreground">Enter:</span>
-            <label className="flex items-center gap-1.5 cursor-pointer">
+            <label className="flex min-h-11 items-center gap-1.5 cursor-pointer sm:min-h-0">
               <input
                 type="radio"
                 name="additionalCostMode"
@@ -132,7 +134,7 @@ export function PositionDeltaEditor({
                 Total Cost
               </span>
             </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
+            <label className="flex min-h-11 items-center gap-1.5 cursor-pointer sm:min-h-0">
               <input
                 type="radio"
                 name="additionalCostMode"

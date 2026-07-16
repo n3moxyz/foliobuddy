@@ -38,17 +38,19 @@ export function ImportResultsList({ results, onDone }: ImportResultsListProps) {
         {results.map((result) => (
           <div
             key={`${result.label}-${result.success ? 'success' : 'fail'}-${result.error ?? ''}`}
-            className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
+            className={`text-sm px-3 py-2 rounded-md flex items-start gap-2 ${
               result.success ? 'bg-profit' : 'bg-loss'
             }`}
           >
             {result.success ? (
-              <CheckCircle2 className="h-4 w-4 text-profit flex-shrink-0" />
+              <CheckCircle2 className="h-4 w-4 mt-0.5 text-profit flex-shrink-0" />
             ) : (
-              <AlertCircle className="h-4 w-4 text-loss flex-shrink-0" />
+              <AlertCircle className="h-4 w-4 mt-0.5 text-loss flex-shrink-0" />
             )}
-            <span className="font-medium">{result.label}</span>
-            {result.error && <span className="text-loss text-xs">{result.error}</span>}
+            <span className="min-w-0 break-words font-medium">{result.label}</span>
+            {result.error && (
+              <span className="min-w-0 break-words text-loss text-xs">{result.error}</span>
+            )}
           </div>
         ))}
       </div>

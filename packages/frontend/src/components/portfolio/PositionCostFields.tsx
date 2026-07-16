@@ -45,7 +45,7 @@ export function PositionCostFields({
     <div className="space-y-2">
       <div className="flex items-center gap-4 text-sm">
         <span className="text-muted-foreground">Enter:</span>
-        <label className="flex items-center gap-1.5 cursor-pointer">
+        <label className="flex min-h-11 items-center gap-1.5 cursor-pointer sm:min-h-0">
           <input
             type="radio"
             name="costMode"
@@ -57,7 +57,7 @@ export function PositionCostFields({
             Total Cost
           </span>
         </label>
-        <label className="flex items-center gap-1.5 cursor-pointer">
+        <label className="flex min-h-11 items-center gap-1.5 cursor-pointer sm:min-h-0">
           <input
             type="radio"
             name="costMode"

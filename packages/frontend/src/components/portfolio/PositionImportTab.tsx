@@ -40,6 +40,7 @@ export function PositionImportTab({
       </div>
 
       <Textarea
+        aria-label="Position JSON to import"
         placeholder='[{"asset": {"symbol": "BTC", ...}, "quantity": 1, ...}]'
         value={jsonInput}
         onChange={(e) => onJsonChange(e.target.value)}

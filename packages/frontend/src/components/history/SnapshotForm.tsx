@@ -112,6 +112,8 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                 placeholder="0.00"
                 className="pl-9"
                 required
+                aria-invalid={!!totalValueError}
+                aria-describedby={totalValueError ? 'totalValue-error' : undefined}
               />
             </div>
             <div className="flex rounded-md border overflow-hidden">
@@ -119,11 +121,12 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                 type="button"
                 variant="ghost"
                 size="sm"
-                className={`h-9 px-3 rounded-none ${
+                className={`h-11 px-3 rounded-none sm:h-9 ${
                   inputCurrency === 'USD'
                     ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
                     : 'hover:bg-muted'
                 }`}
+                aria-pressed={inputCurrency === 'USD'}
                 onClick={() => setInputCurrency('USD')}
               >
                 USD
@@ -132,11 +135,12 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                 type="button"
                 variant="ghost"
                 size="sm"
-                className={`h-9 px-3 rounded-none border-l ${
+                className={`h-11 px-3 rounded-none sm:h-9 border-l ${
                   inputCurrency === 'SGD'
                     ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
                     : 'hover:bg-muted'
                 }`}
+                aria-pressed={inputCurrency === 'SGD'}
                 onClick={() => setInputCurrency('SGD')}
               >
                 SGD
@@ -153,7 +157,11 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
               USD (rate: {fxRate.toFixed(4)})
             </p>
           )}
-          {totalValueError && <p className="text-xs text-destructive">{totalValueError}</p>}
+          {totalValueError && (
+            <p id="totalValue-error" role="alert" className="text-xs text-destructive">
+              {totalValueError}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -240,6 +248,8 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                   placeholder="0.00"
                   className="pl-9"
                   required
+                  aria-invalid={!!totalValueError}
+                  aria-describedby={totalValueError ? 'totalValue-error' : undefined}
                 />
               </div>
               <div className="flex rounded-md border overflow-hidden">
@@ -247,11 +257,12 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className={`h-9 px-3 rounded-none ${
+                  className={`h-11 px-3 rounded-none sm:h-9 ${
                     inputCurrency === 'USD'
                       ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
                       : 'hover:bg-muted'
                   }`}
+                  aria-pressed={inputCurrency === 'USD'}
                   onClick={() => setInputCurrency('USD')}
                 >
                   USD
@@ -260,11 +271,12 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className={`h-9 px-3 rounded-none border-l ${
+                  className={`h-11 px-3 rounded-none sm:h-9 border-l ${
                     inputCurrency === 'SGD'
                       ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
                       : 'hover:bg-muted'
                   }`}
+                  aria-pressed={inputCurrency === 'SGD'}
                   onClick={() => setInputCurrency('SGD')}
                 >
                   SGD
@@ -281,7 +293,11 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                 USD (rate: {fxRate.toFixed(4)})
               </p>
             )}
-            {totalValueError && <p className="text-xs text-destructive">{totalValueError}</p>}
+            {totalValueError && (
+              <p id="totalValue-error" role="alert" className="text-xs text-destructive">
+                {totalValueError}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

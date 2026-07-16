@@ -114,7 +114,9 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
           </div>
 
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
+            <div role="alert" className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+              {error}
+            </div>
           )}
 
           <div className="flex justify-end gap-2 pt-2">

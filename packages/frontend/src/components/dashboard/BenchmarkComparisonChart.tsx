@@ -7,6 +7,7 @@ import {
   Tooltip,
   ReferenceLine,
   ResponsiveContainer,
+  type TooltipProps,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -304,17 +305,56 @@ export function BenchmarkComparisonChart() {
 
   const periods: TimePeriod[] = ['7D', '1M', '3M', '1Y', 'YTD', 'Max'];
 
-  const allBenchmarks = [
-    {
-      id: 'portfolio',
-      symbol: 'Portfolio',
-      color: PORTFOLIO_LINE_COLOR,
-      foregroundColor: PORTFOLIO_FOREGROUND_COLOR,
-      enabled: true,
+  const allBenchmarks = useMemo(
+    () => [
+      {
+        id: 'portfolio',
+        symbol: 'Portfolio',
+        color: PORTFOLIO_LINE_COLOR,
+        foregroundColor: PORTFOLIO_FOREGROUND_COLOR,
+        enabled: true,
+      },
+      ...benchmarks,
+      ...additionalBenchmarks,
+    ],
+    [benchmarks, additionalBenchmarks]
+  );
+
+  // An inline arrow here would change identity every render and defeat Recharts'
+  // internal memoization on mouse-move — same fix as PortfolioChart.renderTooltip.
+  const renderTooltip = useCallback(
+    ({ active, payload }: TooltipProps<number, string>) => {
+      if (!active || !payload?.length) return null;
+      const data = payload[0].payload as NormalizedDataPoint & {
+        tooltipDate: string;
+      };
+      return (
+        <div className="rounded-lg border bg-background p-3 shadow-md">
+          <p className="text-xs text-muted-foreground mb-2">{data.tooltipDate}</p>
+          {allBenchmarks
+            .filter((b) => b.enabled)
+            .map((benchmark) => {
+              const value = data[benchmark.id];
+              if (typeof value !== 'number') return null;
+              return (
+                <div key={benchmark.id} className="flex items-center gap-2 text-sm">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: benchmark.color }}
+                  />
+                  <span>{benchmark.symbol}:</span>
+                  <span className={value >= 0 ? 'text-profit' : 'text-loss'}>
+                    {value >= 0 ? '+' : ''}
+                    {value.toFixed(2)}%
+                  </span>
+                </div>
+              );
+            })}
+        </div>
+      );
     },
-    ...benchmarks,
-    ...additionalBenchmarks,
-  ];
+    [allBenchmarks]
+  );
 
   return (
     <Card className="col-span-2">
@@ -524,38 +564,7 @@ export function BenchmarkComparisonChart() {
                   className="text-muted-foreground"
                   width={42}
                 />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const data = payload[0].payload as NormalizedDataPoint & {
-                      tooltipDate: string;
-                    };
-                    return (
-                      <div className="rounded-lg border bg-background p-3 shadow-md">
-                        <p className="text-xs text-muted-foreground mb-2">{data.tooltipDate}</p>
-                        {allBenchmarks
-                          .filter((b) => b.enabled)
-                          .map((benchmark) => {
-                            const value = data[benchmark.id];
-                            if (typeof value !== 'number') return null;
-                            return (
-                              <div key={benchmark.id} className="flex items-center gap-2 text-sm">
-                                <div
-                                  className="w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: benchmark.color }}
-                                />
-                                <span>{benchmark.symbol}:</span>
-                                <span className={value >= 0 ? 'text-profit' : 'text-loss'}>
-                                  {value >= 0 ? '+' : ''}
-                                  {value.toFixed(2)}%
-                                </span>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    );
-                  }}
-                />
+                <Tooltip content={renderTooltip} />
                 <ReferenceLine
                   y={0}
                   stroke="currentColor"

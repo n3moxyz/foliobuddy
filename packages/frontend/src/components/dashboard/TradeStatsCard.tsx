@@ -94,8 +94,8 @@ function SortableSegment({
       <div className="flex items-start gap-1">
         <button
           type="button"
-          aria-label="Reorder section"
-          className="mt-0.5 inline-flex min-h-11 min-w-11 items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0 touch-manipulation md:min-h-0 md:min-w-0"
+          aria-label={`Reorder ${id} section`}
+          className="mt-0.5 inline-flex min-h-11 min-w-11 items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/80 hover:text-muted-foreground transition-colors shrink-0 touch-manipulation md:min-h-0 md:min-w-0"
           {...attributes}
           {...listeners}
         >

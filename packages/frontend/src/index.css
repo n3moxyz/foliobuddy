@@ -23,6 +23,9 @@
     --border: 230 20% 90%;
     --input: 230 20% 88%;
     --ring: 234 89% 55%;
+    /* Readable variant of --primary for use AS text (links, selected states).
+       --primary itself is tuned as a fill; its dark value fails WCAG AA as text. */
+    --primary-text: 234 89% 55%;
     --radius: 0.375rem;
     --profit: 160 84% 32%;
     --profit-foreground: 160 84% 27%;
@@ -87,7 +90,8 @@
     --secondary: 234 20% 16%;
     --secondary-foreground: 230 20% 93%;
     --muted: 234 18% 16%;
-    --muted-foreground: 230 15% 55%;
+    /* 60% (was 55%) so muted text on bg-muted surfaces (tabs, chips, kbd) meets AA 4.5:1 */
+    --muted-foreground: 230 15% 60%;
     --accent: 234 18% 18%;
     --accent-foreground: 230 20% 93%;
     --destructive: 0 62.8% 30.6%;
@@ -95,6 +99,7 @@
     --border: 234 18% 18%;
     --input: 234 18% 20%;
     --ring: 234 89% 62%;
+    --primary-text: 234 89% 72%;
     --profit: 160 84% 62%;
     --profit-foreground: 160 84% 66%;
     --loss: 0 72% 68%;
@@ -183,6 +188,21 @@
 
 .text-info {
   color: hsl(var(--info-foreground));
+}
+
+/* --destructive and --primary are fill tokens; used AS text their dark values
+   fail WCAG AA (1.86:1 and 3.56:1). Redirect text usage to readable variants,
+   same pattern as .text-warning/.text-info above. The hover:/focus: forms must
+   follow or ghost buttons would flip back to the unreadable fill color. */
+.text-destructive,
+.hover\:text-destructive:hover,
+.focus\:text-destructive:focus {
+  color: hsl(var(--loss-foreground));
+}
+
+.text-primary,
+.hover\:text-primary:hover {
+  color: hsl(var(--primary-text));
 }
 
 .bg-profit {

@@ -1,12 +1,15 @@
 import { useState, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
+import { dark } from '@clerk/themes';
 import { AppShell } from './components/layout/AppShell';
+import { Skeleton } from './components/ui/skeleton';
 import { useAuthSetup, useLocalAuthBypassSetup } from './hooks/useAuthSetup';
 import { useThemeEffect } from './hooks/useThemeEffect';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
 import { isLocalAuthBypassEnabled } from './lib/localAuthBypass';
+import { useThemeStore, resolveTheme } from './stores/themeStore';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const Portfolio = lazy(() => import('./pages/Portfolio'));
@@ -17,6 +20,17 @@ const Settings = lazy(() => import('./pages/Settings'));
 const DemoModeApp = import.meta.env.DEV
   ? lazy(() => import('./dev/demoMode').then((module) => ({ default: module.DemoModeApp })))
   : null;
+
+// Route-chunk fallback: skeleton (matching page loading states) + SR announcement.
+function RouteFallback() {
+  return (
+    <div role="status" aria-live="polite" className="space-y-6">
+      <span className="sr-only">Loading page…</span>
+      <Skeleton className="h-8 w-40" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
+}
 
 function AuthenticatedAppContent({ localAuthBypass = false }: { localAuthBypass?: boolean }) {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
@@ -29,13 +43,7 @@ function AuthenticatedAppContent({ localAuthBypass = false }: { localAuthBypass?
   return (
     <>
       <AppShell localAuthBypass={localAuthBypass}>
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-64 text-muted-foreground">
-              Loading...
-            </div>
-          }
-        >
+        <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/portfolio" element={<Portfolio />} />
@@ -63,6 +71,7 @@ function LocalAuthenticatedApp() {
 
 function App() {
   const localAuthBypassEnabled = isLocalAuthBypassEnabled();
+  const theme = useThemeStore((state) => state.theme);
 
   return (
     <Routes>
@@ -72,8 +81,8 @@ function App() {
           element={
             <Suspense
               fallback={
-                <div className="flex items-center justify-center h-64 text-muted-foreground">
-                  Loading...
+                <div className="p-6">
+                  <RouteFallback />
                 </div>
               }
             >
@@ -98,6 +107,7 @@ function App() {
                     </div>
                     <SignIn
                       appearance={{
+                        baseTheme: resolveTheme(theme) === 'dark' ? dark : undefined,
                         elements: {
                           rootBox: 'mx-auto',
                           card: 'shadow-sm border',

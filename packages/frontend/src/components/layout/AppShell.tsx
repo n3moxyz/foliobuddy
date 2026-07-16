@@ -14,10 +14,13 @@ import {
   Download,
   Sun,
   Moon,
+  Monitor,
   History,
   MoreVertical,
 } from 'lucide-react';
 import { UserButton } from '@clerk/clerk-react';
+import { dark } from '@clerk/themes';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -30,7 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCurrencyStore } from '@/stores/currencyStore';
-import { useThemeStore, Theme } from '@/stores/themeStore';
+import { useThemeStore, resolveTheme, Theme } from '@/stores/themeStore';
 import { api } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -63,6 +66,7 @@ const navigation = [
 const themeIcons: Record<Theme, typeof Sun> = {
   light: Sun,
   dark: Moon,
+  system: Monitor,
 };
 
 const SIDEBAR_COLLAPSED_KEY = 'foliobuddy-sidebar-collapsed';
@@ -118,8 +122,12 @@ function AppShellContent({
       await api.refreshPrices();
       // Invalidate all queries to refresh data
       queryClient.invalidateQueries();
+      toast.success('Prices refreshed');
     } catch (error) {
       console.error('Failed to refresh prices:', error);
+      toast.error('Price refresh failed', {
+        description: error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setRefreshing(false);
     }
@@ -131,11 +139,17 @@ function AppShellContent({
 
   return (
     <div className="min-h-screen bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
       {sidebarOpen && (
         <button
           type="button"
           aria-label="Close navigation menu"
-          className="fixed inset-0 z-40 bg-foreground/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -365,6 +379,7 @@ function AppShellContent({
             <UserButton
               afterSignOutUrl="/"
               appearance={{
+                baseTheme: resolveTheme(theme) === 'dark' ? dark : undefined,
                 elements: {
                   avatarBox: 'h-11 w-11',
                 },
@@ -373,7 +388,9 @@ function AppShellContent({
           )}
         </header>
 
-        <main className="p-4 lg:p-6">{children}</main>
+        <main id="main-content" tabIndex={-1} className="p-4 outline-none lg:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

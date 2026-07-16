@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 import type { Snapshot, SnapshotPosition } from '@/lib/types';
 import {
   Bot,
@@ -125,6 +126,9 @@ export function SnapshotTable({
     if (success) {
       setCopiedSnapshotId(snapshot.id);
       setTimeout(() => setCopiedSnapshotId(null), 2000);
+      toast.success('Snapshot copied to clipboard');
+    } else {
+      toast.error('Copy failed', { description: 'Clipboard access was denied.' });
     }
   };
 
@@ -147,14 +151,16 @@ export function SnapshotTable({
       await navigator.clipboard.writeText(JSON.stringify(formatted, null, 2));
       setCopiedPositionsId(snapshotId);
       setTimeout(() => setCopiedPositionsId(null), 2000);
+      toast.success('Snapshot positions copied to clipboard');
     } catch {
-      // Silently fail
+      toast.error('Copy failed', { description: 'Could not load or copy snapshot positions.' });
     }
   };
 
   if (isLoading) {
     return (
-      <div className="rounded-md border">
+      <div className="rounded-md border" role="status" aria-live="polite">
+        <span className="sr-only">Loading snapshots…</span>
         <div className="p-4 space-y-3">
           <div className="flex gap-4">
             {SNAPSHOT_TABLE_HEADER_SKELETON_KEYS.map((key) => (
@@ -268,7 +274,12 @@ export function SnapshotTable({
                       onKeyDown={
                         snapshot.source === 'AUTOMATIC'
                           ? (e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
+                              // Guard: without it, Enter/Space on nested action buttons
+                              // bubbles here and toggles the row instead (WCAG 2.1.1).
+                              if (
+                                e.currentTarget === e.target &&
+                                (e.key === 'Enter' || e.key === ' ')
+                              ) {
                                 e.preventDefault();
                                 toggleExpand(snapshot.id);
                               }
@@ -328,7 +339,10 @@ export function SnapshotTable({
                       <TableCell className="hidden md:table-cell max-w-[150px] truncate">
                         {snapshot.notes || '-'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-center gap-1">
                           <TooltipProvider>
                             <Tooltip>

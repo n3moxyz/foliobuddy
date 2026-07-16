@@ -92,7 +92,7 @@ export function NetWorthCard({
         <div className="pr-4">
           <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">YTD P&L</p>
-            <HelpTooltip content="Unrealized profit/loss since January 1st" />
+            <HelpTooltip label="YTD P&L" content="Unrealized profit/loss since January 1st" />
           </div>
           <p className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}>
             {formatCurrency(animatedPnl, currency, 0)}
@@ -104,7 +104,10 @@ export function NetWorthCard({
         <div className="px-4">
           <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">YTD Start</p>
-            <HelpTooltip content="Total cost basis of your portfolio as of January 1st" />
+            <HelpTooltip
+              label="YTD Start"
+              content="Total cost basis of your portfolio as of January 1st"
+            />
           </div>
           <p className="font-medium tabular-nums">
             {formatCurrency(animatedCostBasis, currency, 0)}
@@ -113,7 +116,10 @@ export function NetWorthCard({
         <div className="px-4">
           <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">vs 30D ago</p>
-            <HelpTooltip content="Portfolio value change compared to 30 days ago" />
+            <HelpTooltip
+              label="vs 30D ago"
+              content="Portfolio value change compared to 30 days ago"
+            />
           </div>
           {change30d ? (
             <p className={`font-medium tabular-nums ${getPnLColorClass(change30d.diff)}`}>
@@ -123,29 +129,50 @@ export function NetWorthCard({
             <p className="font-medium tabular-nums text-muted-foreground">N/A</p>
           )}
         </div>
-        <Link to="/portfolio" className="px-4 hover:text-primary transition-colors">
+        {/* Tooltip buttons sit OUTSIDE the links — interactive content nested
+            inside an <a> is invalid HTML and confuses assistive tech. */}
+        <div className="px-4">
           <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">Exposure</p>
-            <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash, including perps" />
+            <HelpTooltip
+              label="Exposure"
+              content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash, including perps"
+            />
           </div>
-          <p className="font-medium tabular-nums">
+          <Link
+            to="/portfolio"
+            className="block font-medium tabular-nums transition-colors hover:text-primary"
+          >
             {exposurePct !== undefined ? `${exposurePct.toFixed(1)}%` : 'N/A'}
-          </p>
-        </Link>
-        <Link to="/portfolio" className="px-4 hover:text-primary transition-colors">
+            <span className="sr-only"> — view portfolio</span>
+          </Link>
+        </div>
+        <div className="px-4">
           <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">Positions</p>
-            <HelpTooltip content="Number of active positions in your portfolio" />
+            <HelpTooltip label="Positions" content="Number of active positions in your portfolio" />
           </div>
-          <p className="font-medium tabular-nums">{positionCount}</p>
-        </Link>
-        <Link to="/trades" className="pl-4 hover:text-primary transition-colors">
+          <Link
+            to="/portfolio"
+            className="block font-medium tabular-nums transition-colors hover:text-primary"
+          >
+            {positionCount}
+            <span className="sr-only"> positions — view portfolio</span>
+          </Link>
+        </div>
+        <div className="pl-4">
           <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">Trades</p>
-            <HelpTooltip content="Total number of completed trades" />
+            <HelpTooltip label="Trades" content="Total number of completed trades" />
           </div>
-          <p className="font-medium tabular-nums">{closedTrades}</p>
-        </Link>
+          <Link
+            to="/trades"
+            className="block font-medium tabular-nums transition-colors hover:text-primary"
+          >
+            {closedTrades}
+            <span className="sr-only"> trades — view trade journal</span>
+          </Link>
+        </div>
       </div>
 
       <div className="mt-4 sm:hidden grid grid-cols-2 gap-4">

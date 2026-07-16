@@ -58,6 +58,7 @@ import { useCollapsibleState } from '@/hooks/useCollapsibleState';
 import type { Position } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 
 const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
@@ -130,6 +131,7 @@ function saveEquityGroupBy(value: EquityGroupBy) {
 }
 
 export default function Portfolio() {
+  usePageTitle('Portfolio');
   const { currency } = useCurrencyStore();
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: summary } = usePortfolioSummary();
@@ -520,7 +522,10 @@ export default function Portfolio() {
                 <div className="pr-4">
                   <div className="flex items-center gap-1">
                     <p className="text-muted-foreground text-sm">YTD Start</p>
-                    <HelpTooltip content="Your total cost basis: how much you invested" />
+                    <HelpTooltip
+                      label="YTD Start"
+                      content="Your total cost basis: how much you invested"
+                    />
                   </div>
                   <p className="font-medium tabular-nums">
                     {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
@@ -529,21 +534,27 @@ export default function Portfolio() {
                 <div className="px-4">
                   <div className="flex items-center gap-1">
                     <p className="text-muted-foreground text-sm">Exposure</p>
-                    <HelpTooltip content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash" />
+                    <HelpTooltip
+                      label="Exposure"
+                      content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash"
+                    />
                   </div>
                   <p className="font-medium tabular-nums">{exposurePct}</p>
                 </div>
                 <div className="px-4">
                   <div className="flex items-center gap-1">
                     <p className="text-muted-foreground text-sm">Positions</p>
-                    <HelpTooltip content="Number of assets you currently hold" />
+                    <HelpTooltip label="Positions" content="Number of assets you currently hold" />
                   </div>
                   <p className="font-medium tabular-nums">{summary.positionCount}</p>
                 </div>
                 <div className="pl-4">
                   <div className="flex items-center gap-1">
                     <p className="text-muted-foreground text-sm">YTD P&L</p>
-                    <HelpTooltip content="Unrealized profit or loss since the start of the year" />
+                    <HelpTooltip
+                      label="YTD P&L"
+                      content="Unrealized profit or loss since the start of the year"
+                    />
                   </div>
                   <p
                     className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}

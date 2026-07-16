@@ -325,7 +325,7 @@ export function PositionForm({
   const [storageLocation, setStorageLocation] = useState(position?.storageLocation || '');
   const [addingStorageLocation, setAddingStorageLocation] = useState(false);
   const [newStorageLocation, setNewStorageLocation] = useState('');
-  const [, setStorageLocationOptionsVersion] = useState(0);
+  const [storageLocationOptionsVersion, setStorageLocationOptionsVersion] = useState(0);
   const [isCustody, setIsCustody] = useState(!!position?.custodyOf);
   const [custodyOf, setCustodyOf] = useState(position?.custodyOf || '');
   const [addingNewName, setAddingNewName] = useState(false);
@@ -994,12 +994,20 @@ export function PositionForm({
     }
   }, [mode]);
 
-  const locationOptions = locationOptionsForStorageType(
-    storageType,
-    storageLocation ? [storageLocation] : undefined
+  // Memoized: these read + JSON.parse localStorage, and this form re-renders on
+  // every keystroke in any field. The version counter invalidates the memo when
+  // custom options are saved/renamed/deleted mid-form.
+  const locationOptions = useMemo(
+    () =>
+      locationOptionsForStorageType(storageType, storageLocation ? [storageLocation] : undefined),
+    [storageType, storageLocation, storageLocationOptionsVersion]
   );
-  const editableLocationOptions = new Set(
-    customLocationOptionsForStorageType(storageType).map((option) => option.toLocaleLowerCase())
+  const editableLocationOptions = useMemo(
+    () =>
+      new Set(
+        customLocationOptionsForStorageType(storageType).map((option) => option.toLocaleLowerCase())
+      ),
+    [storageType, storageLocationOptionsVersion]
   );
   const storageTypeOptions =
     category === 'cash' && selectedCashTypeId === FIAT_CASH_TYPE_ID
@@ -1779,7 +1787,7 @@ export function PositionForm({
                       type="button"
                       aria-pressed={equityMode === 'single'}
                       onClick={() => handleEquityModeChange('single')}
-                      className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                      className={`flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors sm:min-h-9 ${
                         equityMode === 'single'
                           ? 'border-primary bg-primary/10 text-primary'
                           : 'border-border text-muted-foreground hover:text-foreground'
@@ -1792,7 +1800,7 @@ export function PositionForm({
                       type="button"
                       aria-pressed={equityMode === 'fund'}
                       onClick={() => handleEquityModeChange('fund')}
-                      className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                      className={`flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors sm:min-h-9 ${
                         equityMode === 'fund'
                           ? 'border-primary bg-primary/10 text-primary'
                           : 'border-border text-muted-foreground hover:text-foreground'
@@ -1870,7 +1878,9 @@ export function PositionForm({
                       </span>
                     </div>
                     {utUploadError && (
-                      <p className="mt-2 text-xs text-destructive">{utUploadError}</p>
+                      <p role="alert" className="mt-2 text-xs text-destructive">
+                        {utUploadError}
+                      </p>
                     )}
                   </label>
 

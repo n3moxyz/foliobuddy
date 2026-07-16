@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 
 interface ErrorFallbackProps {
@@ -22,7 +22,10 @@ export function ErrorFallback({ error, eventId, resetError }: ErrorFallbackProps
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <AlertTriangle className="mx-auto mb-4 h-10 w-10 text-destructive" />
-          <CardTitle>Something went wrong</CardTitle>
+          {/* h1: this is the entire page when the app crashes */}
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">
+            Something went wrong
+          </h1>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground text-center">

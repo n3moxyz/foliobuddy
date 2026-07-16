@@ -1,9 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { Toaster, toast } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useThemeStore, resolveTheme } from '@/stores/themeStore';
 import { initSentry, Sentry } from './lib/sentry';
 import App from './App';
 import { ErrorFallback } from './components/ErrorFallback';
@@ -27,7 +29,21 @@ const queryClient = new QueryClient({
       retry: 1,
     },
   },
+  // Global safety net: no mutation failure is ever silent (deletes with
+  // optimistic rollback, saves, refreshes). Forms may also show inline errors.
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      toast.error('Action failed', {
+        description: error instanceof Error ? error.message : 'Something went wrong',
+      });
+    },
+  }),
 });
+
+function AppToaster() {
+  const theme = useThemeStore((state) => state.theme);
+  return <Toaster theme={resolveTheme(theme)} position="bottom-right" closeButton richColors />;
+}
 
 const app = (
   <React.StrictMode>
@@ -41,6 +57,7 @@ const app = (
           <BrowserRouter>
             <App />
           </BrowserRouter>
+          <AppToaster />
         </TooltipProvider>
       </QueryClientProvider>
     </Sentry.ErrorBoundary>

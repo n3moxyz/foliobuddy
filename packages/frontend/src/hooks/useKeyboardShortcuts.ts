@@ -1,6 +1,7 @@
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '@/stores/themeStore';
+import { useShortcutsStore } from '@/stores/shortcutsStore';
 
 interface UseKeyboardShortcutsOptions {
   onShowHelp?: () => void;
@@ -9,9 +10,11 @@ interface UseKeyboardShortcutsOptions {
 export function useKeyboardShortcuts({ onShowHelp }: UseKeyboardShortcutsOptions = {}) {
   const navigate = useNavigate();
   const cycleTheme = useThemeStore((state) => state.cycleTheme);
+  const singleKeysEnabled = useShortcutsStore((state) => state.enabled);
 
-  // Navigation shortcuts - don't fire when typing in inputs
-  const options = { enableOnFormTags: false, preventDefault: true };
+  // Navigation shortcuts - don't fire when typing in inputs. Single-letter keys
+  // honor the Settings toggle (WCAG 2.1.4 Character Key Shortcuts).
+  const options = { enableOnFormTags: false, preventDefault: true, enabled: singleKeysEnabled };
 
   useHotkeys('d', () => navigate('/'), options);
   useHotkeys('p', () => navigate('/portfolio'), options);
@@ -20,8 +23,8 @@ export function useKeyboardShortcuts({ onShowHelp }: UseKeyboardShortcutsOptions
   useHotkeys('i', () => navigate('/investors'), options);
   useHotkeys('s', () => navigate('/settings'), options);
 
-  // Show help modal
-  useHotkeys('mod+k', () => onShowHelp?.(), { ...options, preventDefault: true });
+  // Show help modal — has a modifier, so it stays active regardless of the toggle.
+  useHotkeys('mod+k', () => onShowHelp?.(), { enableOnFormTags: false, preventDefault: true });
 
   // Toggle theme
   useHotkeys('/', () => cycleTheme(), options);

@@ -23,11 +23,13 @@ import { PortfolioChart } from '@/components/dashboard/PortfolioChart';
 import { BenchmarkComparisonChart } from '@/components/dashboard/BenchmarkComparisonChart';
 import { ChevronDown, Users } from 'lucide-react';
 import { DbStatusBanner } from '@/components/dashboard/DbStatusBanner';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
 const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
 const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
 
 export default function Dashboard() {
+  usePageTitle('Dashboard');
   const { currency } = useCurrencyStore();
   const { data: summary, isLoading: summaryLoading } = usePortfolioSummary();
   const { data: positions, isLoading: positionsLoading } = usePositions();
@@ -123,7 +125,8 @@ export default function Dashboard() {
 
   if (summaryLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" role="status" aria-live="polite">
+        <span className="sr-only">Loading dashboard…</span>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Skeleton className="h-8 w-32" />
@@ -135,7 +138,9 @@ export default function Dashboard() {
         <div className="pb-6 mb-2 border-b">
           <Skeleton className="h-4 w-20 mb-2" />
           <Skeleton className="h-12 w-48 mb-2" />
-          <div className="mt-4 flex gap-6">
+          {/* Mirrors NetWorthCard's 2-col mobile / 6-col desktop stat grid —
+              a fixed-width flex row overflows the page on mobile. */}
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-6">
             <Skeleton className="h-6 w-20" />
             <Skeleton className="h-6 w-20" />
             <Skeleton className="h-6 w-20" />

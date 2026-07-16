@@ -16,6 +16,7 @@ import {
 import { SnapshotForm } from '@/components/history/SnapshotForm';
 import { SnapshotTable } from '@/components/history/SnapshotTable';
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { Plus, Trash2, Copy, Check, MoreVertical } from 'lucide-react';
 import {
   DropdownMenu,
@@ -62,6 +63,7 @@ type SourceFilter = 'all' | 'AUTOMATIC' | 'MANUAL';
 const HISTORY_SNAPSHOT_LIMIT = 500;
 
 export default function History() {
+  usePageTitle('Snapshot History');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSnapshot, setEditingSnapshot] = useState<Snapshot | null>(null);
   const [deletingSnapshot, setDeletingSnapshot] = useState<Snapshot | null>(null);
