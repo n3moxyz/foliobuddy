@@ -63,6 +63,7 @@ import {
   localPriceLabel,
   type UsdFxRatesByCurrency,
 } from '@/components/portfolio/positionPriceDisplay';
+import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
@@ -846,10 +847,18 @@ export function PositionTable({
     sectionId: string,
     label: string,
     helpContent: string,
-    count: number,
+    sectionPositions: Position[],
     total: number
   ) => {
     const isCompactMobile = mobileVariant === 'compact';
+    const groupPnL = calculatePositionGroupPnL(sectionPositions);
+    const formattedGroupPnL =
+      groupPnL.pnlUsd === null
+        ? null
+        : `${formatCurrency(convertSub(groupPnL.pnlUsd), currency, 0)} (${formatPercent(
+            groupPnL.pnlPct
+          )})`;
+    const formattedTotal = formatCurrency(convertSub(total), currency, 0);
 
     return (
       <div
@@ -874,9 +883,19 @@ export function PositionTable({
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide transition-colors group-hover:text-foreground">
               {label}
             </p>
-            <span className="text-xs text-muted-foreground">({count})</span>
-            <span className="ml-auto text-xs font-mono text-muted-foreground">
-              {formatCurrency(convertSub(total), currency, 0)}
+            <span className="text-xs text-muted-foreground">({sectionPositions.length})</span>
+            <span className="ml-auto flex shrink-0 flex-col items-end gap-0.5 font-mono text-xs leading-tight tabular-nums sm:flex-row sm:items-center sm:gap-2">
+              {formattedGroupPnL && (
+                <span
+                  className={getPnLColorClass(groupPnL.pnlUsd)}
+                  aria-label={`Unrealized P and L ${formattedGroupPnL}`}
+                >
+                  {formattedGroupPnL}
+                </span>
+              )}
+              <span className="text-muted-foreground" aria-label={`Group value ${formattedTotal}`}>
+                {formattedTotal}
+              </span>
             </span>
           </button>
         </CollapsibleTrigger>
@@ -907,7 +926,7 @@ export function PositionTable({
     showUnitTrustBadge?: boolean;
   }) => (
     <Collapsible key={id} open={isExpanded(id)} onOpenChange={() => toggle(id)}>
-      {renderSectionTrigger(id, label, helpContent, sectionPositions.length, total)}
+      {renderSectionTrigger(id, label, helpContent, sectionPositions, total)}
       <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
         <div
           className={`rounded-md border overflow-x-auto ${showAllColumns ? '' : 'hidden md:block'}`}
