@@ -609,6 +609,36 @@ Shell refinement: the left sidebar now has a Codex-style collapsible desktop rai
 
 ## Lessons Learned the Hard Way
 
+### The Primary Theme Was the Least Accessible One
+
+**The bug:** A full `/audit` (five parallel dimension reviews plus a script that mathematically computed WCAG contrast for every token pair in both themes) found that dark mode — our default and "optimized" theme — held nearly all the contrast failures. The root cause was subtle: `--destructive` and `--primary` are _fill_ tokens, tuned so white text sits on them nicely in buttons. But ~25 places used them _as text_: every form validation error rendered at 1.86:1 in dark mode (functionally invisible), and every selected-state chip, the active sidebar item, and link-variant buttons sat at 3.3–3.6:1. Light mode passed almost everything, so nothing ever looked broken while developing in light — and in dark, dim red error text just read as "moody design."
+
+**The fix:** The codebase already had the cure and didn't know it — `index.css` was overriding `.text-warning`/`.text-info` to readable `-foreground` variants. We extended the same pattern: `.text-destructive` → `--loss-foreground` and `.text-primary` → a new `--primary-text` (`234 89% 72%` in dark, ~5.7:1), each including the `hover:`/`focus:` utility forms so a ghost button doesn't flip back to the unreadable fill on hover. Dark `--muted-foreground` also nudged 55%→60% so muted text on `bg-muted` surfaces (tab labels, chips, kbd hints) clears 4.5:1.
+
+**The lesson:** Fill tokens and text tokens are different jobs, even when they share a name. And "AA-safe" claims need to say _as what_ — `--primary` was AA-safe as a button background and a contrast hazard as link text. Compute contrast mathematically per theme; eyeballing the theme you develop in tells you nothing about the other one.
+
+### Enter on a Row's Delete Button Did the Row's Thing Instead
+
+**The bug:** Clickable table rows implement Enter/Space via `onKeyDown` + `preventDefault()`. The action cells inside those rows only stopped _click_ propagation. So a keyboard user tabbing to Edit/Delete/Copy and pressing Enter had the keydown bubble to the row, where `preventDefault()` cancelled the button's native activation — and the row's own view/expand fired instead. Mouse users were unaffected, which is exactly why it survived: every manual test used a mouse. The best part: `TradeTable` already had the correct guard (`e.currentTarget === e.target` plus a cell-level `onKeyDown` stop) — the pattern just never made it to `PositionRow` and `SnapshotTable`.
+
+**The fix:** Copied the TradeTable pattern to both, and wrote it into CLAUDE.md as the Clickable Rows rule.
+
+**The lesson:** When the same interaction pattern exists in three places, an improvement to one is a bug report against the other two. Grep for siblings whenever you fix a shared pattern.
+
+### The Test That Stopped a "Fix" From Shipping a Bug
+
+**The bug-that-wasn't:** React Doctor flagged `PerformersCard`'s `key={assetId}-{index}` as index-key misuse, and the audit dutifully listed it. Removing the index suffix immediately failed a test titled "renders multiple positions for the same asset without duplicate React keys" — the suffix exists because the same asset legitimately appears twice. Reverted, added a comment, and documented it as a known false positive in CLAUDE.md's React Doctor section.
+
+**The lesson:** Linters flag patterns; tests encode intent. When a lint fix breaks a test, believe the test. Also: leaving a comment at the flagged site is what stops the next person (or agent) from "fixing" it again.
+
+### The Theme Option That Would Crash the Shell
+
+**The bug:** Settings offered Light / Dark / **System**, but `themeStore`'s `Theme` type was `'light' | 'dark'`. Picking System persisted an invalid value, `themeIcons[theme]` in the app shell came back `undefined`, and React crashed on every load until localStorage was cleared. The audit's five dimensions never caught it — it's a correctness bug, not a design one. It surfaced only because wiring Clerk's dark theme required actually reading the store.
+
+**The fix:** First-class `system` support: `resolveTheme()` maps it through `prefers-color-scheme`, `useThemeEffect` follows live OS changes, the shell got a Monitor icon, and Clerk/sonner take the _resolved_ theme.
+
+**The lesson:** When a UI dropdown offers an enum value, grep for every consumer of that enum. A `Record<Theme, Icon>` lookup is a crash waiting for the variant nobody added.
+
 ### Exposure Is Not Just Crypto
 
 **The bug:** The Exposure stat kept its old "volatile crypto only" calculation after FolioBuddy grew into equities and unit trusts. That made the number look oddly underfed once non-crypto market assets became a real part of the portfolio.
