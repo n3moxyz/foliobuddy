@@ -58,10 +58,12 @@ import { useCollapsibleState } from '@/hooks/useCollapsibleState';
 import type { Position } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
+import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 
 const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
 const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
 const PERP_EXPOSURE_INPUT_ID = 'perp-exposure-input';
+const PERP_EXPOSURE_INLINE_INPUT_ID = 'perp-exposure-inline-input';
 const PORTFOLIO_SUMMARY_SKELETON_KEYS = ['total', 'exposure', 'positions', 'pnl', 'cash'] as const;
 const PORTFOLIO_SECTION_SKELETON_KEYS = ['primary', 'secondary'] as const;
 const PORTFOLIO_ROW_SKELETON_KEYS = ['first', 'second', 'third'] as const;
@@ -151,6 +153,7 @@ export default function Portfolio() {
     return saved ? parseFloat(saved) : 0;
   });
   const [editingPerp, setEditingPerp] = useState(false);
+  const [editingPerpInline, setEditingPerpInline] = useState(false);
   const [perpInput, setPerpInput] = useState('');
 
   const fxRate = useMemo(() => {
@@ -182,15 +185,23 @@ export default function Portfolio() {
     return currency === 'SGD' ? usdValue * fxRate : usdValue;
   };
 
-  const handlePerpEdit = () => {
+  const handlePerpDialogOpen = () => {
     setPerpInput(perpExposure.toString());
     setEditingPerp(true);
   };
 
+  const persistPerpExposure = (value: number) => {
+    setPerpExposure(value);
+    if (value > 0) {
+      localStorage.setItem(PERP_EXPOSURE_KEY, value.toString());
+    } else {
+      localStorage.removeItem(PERP_EXPOSURE_KEY);
+    }
+  };
+
   const handlePerpSave = () => {
     const value = parseFloat(perpInput) || 0;
-    setPerpExposure(value);
-    localStorage.setItem(PERP_EXPOSURE_KEY, value.toString());
+    persistPerpExposure(value);
     setEditingPerp(false);
   };
 
@@ -200,6 +211,39 @@ export default function Portfolio() {
     } else if (e.key === 'Escape') {
       setEditingPerp(false);
     }
+  };
+
+  const handlePerpInlineEdit = () => {
+    setPerpInput((convertValue(perpExposure) ?? perpExposure).toString());
+    setEditingPerpInline(true);
+  };
+
+  const handlePerpInlineSave = () => {
+    if (!perpInput.trim()) {
+      setEditingPerpInline(false);
+      return;
+    }
+
+    const displayValue = parseFloat(perpInput) || 0;
+    persistPerpExposure(currency === 'SGD' ? displayValue / fxRate : displayValue);
+    setEditingPerpInline(false);
+  };
+
+  const handlePerpInlineKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handlePerpInlineSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setPerpInput((convertValue(perpExposure) ?? perpExposure).toString());
+      setEditingPerpInline(false);
+    }
+  };
+
+  const handlePerpDelete = () => {
+    persistPerpExposure(0);
+    setPerpInput('');
+    setEditingPerpInline(false);
   };
 
   const handleEquityGroupByChange = (value: EquityGroupBy) => {
@@ -254,11 +298,14 @@ export default function Portfolio() {
   const sections = useMemo(() => {
     return SECTION_CONFIG.map((config) => {
       const filtered = ownedPositions.filter(config.filter);
+      const groupPnL = calculatePositionGroupPnL(filtered);
+
       return {
         ...config,
         positions: filtered,
         total: filtered.reduce((s, p) => s + (p.marketValueUsd || 0), 0),
-        pnl: filtered.reduce((s, p) => s + (p.unrealizedPnL || 0), 0),
+        pnlUsd: groupPnL.pnlUsd,
+        pnlPct: groupPnL.pnlPct,
       };
     }).filter((s) => s.positions.length > 0);
   }, [ownedPositions]);
@@ -267,6 +314,10 @@ export default function Portfolio() {
   const custodyTotal = useMemo(() => {
     return custodyPositions.reduce((s, p) => s + (p.marketValueUsd || 0), 0);
   }, [custodyPositions]);
+  const custodyGroupPnL = useMemo(
+    () => calculatePositionGroupPnL(custodyPositions),
+    [custodyPositions]
+  );
 
   // Unique custody names from existing positions (for dropdown)
   const existingCustodyNames = useMemo(() => {
@@ -386,7 +437,7 @@ export default function Portfolio() {
                   <Copy className="h-4 w-4 mr-2" />
                   Copy All
                 </DropdownMenuItem>
-                <DropdownMenuItem className="min-h-11" onClick={() => handlePerpEdit()}>
+                <DropdownMenuItem className="min-h-11" onClick={handlePerpDialogOpen}>
                   <Pencil className="h-4 w-4 mr-2" />
                   {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
                 </DropdownMenuItem>
@@ -572,8 +623,16 @@ export default function Portfolio() {
             <Users className={CUSTODY_CONFIG.iconClass} />
             <span className="text-sm font-semibold">Held for Others</span>
             <HelpTooltip content="Positions you're holding on behalf of other people. Excluded from your net worth and P&L" />
-            <span className="ml-auto shrink-0 text-sm font-semibold text-muted-foreground">
-              {formatCurrency(convertValue(custodyTotal), currency, 0)}
+            <span className="ml-auto flex shrink-0 flex-col items-end gap-0.5 font-mono text-xs leading-tight tabular-nums">
+              {custodyGroupPnL.pnlUsd !== null && (
+                <span className={getPnLColorClass(custodyGroupPnL.pnlUsd)}>
+                  {formatCurrency(convertValue(custodyGroupPnL.pnlUsd), currency, 0)} (
+                  {formatPercent(custodyGroupPnL.pnlPct)})
+                </span>
+              )}
+              <span className="text-sm font-semibold text-muted-foreground">
+                {formatCurrency(convertValue(custodyTotal), currency, 0)}
+              </span>
             </span>
           </div>
           <PositionTable
@@ -601,35 +660,39 @@ export default function Portfolio() {
               headerRight={
                 <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
                   {!isExpanded(section.id) && (
-                    <>
-                      <span className="hidden text-xs text-muted-foreground sm:inline">
-                        {section.positions.length} position
-                        {section.positions.length !== 1 ? 's' : ''}
-                      </span>
-                      {section.pnl !== 0 && (
-                        <span
-                          className={`hidden text-xs font-medium sm:inline ${getPnLColorClass(section.pnl)}`}
-                        >
-                          {formatCurrency(convertValue(section.pnl), currency, 0)}
-                        </span>
-                      )}
-                    </>
+                    <span className="hidden text-xs text-muted-foreground sm:inline">
+                      {section.positions.length} position
+                      {section.positions.length !== 1 ? 's' : ''}
+                    </span>
                   )}
-                  {section.id === 'cash' && (
+                  {section.id === 'cash' && perpExposure <= 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-9 shrink-0 text-xs text-muted-foreground hover:text-foreground sm:h-8"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handlePerpEdit();
+                        handlePerpDialogOpen();
                       }}
                     >
                       <Pencil className="h-3 w-3 mr-1" />
-                      {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
+                      Add Perp
                     </Button>
                   )}
                   {section.id === 'equities' && renderEquityGroupToggle('hidden sm:inline-flex')}
+                  {section.pnlUsd !== null && (
+                    <span
+                      className={`shrink-0 font-mono text-sm font-medium tabular-nums ${getPnLColorClass(section.pnlUsd)}`}
+                      aria-label={`Unrealized P and L ${formatCurrency(
+                        convertValue(section.pnlUsd),
+                        currency,
+                        0
+                      )} (${formatPercent(section.pnlPct)})`}
+                    >
+                      {formatCurrency(convertValue(section.pnlUsd), currency, 0)} (
+                      {formatPercent(section.pnlPct)})
+                    </span>
+                  )}
                   <span className="shrink-0 text-sm font-semibold text-muted-foreground">
                     {formatCurrency(convertValue(section.total), currency, 0)}
                   </span>
@@ -643,16 +706,73 @@ export default function Portfolio() {
                     </div>
                   )}
                   {section.id === 'cash' && perpExposure > 0 && (
-                    <div className="flex items-center justify-end gap-2 mt-1">
+                    <div className="mt-1 flex items-center justify-end gap-2">
                       <span className="text-xs text-muted-foreground">
                         Available:{' '}
                         {formatCurrency(convertValue(section.total - perpExposure), currency, 0)}
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        Perp:
+                      <div className="flex min-h-10 items-center gap-1 text-xs text-muted-foreground">
+                        <span>Perp:</span>
                         <HelpTooltip content="Open perpetual futures position size: adds to your crypto exposure calculation" />{' '}
-                        {formatCurrency(convertValue(perpExposure), currency, 0)}
-                      </span>
+                        {editingPerpInline ? (
+                          <FormattedNumberInput
+                            id={PERP_EXPOSURE_INLINE_INPUT_ID}
+                            value={perpInput}
+                            onValueChange={setPerpInput}
+                            onBlur={handlePerpInlineSave}
+                            onKeyDown={handlePerpInlineKeyDown}
+                            className="h-8 w-28 px-2 text-right font-mono text-xs tabular-nums"
+                            aria-label={`Perp exposure in ${currency}`}
+                            autoFocus
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="rounded-sm font-mono tabular-nums transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            onDoubleClick={handlePerpInlineEdit}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === 'F2') {
+                                event.preventDefault();
+                                handlePerpInlineEdit();
+                              }
+                            }}
+                            aria-label={`Perp exposure ${formatCurrency(
+                              convertValue(perpExposure),
+                              currency,
+                              0
+                            )}. Double-click or press Enter to edit.`}
+                            title="Double-click to edit"
+                          >
+                            {formatCurrency(convertValue(perpExposure), currency, 0)}
+                          </button>
+                        )}
+                        {!editingPerpInline && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={handlePerpInlineEdit}
+                              aria-label="Edit perp exposure"
+                              title="Edit perp exposure"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={handlePerpDelete}
+                              aria-label="Delete perp exposure"
+                              title="Delete perp exposure"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </>
@@ -685,6 +805,19 @@ export default function Portfolio() {
                 {!isExpanded('custody') && (
                   <span className="hidden text-xs text-muted-foreground sm:inline">
                     {custodyPositions.length} position{custodyPositions.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {custodyGroupPnL.pnlUsd !== null && (
+                  <span
+                    className={`shrink-0 font-mono text-sm font-medium tabular-nums ${getPnLColorClass(custodyGroupPnL.pnlUsd)}`}
+                    aria-label={`Unrealized P and L ${formatCurrency(
+                      convertValue(custodyGroupPnL.pnlUsd),
+                      currency,
+                      0
+                    )} (${formatPercent(custodyGroupPnL.pnlPct)})`}
+                  >
+                    {formatCurrency(convertValue(custodyGroupPnL.pnlUsd), currency, 0)} (
+                    {formatPercent(custodyGroupPnL.pnlPct)})
                   </span>
                 )}
                 <span className="shrink-0 text-sm font-semibold text-muted-foreground">
