@@ -19,13 +19,7 @@ import {
   Columns2,
   Columns3,
 } from 'lucide-react';
-import {
-  formatCurrency,
-  formatPrice,
-  formatPercent,
-  formatDate,
-  getPnLColorClass,
-} from '@/lib/utils';
+import { formatPercent, formatDate, getPnLColorClass } from '@/lib/utils';
 import type { Trade } from '@/lib/types';
 import { useTableSort } from '@/hooks/useTableSort';
 import type { ColumnConfig } from '@/hooks/useTableSort';
@@ -34,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { copyTradeToClipboard } from '@/components/trades/tradeClipboard';
 import { toast } from 'sonner';
 import { TradeDetailDialog } from '@/components/trades/TradeDetailDialog';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 const TRADE_TABLE_HEADER_SKELETON_KEYS = ['asset', 'side', 'entry', 'exit', 'pnl'] as const;
 const TRADE_TABLE_ROW_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth'] as const;
@@ -67,6 +62,7 @@ export function TradeTable({
   highlightTradeId,
   onHighlightComplete,
 }: TradeTableProps) {
+  const { formatCurrency, formatPrice } = useMoneyFormatter();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewTrade, setViewTrade] = useState<Trade | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);

@@ -17,14 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  formatCurrency,
-  formatPercent,
-  formatDateTime,
-  formatQuantity,
-  getPnLColorClass,
-  cn,
-} from '@/lib/utils';
+import { formatPercent, formatDateTime, formatQuantity, getPnLColorClass, cn } from '@/lib/utils';
 import {
   useCancelPositionHistory,
   useDeletePosition,
@@ -65,6 +58,7 @@ import {
   type UsdFxRatesByCurrency,
 } from '@/components/portfolio/positionPriceDisplay';
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
@@ -155,6 +149,7 @@ export function PositionTable({
   mobileVariant = 'focus',
   showMobileColumnToggle = true,
 }: PositionTableProps) {
+  const { formatCurrency, valuesHidden } = useMoneyFormatter();
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [deletePosition, setDeletePosition] = useState<Position | null>(null);
@@ -691,6 +686,7 @@ export function PositionTable({
       nativeCurrency: position.asset.nativeCurrency,
       displayCurrency: currency,
       usdFxRates: priceFxRates,
+      valuesHidden,
     });
 
     return (
@@ -717,6 +713,7 @@ export function PositionTable({
       nativeCurrency: position.asset.nativeCurrency,
       displayCurrency: currency,
       usdFxRates: priceFxRates,
+      valuesHidden,
     });
 
     return (
@@ -744,6 +741,7 @@ export function PositionTable({
       nativeCurrency: position.asset.nativeCurrency,
       displayCurrency: currency,
       usdFxRates: priceFxRates,
+      valuesHidden,
     });
 
   const nativePriceLabelFor = (
@@ -755,6 +753,7 @@ export function PositionTable({
       nativeCurrency: position.asset.nativeCurrency,
       displayCurrency: currency,
       usdFxRates: priceFxRates,
+      valuesHidden,
     });
 
   const renderNativeHint = (

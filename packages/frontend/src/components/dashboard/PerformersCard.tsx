@@ -1,6 +1,7 @@
-import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
+import { formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import type { Performer } from '@/lib/types';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 interface PerformersCardProps {
   title: string;
@@ -19,6 +20,7 @@ export function PerformersCard({
   fxRate = 1,
   stakeMultiplier = 1,
 }: PerformersCardProps) {
+  const { formatCurrency } = useMoneyFormatter();
   // Helper to convert values based on currency and apply stake multiplier
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;

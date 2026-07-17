@@ -143,7 +143,7 @@ export default function Dashboard() {
             <Skeleton className="h-8 w-32" />
             <Skeleton className="h-4 w-48 mt-2" />
           </div>
-          <Skeleton className="h-9 w-full sm:w-32" />
+          <Skeleton className="h-11 w-full sm:h-9 sm:w-32" />
         </div>
 
         <div className="pb-6 mb-2 border-b">
@@ -174,7 +174,11 @@ export default function Dashboard() {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full justify-between sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-w-0 flex-1 justify-between sm:flex-none"
+            >
               <Users className="h-4 w-4 mr-2" />
               <span className="truncate">{getInvestorLabel()}</span>
               <ChevronDown className="h-3 w-3 ml-2" />

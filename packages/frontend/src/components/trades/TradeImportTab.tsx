@@ -6,7 +6,7 @@ import type { BulkImportTrade } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, AlertCircle, Loader2 } from 'lucide-react';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
-import { formatPrice } from '@/lib/utils';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 const TRADE_DIRECTIONS = new Set(['LONG', 'SHORT']);
 
@@ -15,6 +15,7 @@ interface TradeImportTabProps {
 }
 
 export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
+  const { formatPrice } = useMoneyFormatter();
   const queryClient = useQueryClient();
 
   const [jsonInput, setJsonInput] = useState('');

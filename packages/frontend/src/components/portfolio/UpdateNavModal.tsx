@@ -11,9 +11,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useUpdateAssetNav } from '@/hooks/useAssets';
-import { getPriceAgeInfo, priceAgeClass, formatPrice } from '@/lib/utils';
+import { getPriceAgeInfo, priceAgeClass } from '@/lib/utils';
 import type { Asset } from '@/lib/types';
 import { ExternalLink } from 'lucide-react';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 interface UpdateNavModalProps {
   asset: Asset | null;
@@ -22,6 +23,7 @@ interface UpdateNavModalProps {
 }
 
 export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
+  const { formatPrice } = useMoneyFormatter();
   const [nav, setNav] = useState('');
   const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [error, setError] = useState<string | null>(null);

@@ -50,7 +50,7 @@ import { ImportResultsList, type ImportResultItem } from '@/components/ui/Import
 import { CustodyCheckbox } from './CustodyCheckbox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { isNonNegativeNumberInput, isPositiveNumberInput } from '@/lib/formValidation';
-import { formatCurrency, formatNumber, isStablecoinCategory, currencyDecimals } from '@/lib/utils';
+import { formatNumber, isStablecoinCategory, currencyDecimals } from '@/lib/utils';
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
 import { PositionCostFields } from './PositionCostFields';
@@ -87,6 +87,7 @@ import {
 } from './statementMatching';
 import type { CategoryType, EquityMode, FormMode, PositionStorageType } from './positionFormTypes';
 import type { PositionDeltaMode } from '@foliobuddy/shared';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
 const LEGACY_CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
@@ -225,6 +226,7 @@ export function PositionForm({
   cashCount = 0,
   existingCustodyNames = EMPTY_CUSTODY_NAMES,
 }: PositionFormProps) {
+  const { formatCurrency } = useMoneyFormatter();
   const [mode, setMode] = useState<FormMode>('add');
   const [editMode, setEditMode] = useState<'edit' | 'delta'>('edit');
   const [deltaMode, setDeltaMode] = useState<PositionDeltaMode>('add');

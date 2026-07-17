@@ -3,7 +3,7 @@ import { useSnapshots, useDeleteSnapshot, useDeleteAllSnapshots } from '@/hooks/
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { Snapshot } from '@/lib/types';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 // Format snapshots for clipboard
 function formatSnapshotsForClipboard(snapshots: Snapshot[]) {
@@ -72,6 +73,7 @@ export default function History() {
   const [copiedAll, setCopiedAll] = useState(false);
 
   const { currency } = useCurrencyStore();
+  const { formatCurrency } = useMoneyFormatter();
   const { data: summary } = usePortfolioSummary();
   // Fetch enough history for source counts and the current local scale dataset.
   const {

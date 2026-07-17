@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PerformersCard } from '../PerformersCard';
 import type { Performer } from '@/lib/types';
+import { usePrivacyStore } from '@/stores/privacyStore';
 
 describe('PerformersCard', () => {
   it('renders multiple positions for the same asset without duplicate React keys', () => {
@@ -36,5 +37,27 @@ describe('PerformersCard', () => {
     ).toBe(false);
 
     consoleError.mockRestore();
+  });
+
+  it('masks monetary P&L while preserving percentages', () => {
+    usePrivacyStore.getState().setValuesHidden(true);
+    const performers = [
+      {
+        assetId: 'btc',
+        symbol: 'BTC',
+        name: 'Bitcoin',
+        unrealizedPnL: 1234,
+        unrealizedPnLPct: 12.5,
+        marketValueUsd: 12000,
+      },
+    ] satisfies Performer[];
+
+    render(<PerformersCard title="Top Performers" performers={performers} type="top" />);
+
+    expect(screen.getByText('••••')).toBeInTheDocument();
+    expect(screen.queryByText('$1,234')).not.toBeInTheDocument();
+    expect(screen.getByText('+12.50%')).toBeInTheDocument();
+
+    usePrivacyStore.getState().setValuesHidden(false);
   });
 });

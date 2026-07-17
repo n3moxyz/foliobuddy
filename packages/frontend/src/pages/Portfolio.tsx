@@ -8,7 +8,6 @@ import {
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import {
-  formatCurrency,
   formatPercent,
   getPnLColorClass,
   isMarketExposureCategory,
@@ -60,6 +59,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
 const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
@@ -133,6 +133,7 @@ function saveEquityGroupBy(value: EquityGroupBy) {
 export default function Portfolio() {
   usePageTitle('Portfolio');
   const { currency } = useCurrencyStore();
+  const { formatCurrency } = useMoneyFormatter();
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: summary } = usePortfolioSummary();
   const { data: fxRates } = useFxRates();

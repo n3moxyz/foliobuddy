@@ -7,15 +7,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Check, Copy, Pencil, TrendingDown, TrendingUp, Trash2 } from 'lucide-react';
-import {
-  formatCurrency,
-  formatDate,
-  formatNumber,
-  formatPercent,
-  formatPrice,
-  getPnLColorClass,
-} from '@/lib/utils';
+import { formatDate, formatNumber, formatPercent, getPnLColorClass } from '@/lib/utils';
 import type { Trade } from '@/lib/types';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 export function formatTradeTags(tags: string | null): string | null {
   if (!tags) return null;
@@ -49,6 +43,7 @@ export function TradeDetailDialog({
   copiedId,
   onCopy,
 }: TradeDetailDialogProps) {
+  const { formatCurrency, formatPrice } = useMoneyFormatter();
   const tags = trade ? formatTradeTags(trade.tags) : null;
 
   return (

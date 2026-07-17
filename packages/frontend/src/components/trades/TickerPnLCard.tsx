@@ -4,8 +4,9 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useTableSort } from '@/hooks/useTableSort';
 import type { ColumnConfig } from '@/hooks/useTableSort';
-import { formatCurrency, getPnLColorClass } from '@/lib/utils';
+import { getPnLColorClass } from '@/lib/utils';
 import type { Trade } from '@/lib/types';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 interface TickerStat {
   symbol: string;
@@ -39,6 +40,7 @@ export function TickerPnLCard({
   isExpanded = true,
   onToggle,
 }: TickerPnLCardProps) {
+  const { formatCurrency } = useMoneyFormatter();
   const tickerStats = useMemo(() => {
     const map = new Map<string, TickerStat>();
     for (const trade of trades) {

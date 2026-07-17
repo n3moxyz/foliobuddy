@@ -1,6 +1,6 @@
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatCurrency, formatNumber, formatDate, getPnLColorClass } from '@/lib/utils';
+import { formatNumber, formatDate, getPnLColorClass } from '@/lib/utils';
 import type { TradeAnalytics } from '@/lib/types';
 import { useTradeStatsStore, type SegmentId } from '@/stores/tradeStatsStore';
 import {
@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 function MetricLabel({ label, tip }: { label: string; tip: React.ReactNode }) {
   return (
@@ -126,6 +127,7 @@ function MetricsSegment({
   riskReward: number;
   rrRating: { text: string; color: string };
 }) {
+  const { formatCurrency } = useMoneyFormatter();
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <div>
@@ -215,6 +217,7 @@ function AvgWinLossSegment({
   convert: (v: number | null | undefined) => number | null | undefined;
   currency: 'USD' | 'SGD';
 }) {
+  const { formatCurrency, formatSignedCurrency } = useMoneyFormatter();
   const maxAvg = Math.max(analytics.avgWin, analytics.avgLoss, 1);
   const winBarPct = (analytics.avgWin / maxAvg) * 100;
   const lossBarPct = (analytics.avgLoss / maxAvg) * 100;
@@ -255,7 +258,7 @@ function AvgWinLossSegment({
             />
           </div>
           <span className="text-xs font-medium tabular-nums text-loss w-20 text-right">
-            -{formatCurrency(convert(analytics.avgLoss), currency)}
+            {formatSignedCurrency(-Math.abs(convert(analytics.avgLoss) ?? 0), currency)}
           </span>
         </div>
       </div>
@@ -272,6 +275,7 @@ function ByDirectionSegment({
   convert: (v: number | null | undefined) => number | null | undefined;
   currency: 'USD' | 'SGD';
 }) {
+  const { formatCurrency } = useMoneyFormatter();
   return (
     <div>
       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">By Direction</p>
@@ -324,6 +328,7 @@ function NotableTradesSegment({
   currency: 'USD' | 'SGD';
   onTradeClick?: (tradeId: string) => void;
 }) {
+  const { formatCurrency } = useMoneyFormatter();
   if (!analytics.bestTrade && !analytics.worstTrade) return null;
 
   const tradeItem = (trade: NonNullable<TradeAnalytics['bestTrade']>, type: 'best' | 'worst') => {
@@ -371,6 +376,7 @@ export function TradeStatsCard({
   onToggle,
 }: TradeStatsCardProps) {
   const { segmentOrder, setOrder } = useTradeStatsStore();
+  const { formatCurrency } = useMoneyFormatter();
 
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;

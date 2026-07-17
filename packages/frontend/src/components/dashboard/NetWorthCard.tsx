@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
-import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
+import { formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { useAnimatedNumbers } from '@/hooks/useAnimatedNumber';
 import type { PortfolioSummary } from '@/lib/types';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 interface NetWorthCardProps {
   summary: PortfolioSummary;
@@ -30,6 +31,7 @@ export function NetWorthCard({
   closedTrades = 0,
   investorLabel,
 }: NetWorthCardProps) {
+  const { formatCurrency } = useMoneyFormatter();
   const fxRate = useMemo(() => {
     if (summary.totalValueUsd > 0 && summary.totalValueSgd > 0) {
       return summary.totalValueSgd / summary.totalValueUsd;

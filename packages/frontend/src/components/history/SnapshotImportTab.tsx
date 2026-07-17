@@ -6,6 +6,7 @@ import type { BulkImportSnapshot } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, AlertCircle, Loader2 } from 'lucide-react';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 interface SnapshotImportTabProps {
   onSuccess: () => void;
@@ -13,6 +14,7 @@ interface SnapshotImportTabProps {
 
 export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
   const queryClient = useQueryClient();
+  const { formatCurrency } = useMoneyFormatter();
   const [jsonInput, setJsonInput] = useState('');
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedSnapshots, setParsedSnapshots] = useState<BulkImportSnapshot[] | null>(null);
@@ -119,7 +121,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
               >
                 <span className="font-medium">{snap.timestamp}</span>
                 <span className="text-muted-foreground ml-2">
-                  ${snap.totalValueUsd.toLocaleString()}
+                  {formatCurrency(snap.totalValueUsd, 'USD', 0)}
                 </span>
                 {snap.notes && <span className="text-muted-foreground ml-2">({snap.notes})</span>}
               </div>

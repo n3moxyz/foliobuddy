@@ -17,6 +17,8 @@ import {
   Monitor,
   History,
   MoreVertical,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { UserButton } from '@clerk/clerk-react';
 import { dark } from '@clerk/themes';
@@ -41,6 +43,7 @@ import {
   type ConnectionStatus as WebSocketConnectionStatus,
 } from '@/hooks/useWebSocket';
 import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
+import { usePrivacyStore } from '@/stores/privacyStore';
 
 interface AppShellProps {
   children: ReactNode;
@@ -103,6 +106,7 @@ function AppShellContent({
   const [refreshing, setRefreshing] = useState(false);
   const { currency, toggleCurrency } = useCurrencyStore();
   const { theme, cycleTheme } = useThemeStore();
+  const { valuesHidden, toggleValuesHidden } = usePrivacyStore();
   const queryClient = useQueryClient();
   const ThemeIcon = themeIcons[theme];
   const buildPath = (href: string) => `${basePath}${href === '/' ? '' : href}` || '/';
@@ -295,6 +299,18 @@ function AppShellContent({
             className="h-11 min-w-[3.25rem] font-mono touch-manipulation"
           >
             {currency}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleValuesHidden}
+            title={valuesHidden ? 'Show monetary values' : 'Hide monetary values'}
+            aria-label={valuesHidden ? 'Show monetary values' : 'Hide monetary values'}
+            aria-pressed={valuesHidden}
+            className="h-11 w-11 touch-manipulation"
+          >
+            {valuesHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>
 
           <Button

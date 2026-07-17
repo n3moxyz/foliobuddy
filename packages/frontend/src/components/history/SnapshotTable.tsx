@@ -313,7 +313,7 @@ export function SnapshotTable({
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="text-xs">
-                                  Snapshot captured $0 - positions may have been empty
+                                  Snapshot captured a zero value - positions may have been empty
                                 </p>
                               </TooltipContent>
                             </Tooltip>

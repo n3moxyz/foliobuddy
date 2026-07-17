@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ChartCopyButton } from '@/components/dashboard/ChartCopyButton';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
-import { formatCurrency, formatPercent } from '@/lib/utils';
+import { formatPercent } from '@/lib/utils';
 import {
   getDateRange,
   formatXAxisDate,
@@ -25,6 +25,7 @@ import {
 import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 import type { TimePeriod } from '@/lib/types';
 import { DollarSign, Percent } from 'lucide-react';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 interface PortfolioChartProps {
   currency?: 'USD' | 'SGD';
@@ -52,6 +53,7 @@ export function PortfolioChart({
   const [period, setPeriod] = useState<TimePeriod>('YTD');
   const [chartMode, setChartMode] = useState<ChartMode>('value');
   const chartRef = useRef<HTMLDivElement>(null);
+  const { formatCurrency, formatSignedCurrency } = useMoneyFormatter();
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const { data: performanceData, isLoading, isFetching } = usePerformanceHistory(dateRange);
@@ -86,7 +88,7 @@ export function PortfolioChart({
         </div>
       );
     },
-    [chartMode, currency, stakeMultiplier]
+    [chartMode, currency, formatCurrency, stakeMultiplier]
   );
 
   // Calculate the date range span in days
@@ -210,6 +212,9 @@ export function PortfolioChart({
     lastChartPoint?.timestamp ?? 'empty'
   }`;
   const chartDataKey = chartMode === 'percent' ? 'percentChange' : 'value';
+  const formattedCurrencyChange = valueChange
+    ? formatSignedCurrency(valueChange.change, currency, 0)
+    : '';
 
   return (
     <Card ref={chartRef} className="col-span-2">
@@ -222,20 +227,12 @@ export function PortfolioChart({
                 <span className="font-medium">
                   {chartMode === 'percent'
                     ? formatPercent(valueChange.changePercent)
-                    : `${valueChange.change >= 0 ? '+' : ''}${formatCurrency(
-                        valueChange.change,
-                        currency,
-                        0
-                      )}`}
+                    : formattedCurrencyChange}
                 </span>
                 <span className="ml-1 text-xs">
                   (
                   {chartMode === 'percent'
-                    ? `${valueChange.change >= 0 ? '+' : ''}${formatCurrency(
-                        valueChange.change,
-                        currency,
-                        0
-                      )}`
+                    ? formattedCurrencyChange
                     : formatPercent(valueChange.changePercent)}
                   )
                 </span>

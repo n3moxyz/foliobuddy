@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, AlertCircle, Loader2 } from 'lucide-react';
 import type { BulkImportPosition } from '@/lib/types';
-import { formatPrice } from '@/lib/utils';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 interface PositionImportTabProps {
   jsonInput: string;
@@ -30,6 +30,7 @@ export function PositionImportTab({
   onPaste,
   onImport,
 }: PositionImportTabProps) {
+  const { formatPrice } = useMoneyFormatter();
   return (
     <div className="space-y-4">
       <div className="flex gap-2">

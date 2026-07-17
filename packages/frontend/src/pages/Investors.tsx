@@ -5,7 +5,7 @@ import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import type { CreateInvestorData, Investor } from '@/lib/types';
-import { formatCurrency, formatPercent, getPnLColorClass } from '@/lib/utils';
+import { formatPercent, getPnLColorClass } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 const EMPTY_INVESTORS: Investor[] = [];
 const INVESTOR_TABLE_HEADER_SKELETON_KEYS = [
@@ -73,6 +74,7 @@ export default function Investors() {
 
   // Currency display: convert USD figures to the selected currency, matching History/Portfolio.
   const { currency } = useCurrencyStore();
+  const { formatCurrency } = useMoneyFormatter();
   const { data: summary } = usePortfolioSummary();
   const fxRate =
     summary && summary.totalValueUsd > 0 && summary.totalValueSgd > 0

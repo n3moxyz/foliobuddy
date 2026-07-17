@@ -1,21 +1,17 @@
 import { useState, type ReactNode } from 'react';
 import { CalendarDays, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, formatDate, formatNumber, getPnLColorClass } from '@/lib/utils';
+import { formatDate, formatNumber, getPnLColorClass } from '@/lib/utils';
 import type { Trade } from '@/lib/types';
 import {
   topTagsForTrades,
   type MonthlyReview,
   type TickerDossier,
 } from '@/components/trades/tradeLensModels';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 function convertCurrency(usdValue: number, currency: 'USD' | 'SGD', fxRate: number) {
   return currency === 'SGD' ? usdValue * fxRate : usdValue;
-}
-
-function formatSignedCurrency(value: number, currency: 'USD' | 'SGD', decimals = 0) {
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${formatCurrency(value, currency, decimals)}`;
 }
 
 export function TickerDossierLens({
@@ -35,6 +31,7 @@ export function TickerDossierLens({
   onClear: () => void;
   onTradeClick: (tradeId: string) => void;
 }) {
+  const { formatCurrency, formatSignedCurrency } = useMoneyFormatter();
   if (!selectedTicker) {
     return <LensEmpty icon={<Target className="h-8 w-8" />} title="No ticker dossier yet" />;
   }
@@ -185,6 +182,7 @@ export function MonthlyPostmortemLens({
   onTradeClick: (tradeId: string) => void;
 }) {
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+  const { formatSignedCurrency } = useMoneyFormatter();
 
   if (monthlyReviews.length === 0) {
     return <LensEmpty icon={<CalendarDays className="h-8 w-8" />} title="No closed months yet" />;
@@ -404,6 +402,7 @@ function TradeEdgeRow({
   fxRate: number;
   onTradeClick: (tradeId: string) => void;
 }) {
+  const { formatSignedCurrency } = useMoneyFormatter();
   if (!trade) {
     return <InsightRow label={label} value="-" detail="No trade" />;
   }
@@ -443,6 +442,7 @@ function TradeMiniButton({
   onClick: () => void;
   emptyLabel?: string;
 }) {
+  const { formatSignedCurrency } = useMoneyFormatter();
   if (!trade) {
     return (
       <div className="rounded-md border border-dashed bg-background/30 p-3 text-sm text-muted-foreground">

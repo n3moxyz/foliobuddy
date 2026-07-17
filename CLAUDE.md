@@ -28,7 +28,7 @@
 ### Frontend
 
 - `src/App.tsx` (routing); `src/pages/` (Dashboard, Portfolio, Trades, Investors, Settings); `src/stores/` (Zustand)
-- `src/hooks/` - React Query hooks (usePortfolio, useTrades, …) + `useAnimatedNumber` (rAF ticker) + `usePageTitle` (per-route document titles) + `useKeyboardShortcuts` (single-key nav, user-disableable via `stores/shortcutsStore` toggle in Settings — WCAG 2.1.4); tests in `__tests__/`
+- `src/hooks/` - React Query hooks (usePortfolio, useTrades, …) + `useAnimatedNumber` (rAF ticker) + `usePageTitle` (per-route document titles) + `useKeyboardShortcuts` (single-key nav, user-disableable via `stores/shortcutsStore` toggle in Settings — WCAG 2.1.4) + `useMoneyFormatter` (reactive global monetary privacy); tests in `__tests__/`
 - `src/lib/api.ts` (API client), `types.ts` (frontend types), `chartColors.ts` (OKLCH CSS-var chart colors), `chartUtils.ts` (time-period date helpers for PortfolioChart/BenchmarkComparisonChart)
 - `src/components/ui/` - `skeleton.tsx`, `HelpTooltip.tsx`, `creatable-select.tsx` ("+ Add new ..." Radix Select), `formatted-number-input.tsx` (thousands-separator input; pure helpers in `-utils.ts` for Fast Refresh)
 - `src/components/layout/PageActionHeader.tsx` - Sticky title/action header for high-scroll data pages
@@ -128,7 +128,7 @@ Queue-based, 2.1s between calls, 30s in-memory cache, batch up to 50 coins.
 ### React Query + Zustand Split
 
 - React Query: server state. No global `refetchInterval`; global `refetchOnWindowFocus` stays `false`. Money-sensitive `usePortfolio.ts` queries opt into `refetchOnWindowFocus` + `refetchOnReconnect`.
-- Zustand: client state (currency preference)
+- Zustand: client state (currency and global monetary-privacy preferences)
 
 ### Structured Logging
 
@@ -285,11 +285,15 @@ Two sub-types via UI toggle (enums unchanged):
 
 Add/reduce edits persist as `PositionHistory` rows via `PUT /positions/:id` with `positionDelta`; backend validates next quantity/cost basis against delta metadata, then updates position + history in one transaction. Funded adds share one `operationId` with the paired cash-pile reduce so canceling restores both. Manual `Edit Totals` changes write a `mode='reset'` row (old rows collapse) instead of deleting history. `DELETE /positions/:id/history/:historyId` cancels only the newest add/reduce row when totals still match; older/reset rows are blocked. `/dev/demo/portfolio` mirrors this. Full narrative: FORET.md.
 
+### Global Value Privacy
+
+The eye button in `AppShell` sits immediately after the currency selector and persists `foliobuddy-values-hidden` through `privacyStore`. Every read-only monetary display must use `useMoneyFormatter()` (`formatCurrency`, `formatPrice`, or `formatSignedCurrency`) so a toggle updates Dashboard, Portfolio, Trades, History, Investors, dialogs, tables, chart labels/tooltips, and import previews reactively; editable amount inputs remain visible. `positionPriceDisplay.ts` receives `valuesHidden` for native-currency sublabels. Percentages, quantities, counts, and chart geometry stay visible, and copied chart images reflect the current state. The store migrates the old Dashboard-only `foliobuddy-dashboard-values-hidden` key.
+
 ### Dashboard Charts
 
 - **Portfolio Value**: Recharts AreaChart with a `$` (default) / `%` lens; `%` normalizes the selected range to its first positive point. Period selector = 7D/1M/3M/1Y/YTD/Max, with a reference line at the baseline and an end-of-line label; loading uses `isFetching`. `getDateRange('Max')` MUST send `all=true` to `/snapshots/performance` (empty query falls back to the backend's 30-day default).
 - **Portfolio % vs Benchmarks**: normalized % vs BTC/ETH/SPX + custom; each stores `provider` + `providerAssetId` (crypto→CoinGecko, TradFi→Yahoo). SPX = Yahoo `SPY` (not `^GSPC`) via `yahooFinance.chart()` (raw fetches fail on datacenter IPs). On live-history failure, `priceService.getAssetHistory()` falls back to stored `PriceHistory` (one point per UTC day) — local scale QA depends on this. Baseline = price at first portfolio timestamp. Tooltip renderer is `useCallback`'d (inline arrows defeat Recharts memoization); colors from `chartColors.ts`.
-- **Allocation donuts** (4, `AllocationCharts.tsx`): **By Asset** (Crypto/Equities/Cash via `bucketFor()`; slice click drills the detail chart); **Detailed** (dropdown `Auto · All · Crypto · Cash · Equities`; Auto = dominant bucket, dynamic `[Bucket] Breakdown` title; crypto + equities roll sub-2% slices into "Other" via `groupSmallDetailedSlices`); **By Storage** (brokerage by location + Bank/Onchain; CEX split into CEX Cash/CEX Crypto; sub-3% custodians → "Other" via `groupSmallStorageSlices`, protecting CEX/Onchain buckets); **Cash Breakdown** (by symbol, when cash exists). Custody filtered out first. Center label = top item's %; hover shows `name · $value · %`; no Recharts Tooltip (overlaps legend); colors from `chartColors.ts`; legends keep 44px targets.
+- **Allocation donuts** (4, `AllocationCharts.tsx`): **By Asset** (Crypto/Equities/Cash via `bucketFor()`; slice click drills the detail chart); **Detailed** (dropdown `Auto · All · Crypto · Cash · Equities`; Auto = dominant bucket, dynamic `[Bucket] Breakdown` title; crypto + equities roll sub-2% slices into "Other" via `groupSmallDetailedSlices`); **By Storage** (brokerage by location + Bank/Onchain; CEX split into CEX Cash/CEX Crypto; sub-3% custodians → "Other" via `groupSmallStorageSlices`, protecting CEX/Onchain buckets); **Cash Breakdown** (by symbol, when cash exists). Custody filtered out first. Titles and parenthesized totals occupy separate header rows so dynamic breakdown titles never truncate. Center label = top item's %; hover shows `name · $value · %`; no Recharts Tooltip (overlaps legend); colors from `chartColors.ts`; legends keep 44px targets.
 - **Chart image copy**: every dashboard chart card uses `ChartCopyButton` + `chartCopy.ts` to copy the current rendered card as a high-resolution PNG. The copy button excludes itself from the image; Recharts draw animations stay disabled so an immediate copy cannot capture a partial/empty SVG. Clipboard image writes require `ClipboardItem` + `navigator.clipboard.write`; failures toast explicitly.
 
 ### Dashboard Investor Default

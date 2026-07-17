@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  formatCurrency,
   formatQuantity,
   formatPercent,
   formatDateTime,
@@ -15,6 +14,7 @@ import {
 import { Pencil, Trash2, Copy, Check, RefreshCw, Eye } from 'lucide-react';
 import type { Position } from '@/lib/types';
 import { localPriceLabel, type UsdFxRatesByCurrency } from './positionPriceDisplay';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
   WALLET: 'Onchain',
@@ -79,6 +79,7 @@ export const PositionRow = React.memo(function PositionRow({
   onUpdateNav,
   showUnitTrustBadge = false,
 }: PositionRowProps) {
+  const { formatCurrency, valuesHidden } = useMoneyFormatter();
   // Helper to convert USD values to selected currency
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
@@ -107,12 +108,14 @@ export const PositionRow = React.memo(function PositionRow({
     nativeCurrency: position.asset.nativeCurrency,
     displayCurrency: currency,
     usdFxRates,
+    valuesHidden,
   });
   const localAvgCost = localPriceLabel({
     usdPrice: position.avgCostUsd,
     nativeCurrency: position.asset.nativeCurrency,
     displayCurrency: currency,
     usdFxRates,
+    valuesHidden,
   });
 
   // Match PositionTable: hidden on mobile unless toggle is on
