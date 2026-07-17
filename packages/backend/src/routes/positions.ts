@@ -15,6 +15,7 @@ import {
   CategoryGroup,
 } from '../lib/constants.js';
 import { applyPositionDelta, calculatePositionValue } from '../lib/domain.js';
+import { parseBoundedIntegerQuery } from '../lib/queryParams.js';
 
 const router = Router();
 
@@ -145,7 +146,11 @@ router.get('/allocation/storage', async (req, res, next) => {
 
 router.get('/performers/top', async (req, res, next) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 5;
+    const limit = parseBoundedIntegerQuery(req.query.limit, {
+      name: 'limit',
+      defaultValue: 5,
+      max: 100,
+    });
     const performers = await portfolioService.getTopPerformers(req.userId!, limit);
     res.json(performers);
   } catch (error) {
@@ -155,7 +160,11 @@ router.get('/performers/top', async (req, res, next) => {
 
 router.get('/performers/worst', async (req, res, next) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 5;
+    const limit = parseBoundedIntegerQuery(req.query.limit, {
+      name: 'limit',
+      defaultValue: 5,
+      max: 100,
+    });
     const performers = await portfolioService.getWorstPerformers(req.userId!, limit);
     res.json(performers);
   } catch (error) {

@@ -72,13 +72,25 @@ export function applyPositionDelta({
   mode,
   deltaTotalCostUsd,
 }: PositionDeltaInput): PositionDeltaResult {
-  if (!(currentQuantity >= 0) || !(currentAvgCostUsd >= 0)) {
+  if (
+    !Number.isFinite(currentQuantity) ||
+    !Number.isFinite(currentAvgCostUsd) ||
+    !(currentQuantity >= 0) ||
+    !(currentAvgCostUsd >= 0)
+  ) {
     throw new Error('Current position values must be non-negative');
   }
-  if (!(deltaQuantity > 0)) {
+  if (!Number.isFinite(deltaQuantity) || !(deltaQuantity > 0)) {
     throw new Error('Delta quantity must be positive');
   }
-  if (mode === 'add' && !(deltaTotalCostUsd !== undefined && deltaTotalCostUsd >= 0)) {
+  if (
+    mode === 'add' &&
+    !(
+      deltaTotalCostUsd !== undefined &&
+      Number.isFinite(deltaTotalCostUsd) &&
+      deltaTotalCostUsd >= 0
+    )
+  ) {
     throw new Error('Add cost must be non-negative');
   }
 
@@ -88,6 +100,10 @@ export function applyPositionDelta({
   const multiplier = mode === 'add' ? 1 : -1;
   const nextQuantity = currentQuantity + deltaQuantity * multiplier;
   const nextTotalCostUsd = currentTotalCostUsd + deltaCostUsd * multiplier;
+
+  if (![currentTotalCostUsd, deltaCostUsd, nextQuantity, nextTotalCostUsd].every(Number.isFinite)) {
+    throw new Error('Position values exceed the supported numeric range');
+  }
 
   if (nextQuantity < 0) {
     throw new Error('You cannot reduce below zero quantity');

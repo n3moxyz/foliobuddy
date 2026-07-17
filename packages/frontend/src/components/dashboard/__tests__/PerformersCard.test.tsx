@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PerformersCard } from '../PerformersCard';
 import type { Performer } from '@/lib/types';
@@ -40,7 +40,7 @@ describe('PerformersCard', () => {
   });
 
   it('masks monetary P&L while preserving percentages', () => {
-    usePrivacyStore.getState().setValuesHidden(true);
+    act(() => usePrivacyStore.getState().setValuesHidden(true));
     const performers = [
       {
         assetId: 'btc',
@@ -58,6 +58,6 @@ describe('PerformersCard', () => {
     expect(screen.queryByText('$1,234')).not.toBeInTheDocument();
     expect(screen.getByText('+12.50%')).toBeInTheDocument();
 
-    usePrivacyStore.getState().setValuesHidden(false);
+    act(() => usePrivacyStore.getState().setValuesHidden(false));
   });
 });

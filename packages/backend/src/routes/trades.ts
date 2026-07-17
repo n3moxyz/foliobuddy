@@ -12,47 +12,48 @@ import {
   TradeDirection,
   TradeStatus,
 } from '../lib/constants.js';
+import { isValidDateInput, parseDateQuery } from '../lib/queryParams.js';
 
 const router = Router();
 
-const createTradeSchema = z.object({
-  assetId: z.string().min(1),
-  direction: z.enum(TRADE_DIRECTIONS).default(TradeDirection.LONG),
-  entryPrice: z.number().positive(),
-  exitPrice: z.number().positive().optional(),
-  quantity: z.number().positive(),
-  entryDate: z.string().transform((s) => new Date(s)),
-  exitDate: z
-    .string()
-    .transform((s) => new Date(s))
-    .optional(),
-  notes: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-});
+const validDateString = z.string().refine(isValidDateInput, 'Invalid date');
+
+const createTradeSchema = z
+  .object({
+    assetId: z.string().min(1),
+    direction: z.enum(TRADE_DIRECTIONS).default(TradeDirection.LONG),
+    entryPrice: z.number().positive(),
+    exitPrice: z.number().positive().optional(),
+    quantity: z.number().positive(),
+    entryDate: validDateString.transform((s) => new Date(s)),
+    exitDate: validDateString.transform((s) => new Date(s)).optional(),
+    notes: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.exitDate && data.exitDate < data.entryDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['exitDate'],
+        message: 'Exit date cannot precede entry date',
+      });
+    }
+  });
 
 const updateTradeSchema = z.object({
   direction: z.enum(TRADE_DIRECTIONS).optional(),
   entryPrice: z.number().positive().optional(),
   exitPrice: z.number().positive().optional(),
   quantity: z.number().positive().optional(),
-  entryDate: z
-    .string()
-    .transform((s) => new Date(s))
-    .optional(),
-  exitDate: z
-    .string()
-    .transform((s) => new Date(s))
-    .optional(),
+  entryDate: validDateString.transform((s) => new Date(s)).optional(),
+  exitDate: validDateString.transform((s) => new Date(s)).optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
 
 const closeTradeSchema = z.object({
   exitPrice: z.number().positive(),
-  exitDate: z
-    .string()
-    .transform((s) => new Date(s))
-    .optional(),
+  exitDate: validDateString.transform((s) => new Date(s)).optional(),
   notes: z.string().optional(),
 });
 
@@ -65,11 +66,11 @@ router.get('/', async (req, res, next) => {
       ...(status ? { status: status as string } : {}),
       ...(assetId ? { assetId: assetId as string } : {}),
       ...(direction ? { direction: direction as string } : {}),
-      ...(from || to
+      ...(from !== undefined || to !== undefined
         ? {
             entryDate: {
-              ...(from ? { gte: new Date(from as string) } : {}),
-              ...(to ? { lte: new Date(to as string) } : {}),
+              ...(from !== undefined ? { gte: parseDateQuery(from, 'from')! } : {}),
+              ...(to !== undefined ? { lte: parseDateQuery(to, 'to')! } : {}),
             },
           }
         : {}),
@@ -113,11 +114,11 @@ router.get('/analytics', async (req, res, next) => {
     const where: Prisma.TradeWhereInput = {
       userId: req.userId!,
       status: 'CLOSED',
-      ...(from || to
+      ...(from !== undefined || to !== undefined
         ? {
             exitDate: {
-              ...(from ? { gte: new Date(from as string) } : {}),
-              ...(to ? { lte: new Date(to as string) } : {}),
+              ...(from !== undefined ? { gte: parseDateQuery(from, 'from')! } : {}),
+              ...(to !== undefined ? { lte: parseDateQuery(to, 'to')! } : {}),
             },
           }
         : {}),
@@ -140,7 +141,7 @@ router.get('/analytics', async (req, res, next) => {
     const totalWins = winningTrades.reduce((sum, t) => sum + (t.realizedPnL ?? 0), 0);
     const totalLosses = Math.abs(losingTrades.reduce((sum, t) => sum + (t.realizedPnL ?? 0), 0));
 
-    const profitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? Infinity : 0;
+    const profitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? null : 0;
 
     const avgWin = winningTrades.length > 0 ? totalWins / winningTrades.length : 0;
     const avgLoss = losingTrades.length > 0 ? totalLosses / losingTrades.length : 0;
@@ -162,14 +163,15 @@ router.get('/analytics', async (req, res, next) => {
     const shortPnL = shortTrades.reduce((sum, t) => sum + (t.realizedPnL ?? 0), 0);
 
     const sortedByPnL = [...trades].sort((a, b) => (b.realizedPnL ?? 0) - (a.realizedPnL ?? 0));
-    const bestTrade = sortedByPnL[0] ?? null;
-    const worstTrade = sortedByPnL[sortedByPnL.length - 1] ?? null;
+    const bestTrade = sortedByPnL.find((trade) => (trade.realizedPnL ?? 0) > 0) ?? null;
+    const worstTrade =
+      [...sortedByPnL].reverse().find((trade) => (trade.realizedPnL ?? 0) < 0) ?? null;
 
     const monthlyMap = new Map<string, { pnl: number; count: number; wins: number }>();
 
     for (const trade of trades) {
       if (!trade.exitDate) continue;
-      const monthKey = `${trade.exitDate.getFullYear()}-${String(trade.exitDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthKey = `${trade.exitDate.getUTCFullYear()}-${String(trade.exitDate.getUTCMonth() + 1).padStart(2, '0')}`;
       const existing = monthlyMap.get(monthKey) ?? { pnl: 0, count: 0, wins: 0 };
       monthlyMap.set(monthKey, {
         pnl: existing.pnl + (trade.realizedPnL ?? 0),
@@ -329,6 +331,12 @@ router.put('/:id', async (req, res, next) => {
     const entryPrice = data.entryPrice ?? existing.entryPrice;
     const exitPrice = data.exitPrice ?? existing.exitPrice;
     const quantity = data.quantity ?? existing.quantity;
+    const entryDate = data.entryDate ?? existing.entryDate;
+    const nextExitDate = data.exitDate ?? existing.exitDate;
+
+    if (nextExitDate && nextExitDate < entryDate) {
+      throw new AppError('Exit date cannot precede entry date', 400);
+    }
 
     let realizedPnL = existing.realizedPnL;
     let realizedPnLPct = existing.realizedPnLPct;
@@ -388,6 +396,11 @@ router.patch('/:id/close', async (req, res, next) => {
       throw new AppError('Trade is already closed', 400);
     }
 
+    const exitDate = data.exitDate ?? new Date();
+    if (exitDate < existing.entryDate) {
+      throw new AppError('Exit date cannot precede entry date', 400);
+    }
+
     const pnlResult = calculateTradePnL(
       existing.direction as TradeDirection,
       existing.entryPrice,
@@ -399,7 +412,7 @@ router.patch('/:id/close', async (req, res, next) => {
       where: { id: req.params.id },
       data: {
         exitPrice: data.exitPrice,
-        exitDate: data.exitDate ?? new Date(),
+        exitDate,
         status: TradeStatus.CLOSED,
         realizedPnL: pnlResult.pnl,
         realizedPnLPct: pnlResult.pnlPct,
@@ -435,23 +448,48 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-const bulkImportTradeSchema = z.object({
-  asset: z.object({
-    coingeckoId: z.string().nullable(),
-    symbol: z.string().min(1),
-    name: z.string().min(1),
-    category: z.enum(ASSET_CATEGORIES),
-  }),
-  direction: z.enum(TRADE_DIRECTIONS),
-  entryPrice: z.number().positive(),
-  exitPrice: z.number().positive().optional().nullable(),
-  quantity: z.number().positive(),
-  entryDate: z.string(),
-  exitDate: z.string().optional().nullable(),
-  status: z.enum(TRADE_STATUSES).optional(),
-  notes: z.string().optional().nullable(),
-  tags: z.array(z.string()).optional().nullable(),
-});
+const bulkImportTradeSchema = z
+  .object({
+    asset: z.object({
+      coingeckoId: z.string().nullable(),
+      symbol: z.string().min(1),
+      name: z.string().min(1),
+      category: z.enum(ASSET_CATEGORIES),
+    }),
+    direction: z.enum(TRADE_DIRECTIONS),
+    entryPrice: z.number().positive(),
+    exitPrice: z.number().positive().optional().nullable(),
+    quantity: z.number().positive(),
+    entryDate: validDateString,
+    exitDate: validDateString.optional().nullable(),
+    status: z.enum(TRADE_STATUSES).optional(),
+    notes: z.string().optional().nullable(),
+    tags: z.array(z.string()).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    const inferredStatus = data.status ?? (data.exitPrice ? TradeStatus.CLOSED : TradeStatus.OPEN);
+    if (inferredStatus === TradeStatus.CLOSED && !data.exitPrice) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['exitPrice'],
+        message: 'Closed trades require an exit price',
+      });
+    }
+    if (inferredStatus === TradeStatus.OPEN && data.exitPrice) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['status'],
+        message: 'Open trades cannot have an exit price',
+      });
+    }
+    if (data.exitDate && new Date(data.exitDate) < new Date(data.entryDate)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['exitDate'],
+        message: 'Exit date cannot precede entry date',
+      });
+    }
+  });
 
 router.post('/bulk-import', async (req, res, next) => {
   try {

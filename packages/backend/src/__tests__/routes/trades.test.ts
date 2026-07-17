@@ -9,9 +9,12 @@ const mockPrisma = {
   trade: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
     count: vi.fn(),
     delete: vi.fn(),
+    deleteMany: vi.fn(),
   },
 };
 
@@ -173,5 +176,96 @@ describe('GET /api/trades', () => {
       total: 25,
       totalPages: 3,
     });
+  });
+});
+
+describe('adversarial trade boundaries', () => {
+  it('rejects impossible and backwards dates before reading the asset', async () => {
+    const impossible = await request(app).post('/api/trades').send({
+      assetId: 'asset-1',
+      entryPrice: 100,
+      quantity: 1,
+      entryDate: '2026-02-31',
+    });
+    const backwards = await request(app).post('/api/trades').send({
+      assetId: 'asset-1',
+      entryPrice: 100,
+      exitPrice: 110,
+      quantity: 1,
+      entryDate: '2026-02-10',
+      exitDate: '2026-02-01',
+    });
+
+    expect(impossible.status).toBe(400);
+    expect(backwards.status).toBe(400);
+    expect(mockPrisma.asset.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('uses JSON-safe infinite profit factor semantics and UTC month buckets', async () => {
+    mockPrisma.trade.findMany.mockResolvedValue([
+      mockTrade({ id: 'win-1', realizedPnL: 10, exitDate: new Date('2026-01-31T16:30:00Z') }),
+      mockTrade({ id: 'win-2', realizedPnL: 30, exitDate: new Date('2026-01-15T00:00:00Z') }),
+    ]);
+
+    const res = await request(app).get('/api/trades/analytics');
+
+    expect(res.status).toBe(200);
+    expect(res.body.profitFactor).toBeNull();
+    expect(res.body.bestTrade.id).toBe('win-2');
+    expect(res.body.worstTrade).toBeNull();
+    expect(res.body.monthlyBreakdown).toEqual([
+      { month: '2026-01', pnl: 40, count: 2, winRate: 100 },
+    ]);
+  });
+
+  it('does not label a losing-only trade set as having a best trade', async () => {
+    mockPrisma.trade.findMany.mockResolvedValue([
+      mockTrade({ id: 'loss-1', realizedPnL: -10 }),
+      mockTrade({ id: 'loss-2', realizedPnL: -30 }),
+    ]);
+
+    const res = await request(app).get('/api/trades/analytics');
+
+    expect(res.body.bestTrade).toBeNull();
+    expect(res.body.worstTrade.id).toBe('loss-2');
+  });
+
+  it('refuses to close a trade before its entry date', async () => {
+    mockPrisma.trade.findFirst.mockResolvedValue(
+      mockTrade({ status: 'OPEN', exitPrice: null, entryDate: new Date('2026-02-10T00:00:00Z') })
+    );
+
+    const res = await request(app).patch('/api/trades/trade-1/close').send({
+      exitPrice: 110,
+      exitDate: '2026-02-01',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Exit date cannot precede entry date');
+    expect(mockPrisma.trade.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects internally inconsistent bulk trade state', async () => {
+    const res = await request(app)
+      .post('/api/trades/bulk-import')
+      .send([
+        {
+          asset: {
+            coingeckoId: 'bitcoin',
+            symbol: 'BTC',
+            name: 'Bitcoin',
+            category: 'LIQUID_CRYPTO',
+          },
+          direction: 'LONG',
+          entryPrice: 100,
+          exitPrice: 110,
+          quantity: 1,
+          entryDate: '2026-01-01',
+          status: 'OPEN',
+        },
+      ]);
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.trade.create).not.toHaveBeenCalled();
   });
 });

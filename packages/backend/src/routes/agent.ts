@@ -36,20 +36,23 @@ router.get('/portfolio', async (req, res, next) => {
 
     // Compute allocation percentage per position
     const totalValue = summary.totalValueUsd;
-    const positionsWithAllocation = positions.map((p) => ({
-      symbol: p.asset.symbol,
-      name: p.asset.name,
-      category: p.asset.category,
-      quantity: p.quantity,
-      avgCostUsd: p.avgCostUsd,
-      currentPriceUsd: p.asset.currentPriceUsd,
-      marketValueUsd: p.marketValueUsd,
-      unrealizedPnL: p.unrealizedPnL,
-      unrealizedPnLPct: p.unrealizedPnLPct,
-      allocationPct: totalValue > 0 ? ((p.marketValueUsd ?? 0) / totalValue) * 100 : 0,
-      storageType: p.storageType,
-      storageLocation: p.storageLocation,
-    }));
+    const positionsWithAllocation = positions.map((p) => {
+      const marketValueUsd = p.marketValueUsd ?? p.quantity * (p.asset.currentPriceUsd ?? 0);
+      return {
+        symbol: p.asset.symbol,
+        name: p.asset.name,
+        category: p.asset.category,
+        quantity: p.quantity,
+        avgCostUsd: p.avgCostUsd,
+        currentPriceUsd: p.asset.currentPriceUsd,
+        marketValueUsd,
+        unrealizedPnL: p.unrealizedPnL,
+        unrealizedPnLPct: p.unrealizedPnLPct,
+        allocationPct: totalValue > 0 ? (marketValueUsd / totalValue) * 100 : 0,
+        storageType: p.storageType,
+        storageLocation: p.storageLocation,
+      };
+    });
 
     const openTradesFormatted = openTrades.map((t) => ({
       symbol: t.asset.symbol,
@@ -60,8 +63,12 @@ router.get('/portfolio', async (req, res, next) => {
       quantity: t.quantity,
       entryDate: t.entryDate,
       unrealizedPnLPct:
-        t.asset.currentPriceUsd && t.entryPrice
-          ? ((t.asset.currentPriceUsd - t.entryPrice) / t.entryPrice) * 100
+        t.asset.currentPriceUsd !== null && t.entryPrice > 0
+          ? ((t.direction === 'SHORT'
+              ? t.entryPrice - t.asset.currentPriceUsd
+              : t.asset.currentPriceUsd - t.entryPrice) /
+              t.entryPrice) *
+            100
           : null,
       notes: t.notes,
     }));

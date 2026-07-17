@@ -46,19 +46,31 @@ export function useTableSort<T>(
       const aVal = config.accessor(a);
       const bVal = config.accessor(b);
 
-      // Nulls always sort to bottom
-      const aNull = aVal === null || aVal === undefined || aVal === '';
-      const bNull = bVal === null || bVal === undefined || bVal === '';
+      const comparableValue = (value: unknown): number | string | null => {
+        if (value === null || value === undefined || value === '') return null;
+        if (config.type === 'number') {
+          return typeof value === 'number' && Number.isFinite(value) ? value : null;
+        }
+        if (config.type === 'date') {
+          const timestamp = new Date(value as string).getTime();
+          return Number.isFinite(timestamp) ? timestamp : null;
+        }
+        return String(value);
+      };
+
+      const aComparable = comparableValue(aVal);
+      const bComparable = comparableValue(bVal);
+      // Missing and corrupted values always sort to the bottom.
+      const aNull = aComparable === null;
+      const bNull = bComparable === null;
       if (aNull && bNull) return 0;
       if (aNull) return 1;
       if (bNull) return -1;
 
       const comparison =
-        config.type === 'number'
-          ? (aVal as number) - (bVal as number)
-          : config.type === 'date'
-            ? new Date(aVal as string).getTime() - new Date(bVal as string).getTime()
-            : String(aVal).localeCompare(String(bVal));
+        typeof aComparable === 'number' && typeof bComparable === 'number'
+          ? aComparable - bComparable
+          : String(aComparable).localeCompare(String(bComparable));
 
       return sortDirection === 'desc' ? -comparison : comparison;
     });

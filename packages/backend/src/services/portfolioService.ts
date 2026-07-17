@@ -44,6 +44,10 @@ type PositionWithAsset = Awaited<
   >
 >[number];
 
+function positionValueUsd(position: PositionWithAsset): number {
+  return position.marketValueUsd ?? position.quantity * (position.asset.currentPriceUsd ?? 0);
+}
+
 class PortfolioService {
   private async getOwnedPositions(userId: string): Promise<PositionWithAsset[]> {
     return prisma.position.findMany({
@@ -73,8 +77,7 @@ class PortfolioService {
 
     let totalValueUsd = 0;
     for (const position of positions) {
-      totalValueUsd +=
-        position.marketValueUsd ?? position.quantity * (position.asset.currentPriceUsd ?? 0);
+      totalValueUsd += positionValueUsd(position);
     }
 
     const totalCostBasis = ytdSnapshot?.totalValueUsd ?? totalValueUsd;
@@ -96,13 +99,13 @@ class PortfolioService {
 
   async getAllocationByCategory(userId: string): Promise<AllocationByCategory[]> {
     const positions = await this.getOwnedPositions(userId);
-    const totalValue = positions.reduce((sum, p) => sum + (p.marketValueUsd ?? 0), 0);
+    const totalValue = positions.reduce((sum, position) => sum + positionValueUsd(position), 0);
 
     const categoryMap = new Map<string, { valueUsd: number; count: number }>();
 
     for (const position of positions) {
       const category = position.asset.category;
-      const value = position.marketValueUsd ?? 0;
+      const value = positionValueUsd(position);
       const existing = categoryMap.get(category) ?? { valueUsd: 0, count: 0 };
       categoryMap.set(category, {
         valueUsd: existing.valueUsd + value,
@@ -122,7 +125,7 @@ class PortfolioService {
 
   async getAllocationByStorage(userId: string): Promise<AllocationByStorage[]> {
     const positions = await this.getOwnedPositions(userId);
-    const totalValue = positions.reduce((sum, p) => sum + (p.marketValueUsd ?? 0), 0);
+    const totalValue = positions.reduce((sum, position) => sum + positionValueUsd(position), 0);
 
     const storageMap = new Map<
       string,
@@ -130,8 +133,8 @@ class PortfolioService {
     >();
 
     for (const position of positions) {
-      const key = `${position.storageType}:${position.storageLocation ?? 'default'}`;
-      const value = position.marketValueUsd ?? 0;
+      const key = JSON.stringify([position.storageType, position.storageLocation]);
+      const value = positionValueUsd(position);
       const existing = storageMap.get(key) ?? {
         storageType: position.storageType,
         location: position.storageLocation,

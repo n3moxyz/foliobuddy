@@ -1,18 +1,21 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { isValidDateInput } from '../lib/queryParams.js';
 
 const router = Router();
 
 // Validation schemas
 const createInvestorSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().trim().min(1),
   stakePercentage: z.number().min(0).max(100).optional(), // Optional - will auto-calculate as remainder
   initialCapital: z.number().min(0).default(0),
   joinDate: z
     .string()
+    .refine(isValidDateInput, 'Invalid join date')
     .transform((s) => new Date(s))
     .optional(),
   notes: z.string().optional(),
@@ -163,63 +166,65 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createInvestorSchema.parse(req.body);
 
-    // If setting as owner, clear existing owner first
-    if (data.isOwner) {
-      await prisma.investor.updateMany({
-        where: { userId: req.userId!, isOwner: true },
-        data: { isOwner: false },
-      });
-    }
-
-    const existingInvestors = await prisma.investor.findMany({
-      where: { userId: req.userId! },
-    });
-
-    const currentTotalStake = existingInvestors.reduce((sum, inv) => sum + inv.stakePercentage, 0);
-
-    // Auto-calculate stake as remainder if not provided
-    const stakePercentage = data.stakePercentage ?? 100 - currentTotalStake;
-
-    // Verify total stake doesn't exceed 100%
-    if (currentTotalStake + stakePercentage > 100) {
-      throw new AppError(
-        `Total stake percentage cannot exceed 100%. Current: ${currentTotalStake}%, New: ${stakePercentage}%`,
-        400
-      );
-    }
-
-    if (stakePercentage <= 0) {
-      throw new AppError(`No stake available. Current total: ${currentTotalStake}%`, 400);
-    }
-
     const summary = await portfolioService.getSummary(req.userId!);
-    const currentValue = summary.totalValueUsd * (stakePercentage / 100);
+    const investor = await prisma.$transaction(
+      async (tx) => {
+        const existingInvestors = await tx.investor.findMany({
+          where: { userId: req.userId! },
+        });
+        const currentTotalStake = existingInvestors.reduce(
+          (sum, inv) => sum + inv.stakePercentage,
+          0
+        );
+        const stakePercentage = data.stakePercentage ?? 100 - currentTotalStake;
 
-    const investor = await prisma.investor.create({
-      data: {
-        userId: req.userId!,
-        name: data.name,
-        stakePercentage,
-        initialCapital: data.initialCapital,
-        currentValue,
-        totalReturn: currentValue - data.initialCapital,
-        totalReturnPct:
-          data.initialCapital > 0
-            ? ((currentValue - data.initialCapital) / data.initialCapital) * 100
-            : 0,
-        joinDate: data.joinDate ?? new Date(),
-        notes: data.notes,
-        isOwner: data.isOwner ?? false,
-      },
-    });
+        if (currentTotalStake + stakePercentage > 100) {
+          throw new AppError(
+            `Total stake percentage cannot exceed 100%. Current: ${currentTotalStake}%, New: ${stakePercentage}%`,
+            400
+          );
+        }
+        if (stakePercentage <= 0) {
+          throw new AppError(`No stake available. Current total: ${currentTotalStake}%`, 400);
+        }
 
-    await prisma.investorStake.create({
-      data: {
-        investorId: investor.id,
-        stakePercentage,
-        valueAtTime: currentValue,
+        if (data.isOwner) {
+          await tx.investor.updateMany({
+            where: { userId: req.userId!, isOwner: true },
+            data: { isOwner: false },
+          });
+        }
+
+        const currentValue = summary.totalValueUsd * (stakePercentage / 100);
+        const created = await tx.investor.create({
+          data: {
+            userId: req.userId!,
+            name: data.name,
+            stakePercentage,
+            initialCapital: data.initialCapital,
+            currentValue,
+            totalReturn: currentValue - data.initialCapital,
+            totalReturnPct:
+              data.initialCapital > 0
+                ? ((currentValue - data.initialCapital) / data.initialCapital) * 100
+                : 0,
+            joinDate: data.joinDate ?? new Date(),
+            notes: data.notes,
+            isOwner: data.isOwner ?? false,
+          },
+        });
+
+        await tx.investorStake.create({
+          data: {
+            investorId: created.id,
+            stakePercentage,
+            valueAtTime: currentValue,
+          },
+        });
+        return created;
       },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     res.status(201).json(investor);
   } catch (error) {
@@ -232,63 +237,50 @@ router.put('/:id', async (req, res, next) => {
   try {
     const data = updateInvestorSchema.parse(req.body);
 
-    const existing = await prisma.investor.findFirst({
-      where: {
-        id: req.params.id,
-        userId: req.userId!,
+    const summary =
+      data.stakePercentage !== undefined ? await portfolioService.getSummary(req.userId!) : null;
+    const investor = await prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.investor.findFirst({
+          where: { id: req.params.id, userId: req.userId! },
+        });
+        if (!existing) throw new AppError('Investor not found', 404);
+
+        if (data.stakePercentage !== undefined) {
+          const otherStakeTotal = await tx.investor.aggregate({
+            where: { userId: req.userId!, id: { not: req.params.id } },
+            _sum: { stakePercentage: true },
+          });
+          const projectedTotal = (otherStakeTotal._sum.stakePercentage ?? 0) + data.stakePercentage;
+          if (projectedTotal > 100) {
+            throw new AppError(
+              `Total stake percentage cannot exceed 100%. Projected: ${projectedTotal}%`,
+              400
+            );
+          }
+        }
+
+        if (data.isOwner) {
+          await tx.investor.updateMany({
+            where: { userId: req.userId!, isOwner: true, id: { not: req.params.id } },
+            data: { isOwner: false },
+          });
+        }
+
+        if (data.stakePercentage !== undefined) {
+          await tx.investorStake.create({
+            data: {
+              investorId: req.params.id,
+              stakePercentage: data.stakePercentage,
+              valueAtTime: summary!.totalValueUsd * (data.stakePercentage / 100),
+            },
+          });
+        }
+
+        return tx.investor.update({ where: { id: req.params.id }, data });
       },
-    });
-
-    if (!existing) {
-      throw new AppError('Investor not found', 404);
-    }
-
-    // If setting as owner, clear existing owner first
-    if (data.isOwner) {
-      await prisma.investor.updateMany({
-        where: { userId: req.userId!, isOwner: true, id: { not: req.params.id } },
-        data: { isOwner: false },
-      });
-    }
-
-    if (data.stakePercentage !== undefined) {
-      const otherStakeTotal = await prisma.investor.aggregate({
-        where: {
-          userId: req.userId!,
-          id: { not: req.params.id },
-        },
-        _sum: {
-          stakePercentage: true,
-        },
-      });
-
-      const projectedTotal = (otherStakeTotal._sum.stakePercentage ?? 0) + data.stakePercentage;
-      if (projectedTotal > 100) {
-        throw new AppError(
-          `Total stake percentage cannot exceed 100%. Projected: ${projectedTotal}%`,
-          400
-        );
-      }
-    }
-
-    // Record stake change if stake percentage is being updated
-    if (data.stakePercentage !== undefined) {
-      const summary = await portfolioService.getSummary(req.userId!);
-      const newValue = summary.totalValueUsd * (data.stakePercentage / 100);
-
-      await prisma.investorStake.create({
-        data: {
-          investorId: req.params.id,
-          stakePercentage: data.stakePercentage,
-          valueAtTime: newValue,
-        },
-      });
-    }
-
-    const investor = await prisma.investor.update({
-      where: { id: req.params.id },
-      data,
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     res.json(investor);
   } catch (error) {
@@ -300,57 +292,49 @@ router.put('/:id', async (req, res, next) => {
 // Query param: reassignTo - ID of investor to receive the freed stake
 router.delete('/:id', async (req, res, next) => {
   try {
-    const investorToDelete = await prisma.investor.findFirst({
-      where: {
-        id: req.params.id,
-        userId: req.userId!,
+    const reassignQuery = req.query.reassignTo;
+    if (reassignQuery !== undefined && typeof reassignQuery !== 'string') {
+      throw new AppError('reassignTo must be a single investor ID', 400);
+    }
+    const reassignToId = reassignQuery;
+    if (reassignToId === req.params.id) {
+      throw new AppError('Cannot reassign stake to the same investor', 400);
+    }
+    const summary = reassignToId ? await portfolioService.getSummary(req.userId!) : null;
+
+    await prisma.$transaction(
+      async (tx) => {
+        const investorToDelete = await tx.investor.findFirst({
+          where: { id: req.params.id, userId: req.userId! },
+        });
+        if (!investorToDelete) throw new AppError('Investor not found', 404);
+
+        if (reassignToId) {
+          const targetInvestor = await tx.investor.findFirst({
+            where: { id: reassignToId, userId: req.userId! },
+          });
+          if (!targetInvestor) {
+            throw new AppError('Target investor for stake reassignment not found', 404);
+          }
+
+          const newStake = targetInvestor.stakePercentage + investorToDelete.stakePercentage;
+          await tx.investor.update({
+            where: { id: reassignToId },
+            data: { stakePercentage: newStake },
+          });
+          await tx.investorStake.create({
+            data: {
+              investorId: reassignToId,
+              stakePercentage: newStake,
+              valueAtTime: summary!.totalValueUsd * (newStake / 100),
+            },
+          });
+        }
+
+        await tx.investor.delete({ where: { id: investorToDelete.id } });
       },
-    });
-
-    if (!investorToDelete) {
-      throw new AppError('Investor not found', 404);
-    }
-
-    const reassignToId = req.query.reassignTo as string | undefined;
-
-    // If reassignTo is provided, transfer the stake
-    if (reassignToId) {
-      if (reassignToId === req.params.id) {
-        throw new AppError('Cannot reassign stake to the same investor', 400);
-      }
-
-      const targetInvestor = await prisma.investor.findFirst({
-        where: {
-          id: reassignToId,
-          userId: req.userId!,
-        },
-      });
-
-      if (!targetInvestor) {
-        throw new AppError('Target investor for stake reassignment not found', 404);
-      }
-
-      const newStake = targetInvestor.stakePercentage + investorToDelete.stakePercentage;
-      await prisma.investor.update({
-        where: { id: reassignToId },
-        data: { stakePercentage: newStake },
-      });
-
-      // Record stake change for the target investor
-      const summary = await portfolioService.getSummary(req.userId!);
-      const newValue = summary.totalValueUsd * (newStake / 100);
-      await prisma.investorStake.create({
-        data: {
-          investorId: reassignToId,
-          stakePercentage: newStake,
-          valueAtTime: newValue,
-        },
-      });
-    }
-
-    await prisma.investor.delete({
-      where: { id: investorToDelete.id },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     res.status(204).send();
   } catch (error) {

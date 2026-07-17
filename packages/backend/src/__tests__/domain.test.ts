@@ -80,6 +80,33 @@ describe('domain helpers', () => {
     ).toThrow('reduce below zero quantity');
   });
 
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'rejects non-finite position inputs (%s)',
+    (invalid) => {
+      expect(() =>
+        applyPositionDelta({
+          currentQuantity: 1,
+          currentAvgCostUsd: 5,
+          deltaQuantity: invalid,
+          deltaTotalCostUsd: 1,
+          mode: 'add',
+        })
+      ).toThrow('Delta quantity must be positive');
+    }
+  );
+
+  it('rejects finite inputs whose multiplication overflows', () => {
+    expect(() =>
+      applyPositionDelta({
+        currentQuantity: 1e308,
+        currentAvgCostUsd: 1e308,
+        deltaQuantity: 1,
+        deltaTotalCostUsd: 1,
+        mode: 'add',
+      })
+    ).toThrow('supported numeric range');
+  });
+
   it('captures external provider/category compatibility', () => {
     expect(isExternalProviderCategoryCompatible('yahoo', 'EQUITY')).toBe(true);
     expect(isExternalProviderCategoryCompatible('yahoo', 'UNIT_TRUST')).toBe(true);

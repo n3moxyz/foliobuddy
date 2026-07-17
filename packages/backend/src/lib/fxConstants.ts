@@ -19,7 +19,9 @@ export function usdRateEntries(rates: ExchangeRates): UsdRateEntry[] {
   const entries: UsdRateEntry[] = [];
   for (const { currency, field } of USD_RATE_FIELDS) {
     const rate = rates[field];
-    if (rate) entries.push({ currency, rate });
+    if (typeof rate === 'number' && Number.isFinite(rate) && rate > 0) {
+      entries.push({ currency, rate });
+    }
   }
   return entries;
 }

@@ -5,24 +5,48 @@ const LEGACY_KEY = 'pa-portfolio-collapse-state';
 
 type CollapseState = Record<string, boolean>;
 
+function parseState(raw: string): CollapseState | null {
+  const parsed: unknown = JSON.parse(raw);
+  if (
+    parsed === null ||
+    typeof parsed !== 'object' ||
+    Array.isArray(parsed) ||
+    !Object.values(parsed).every((value) => typeof value === 'boolean')
+  ) {
+    return null;
+  }
+  return parsed as CollapseState;
+}
+
 function loadState(): CollapseState {
   try {
     // Migrate from legacy key on first load
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
-      localStorage.setItem(STORAGE_KEY, legacy);
+      const parsed = parseState(legacy);
       localStorage.removeItem(LEGACY_KEY);
-      return JSON.parse(legacy);
+      if (parsed) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        return parsed;
+      }
     }
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+    const parsed = parseState(raw);
+    if (parsed) return parsed;
+    localStorage.removeItem(STORAGE_KEY);
+    return {};
   } catch {
     return {};
   }
 }
 
 function saveState(state: CollapseState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Persistence is best-effort in privacy-restricted browser contexts.
+  }
 }
 
 export function useCollapsibleState() {

@@ -44,6 +44,9 @@ function parseEnglishDate(dateStr: string): string | null {
   const year = parseInt(match[3], 10);
   if (month === undefined) return null;
   const d = new Date(Date.UTC(year, month, day));
+  if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month || d.getUTCDate() !== day) {
+    return null;
+  }
   return d.toISOString();
 }
 
@@ -82,7 +85,14 @@ function parseHoldingBlock(
 
   const units = stripThousands(qtyStr);
   const avgCostNative = stripThousands(avgCostStr);
-  if (isNaN(units) || isNaN(avgCostNative)) return null;
+  if (
+    !Number.isFinite(units) ||
+    units <= 0 ||
+    !Number.isFinite(avgCostNative) ||
+    avgCostNative < 0
+  ) {
+    return null;
+  }
 
   let navNative = NaN;
   let currentValueNative = NaN;
@@ -110,7 +120,7 @@ function parseHoldingBlock(
   if (candidateValues.length >= 2) {
     navNative = candidateValues[1];
   }
-  if (isNaN(navNative)) navNative = avgCostNative;
+  if (!Number.isFinite(navNative) || navNative < 0) navNative = avgCostNative;
 
   const totalCostNative = units * avgCostNative;
   if (isNaN(currentValueNative)) {

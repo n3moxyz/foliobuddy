@@ -158,7 +158,7 @@ function MetricsSegment({
           }
         />
         <p className="text-xl font-bold tabular-nums">
-          {analytics.profitFactor === Infinity ? '∞' : formatNumber(analytics.profitFactor)}
+          {analytics.profitFactor === null ? '∞' : formatNumber(analytics.profitFactor)}
         </p>
         <p className={`text-[10px] ${pfRating.color}`}>{pfRating.text}</p>
       </div>
@@ -399,7 +399,7 @@ export function TradeStatsCard({
 
   // Rating helpers
   const pfRating =
-    analytics.profitFactor === Infinity
+    analytics.profitFactor === null
       ? { text: 'No losses', color: 'text-profit' }
       : ratingLabel(analytics.profitFactor, [
           [2, 'Excellent'],

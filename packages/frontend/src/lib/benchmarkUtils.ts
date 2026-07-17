@@ -64,8 +64,8 @@ export const DEFAULT_BENCHMARKS: BenchmarkConfig[] = [
 function normalizeToPercentChange(values: number[]): number[] {
   if (values.length === 0) return [];
   const firstValue = values[0];
-  if (firstValue === 0) return values.map(() => 0);
-  return values.map((v) => ((v - firstValue) / firstValue) * 100);
+  if (!Number.isFinite(firstValue) || firstValue <= 0) return values.map(() => 0);
+  return values.map((v) => (Number.isFinite(v) ? ((v - firstValue) / firstValue) * 100 : 0));
 }
 
 /**
@@ -139,11 +139,17 @@ export function mergeAdditionalBenchmark(
   }
 
   // Sort by timestamp for binary search
-  const sortedData = benchmarkData.data.slice().sort((a, b) => a.timestamp - b.timestamp);
+  const sortedData = benchmarkData.data
+    .filter(
+      (point) => Number.isFinite(point.timestamp) && Number.isFinite(point.price) && point.price > 0
+    )
+    .sort((a, b) => a.timestamp - b.timestamp);
+  if (sortedData.length === 0) return normalizedData;
 
   // Use the benchmark price closest to the FIRST portfolio timestamp as baseline.
   // This ensures both portfolio and benchmark start near 0% at the same point.
   const firstPortfolioTime = normalizedData[0].date.getTime();
+  if (!Number.isFinite(firstPortfolioTime)) return normalizedData;
   const baselineResult = findClosestPrice(sortedData, firstPortfolioTime);
   if (!baselineResult || baselineResult.price === 0) return normalizedData;
   const firstPrice = baselineResult.price;
@@ -182,5 +188,5 @@ export function getCurrentChange(
   if (normalizedData.length === 0) return undefined;
   const lastPoint = normalizedData[normalizedData.length - 1];
   const value = lastPoint[benchmarkId];
-  return typeof value === 'number' ? value : undefined;
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }

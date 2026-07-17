@@ -41,13 +41,18 @@ const MONTH_FORMATTER = new Intl.DateTimeFormat('en-US', {
 });
 
 function getClosedTrades(trades: Trade[]) {
-  return trades.filter((trade) => trade.status === 'CLOSED' && trade.realizedPnL !== null);
+  return trades.filter(
+    (trade) =>
+      trade.status === 'CLOSED' &&
+      typeof trade.realizedPnL === 'number' &&
+      Number.isFinite(trade.realizedPnL)
+  );
 }
 
 function getHoldDays(trade: Trade) {
   const start = new Date(trade.entryDate).getTime();
   const end = new Date(trade.exitDate ?? new Date().toISOString()).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
   return Math.max(1, Math.round((end - start) / MS_PER_DAY));
 }
 
@@ -61,6 +66,7 @@ function getTradeTags(trade: Trade) {
 }
 
 export function topTagsForTrades(trades: Trade[], limit = 3) {
+  const safeLimit = Number.isFinite(limit) ? Math.max(0, Math.trunc(limit)) : 0;
   const counts = new Map<string, number>();
   for (const trade of trades) {
     for (const tag of getTradeTags(trade)) {
@@ -70,7 +76,7 @@ export function topTagsForTrades(trades: Trade[], limit = 3) {
   return Array.from(counts.entries())
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
-    .slice(0, limit);
+    .slice(0, safeLimit);
 }
 
 function getMonthKey(dateValue: string) {
@@ -86,7 +92,7 @@ function formatMonthLabel(key: string) {
 
 function bestTradeByPnL(trades: Trade[]) {
   return trades.reduce<Trade | null>((best, trade) => {
-    if (trade.realizedPnL === null) return best;
+    if (trade.realizedPnL === null || trade.realizedPnL <= 0) return best;
     if (!best || (best.realizedPnL ?? -Infinity) < trade.realizedPnL) return trade;
     return best;
   }, null);
@@ -94,7 +100,7 @@ function bestTradeByPnL(trades: Trade[]) {
 
 function worstTradeByPnL(trades: Trade[]) {
   return trades.reduce<Trade | null>((worst, trade) => {
-    if (trade.realizedPnL === null) return worst;
+    if (trade.realizedPnL === null || trade.realizedPnL >= 0) return worst;
     if (!worst || (worst.realizedPnL ?? Infinity) > trade.realizedPnL) return trade;
     return worst;
   }, null);
@@ -132,11 +138,12 @@ export function buildTickerDossiers(trades: Trade[]): TickerDossier[] {
         losses,
         winRate: closedTrades.length > 0 ? (wins / closedTrades.length) * 100 : 0,
         avgHoldDays,
-        avgPositionSizeUsd:
-          tickerTrades.length > 0
-            ? tickerTrades.reduce((sum, trade) => sum + trade.positionSizeUsd, 0) /
-              tickerTrades.length
-            : 0,
+        avgPositionSizeUsd: (() => {
+          const sizes = tickerTrades
+            .map((trade) => trade.positionSizeUsd)
+            .filter((size) => Number.isFinite(size) && size >= 0);
+          return sizes.length > 0 ? sizes.reduce((sum, size) => sum + size, 0) / sizes.length : 0;
+        })(),
         largestWin: bestTradeByPnL(closedTrades),
         largestLoss: worstTradeByPnL(closedTrades),
         topTags: topTagsForTrades(tickerTrades),
@@ -173,5 +180,9 @@ export function buildMonthlyReviews(trades: Trade[]): MonthlyReview[] {
         topTags: topTagsForTrades(monthTrades),
       };
     })
-    .sort((a, b) => b.key.localeCompare(a.key));
+    .sort((a, b) => {
+      if (a.key === 'unknown') return 1;
+      if (b.key === 'unknown') return -1;
+      return b.key.localeCompare(a.key);
+    });
 }

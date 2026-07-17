@@ -16,6 +16,7 @@ const COIN_LIST_CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
 const HISTORICAL_CACHE_DURATION_MS = 5 * 60 * 1000;
 const HISTORICAL_CACHE_MAX_ENTRIES = 50;
 const COIN_LIST_KEY = 'coin-list';
+const MAX_RATE_LIMIT_RETRIES = 3;
 
 type CoinGeckoPriceResponse = Record<string, { usd: number; usd_24h_change?: number }>;
 type CoinListItem = { id: string; symbol: string; name: string };
@@ -62,7 +63,7 @@ export class CoinGeckoProvider implements AssetPriceProvider {
 
   private async rateLimitedFetch<T>(url: string): Promise<T> {
     return new Promise((resolve, reject) => {
-      const executeRequest = async () => {
+      const executeRequest = async (rateLimitRetries = 0): Promise<void> => {
         const now = Date.now();
         const timeSinceLastRequest = now - this.lastRequestTime;
         if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
@@ -73,9 +74,12 @@ export class CoinGeckoProvider implements AssetPriceProvider {
           const response = await fetch(url, { headers: this.getHeaders() });
           if (!response.ok) {
             if (response.status === 429) {
+              if (rateLimitRetries >= MAX_RATE_LIMIT_RETRIES) {
+                throw new Error('CoinGecko API rate limit retry limit exceeded');
+              }
               logger.warn('Rate limited by CoinGecko, waiting...');
               await this.sleep(60_000);
-              return executeRequest();
+              return executeRequest(rateLimitRetries + 1);
             }
             throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
           }
@@ -107,7 +111,7 @@ export class CoinGeckoProvider implements AssetPriceProvider {
   async getPrices(providerAssetIds: string[]): Promise<Map<string, ProviderPrice>> {
     const prices = new Map<string, ProviderPrice>();
     const idsToFetch: string[] = [];
-    for (const id of providerAssetIds) {
+    for (const id of new Set(providerAssetIds)) {
       const cached = this.priceCache.get(id);
       if (cached !== undefined) {
         prices.set(id, { priceUsd: cached });
@@ -133,7 +137,7 @@ export class CoinGeckoProvider implements AssetPriceProvider {
     try {
       const data = await this.rateLimitedFetch<CoinGeckoPriceResponse>(url);
       for (const [id, priceData] of Object.entries(data)) {
-        if (priceData.usd !== undefined) prices.set(id, priceData.usd);
+        if (Number.isFinite(priceData.usd) && priceData.usd > 0) prices.set(id, priceData.usd);
       }
     } catch (error) {
       logger.error('Error fetching prices:', error);
@@ -148,13 +152,20 @@ export class CoinGeckoProvider implements AssetPriceProvider {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
-      const response = await fetch(url, { headers: this.getHeaders(), signal: controller.signal });
-      clearTimeout(timeout);
-      if (!response.ok) return null;
-      const data = (await response.json()) as CoinGeckoPriceResponse;
-      const price = data[providerAssetId]?.usd ?? null;
-      if (price !== null) this.priceCache.set(providerAssetId, price);
-      return price;
+      try {
+        const response = await fetch(url, {
+          headers: this.getHeaders(),
+          signal: controller.signal,
+        });
+        if (!response.ok) return null;
+        const data = (await response.json()) as CoinGeckoPriceResponse;
+        const price = data[providerAssetId]?.usd;
+        if (!Number.isFinite(price) || !(price > 0)) return null;
+        this.priceCache.set(providerAssetId, price);
+        return price;
+      } finally {
+        clearTimeout(timeout);
+      }
     } catch {
       return null;
     }
@@ -175,6 +186,7 @@ export class CoinGeckoProvider implements AssetPriceProvider {
         throw new Error(`CoinGecko API error: ${response.status}`);
       }
       const data: CoinListItem[] = await response.json();
+      if (!Array.isArray(data)) throw new Error('CoinGecko coin list response is malformed');
       this.staleCoinList = data;
       this.coinListCache.set(COIN_LIST_KEY, data);
       logger.info(`[CoinGecko] Cached ${data.length} coins`);
@@ -218,11 +230,11 @@ export class CoinGeckoProvider implements AssetPriceProvider {
     try {
       const data = await this.rateLimitedFetch<CoinGeckoExchangeRates>(url);
       const btcUsd = data.rates.usd?.value;
-      if (!btcUsd) return null;
+      if (!Number.isFinite(btcUsd) || !(btcUsd > 0)) return null;
 
       const usdTo = (currency: string) => {
         const btcCurrency = data.rates[currency]?.value;
-        return btcCurrency ? btcCurrency / btcUsd : undefined;
+        return Number.isFinite(btcCurrency) && btcCurrency! > 0 ? btcCurrency! / btcUsd : undefined;
       };
 
       const usdSgd = usdTo('sgd');
@@ -251,10 +263,15 @@ export class CoinGeckoProvider implements AssetPriceProvider {
     const url = `${COINGECKO_BASE_URL}/coins/${providerAssetId}/market_chart?vs_currency=usd&days=${days}`;
     try {
       const response = await this.rateLimitedFetch<CoinGeckoMarketChartResponse>(url);
-      const data: ProviderHistoricalPoint[] = response.prices.map(([timestamp, priceUsd]) => ({
-        timestamp,
-        priceUsd,
-      }));
+      if (!Array.isArray(response.prices)) {
+        throw new Error('CoinGecko historical response is malformed');
+      }
+      const data: ProviderHistoricalPoint[] = response.prices
+        .filter(
+          ([timestamp, priceUsd]) =>
+            Number.isFinite(timestamp) && Number.isFinite(priceUsd) && priceUsd > 0
+        )
+        .map(([timestamp, priceUsd]) => ({ timestamp, priceUsd }));
       this.historicalCache.set(cacheKey, data);
       this.setStaleHistoricalData(cacheKey, data);
       return data;

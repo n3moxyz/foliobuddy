@@ -18,6 +18,13 @@ export interface PaginatedResponse<T> {
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
+const MAX_DATABASE_OFFSET = 2_147_483_647;
+
+function parsePositiveInteger(value: unknown, fallback: number): number {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return fallback;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : fallback;
+}
 
 /**
  * Parse pagination params from request query.
@@ -29,8 +36,10 @@ export function parsePagination(req: Request): PaginationParams | null {
   // If no page param, return null (caller should return full array)
   if (!page) return null;
 
-  const pageNum = Math.max(1, parseInt(page as string) || 1);
-  const limitNum = Math.min(MAX_LIMIT, Math.max(1, parseInt(limit as string) || DEFAULT_LIMIT));
+  const limitNum = Math.min(MAX_LIMIT, parsePositiveInteger(limit, DEFAULT_LIMIT));
+  const requestedPage = parsePositiveInteger(page, 1);
+  const maxPage = Math.floor(MAX_DATABASE_OFFSET / limitNum) + 1;
+  const pageNum = Math.min(requestedPage, maxPage);
 
   return {
     page: pageNum,

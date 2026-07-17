@@ -15,6 +15,29 @@ interface PerformanceMetrics {
   ethOutperform: number | null;
 }
 
+function calculateReturn(currentValue: number, baselineValue: number | null | undefined) {
+  if (!Number.isFinite(currentValue) || !Number.isFinite(baselineValue) || baselineValue! <= 0) {
+    return null;
+  }
+  return ((currentValue - baselineValue!) / baselineValue!) * 100;
+}
+
+function subtractUtcMonth(date: Date): Date {
+  const targetMonth = date.getUTCMonth() - 1;
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), targetMonth + 1, 0)).getUTCDate();
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      targetMonth,
+      Math.min(date.getUTCDate(), lastDay),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds()
+    )
+  );
+}
+
 class SnapshotService {
   /**
    * Create a new portfolio snapshot
@@ -32,7 +55,12 @@ class SnapshotService {
     ]);
 
     const usdSgdRate = fxRates?.usdSgd ?? USD_SGD_FALLBACK_RATE;
-    const metrics = await this.calculatePerformanceMetrics(userId, summary.totalValueUsd);
+    const metrics = await this.calculatePerformanceMetrics(
+      userId,
+      summary.totalValueUsd,
+      btcPrice,
+      ethPrice
+    );
 
     const snapshot = await prisma.snapshot.create({
       data: {
@@ -48,16 +76,16 @@ class SnapshotService {
         ethPrice,
         ...metrics,
         positions: {
-          create: positions.map((p) => ({
-            assetSymbol: p.asset.symbol,
-            quantity: p.quantity,
-            priceUsd: p.asset.currentPriceUsd ?? 0,
-            valueUsd: p.marketValueUsd ?? 0,
-            allocation:
-              summary.totalValueUsd > 0
-                ? ((p.marketValueUsd ?? 0) / summary.totalValueUsd) * 100
-                : 0,
-          })),
+          create: positions.map((p) => {
+            const valueUsd = p.marketValueUsd ?? p.quantity * (p.asset.currentPriceUsd ?? 0);
+            return {
+              assetSymbol: p.asset.symbol,
+              quantity: p.quantity,
+              priceUsd: p.asset.currentPriceUsd ?? 0,
+              valueUsd,
+              allocation: summary.totalValueUsd > 0 ? (valueUsd / summary.totalValueUsd) * 100 : 0,
+            };
+          }),
         },
       },
     });
@@ -70,52 +98,35 @@ class SnapshotService {
    */
   private async calculatePerformanceMetrics(
     userId: string,
-    currentValue: number
+    currentValue: number,
+    currentBtc: number | null,
+    currentEth: number | null
   ): Promise<PerformanceMetrics> {
     const now = new Date();
 
     const [yesterday, lastWeek, lastMonth, startOfYear, ath] = await Promise.all([
       this.getSnapshotByDate(userId, new Date(now.getTime() - 24 * 60 * 60 * 1000)),
       this.getSnapshotByDate(userId, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
-      this.getSnapshotByDate(
-        userId,
-        new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
-      ),
-      this.getSnapshotByDate(userId, new Date(now.getFullYear(), 0, 1)),
+      this.getSnapshotByDate(userId, subtractUtcMonth(now)),
+      this.getSnapshotByDate(userId, new Date(Date.UTC(now.getUTCFullYear(), 0, 1))),
       this.getAllTimeHigh(userId),
     ]);
 
-    const dailyReturn = yesterday
-      ? ((currentValue - yesterday.totalValueUsd) / yesterday.totalValueUsd) * 100
-      : null;
-
-    const weeklyReturn = lastWeek
-      ? ((currentValue - lastWeek.totalValueUsd) / lastWeek.totalValueUsd) * 100
-      : null;
-
-    const monthlyReturn = lastMonth
-      ? ((currentValue - lastMonth.totalValueUsd) / lastMonth.totalValueUsd) * 100
-      : null;
-
-    const ytdReturn = startOfYear
-      ? ((currentValue - startOfYear.totalValueUsd) / startOfYear.totalValueUsd) * 100
-      : null;
+    const dailyReturn = calculateReturn(currentValue, yesterday?.totalValueUsd);
+    const weeklyReturn = calculateReturn(currentValue, lastWeek?.totalValueUsd);
+    const monthlyReturn = calculateReturn(currentValue, lastMonth?.totalValueUsd);
+    const ytdReturn = calculateReturn(currentValue, startOfYear?.totalValueUsd);
 
     let btcOutperform: number | null = null;
     let ethOutperform: number | null = null;
 
-    if (startOfYear && startOfYear.btcPrice && startOfYear.ethPrice) {
-      const [currentBtc, currentEth] = await Promise.all([
-        priceService.getPrice('bitcoin'),
-        priceService.getPrice('ethereum'),
-      ]);
-
-      if (currentBtc && ytdReturn !== null) {
+    if (startOfYear && ytdReturn !== null) {
+      if (currentBtc && startOfYear.btcPrice && startOfYear.btcPrice > 0) {
         const btcYtdReturn = ((currentBtc - startOfYear.btcPrice) / startOfYear.btcPrice) * 100;
         btcOutperform = ytdReturn - btcYtdReturn;
       }
 
-      if (currentEth && ytdReturn !== null) {
+      if (currentEth && startOfYear.ethPrice && startOfYear.ethPrice > 0) {
         const ethYtdReturn = ((currentEth - startOfYear.ethPrice) / startOfYear.ethPrice) * 100;
         ethOutperform = ytdReturn - ethYtdReturn;
       }
@@ -126,7 +137,7 @@ class SnapshotService {
       weeklyReturn,
       monthlyReturn,
       ytdReturn,
-      athValueUsd: ath?.totalValueUsd ?? currentValue,
+      athValueUsd: Math.max(ath?.totalValueUsd ?? currentValue, currentValue),
       btcOutperform,
       ethOutperform,
     };
@@ -233,8 +244,8 @@ class SnapshotService {
    * Get monthly returns for a given year
    */
   async getMonthlyReturns(userId: string, year: number) {
-    const startDate = new Date(year, 0, 1);
-    const endDate = new Date(year + 1, 0, 1);
+    const startDate = new Date(Date.UTC(year, 0, 1));
+    const endDate = new Date(Date.UTC(year + 1, 0, 1));
 
     const snapshots = await prisma.snapshot.findMany({
       where: {

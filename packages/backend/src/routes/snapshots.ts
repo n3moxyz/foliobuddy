@@ -10,13 +10,18 @@ import {
   SNAPSHOT_TYPES,
   SnapshotType,
   SnapshotSource,
+  MAX_HISTORICAL_DAYS,
 } from '../lib/constants.js';
 import { parsePagination, paginatedResponse } from '../lib/pagination.js';
+import { isValidDateInput, parseBoundedIntegerQuery, parseDateQuery } from '../lib/queryParams.js';
 
 const router = Router();
 
 const createManualSnapshotSchema = z.object({
-  timestamp: z.string().transform((s) => new Date(s)),
+  timestamp: z
+    .string()
+    .refine(isValidDateInput, 'Invalid timestamp')
+    .transform((s) => new Date(s)),
   snapshotType: z.enum(SNAPSHOT_TYPES).default(SnapshotType.DAILY),
   totalValueUsd: z.number().positive(),
   totalCostBasis: z.number().optional(),
@@ -26,6 +31,7 @@ const createManualSnapshotSchema = z.object({
 const updateSnapshotSchema = z.object({
   timestamp: z
     .string()
+    .refine(isValidDateInput, 'Invalid timestamp')
     .transform((s) => new Date(s))
     .optional(),
   snapshotType: z.enum(SNAPSHOT_TYPES).optional(),
@@ -42,11 +48,11 @@ router.get('/', async (req, res, next) => {
       userId: req.userId!,
       ...(type ? { snapshotType: type as string } : {}),
       ...(source ? { source: source as string } : {}),
-      ...(from || to
+      ...(from !== undefined || to !== undefined
         ? {
             timestamp: {
-              ...(from ? { gte: new Date(from as string) } : {}),
-              ...(to ? { lte: new Date(to as string) } : {}),
+              ...(from !== undefined ? { gte: parseDateQuery(from, 'from')! } : {}),
+              ...(to !== undefined ? { lte: parseDateQuery(to, 'to')! } : {}),
             },
           }
         : {}),
@@ -69,7 +75,11 @@ router.get('/', async (req, res, next) => {
       const snapshots = await prisma.snapshot.findMany({
         where,
         orderBy: { timestamp: 'desc' },
-        take: limit ? parseInt(limit as string) : DEFAULT_SNAPSHOT_LIMIT,
+        take: parseBoundedIntegerQuery(limit, {
+          name: 'limit',
+          defaultValue: DEFAULT_SNAPSHOT_LIMIT,
+          max: DEFAULT_SNAPSHOT_LIMIT,
+        }),
       });
       res.json(snapshots);
     }
@@ -85,12 +95,16 @@ router.get('/performance', async (req, res, next) => {
     let history;
     if (all === 'true') {
       history = await snapshotService.getPerformanceHistoryByRange(req.userId!);
-    } else if (from || to) {
-      const fromDate = from ? new Date(from as string) : undefined;
-      const toDate = to ? new Date(to as string) : undefined;
+    } else if (from !== undefined || to !== undefined) {
+      const fromDate = parseDateQuery(from, 'from');
+      const toDate = parseDateQuery(to, 'to');
       history = await snapshotService.getPerformanceHistoryByRange(req.userId!, fromDate, toDate);
     } else {
-      const numDays = parseInt(days as string) || 30;
+      const numDays = parseBoundedIntegerQuery(days, {
+        name: 'days',
+        defaultValue: 30,
+        max: MAX_HISTORICAL_DAYS,
+      });
       history = await snapshotService.getPerformanceHistory(req.userId!, numDays);
     }
 
@@ -102,7 +116,13 @@ router.get('/performance', async (req, res, next) => {
 
 router.get('/monthly', async (req, res, next) => {
   try {
-    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+    const year = parseBoundedIntegerQuery(req.query.year, {
+      name: 'year',
+      defaultValue: new Date().getUTCFullYear(),
+      min: 1970,
+      max: 9999,
+      clampMax: false,
+    });
     const returns = await snapshotService.getMonthlyReturns(req.userId!, year);
     res.json(returns);
   } catch (error) {
@@ -111,7 +131,7 @@ router.get('/monthly', async (req, res, next) => {
 });
 
 const bulkImportSnapshotSchema = z.object({
-  timestamp: z.string(),
+  timestamp: z.string().refine(isValidDateInput, 'Invalid timestamp'),
   snapshotType: z.enum(SNAPSHOT_TYPES).default(SnapshotType.DAILY),
   totalValueUsd: z.number().min(0),
   totalCostBasis: z.number().optional().nullable(),
@@ -274,8 +294,9 @@ router.post('/', async (req, res, next) => {
 
       res.status(201).json(snapshot);
     } else {
-      const { type } = req.body;
-      const snapshotType = type || 'DAILY';
+      const { type: snapshotType } = z
+        .object({ type: z.enum(SNAPSHOT_TYPES).default(SnapshotType.DAILY) })
+        .parse(req.body);
       const snapshotId = await snapshotService.createSnapshot(req.userId!, snapshotType);
 
       const snapshot = await prisma.snapshot.findUnique({

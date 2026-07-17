@@ -1618,8 +1618,7 @@ function getTradeAnalytics(): TradeAnalytics {
     winRate: round(winRate, 1),
     totalPnL,
     avgPnL: totalTrades > 0 ? round(totalPnL / totalTrades) : 0,
-    profitFactor:
-      totalLosses > 0 ? round(totalWins / totalLosses, 2) : totalWins > 0 ? Infinity : 0,
+    profitFactor: totalLosses > 0 ? round(totalWins / totalLosses, 2) : totalWins > 0 ? null : 0,
     avgWin: winningTrades.length > 0 ? round(totalWins / winningTrades.length) : 0,
     avgLoss: losingTrades.length > 0 ? round(totalLosses / losingTrades.length) : 0,
     breakdown: {

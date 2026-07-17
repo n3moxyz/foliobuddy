@@ -3,6 +3,8 @@ import { prisma } from '../lib/prisma.js';
 import { priceService } from '../services/priceService.js';
 import { AppError } from '../middleware/errorHandler.js';
 import type { ProviderName } from '../services/providers/types.js';
+import { MAX_HISTORICAL_DAYS } from '../lib/constants.js';
+import { parseBoundedIntegerQuery } from '../lib/queryParams.js';
 
 const router = Router();
 
@@ -49,8 +51,11 @@ router.post('/refresh', async (req, res, next) => {
 // GET /api/prices/history/:assetId - Get price history for an asset
 router.get('/history/:assetId', async (req, res, next) => {
   try {
-    const { days } = req.query;
-    const daysNum = parseInt(days as string) || 30;
+    const daysNum = parseBoundedIntegerQuery(req.query.days, {
+      name: 'days',
+      defaultValue: 30,
+      max: MAX_HISTORICAL_DAYS,
+    });
 
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysNum);
@@ -73,11 +78,15 @@ router.get('/history/:assetId', async (req, res, next) => {
 router.get('/historical/:providerAssetId', async (req, res, next) => {
   try {
     const { providerAssetId } = req.params;
-    const days = parseInt(req.query.days as string) || 30;
+    const days = parseBoundedIntegerQuery(req.query.days, {
+      name: 'days',
+      defaultValue: 30,
+      max: MAX_HISTORICAL_DAYS,
+    });
     const providerParam = typeof req.query.provider === 'string' ? req.query.provider : 'coingecko';
 
     // Cap at 365 days to avoid excessive API load
-    const cappedDays = Math.min(days, 365);
+    const cappedDays = days;
     if (providerParam !== 'coingecko' && providerParam !== 'yahoo') {
       throw new AppError('Historical benchmark provider must be coingecko or yahoo', 400);
     }

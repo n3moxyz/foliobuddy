@@ -21,7 +21,7 @@
 
 - `src/index.ts` - Server entry (rate limiting, logger, FX job init, `/api/v1` prefix)
 - `src/routes/`/`src/services/`/`src/middleware/` - endpoints; business logic (portfolio/price/snapshot services); auth + error handling
-- `src/lib/` - Shared utilities: `constants.ts` (domain enums), `fxConstants.ts` (USD→native FX fields + `usdRateEntries()` — adding a currency is one edit), `domain.ts` (backend copy of value/cost-basis math), `authorization.ts` (admin + user-asset guards), `startupChecks.ts` (boot warnings), `TTLCache.ts`, plus pagination/tradePnL/sentry/logger
+- `src/lib/` - Shared utilities: `constants.ts` (domain enums), `fxConstants.ts` (USD→native FX fields + finite-positive `usdRateEntries()`), `queryParams.ts` (strict bounded integers + real calendar dates), `domain.ts` (backend copy of finite-safe value/cost-basis math), `authorization.ts` (admin + user-asset guards), `startupChecks.ts` (boot warnings), `TTLCache.ts`, plus pagination/tradePnL/sentry/logger
 - `src/__tests__/` - vitest unit + integration tests (`routes/` = supertest + mocked Prisma; `helpers/` = createTestApp/fixtures). `scheduler.test.ts` + `socketService.test.ts` cover cron fanout + WS payloads; `socketService.integration.test.ts` uses real Socket.io clients (mocked Clerk) for auth/broadcast/user-room
 - `prisma/schema.prisma` - Database schema
 
@@ -66,6 +66,7 @@ cd ../frontend && cp .env.example .env
 npm install · npm audit (0 vulns) · npm test (backend + frontend) · npm run build (build/typecheck all)
 npm run format · npm run format:check (formatting + shell syntax + domain parity)
 npm run scripts:check (bash -n root scripts; skips on Windows) · npm run domain:check (backend↔shared parity)
+npm test --workspace=@foliobuddy/backend -- --coverage  # full V8 coverage (same for frontend)
 
 # Local Database
 npm run db:local (start local Postgres, Docker 5433) · db:local:stop · db:sync (pull prod → local) · db:seed:scale (sanitized scale data)
@@ -145,6 +146,16 @@ Express JSON cap **1mb** (`MAX_PAYLOAD_SIZE`), deliberately tight; if a bulk imp
 ### Pagination (Backend)
 
 Trades and snapshots routes support optional `?page=1&limit=50`; returns the full array when no `page` param. Uses `parsePagination()` / `paginatedResponse()` from `src/lib/pagination.ts`.
+
+Numeric/date query parameters must use `parseBoundedIntegerQuery()` / `parseDateQuery()` from `src/lib/queryParams.ts`: reject partial, repeated, non-finite, fractional, and impossible-calendar inputs; cap history/limit work before it reaches Prisma or a price provider. Pagination stays backwards-compatible but clamps its offset to Prisma/Postgres's safe integer range.
+
+### Atomic Investor Mutations
+
+Investor create, stake update, owner reassignment, and delete/reassign are multi-row state changes. Keep each inside a `Serializable` Prisma transaction so a failed stake-history write cannot clear the owner or partially transfer/delete an investor. Validate stake capacity before owner mutation.
+
+### Trade Date & Analytics Contracts
+
+Trade create/update/close/import dates must be real calendar values and `exitDate >= entryDate`. Analytics month buckets use UTC. `TradeAnalytics.profitFactor = null` is the JSON-safe sentinel for a genuinely infinite profit factor (wins with no losses); the UI renders it as `∞`. Best/worst trade fields are null unless a positive/negative trade actually exists.
 
 ### Lazy-Loaded Routes
 

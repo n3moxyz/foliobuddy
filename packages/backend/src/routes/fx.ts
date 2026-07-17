@@ -65,19 +65,32 @@ router.get('/convert', async (req, res, next) => {
   try {
     const { amount, from, to } = req.query;
 
-    if (!amount || !from || !to) {
+    if (amount === undefined || from === undefined || to === undefined) {
       throw new AppError('amount, from, and to parameters are required', 400);
     }
 
-    const amountNum = parseFloat(amount as string);
+    if (
+      typeof amount !== 'string' ||
+      amount.trim() === '' ||
+      typeof from !== 'string' ||
+      typeof to !== 'string'
+    ) {
+      throw new AppError('Invalid currency conversion parameters', 400);
+    }
 
-    if (isNaN(amountNum)) {
+    const amountNum = Number(amount);
+
+    if (!Number.isFinite(amountNum)) {
       throw new AppError('Invalid amount', 400);
     }
 
     // FX table stores USD base pairs; inverse conversion is derived when needed.
-    const fromUpper = (from as string).toUpperCase();
-    const toUpper = (to as string).toUpperCase();
+    const fromUpper = from.toUpperCase();
+    const toUpper = to.toUpperCase();
+
+    if (!/^[A-Z]{3}$/.test(fromUpper) || !/^[A-Z]{3}$/.test(toUpper)) {
+      throw new AppError('Currencies must be three-letter codes', 400);
+    }
 
     if (fromUpper === toUpper) {
       return res.json({
@@ -98,6 +111,10 @@ router.get('/convert', async (req, res, next) => {
       },
     });
 
+    if (rate && (!Number.isFinite(rate.rate) || rate.rate <= 0)) {
+      throw new AppError('Stored exchange rate is invalid', 502);
+    }
+
     // Try inverse rate
     if (!rate) {
       const inverseRate = await prisma.fxRate.findUnique({
@@ -110,6 +127,9 @@ router.get('/convert', async (req, res, next) => {
       });
 
       if (inverseRate) {
+        if (!Number.isFinite(inverseRate.rate) || inverseRate.rate <= 0) {
+          throw new AppError('Stored exchange rate is invalid', 502);
+        }
         rate = {
           ...inverseRate,
           fromCcy: fromUpper,
@@ -155,6 +175,10 @@ router.get('/convert', async (req, res, next) => {
     }
 
     const converted = amountNum * rate.rate;
+
+    if (!Number.isFinite(converted)) {
+      throw new AppError('Conversion result is outside the supported range', 400);
+    }
 
     res.json({
       amount: amountNum,
