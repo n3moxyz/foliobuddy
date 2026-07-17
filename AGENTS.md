@@ -287,9 +287,10 @@ Add/reduce edits persist as `PositionHistory` rows via `PUT /positions/:id` with
 
 ### Dashboard Charts
 
-- **Portfolio $ Value**: Recharts AreaChart, period selector (7D/1M/3M/1Y/YTD/Max), reference line at start, end-of-line label; loading uses `isFetching`. `getDateRange('Max')` MUST send `all=true` to `/snapshots/performance` (empty query falls back to the backend's 30-day default).
+- **Portfolio Value**: Recharts AreaChart with a `$` (default) / `%` lens; `%` normalizes the selected range to its first positive point. Period selector = 7D/1M/3M/1Y/YTD/Max, with a reference line at the baseline and an end-of-line label; loading uses `isFetching`. `getDateRange('Max')` MUST send `all=true` to `/snapshots/performance` (empty query falls back to the backend's 30-day default).
 - **Portfolio % vs Benchmarks**: normalized % vs BTC/ETH/SPX + custom; each stores `provider` + `providerAssetId` (crypto→CoinGecko, TradFi→Yahoo). SPX = Yahoo `SPY` (not `^GSPC`) via `yahooFinance.chart()` (raw fetches fail on datacenter IPs). On live-history failure, `priceService.getAssetHistory()` falls back to stored `PriceHistory` (one point per UTC day) — local scale QA depends on this. Baseline = price at first portfolio timestamp. Tooltip renderer is `useCallback`'d (inline arrows defeat Recharts memoization); colors from `chartColors.ts`.
 - **Allocation donuts** (4, `AllocationCharts.tsx`): **By Asset** (Crypto/Equities/Cash via `bucketFor()`; slice click drills the detail chart); **Detailed** (dropdown `Auto · All · Crypto · Cash · Equities`; Auto = dominant bucket, dynamic `[Bucket] Breakdown` title; crypto + equities roll sub-2% slices into "Other" via `groupSmallDetailedSlices`); **By Storage** (brokerage by location + Bank/Onchain; CEX split into CEX Cash/CEX Crypto; sub-3% custodians → "Other" via `groupSmallStorageSlices`, protecting CEX/Onchain buckets); **Cash Breakdown** (by symbol, when cash exists). Custody filtered out first. Center label = top item's %; hover shows `name · $value · %`; no Recharts Tooltip (overlaps legend); colors from `chartColors.ts`; legends keep 44px targets.
+- **Chart image copy**: every dashboard chart card uses `ChartCopyButton` + `chartCopy.ts` to copy the current rendered card as a high-resolution PNG. The copy button excludes itself from the image; Recharts draw animations stay disabled so an immediate copy cannot capture a partial/empty SVG. Clipboard image writes require `ClipboardItem` + `navigator.clipboard.write`; failures toast explicitly.
 
 ### Dashboard Investor Default
 
@@ -297,7 +298,7 @@ Dashboard investor filter defaults to the primary owner (`isOwner = true`), not 
 
 ### Net Worth Card
 
-Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). Desktop `grid-cols-6 divide-x` (YTD P&L, YTD Start, vs 30D, Exposure, Positions, Trades), mobile 2-col; all labels have `HelpTooltip` (pass `label` so accessible names read "Help: Exposure", not 15× "Help"). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use `useAnimatedNumber`.
+Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). Desktop `grid-cols-7 divide-x` (YTD P&L, YTD Start, vs 30D, MDD, Exposure, Positions, Trades), mobile 2-col. MDD is the YTD maximum peak-to-trough decline from snapshots plus the live value; `calculateMaxDrawdown()` returns the positive magnitude and the card displays it as a negative percentage. All labels have `HelpTooltip` (pass `label` so accessible names read "Help: Exposure", not 15× "Help"). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use `useAnimatedNumber`.
 
 ### Performers Card
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   LineChart,
   Line,
@@ -42,6 +42,7 @@ import {
 import { Plus, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
+import { ChartCopyButton } from '@/components/dashboard/ChartCopyButton';
 
 /** Recharts injects these at runtime into the dot render callback; the library types it as `any`. */
 interface RechartsLineDotProps {
@@ -113,6 +114,7 @@ export function BenchmarkComparisonChart() {
   const [additionalBenchmarks, setAdditionalBenchmarks] = useState<BenchmarkConfig[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const { data: cryptoSearchResults, isLoading: cryptoSearching } = useSearchAssets(searchQuery, {
     provider: 'coingecko',
@@ -357,26 +359,29 @@ export function BenchmarkComparisonChart() {
   );
 
   return (
-    <Card className="col-span-2">
+    <Card ref={chartRef} className="col-span-2">
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <CardTitle className="text-base">Portfolio % vs Benchmarks</CardTitle>
 
           <div className="-mx-1 overflow-x-auto pb-1">
-            <div className="flex w-max rounded-md border">
-              {periods.map((p) => (
-                <Button
-                  key={p}
-                  variant={period === p ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className={`h-11 px-3 rounded-none first:rounded-l-md last:rounded-r-md sm:h-8 ${
-                    period === p ? '' : 'hover:bg-muted'
-                  }`}
-                  onClick={() => setPeriod(p)}
-                >
-                  {p}
-                </Button>
-              ))}
+            <div className="flex w-max items-center gap-2 px-1">
+              <ChartCopyButton targetRef={chartRef} chartName="Benchmark comparison" />
+              <div className="flex rounded-md border">
+                {periods.map((p) => (
+                  <Button
+                    key={p}
+                    variant={period === p ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className={`h-11 px-3 rounded-none first:rounded-l-md last:rounded-r-md sm:h-8 ${
+                      period === p ? '' : 'hover:bg-muted'
+                    }`}
+                    onClick={() => setPeriod(p)}
+                  >
+                    {p}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -574,6 +579,7 @@ export function BenchmarkComparisonChart() {
                 <Line
                   type="monotone"
                   dataKey="portfolio"
+                  isAnimationActive={false}
                   stroke={PORTFOLIO_LINE_COLOR}
                   strokeWidth={2}
                   dot={(props: RechartsLineDotProps) => {
@@ -608,6 +614,7 @@ export function BenchmarkComparisonChart() {
                       key={benchmark.id}
                       type="monotone"
                       dataKey={benchmark.id}
+                      isAnimationActive={false}
                       stroke={benchmark.color}
                       strokeWidth={2}
                       dot={(props: RechartsLineDotProps) => {

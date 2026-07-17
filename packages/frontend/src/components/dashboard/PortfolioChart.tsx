@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   AreaChart,
   Area,
@@ -12,11 +12,19 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { ChartCopyButton } from '@/components/dashboard/ChartCopyButton';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
-import { formatCurrency } from '@/lib/utils';
-import { getDateRange, formatXAxisDate, formatTooltipDate, downsampleLTTB } from '@/lib/chartUtils';
+import { formatCurrency, formatPercent } from '@/lib/utils';
+import {
+  getDateRange,
+  formatXAxisDate,
+  formatTooltipDate,
+  downsampleLTTB,
+  normalizeToPercentChange,
+} from '@/lib/chartUtils';
 import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 import type { TimePeriod } from '@/lib/types';
+import { DollarSign, Percent } from 'lucide-react';
 
 interface PortfolioChartProps {
   currency?: 'USD' | 'SGD';
@@ -33,6 +41,7 @@ interface RechartsAreaDotProps {
 }
 
 const CHART_SKELETON_TICKS = ['start', 'early', 'middle', 'late', 'end'] as const;
+type ChartMode = 'value' | 'percent';
 
 export function PortfolioChart({
   currency = 'USD',
@@ -41,6 +50,8 @@ export function PortfolioChart({
   liveValueUsd,
 }: PortfolioChartProps) {
   const [period, setPeriod] = useState<TimePeriod>('YTD');
+  const [chartMode, setChartMode] = useState<ChartMode>('value');
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const { data: performanceData, isLoading, isFetching } = usePerformanceHistory(dateRange);
@@ -57,7 +68,16 @@ export function PortfolioChart({
             {data.tooltipDate}
             {data.isLive && <span className="ml-1 text-profit">(Live)</span>}
           </p>
-          <p className="font-mono font-medium">{formatCurrency(data.value, currency, 0)}</p>
+          <p className="font-mono font-medium">
+            {chartMode === 'percent'
+              ? formatPercent(data.percentChange)
+              : formatCurrency(data.value, currency, 0)}
+          </p>
+          {chartMode === 'percent' && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatCurrency(data.value, currency, 0)}
+            </p>
+          )}
           {stakeMultiplier < 1 && (
             <p className="text-xs text-muted-foreground mt-1">
               Full portfolio: {formatCurrency(data.fullValue, currency, 0)}
@@ -66,7 +86,7 @@ export function PortfolioChart({
         </div>
       );
     },
-    [currency, stakeMultiplier]
+    [chartMode, currency, stakeMultiplier]
   );
 
   // Calculate the date range span in days
@@ -139,7 +159,11 @@ export function PortfolioChart({
       }
     }
 
-    return data;
+    const percentChanges = normalizeToPercentChange(data.map((point) => point.value));
+    return data.map((point, index) => ({
+      ...point,
+      percentChange: percentChanges[index],
+    }));
   }, [performanceData, stakeMultiplier, currency, fxRate, liveValueUsd, dataSpanDays]);
 
   // Calculate change from first to last point
@@ -156,18 +180,19 @@ export function PortfolioChart({
   const yAxisDomain = useMemo(() => {
     if (chartData.length === 0) return [0, 100];
 
-    const values = chartData.map((d) => d.value);
+    const values = chartData.map((d) => (chartMode === 'percent' ? d.percentChange : d.value));
     const min = Math.min(...values);
     const max = Math.max(...values);
     const range = max - min;
 
     // Add 10% padding on each side, but don't go below 0
-    const padding = range > 0 ? range * 0.1 : max * 0.05;
-    const domainMin = Math.max(0, min - padding);
+    const padding =
+      range > 0 ? range * 0.1 : chartMode === 'percent' ? 1 : Math.max(Math.abs(max) * 0.05, 1);
+    const domainMin = chartMode === 'percent' ? min - padding : Math.max(0, min - padding);
     const domainMax = max + padding;
 
     return [domainMin, domainMax];
-  }, [chartData]);
+  }, [chartData, chartMode]);
 
   // Determine tick interval - always aim for ~5-6 evenly spaced ticks (CoinGecko style)
   // This ensures consistent visual density regardless of data granularity
@@ -181,44 +206,86 @@ export function PortfolioChart({
 
   const periods: TimePeriod[] = ['7D', '1M', '3M', '1Y', 'YTD', 'Max'];
   const lastChartPoint = chartData[chartData.length - 1];
-  const chartAnimationKey = `${period}-${chartData[0]?.timestamp ?? 'empty'}-${
+  const chartAnimationKey = `${period}-${chartMode}-${chartData[0]?.timestamp ?? 'empty'}-${
     lastChartPoint?.timestamp ?? 'empty'
   }`;
+  const chartDataKey = chartMode === 'percent' ? 'percentChange' : 'value';
 
   return (
-    <Card className="col-span-2">
+    <Card ref={chartRef} className="col-span-2">
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
-            <CardTitle className="text-base">Portfolio $ Value</CardTitle>
+            <CardTitle className="text-base">Portfolio Value</CardTitle>
             {valueChange && (
               <div className={`text-sm ${valueChange.change >= 0 ? 'text-profit' : 'text-loss'}`}>
                 <span className="font-medium">
-                  {valueChange.change >= 0 ? '+' : ''}
-                  {formatCurrency(valueChange.change, currency, 0)}
+                  {chartMode === 'percent'
+                    ? formatPercent(valueChange.changePercent)
+                    : `${valueChange.change >= 0 ? '+' : ''}${formatCurrency(
+                        valueChange.change,
+                        currency,
+                        0
+                      )}`}
                 </span>
                 <span className="ml-1 text-xs">
-                  ({valueChange.changePercent >= 0 ? '+' : ''}
-                  {valueChange.changePercent.toFixed(2)}%)
+                  (
+                  {chartMode === 'percent'
+                    ? `${valueChange.change >= 0 ? '+' : ''}${formatCurrency(
+                        valueChange.change,
+                        currency,
+                        0
+                      )}`
+                    : formatPercent(valueChange.changePercent)}
+                  )
                 </span>
               </div>
             )}
           </div>
           <div className="-mx-1 overflow-x-auto pb-1">
-            <div className="flex w-max rounded-md border">
-              {periods.map((p) => (
+            <div className="flex w-max items-center gap-2 px-1">
+              <div className="flex rounded-md border" aria-label="Chart value mode">
                 <Button
-                  key={p}
-                  variant={period === p ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className={`h-11 px-3 rounded-none transition-colors duration-200 first:rounded-l-md last:rounded-r-md sm:h-8 ${
-                    period === p ? '' : 'hover:bg-muted'
-                  }`}
-                  onClick={() => setPeriod(p)}
+                  type="button"
+                  variant={chartMode === 'value' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-11 w-11 rounded-r-none sm:h-8 sm:w-8"
+                  onClick={() => setChartMode('value')}
+                  aria-label="Show portfolio value in currency"
+                  aria-pressed={chartMode === 'value'}
+                  title="Currency value"
                 >
-                  {p}
+                  <DollarSign className="h-4 w-4" />
                 </Button>
-              ))}
+                <Button
+                  type="button"
+                  variant={chartMode === 'percent' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-11 w-11 rounded-l-none sm:h-8 sm:w-8"
+                  onClick={() => setChartMode('percent')}
+                  aria-label="Show portfolio value as percentage change"
+                  aria-pressed={chartMode === 'percent'}
+                  title="Percentage change"
+                >
+                  <Percent className="h-4 w-4" />
+                </Button>
+              </div>
+              <ChartCopyButton targetRef={chartRef} chartName="Portfolio value" />
+              <div className="flex rounded-md border">
+                {periods.map((p) => (
+                  <Button
+                    key={p}
+                    variant={period === p ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className={`h-11 px-3 rounded-none transition-colors duration-200 first:rounded-l-md last:rounded-r-md sm:h-8 ${
+                      period === p ? '' : 'hover:bg-muted'
+                    }`}
+                    onClick={() => setPeriod(p)}
+                  >
+                    {p}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -273,7 +340,11 @@ export function PortfolioChart({
                 />
                 <YAxis
                   domain={yAxisDomain}
-                  tickFormatter={(value) => formatCurrency(value, currency, true)}
+                  tickFormatter={(value) =>
+                    chartMode === 'percent'
+                      ? `${value >= 0 ? '+' : ''}${value.toFixed(0)}%`
+                      : formatCurrency(value, currency, true)
+                  }
                   tick={{ fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
@@ -283,7 +354,7 @@ export function PortfolioChart({
                 <Tooltip content={renderTooltip} />
                 {chartData.length > 0 && (
                   <ReferenceLine
-                    y={chartData[0].value}
+                    y={chartMode === 'percent' ? 0 : chartData[0].value}
                     stroke="currentColor"
                     strokeOpacity={0.15}
                     strokeDasharray="4 4"
@@ -291,7 +362,8 @@ export function PortfolioChart({
                 )}
                 <Area
                   type="monotone"
-                  dataKey="value"
+                  dataKey={chartDataKey}
+                  isAnimationActive={false}
                   stroke={PORTFOLIO_LINE_COLOR}
                   strokeWidth={2}
                   fill="url(#portfolioGradient)"
@@ -312,7 +384,9 @@ export function PortfolioChart({
                           fill="currentColor"
                           opacity={0.7}
                         >
-                          {formatCurrency(chartData[index].value, currency, true)}
+                          {chartMode === 'percent'
+                            ? formatPercent(chartData[index].percentChange)
+                            : formatCurrency(chartData[index].value, currency, true)}
                         </text>
                       </g>
                     );

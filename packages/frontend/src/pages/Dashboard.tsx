@@ -24,6 +24,7 @@ import { BenchmarkComparisonChart } from '@/components/dashboard/BenchmarkCompar
 import { ChevronDown, Users } from 'lucide-react';
 import { DbStatusBanner } from '@/components/dashboard/DbStatusBanner';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { calculateMaxDrawdown, getDateRange } from '@/lib/chartUtils';
 
 const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
 const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
@@ -38,6 +39,8 @@ export default function Dashboard() {
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: investors } = useInvestors();
   const { data: perfHistory30d } = usePerformanceHistory({ days: 30 });
+  const ytdDateRange = useMemo(() => getDateRange('YTD'), []);
+  const { data: perfHistoryYtd } = usePerformanceHistory(ytdDateRange);
   const totalValueUsd = summary?.totalValueUsd ?? 0;
   const totalValueSgd = summary?.totalValueSgd ?? 0;
 
@@ -46,6 +49,14 @@ export default function Dashboard() {
     if (!perfHistory30d || perfHistory30d.length === 0) return undefined;
     return perfHistory30d[0].totalValueUsd;
   }, [perfHistory30d]);
+
+  const maxDrawdownPct = useMemo(() => {
+    const values = (perfHistoryYtd ?? []).map((point) => point.totalValueUsd);
+    if (totalValueUsd > 0) {
+      values.push(totalValueUsd);
+    }
+    return calculateMaxDrawdown(values);
+  }, [perfHistoryYtd, totalValueUsd]);
 
   // Investor filter state - lifted to Dashboard level. Defaults to owner until manually changed.
   const [manualSelectedInvestors, setManualSelectedInvestors] = useState<string[] | null>(null);
@@ -222,6 +233,7 @@ export default function Dashboard() {
             currency={currency}
             stakeMultiplier={stakeMultiplier}
             valueUsd30dAgo={valueUsd30dAgo}
+            maxDrawdownPct={maxDrawdownPct}
             exposurePct={exposurePct}
             positionCount={summary.positionCount ?? 0}
             closedTrades={tradeAnalytics?.totalTrades ?? 0}

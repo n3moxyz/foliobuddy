@@ -73,6 +73,33 @@ export function formatTooltipDate(timestamp: string): string {
   });
 }
 
+/** Normalize values to percentage change from the first positive value. */
+export function normalizeToPercentChange(values: number[]): number[] {
+  if (values.length === 0) return [];
+  const baseline = values[0];
+  if (!Number.isFinite(baseline) || baseline <= 0) return values.map(() => 0);
+  return values.map((value) => ((value - baseline) / baseline) * 100);
+}
+
+/**
+ * Maximum peak-to-trough loss as a positive percentage magnitude.
+ * Returns null until at least two valid positive portfolio values are available.
+ */
+export function calculateMaxDrawdown(values: number[]): number | null {
+  const validValues = values.filter((value) => Number.isFinite(value) && value > 0);
+  if (validValues.length < 2) return null;
+
+  let peak = validValues[0];
+  let maxDrawdown = 0;
+
+  for (const value of validValues.slice(1)) {
+    peak = Math.max(peak, value);
+    maxDrawdown = Math.max(maxDrawdown, ((peak - value) / peak) * 100);
+  }
+
+  return maxDrawdown;
+}
+
 /**
  * Largest-Triangle-Three-Buckets (LTTB) downsampling.
  * Reduces a data series to `threshold` points while preserving visual shape.

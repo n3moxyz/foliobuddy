@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -12,6 +12,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { formatNumber, formatCurrency, categoryGroup } from '@/lib/utils';
 import { ASSET_COLORS, STORAGE_BREAKDOWN_COLORS, STABLES_COLORS } from '@/lib/chartColors';
 import type { Position } from '@/lib/types';
+import { ChartCopyButton } from '@/components/dashboard/ChartCopyButton';
 
 interface AllocationChartsProps {
   positions: Position[];
@@ -120,6 +121,7 @@ const AllocationDonut = memo(function AllocationDonut({
   onSliceClick,
 }: AllocationDonutProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const toggleLegendItem = (name: string) => {
     setHidden((prev) => {
@@ -141,15 +143,16 @@ const AllocationDonut = memo(function AllocationDonut({
   }));
 
   return (
-    <Card className="flex-1">
+    <Card ref={chartRef} className="flex-1">
       <CardHeader className="pb-2">
-        <div className="flex min-h-8 items-center">
-          <CardTitle className="min-w-0 truncate text-base">
+        <div className="flex min-h-8 items-center gap-2">
+          <CardTitle className="min-w-0 flex-1 truncate text-base">
             {title}{' '}
             <span className="text-sm font-medium text-muted-foreground tabular-nums">
               ({formatCurrency(totalValue, 'USD', true)})
             </span>
           </CardTitle>
+          <ChartCopyButton targetRef={chartRef} chartName={title} />
         </div>
         <div className="flex min-h-11 items-center gap-2 sm:min-h-8">
           <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground tabular-nums">
@@ -177,6 +180,7 @@ const AllocationDonut = memo(function AllocationDonut({
                   outerRadius={60}
                   paddingAngle={2}
                   dataKey="value"
+                  isAnimationActive={false}
                   onMouseLeave={() => setHoveredIndex(null)}
                 >
                   {visibleData.map((entry, i) => {

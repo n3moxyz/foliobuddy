@@ -12,6 +12,7 @@ interface NetWorthCardProps {
   currency: 'USD' | 'SGD';
   stakeMultiplier?: number;
   valueUsd30dAgo?: number;
+  maxDrawdownPct?: number | null;
   exposurePct?: number;
   positionCount?: number;
   closedTrades?: number;
@@ -23,6 +24,7 @@ export function NetWorthCard({
   currency,
   stakeMultiplier = 1,
   valueUsd30dAgo,
+  maxDrawdownPct,
   exposurePct,
   positionCount = 0,
   closedTrades = 0,
@@ -68,6 +70,13 @@ export function NetWorthCard({
     return { diff, pct };
   }, [summary.totalValueUsd, valueUsd30dAgo, stakeMultiplier]);
 
+  const formattedMaxDrawdown =
+    maxDrawdownPct === null || maxDrawdownPct === undefined
+      ? 'N/A'
+      : maxDrawdownPct === 0
+        ? '0.00%'
+        : `-${maxDrawdownPct.toFixed(2)}%`;
+
   return (
     <div className="pb-6 mb-2 border-b">
       <h2 className="text-sm font-medium text-muted-foreground mb-2">
@@ -88,7 +97,7 @@ export function NetWorthCard({
         </div>
       </div>
 
-      <div className="mt-4 hidden sm:grid sm:grid-cols-6 divide-x divide-border">
+      <div className="mt-4 hidden sm:grid sm:grid-cols-7 divide-x divide-border">
         <div className="pr-4">
           <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">YTD P&L</p>
@@ -128,6 +137,22 @@ export function NetWorthCard({
           ) : (
             <p className="font-medium tabular-nums text-muted-foreground">N/A</p>
           )}
+        </div>
+        <div className="px-4">
+          <div className="flex items-center gap-1">
+            <p className="text-muted-foreground text-sm">MDD</p>
+            <HelpTooltip
+              label="MDD"
+              content="Maximum drawdown: the largest peak-to-trough decline in your portfolio since January 1st"
+            />
+          </div>
+          <p
+            className={`font-medium tabular-nums ${
+              maxDrawdownPct && maxDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
+            }`}
+          >
+            {formattedMaxDrawdown}
+          </p>
         </div>
         {/* Tooltip buttons sit OUTSIDE the links — interactive content nested
             inside an <a> is invalid HTML and confuses assistive tech. */}
@@ -209,6 +234,22 @@ export function NetWorthCard({
             </p>
           </div>
         )}
+        <div>
+          <div className="flex items-center gap-1">
+            <p className="text-muted-foreground text-sm">MDD</p>
+            <HelpTooltip
+              label="MDD"
+              content="Maximum drawdown: the largest peak-to-trough decline in your portfolio since January 1st"
+            />
+          </div>
+          <p
+            className={`font-medium tabular-nums ${
+              maxDrawdownPct && maxDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
+            }`}
+          >
+            {formattedMaxDrawdown}
+          </p>
+        </div>
         <Link to="/trades" className="hover:text-primary transition-colors">
           <p className="text-muted-foreground text-sm">Trades</p>
           <p className="font-medium tabular-nums">{closedTrades}</p>
