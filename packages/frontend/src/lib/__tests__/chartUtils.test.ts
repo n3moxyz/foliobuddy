@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calculateMaxDailyDrawdown,
   calculateMaxDrawdown,
   downsampleLTTB,
   getDateRange,
@@ -39,6 +40,25 @@ describe('calculateMaxDrawdown', () => {
   it('requires at least two valid positive values', () => {
     expect(calculateMaxDrawdown([])).toBeNull();
     expect(calculateMaxDrawdown([0, Number.NaN, 100])).toBeNull();
+  });
+});
+
+describe('calculateMaxDailyDrawdown', () => {
+  it('finds the largest decline between consecutive portfolio values', () => {
+    expect(calculateMaxDailyDrawdown([100, 80, 120, 90, 95])).toBe(25);
+  });
+
+  it('returns zero when no day declines', () => {
+    expect(calculateMaxDailyDrawdown([100, 110, 125])).toBe(0);
+  });
+
+  it('does not bridge gaps containing invalid portfolio values', () => {
+    expect(calculateMaxDailyDrawdown([100, Number.NaN, 80])).toBeNull();
+  });
+
+  it('requires at least one consecutive pair of valid positive values', () => {
+    expect(calculateMaxDailyDrawdown([])).toBeNull();
+    expect(calculateMaxDailyDrawdown([100])).toBeNull();
   });
 });
 

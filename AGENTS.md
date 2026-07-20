@@ -318,7 +318,7 @@ Dashboard investor filter defaults to the primary owner (`isOwner = true`), not 
 
 ### Net Worth Card
 
-Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). Desktop `grid-cols-7 divide-x` (YTD P&L, YTD Start, vs 30D, MDD, Exposure, Positions, Trades), mobile 2-col. MDD is the YTD maximum peak-to-trough decline from snapshots plus the live value; `calculateMaxDrawdown()` returns the positive magnitude and the card displays it as a negative percentage. All labels have `HelpTooltip` (pass `label` so accessible names read "Help: Exposure", not 15× "Help"). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use `useAnimatedNumber`.
+Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). Desktop `grid-cols-7 divide-x` (YTD P&L, YTD Start, MDD, MDD (1D), Exposure, Positions, Trades), mobile 2-col in the same order. MDD is the YTD maximum peak-to-trough decline from snapshots plus the live value; MDD (1D) is the largest consecutive day-over-day decline. `calculateMaxDrawdown()` / `calculateMaxDailyDrawdown()` return positive magnitudes and the card displays them as negative percentages. All labels have `HelpTooltip` (pass `label` so accessible names read "Help: Exposure", not 15× "Help"). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use `useAnimatedNumber`.
 
 ### Performers Card
 

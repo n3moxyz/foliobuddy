@@ -24,7 +24,7 @@ import { BenchmarkComparisonChart } from '@/components/dashboard/BenchmarkCompar
 import { ChevronDown, Users } from 'lucide-react';
 import { DbStatusBanner } from '@/components/dashboard/DbStatusBanner';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { calculateMaxDrawdown, getDateRange } from '@/lib/chartUtils';
+import { calculateMaxDailyDrawdown, calculateMaxDrawdown, getDateRange } from '@/lib/chartUtils';
 
 const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
 const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
@@ -38,24 +38,21 @@ export default function Dashboard() {
   const { data: topPerformers } = useTopPerformers(5);
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: investors } = useInvestors();
-  const { data: perfHistory30d } = usePerformanceHistory({ days: 30 });
   const ytdDateRange = useMemo(() => getDateRange('YTD'), []);
   const { data: perfHistoryYtd } = usePerformanceHistory(ytdDateRange);
   const totalValueUsd = summary?.totalValueUsd ?? 0;
   const totalValueSgd = summary?.totalValueSgd ?? 0;
 
-  // Value from 30 days ago for period comparison
-  const valueUsd30dAgo = useMemo(() => {
-    if (!perfHistory30d || perfHistory30d.length === 0) return undefined;
-    return perfHistory30d[0].totalValueUsd;
-  }, [perfHistory30d]);
-
-  const maxDrawdownPct = useMemo(() => {
+  const { maxDrawdownPct, maxDailyDrawdownPct } = useMemo(() => {
     const values = (perfHistoryYtd ?? []).map((point) => point.totalValueUsd);
     if (totalValueUsd > 0) {
       values.push(totalValueUsd);
     }
-    return calculateMaxDrawdown(values);
+
+    return {
+      maxDrawdownPct: calculateMaxDrawdown(values),
+      maxDailyDrawdownPct: calculateMaxDailyDrawdown(values),
+    };
   }, [perfHistoryYtd, totalValueUsd]);
 
   // Investor filter state - lifted to Dashboard level. Defaults to owner until manually changed.
@@ -149,9 +146,10 @@ export default function Dashboard() {
         <div className="pb-6 mb-2 border-b">
           <Skeleton className="h-4 w-20 mb-2" />
           <Skeleton className="h-12 w-48 mb-2" />
-          {/* Mirrors NetWorthCard's 2-col mobile / 6-col desktop stat grid —
+          {/* Mirrors NetWorthCard's 2-col mobile / 7-col desktop stat grid —
               a fixed-width flex row overflows the page on mobile. */}
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-6">
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-7">
+            <Skeleton className="h-6 w-20" />
             <Skeleton className="h-6 w-20" />
             <Skeleton className="h-6 w-20" />
             <Skeleton className="h-6 w-20" />
@@ -236,8 +234,8 @@ export default function Dashboard() {
             summary={summary}
             currency={currency}
             stakeMultiplier={stakeMultiplier}
-            valueUsd30dAgo={valueUsd30dAgo}
             maxDrawdownPct={maxDrawdownPct}
+            maxDailyDrawdownPct={maxDailyDrawdownPct}
             exposurePct={exposurePct}
             positionCount={summary.positionCount ?? 0}
             closedTrades={tradeAnalytics?.totalTrades ?? 0}

@@ -12,8 +12,8 @@ interface NetWorthCardProps {
   summary: PortfolioSummary;
   currency: 'USD' | 'SGD';
   stakeMultiplier?: number;
-  valueUsd30dAgo?: number;
   maxDrawdownPct?: number | null;
+  maxDailyDrawdownPct?: number | null;
   exposurePct?: number;
   positionCount?: number;
   closedTrades?: number;
@@ -24,8 +24,8 @@ export function NetWorthCard({
   summary,
   currency,
   stakeMultiplier = 1,
-  valueUsd30dAgo,
   maxDrawdownPct,
+  maxDailyDrawdownPct,
   exposurePct,
   positionCount = 0,
   closedTrades = 0,
@@ -63,21 +63,12 @@ export function NetWorthCard({
     altValue,
   ]);
 
-  const change30d = useMemo(() => {
-    if (valueUsd30dAgo === undefined || valueUsd30dAgo === 0) return null;
-    const currentUsd = summary.totalValueUsd * stakeMultiplier;
-    const previousUsd = valueUsd30dAgo * stakeMultiplier;
-    const diff = currentUsd - previousUsd;
-    const pct = (diff / previousUsd) * 100;
-    return { diff, pct };
-  }, [summary.totalValueUsd, valueUsd30dAgo, stakeMultiplier]);
-
-  const formattedMaxDrawdown =
-    maxDrawdownPct === null || maxDrawdownPct === undefined
+  const formatDrawdown = (drawdownPct: number | null | undefined) =>
+    drawdownPct === null || drawdownPct === undefined
       ? 'N/A'
-      : maxDrawdownPct === 0
+      : drawdownPct === 0
         ? '0.00%'
-        : `-${maxDrawdownPct.toFixed(2)}%`;
+        : `-${drawdownPct.toFixed(2)}%`;
 
   return (
     <div className="pb-6 mb-2 border-b">
@@ -126,22 +117,6 @@ export function NetWorthCard({
         </div>
         <div className="px-4">
           <div className="flex items-center gap-1">
-            <p className="text-muted-foreground text-sm">vs 30D ago</p>
-            <HelpTooltip
-              label="vs 30D ago"
-              content="Portfolio value change compared to 30 days ago"
-            />
-          </div>
-          {change30d ? (
-            <p className={`font-medium tabular-nums ${getPnLColorClass(change30d.diff)}`}>
-              {formatPercent(change30d.pct)}
-            </p>
-          ) : (
-            <p className="font-medium tabular-nums text-muted-foreground">N/A</p>
-          )}
-        </div>
-        <div className="px-4">
-          <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">MDD</p>
             <HelpTooltip
               label="MDD"
@@ -153,7 +128,23 @@ export function NetWorthCard({
               maxDrawdownPct && maxDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
             }`}
           >
-            {formattedMaxDrawdown}
+            {formatDrawdown(maxDrawdownPct)}
+          </p>
+        </div>
+        <div className="px-4">
+          <div className="flex items-center gap-1">
+            <p className="text-muted-foreground text-sm">MDD (1D)</p>
+            <HelpTooltip
+              label="MDD (1D)"
+              content="Largest day-over-day decline in your portfolio since January 1st"
+            />
+          </div>
+          <p
+            className={`font-medium tabular-nums ${
+              maxDailyDrawdownPct && maxDailyDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
+            }`}
+          >
+            {formatDrawdown(maxDailyDrawdownPct)}
           </p>
         </div>
         {/* Tooltip buttons sit OUTSIDE the links — interactive content nested
@@ -218,24 +209,6 @@ export function NetWorthCard({
             {formatCurrency(animatedCostBasis, currency, 0)}
           </p>
         </div>
-        {exposurePct !== undefined && (
-          <Link to="/portfolio" className="hover:text-primary transition-colors">
-            <p className="text-muted-foreground text-sm">Exposure</p>
-            <p className="font-medium tabular-nums">{exposurePct.toFixed(1)}%</p>
-          </Link>
-        )}
-        <Link to="/portfolio" className="hover:text-primary transition-colors">
-          <p className="text-muted-foreground text-sm">Positions</p>
-          <p className="font-medium tabular-nums">{positionCount}</p>
-        </Link>
-        {change30d && (
-          <div>
-            <p className="text-muted-foreground text-sm">vs 30D ago</p>
-            <p className={`font-medium tabular-nums ${getPnLColorClass(change30d.diff)}`}>
-              {formatPercent(change30d.pct)}
-            </p>
-          </div>
-        )}
         <div>
           <div className="flex items-center gap-1">
             <p className="text-muted-foreground text-sm">MDD</p>
@@ -249,9 +222,35 @@ export function NetWorthCard({
               maxDrawdownPct && maxDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
             }`}
           >
-            {formattedMaxDrawdown}
+            {formatDrawdown(maxDrawdownPct)}
           </p>
         </div>
+        <div>
+          <div className="flex items-center gap-1">
+            <p className="text-muted-foreground text-sm">MDD (1D)</p>
+            <HelpTooltip
+              label="MDD (1D)"
+              content="Largest day-over-day decline in your portfolio since January 1st"
+            />
+          </div>
+          <p
+            className={`font-medium tabular-nums ${
+              maxDailyDrawdownPct && maxDailyDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
+            }`}
+          >
+            {formatDrawdown(maxDailyDrawdownPct)}
+          </p>
+        </div>
+        {exposurePct !== undefined && (
+          <Link to="/portfolio" className="hover:text-primary transition-colors">
+            <p className="text-muted-foreground text-sm">Exposure</p>
+            <p className="font-medium tabular-nums">{exposurePct.toFixed(1)}%</p>
+          </Link>
+        )}
+        <Link to="/portfolio" className="hover:text-primary transition-colors">
+          <p className="text-muted-foreground text-sm">Positions</p>
+          <p className="font-medium tabular-nums">{positionCount}</p>
+        </Link>
         <Link to="/trades" className="hover:text-primary transition-colors">
           <p className="text-muted-foreground text-sm">Trades</p>
           <p className="font-medium tabular-nums">{closedTrades}</p>

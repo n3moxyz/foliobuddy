@@ -101,6 +101,31 @@ export function calculateMaxDrawdown(values: number[]): number | null {
 }
 
 /**
+ * Largest decline between consecutive portfolio values as a positive percentage magnitude.
+ * Returns null until at least one consecutive pair of valid positive values is available.
+ */
+export function calculateMaxDailyDrawdown(values: number[]): number | null {
+  let previousValue: number | null = null;
+  let maxDrawdown: number | null = null;
+
+  for (const value of values) {
+    if (!Number.isFinite(value) || value <= 0) {
+      previousValue = null;
+      continue;
+    }
+
+    if (previousValue !== null) {
+      const drawdown = ((previousValue - value) / previousValue) * 100;
+      maxDrawdown = Math.max(maxDrawdown ?? 0, drawdown);
+    }
+
+    previousValue = value;
+  }
+
+  return maxDrawdown;
+}
+
+/**
  * Largest-Triangle-Three-Buckets (LTTB) downsampling.
  * Reduces a data series to `threshold` points while preserving visual shape.
  * Always keeps the first and last points.
