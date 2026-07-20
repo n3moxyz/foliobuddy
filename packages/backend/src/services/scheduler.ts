@@ -6,20 +6,44 @@ import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
 import { usdRateEntries } from '../lib/fxConstants.js';
 
+const SINGAPORE_TIME_ZONE = 'Asia/Singapore';
+const SINGAPORE_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
+const DAILY_SNAPSHOT_HOUR_SGT = 5;
+
+function getSingaporeSnapshotDay(now: Date): {
+  dayOfMonth: number;
+  scheduledAt: Date;
+  start: Date;
+  end: Date;
+} {
+  const singaporeNow = new Date(now.getTime() + SINGAPORE_UTC_OFFSET_MS);
+  const start = new Date(
+    Date.UTC(singaporeNow.getUTCFullYear(), singaporeNow.getUTCMonth(), singaporeNow.getUTCDate()) -
+      SINGAPORE_UTC_OFFSET_MS
+  );
+
+  return {
+    dayOfMonth: singaporeNow.getUTCDate(),
+    scheduledAt: new Date(start.getTime() + DAILY_SNAPSHOT_HOUR_SGT * 60 * 60 * 1000),
+    start,
+    end: new Date(start.getTime() + 24 * 60 * 60 * 1000),
+  };
+}
+
 /**
  * Check and create missing daily snapshots on server startup
- * Only creates catch-up snapshot if we're past 9pm SGT (1pm UTC) and no snapshot exists for today
+ * Only creates a catch-up snapshot if we're past 5am SGT and no snapshot exists for the
+ * current Singapore calendar day.
  */
 export async function createMissingSnapshots(): Promise<void> {
   try {
     logger.info('[Snapshot] Checking for missing daily snapshots...');
 
     const now = new Date();
-    const currentHourUTC = now.getUTCHours();
+    const snapshotDay = getSingaporeSnapshotDay(now);
 
-    // Only run catch-up if we're past 1pm UTC (9pm SGT)
-    if (currentHourUTC < 13) {
-      logger.info('[Snapshot] Before 9pm SGT - skipping catch-up (scheduled snapshot not due yet)');
+    if (now < snapshotDay.scheduledAt) {
+      logger.info('[Snapshot] Before 5am SGT - skipping catch-up (scheduled snapshot not due yet)');
       return;
     }
 
@@ -32,11 +56,6 @@ export async function createMissingSnapshots(): Promise<void> {
       return;
     }
 
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-
     for (const user of users) {
       try {
         const existingSnapshot = await prisma.snapshot.findFirst({
@@ -44,8 +63,8 @@ export async function createMissingSnapshots(): Promise<void> {
             userId: user.id,
             snapshotType: 'DAILY',
             timestamp: {
-              gte: today,
-              lt: tomorrow,
+              gte: snapshotDay.start,
+              lt: snapshotDay.end,
             },
           },
         });
@@ -111,46 +130,51 @@ export function startEquityRefreshJob(): void {
 }
 
 /**
- * Start the snapshot job (daily at 9pm SGT / 1pm UTC)
+ * Start the snapshot job (daily at 5am SGT)
  */
 export function startSnapshotJob(): void {
-  logger.info('📸 Starting snapshot scheduler (9pm SGT / 1pm UTC)');
+  logger.info('📸 Starting snapshot scheduler (5am SGT)');
 
-  // Run daily at 13:00 UTC (9pm SGT)
-  cron.schedule('0 13 * * *', async () => {
-    try {
-      logger.info('[Snapshot] Creating daily snapshots...');
+  cron.schedule(
+    '0 5 * * *',
+    async () => {
+      try {
+        logger.info('[Snapshot] Creating daily snapshots...');
 
-      const users = await prisma.user.findMany({
-        select: { id: true },
-      });
+        const users = await prisma.user.findMany({
+          select: { id: true },
+        });
 
-      for (const user of users) {
-        try {
-          const snapshotId = await snapshotService.createSnapshot(user.id, 'DAILY');
-          logger.info(`[Snapshot] Created daily snapshot ${snapshotId} for user ${user.id}`);
-        } catch (error) {
-          logger.error(`[Snapshot] Error creating snapshot for user ${user.id}:`, error);
-        }
-      }
-
-      // Check if it's the first day of the month - create monthly snapshot
-      const today = new Date();
-      if (today.getDate() === 1) {
-        logger.info('[Snapshot] First of month - creating monthly snapshots...');
         for (const user of users) {
           try {
-            const snapshotId = await snapshotService.createSnapshot(user.id, 'MONTHLY');
-            logger.info(`[Snapshot] Created monthly snapshot ${snapshotId} for user ${user.id}`);
+            const snapshotId = await snapshotService.createSnapshot(user.id, 'DAILY');
+            logger.info(`[Snapshot] Created daily snapshot ${snapshotId} for user ${user.id}`);
           } catch (error) {
-            logger.error(`[Snapshot] Error creating monthly snapshot for user ${user.id}:`, error);
+            logger.error(`[Snapshot] Error creating snapshot for user ${user.id}:`, error);
           }
         }
+
+        // The cron fires at 21:00 UTC on the previous date, so use the Singapore date here.
+        if (getSingaporeSnapshotDay(new Date()).dayOfMonth === 1) {
+          logger.info('[Snapshot] First of month - creating monthly snapshots...');
+          for (const user of users) {
+            try {
+              const snapshotId = await snapshotService.createSnapshot(user.id, 'MONTHLY');
+              logger.info(`[Snapshot] Created monthly snapshot ${snapshotId} for user ${user.id}`);
+            } catch (error) {
+              logger.error(
+                `[Snapshot] Error creating monthly snapshot for user ${user.id}:`,
+                error
+              );
+            }
+          }
+        }
+      } catch (error) {
+        logger.error('[Snapshot] Error:', error);
       }
-    } catch (error) {
-      logger.error('[Snapshot] Error:', error);
-    }
-  });
+    },
+    { timezone: SINGAPORE_TIME_ZONE }
+  );
 
   // Run weekly on Sunday at 00:00 UTC
   cron.schedule('0 0 * * 0', async () => {

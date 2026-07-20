@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const scheduledJobs: Array<{
@@ -8,10 +8,16 @@ const mocks = vi.hoisted(() => {
 
   return {
     scheduledJobs,
-    cronSchedule: vi.fn((expression: string, callback: () => unknown | Promise<unknown>) => {
-      scheduledJobs.push({ expression, callback });
-      return { stop: vi.fn() };
-    }),
+    cronSchedule: vi.fn(
+      (
+        expression: string,
+        callback: () => unknown | Promise<unknown>,
+        _options?: { timezone?: string }
+      ) => {
+        scheduledJobs.push({ expression, callback });
+        return { stop: vi.fn() };
+      }
+    ),
     priceService: {
       refreshAllPrices: vi.fn(),
       updatePositionValues: vi.fn(),
@@ -64,12 +70,17 @@ const {
   startSnapshotJob,
   startFxRateJob,
   startPriceHistoryCleanupJob,
+  createMissingSnapshots,
 } = await import('../services/scheduler.js');
 
 describe('scheduler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.scheduledJobs.length = 0;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('refreshes crypto prices and notifies users whose positions changed', async () => {
@@ -125,10 +136,57 @@ describe('scheduler', () => {
     startPriceHistoryCleanupJob();
 
     expect(mocks.scheduledJobs.map((job) => job.expression)).toEqual([
-      '0 13 * * *',
+      '0 5 * * *',
       '0 0 * * 0',
       '0 * * * *',
       '0 2 * * *',
     ]);
+    expect(mocks.cronSchedule).toHaveBeenNthCalledWith(1, '0 5 * * *', expect.any(Function), {
+      timezone: 'Asia/Singapore',
+    });
+  });
+
+  it('uses the Singapore calendar day for monthly snapshots', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-31T21:00:00.000Z'));
+    mocks.prisma.user.findMany.mockResolvedValue([{ id: 'user-1' }]);
+    mocks.snapshotService.createSnapshot.mockResolvedValue('snapshot-1');
+
+    startSnapshotJob();
+    await mocks.scheduledJobs[0].callback();
+
+    expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(1, 'user-1', 'DAILY');
+    expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(2, 'user-1', 'MONTHLY');
+  });
+
+  it('checks the current Singapore day when catching up after 5am SGT', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-31T21:01:00.000Z'));
+    mocks.prisma.user.findMany.mockResolvedValue([{ id: 'user-1' }]);
+    mocks.prisma.snapshot.findFirst.mockResolvedValue(null);
+    mocks.snapshotService.createSnapshot.mockResolvedValue('snapshot-1');
+
+    await createMissingSnapshots();
+
+    expect(mocks.prisma.snapshot.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        snapshotType: 'DAILY',
+        timestamp: {
+          gte: new Date('2026-07-31T16:00:00.000Z'),
+          lt: new Date('2026-08-01T16:00:00.000Z'),
+        },
+      },
+    });
+    expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith('user-1', 'DAILY');
+  });
+
+  it('does not catch up before 5am SGT', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-31T20:59:00.000Z'));
+
+    await createMissingSnapshots();
+
+    expect(mocks.prisma.user.findMany).not.toHaveBeenCalled();
   });
 });

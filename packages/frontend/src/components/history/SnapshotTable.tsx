@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { isBeforeDailySnapshotTime, isSameSingaporeDay } from './snapshotTiming';
 import { toast } from 'sonner';
 import type { Snapshot, SnapshotPosition } from '@/lib/types';
 import {
@@ -61,21 +62,6 @@ async function copySnapshotToClipboard(snapshot: Snapshot): Promise<boolean> {
   }
 }
 
-// Helper to check if a date is today
-function isToday(dateString: string): boolean {
-  const date = new Date(dateString);
-  const today = new Date();
-  return date.toDateString() === today.toDateString();
-}
-
-// Helper to check if we're before 9pm SGT (1pm UTC)
-// If before 9pm SGT, today's snapshot hasn't been taken yet
-function isBeforeSnapshotTime(): boolean {
-  const now = new Date();
-  const utcHour = now.getUTCHours();
-  return utcHour < 13; // Before 1pm UTC = Before 9pm SGT
-}
-
 export function SnapshotTable({
   snapshots,
   isLoading,
@@ -91,10 +77,14 @@ export function SnapshotTable({
   const [copiedPositionsId, setCopiedPositionsId] = useState<string | null>(null);
   const [liveRowTimestamp] = useState(() => new Date().toISOString());
 
-  // Check if there's already a snapshot for today
-  const hasTodaySnapshot = snapshots.some((s) => isToday(s.timestamp));
+  const now = new Date();
+  // Check against the Singapore calendar day because the automatic schedule is defined in SGT.
+  const hasTodaySnapshot = snapshots.some((snapshot) =>
+    isSameSingaporeDay(new Date(snapshot.timestamp), now)
+  );
   // Show live row if: before snapshot time, no today snapshot, and we have live value
-  const showLiveRow = isBeforeSnapshotTime() && !hasTodaySnapshot && liveValueUsd !== undefined;
+  const showLiveRow =
+    isBeforeDailySnapshotTime(now) && !hasTodaySnapshot && liveValueUsd !== undefined;
 
   const toggleExpand = async (snapshotId: string) => {
     const newExpanded = new Set(expandedSnapshots);
@@ -219,7 +209,7 @@ export function SnapshotTable({
                   <TableCell></TableCell>
                   <TableCell className="font-medium">{formatDate(liveRowTimestamp)}</TableCell>
                   <TableCell className="text-right font-mono">
-                    <div className="text-profit" title="Live portfolio value (snapshot at 9pm SGT)">
+                    <div className="text-profit" title="Live portfolio value (snapshot at 5am SGT)">
                       <div>{displayValue(liveValueUsd!)}</div>
                       <div className="text-xs">(Live)</div>
                     </div>
@@ -231,7 +221,7 @@ export function SnapshotTable({
                     </span>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                    Snapshot at 9pm SGT
+                    Snapshot at 5am SGT
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs">

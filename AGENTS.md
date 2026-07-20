@@ -89,7 +89,7 @@ Node host (Backend: Express.js)
     ↓ Prisma ORM
 PostgreSQL 17 (private network)
 
-Background Jobs (node-cron): price refresh (every min), snapshots (daily midnight UTC / weekly Sun / monthly 1st), FX rates (hourly)
+Background Jobs (node-cron): price refresh (every min), snapshots (daily 5am SGT / weekly Sun / monthly 1st), FX rates (hourly)
 ```
 
 ## Key Patterns
@@ -104,7 +104,7 @@ For sanitized real-API browser QA only: backend `ALLOW_LOCAL_AUTH_BYPASS=true LO
 
 ### Snapshot System
 
-Captures portfolio state over time; calculates daily/weekly/monthly/YTD returns + benchmark outperformance vs BTC/ETH. Return fields stored as `percent × 100`. YTD anchor = first snapshot of the _current calendar year_ (`timestamp >= Jan 1 UTC` in `portfolioService.getSummary()`) — never an unfiltered `findFirst orderBy:asc`.
+Captures portfolio state over time; calculates daily/weekly/monthly/YTD returns + benchmark outperformance vs BTC/ETH. Automatic daily snapshots run at **5am SGT** using an explicit `Asia/Singapore` cron timezone; catch-up and first-of-month checks use the Singapore calendar day. Return fields stored as `percent × 100`. YTD anchor = first snapshot of the _current calendar year_ (`timestamp >= Jan 1 UTC` in `portfolioService.getSummary()`) — never an unfiltered `findFirst orderBy:asc`.
 
 ### Snapshot Backfill Script
 

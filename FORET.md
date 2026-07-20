@@ -350,19 +350,22 @@ cron.schedule('* * * * *', async () => {
   await priceService.updateAllPrices();
 });
 
-// Daily snapshot at midnight UTC
-cron.schedule('0 0 * * *', async () => {
-  await snapshotService.createDailySnapshots();
-});
-
-// Monthly snapshot on 1st of month
-cron.schedule('0 0 1 * *', async () => {
-  await snapshotService.createMonthlySnapshots();
-});
+// Daily snapshot at 5am Singapore time
+cron.schedule(
+  '0 5 * * *',
+  async () => {
+    await snapshotService.createDailySnapshots();
+  },
+  { timezone: 'Asia/Singapore' }
+);
 
 // Catch-up on server restart
 await snapshotService.createMissedSnapshots();
 ```
+
+The daily boundary is deliberately expressed in `Asia/Singapore`, not as a server-local or UTC
+hour. At 5am SGT the UTC date is still the previous day, so catch-up windows and first-of-month
+checks must also use the Singapore calendar day or they will skip/shift snapshots around month-end.
 
 ### The Catch-Up Pattern
 
