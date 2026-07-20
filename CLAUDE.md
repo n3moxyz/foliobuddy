@@ -177,6 +177,11 @@ Advisory frontend audit — see the pinned command in Commands. Triage input, no
 
 ### Dependency Audit Notes
 
+The root lockfile is owned by **npm 10.8.2** (declared in `package.json`, matching Node 20 CI).
+Regenerate `package-lock.json` with that npm version and verify a clean `npm ci` after dependency
+changes. npm 11 can rewrite optional-peer metadata into a lockfile that npm 10 rejects (seen with
+`@emnapi/core` / `@emnapi/runtime`).
+
 Root `package.json` overrides `exceljs`'s transitive `uuid` to `11.1.1` (ExcelJS 4.4 declares `uuid@^8.3.0`, `GHSA-w5hq-g745-h8pq`; ExcelJS only uses `v4()`). Do not `npm audit fix --force` — it downgrades ExcelJS to 3.4.0. Keep `npm audit` clean.
 
 ExcelJS treats worksheet name `History` as protected; exports use `Snapshots`. Keep `export.test.ts` coverage.
