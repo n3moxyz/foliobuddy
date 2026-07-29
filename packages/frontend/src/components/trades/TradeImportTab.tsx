@@ -56,6 +56,14 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
         if (typeof t.quantity !== 'number' || t.quantity <= 0) {
           throw new Error('Invalid format: quantity must be a positive number');
         }
+        if (
+          t.fundingCost !== undefined &&
+          (typeof t.fundingCost !== 'number' ||
+            !Number.isFinite(t.fundingCost) ||
+            t.fundingCost < 0)
+        ) {
+          throw new Error('Invalid format: fundingCost must be a non-negative number');
+        }
         if (!t.direction || !TRADE_DIRECTIONS.has(t.direction)) {
           throw new Error('Invalid format: direction must be LONG or SHORT');
         }

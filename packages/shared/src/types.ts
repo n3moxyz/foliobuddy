@@ -332,6 +332,7 @@ export interface Trade {
   positionSizeUsd: number;
   entryDate: string;
   exitDate: string | null;
+  fundingCost: number;
   status: TradeStatus;
   realizedPnL: number | null;
   realizedPnLPct: number | null;
@@ -570,6 +571,7 @@ export interface CreateTradeData {
   quantity: number;
   entryDate: string;
   exitDate?: string;
+  fundingCost?: number;
   notes?: string;
   tags?: string[];
 }
@@ -655,6 +657,7 @@ export interface BulkImportTrade {
   quantity: number;
   entryDate: string;
   exitDate?: string | null;
+  fundingCost?: number;
   status?: TradeStatus;
   notes?: string | null;
   tags?: string[] | null;

@@ -44,6 +44,7 @@ describe('demo mode API mock', () => {
           entryPrice: 10,
           exitPrice: 15,
           quantity: 100,
+          fundingCost: 25,
           entryDate: '2026-04-01',
           exitDate: '2026-04-05',
           notes: 'Synthetic QA import',
@@ -54,9 +55,9 @@ describe('demo mode API mock', () => {
 
     expect(importResponse.results).toEqual([{ success: true, symbol: 'QA1' }]);
 
-    const afterTrades = await readJson<Array<{ asset: { symbol: string } }>>(
-      await demoRequest('/trades')
-    );
+    const afterTrades = await readJson<
+      Array<{ asset: { symbol: string }; fundingCost: number; realizedPnL: number }>
+    >(await demoRequest('/trades'));
     const afterAnalytics = await readJson<{
       totalTrades: number;
       totalPnL: number;
@@ -64,8 +65,10 @@ describe('demo mode API mock', () => {
 
     expect(afterTrades).toHaveLength(beforeTrades.length + 1);
     expect(afterTrades[0].asset.symbol).toBe('QA1');
+    expect(afterTrades[0].fundingCost).toBe(25);
+    expect(afterTrades[0].realizedPnL).toBe(475);
     expect(afterAnalytics.totalTrades).toBe(beforeAnalytics.totalTrades + 1);
-    expect(afterAnalytics.totalPnL).toBe(beforeAnalytics.totalPnL + 500);
+    expect(afterAnalytics.totalPnL).toBe(beforeAnalytics.totalPnL + 475);
   });
 
   it('bulk-imports snapshots and exposes them in performance history', async () => {

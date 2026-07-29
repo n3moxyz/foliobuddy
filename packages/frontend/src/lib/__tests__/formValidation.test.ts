@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isNonNegativeNumberInput,
+  isOptionalNonNegativeNumberInput,
   isOptionalPositiveNumberInput,
   isPositiveNumberInput,
 } from '../formValidation';
@@ -30,5 +31,12 @@ describe('formValidation', () => {
     expect(isOptionalPositiveNumberInput('')).toBe(true);
     expect(isOptionalPositiveNumberInput('12')).toBe(true);
     expect(isOptionalPositiveNumberInput('0')).toBe(false);
+  });
+
+  it('allows optional non-negative fields to be blank or zero', () => {
+    expect(isOptionalNonNegativeNumberInput('')).toBe(true);
+    expect(isOptionalNonNegativeNumberInput('0')).toBe(true);
+    expect(isOptionalNonNegativeNumberInput('12.50')).toBe(true);
+    expect(isOptionalNonNegativeNumberInput('-1')).toBe(false);
   });
 });

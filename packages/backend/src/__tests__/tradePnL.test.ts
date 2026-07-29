@@ -26,6 +26,17 @@ describe('calculateTradePnL', () => {
     expect(calculateTradePnL('LONG', 100, 110, 2.5)).toEqual({ pnl: 25, pnlPct: 10 });
   });
 
+  it('deducts funding cost from P&L and return percentage', () => {
+    expect(calculateTradePnL('LONG', 100, 120, 10, 25)).toEqual({
+      pnl: 175,
+      pnlPct: 17.5,
+    });
+    expect(calculateTradePnL('SHORT', 100, 120, 10, 25)).toEqual({
+      pnl: -225,
+      pnlPct: -22.5,
+    });
+  });
+
   it('does not divide by a zero-sized position', () => {
     expect(calculateTradePnL('LONG', 0, 100, 10)).toEqual({ pnl: 1000, pnlPct: 0 });
   });

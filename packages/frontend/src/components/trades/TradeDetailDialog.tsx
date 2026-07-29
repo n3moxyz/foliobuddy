@@ -43,7 +43,7 @@ export function TradeDetailDialog({
   copiedId,
   onCopy,
 }: TradeDetailDialogProps) {
-  const { formatCurrency, formatPrice } = useMoneyFormatter();
+  const { formatCurrency, formatPrice, formatSignedCurrency } = useMoneyFormatter();
   const tags = trade ? formatTradeTags(trade.tags) : null;
 
   return (
@@ -128,16 +128,32 @@ export function TradeDetailDialog({
               </div>
             </div>
 
-            <div className="border-t pt-4">
-              <p className="text-xs text-muted-foreground mb-1">Realized P&L</p>
-              {trade.realizedPnL !== null ? (
-                <p className={`font-mono font-medium ${getPnLColorClass(trade.realizedPnL)}`}>
-                  {formatCurrency(trade.realizedPnL, 'USD', 0)}
-                  <span className="text-xs ml-1">({formatPercent(trade.realizedPnLPct)})</span>
+            <div className="grid grid-cols-2 gap-4 border-t pt-4">
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">Realized P&amp;L</p>
+                {trade.realizedPnL !== null ? (
+                  <p className={`font-mono font-medium ${getPnLColorClass(trade.realizedPnL)}`}>
+                    {formatCurrency(trade.realizedPnL, 'USD', 0)}
+                    <span className="ml-1 text-xs">({formatPercent(trade.realizedPnLPct)})</span>
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Open trade</p>
+                )}
+              </div>
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">Funding Cost</p>
+                <p
+                  className={`font-mono font-medium ${
+                    trade.fundingCost > 0
+                      ? getPnLColorClass(-trade.fundingCost)
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {trade.fundingCost > 0
+                    ? formatSignedCurrency(-trade.fundingCost, 'USD', 2)
+                    : formatCurrency(0, 'USD', 2)}
                 </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">Open trade</p>
-              )}
+              </div>
             </div>
 
             {trade.notes && (

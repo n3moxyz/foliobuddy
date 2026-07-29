@@ -17,3 +17,7 @@ export function isNonNegativeNumberInput(value: string): boolean {
 export function isOptionalPositiveNumberInput(value: string): boolean {
   return value.trim() === '' || isPositiveNumberInput(value);
 }
+
+export function isOptionalNonNegativeNumberInput(value: string): boolean {
+  return value.trim() === '' || isNonNegativeNumberInput(value);
+}

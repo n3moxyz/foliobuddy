@@ -50,6 +50,7 @@ export function mockTrade(overrides: Record<string, unknown> = {}) {
     positionSizeUsd: 40000,
     entryDate: new Date('2024-01-01'),
     exitDate: new Date('2024-02-01'),
+    fundingCost: 0,
     status: 'CLOSED',
     realizedPnL: 10000,
     realizedPnLPct: 25,

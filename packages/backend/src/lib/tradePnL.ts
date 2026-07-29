@@ -1,20 +1,22 @@
 /**
- * Calculate trade P&L based on direction, entry/exit prices, and quantity.
+ * Calculate net trade P&L after deducting any funding cost.
  */
 export function calculateTradePnL(
   direction: 'LONG' | 'SHORT',
   entryPrice: number,
   exitPrice: number,
-  quantity: number
+  quantity: number,
+  fundingCost = 0
 ): { pnl: number; pnlPct: number } {
-  let pnl: number;
+  let pricePnL: number;
 
   if (direction === 'LONG') {
-    pnl = (exitPrice - entryPrice) * quantity;
+    pricePnL = (exitPrice - entryPrice) * quantity;
   } else {
-    pnl = (entryPrice - exitPrice) * quantity;
+    pricePnL = (entryPrice - exitPrice) * quantity;
   }
 
+  const pnl = pricePnL - fundingCost;
   const positionSize = entryPrice * quantity;
   const pnlPct = positionSize > 0 ? (pnl / positionSize) * 100 : 0;
 

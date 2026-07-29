@@ -14,6 +14,7 @@ export function formatTradeForClipboard(trade: Trade) {
     quantity: trade.quantity,
     entryDate: trade.entryDate,
     exitDate: trade.exitDate,
+    fundingCost: trade.fundingCost,
     status: trade.status,
     notes: trade.notes,
     tags: trade.tags,

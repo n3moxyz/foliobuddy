@@ -46,7 +46,7 @@ function parseBinaryResponse(res: unknown, callback: (error: Error | null, body?
 beforeEach(() => {
   vi.clearAllMocks();
   mockPrisma.position.findMany.mockResolvedValue([mockPosition()]);
-  mockPrisma.trade.findMany.mockResolvedValue([mockTrade()]);
+  mockPrisma.trade.findMany.mockResolvedValue([mockTrade({ fundingCost: 12.5 })]);
   mockPrisma.investor.findMany.mockResolvedValue([
     {
       id: 'investor-1',
@@ -101,5 +101,8 @@ describe('GET /api/export/excel', () => {
       'Investors',
       'Snapshots',
     ]);
+    const tradesSheet = workbook.getWorksheet('Trades');
+    expect(tradesSheet?.getCell(1, 10).value).toBe('Funding Cost');
+    expect(tradesSheet?.getCell(2, 10).value).toBe(12.5);
   });
 });

@@ -223,7 +223,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  closeTrade: (id: string, data: { exitPrice: number; exitDate?: string; notes?: string }) =>
+  closeTrade: (
+    id: string,
+    data: { exitPrice: number; exitDate?: string; fundingCost?: number; notes?: string }
+  ) =>
     request<Trade>(`/trades/${id}/close`, {
       method: 'PATCH',
       body: JSON.stringify(data),

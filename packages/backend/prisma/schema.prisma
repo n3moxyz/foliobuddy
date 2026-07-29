@@ -138,6 +138,7 @@ model Trade {
   positionSizeUsd Float
   entryDate       DateTime
   exitDate        DateTime?
+  fundingCost     Float     @default(0)
   realizedPnL     Float?
   realizedPnLPct  Float?
   status          String    @default("OPEN")

@@ -6,7 +6,11 @@ import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { useCreateTrade, useUpdateTrade } from '@/hooks/useTrades';
-import { isOptionalPositiveNumberInput, isPositiveNumberInput } from '@/lib/formValidation';
+import {
+  isOptionalNonNegativeNumberInput,
+  isOptionalPositiveNumberInput,
+  isPositiveNumberInput,
+} from '@/lib/formValidation';
 import type { Asset, Trade } from '@/lib/types';
 import { TradeImportTab } from './TradeImportTab';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
@@ -35,6 +39,9 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
   const [entryPrice, setEntryPrice] = useState(trade?.entryPrice?.toString() || '');
   const [exitPrice, setExitPrice] = useState(trade?.exitPrice?.toString() || '');
   const [quantity, setQuantity] = useState(trade?.quantity?.toString() || '');
+  const [fundingCost, setFundingCost] = useState(
+    trade?.fundingCost ? trade.fundingCost.toString() : ''
+  );
   const [entryDate, setEntryDate] = useState(() => {
     if (trade?.entryDate) return new Date(trade.entryDate).toISOString().split('T')[0];
     // Default to 5 days ago (most trades are logged after closing)
@@ -60,7 +67,8 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
     isPositiveNumberInput(entryPrice) &&
     isPositiveNumberInput(quantity) &&
     !!entryDate &&
-    isOptionalPositiveNumberInput(exitPrice);
+    isOptionalPositiveNumberInput(exitPrice) &&
+    isOptionalNonNegativeNumberInput(fundingCost);
 
   const handleSelectAsset = (id: string, asset: Asset) => {
     setAssetId(id);
@@ -83,6 +91,8 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
         setValidationError('Entry date is required');
       } else if (!isOptionalPositiveNumberInput(exitPrice)) {
         setValidationError('Exit price must be greater than 0');
+      } else if (!isOptionalNonNegativeNumberInput(fundingCost)) {
+        setValidationError('Funding cost cannot be negative');
       }
       return;
     }
@@ -95,6 +105,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
       quantity: Number(quantity),
       entryDate,
       exitDate: exitDate || undefined,
+      fundingCost: fundingCost ? Number(fundingCost) : 0,
       notes: notes || undefined,
     };
 
@@ -264,6 +275,23 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                 placeholder="0.00"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fundingCost">Funding Cost (Optional)</Label>
+              <FormattedNumberInput
+                id="fundingCost"
+                value={fundingCost}
+                onValueChange={(value) => {
+                  setFundingCost(value);
+                  setValidationError(null);
+                }}
+                placeholder="0.00"
+                aria-describedby="fundingCost-description"
+              />
+              <p id="fundingCost-description" className="text-xs text-muted-foreground">
+                USD amount paid; deducted from realized P&amp;L.
+              </p>
             </div>
 
             <div className="space-y-2">

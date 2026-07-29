@@ -27,6 +27,7 @@ const createTradeSchema = z
     quantity: z.number().positive(),
     entryDate: validDateString.transform((s) => new Date(s)),
     exitDate: validDateString.transform((s) => new Date(s)).optional(),
+    fundingCost: z.number().nonnegative().optional(),
     notes: z.string().optional(),
     tags: z.array(z.string()).optional(),
   })
@@ -47,6 +48,7 @@ const updateTradeSchema = z.object({
   quantity: z.number().positive().optional(),
   entryDate: validDateString.transform((s) => new Date(s)).optional(),
   exitDate: validDateString.transform((s) => new Date(s)).optional(),
+  fundingCost: z.number().nonnegative().optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
@@ -54,6 +56,7 @@ const updateTradeSchema = z.object({
 const closeTradeSchema = z.object({
   exitPrice: z.number().positive(),
   exitDate: validDateString.transform((s) => new Date(s)).optional(),
+  fundingCost: z.number().nonnegative().optional(),
   notes: z.string().optional(),
 });
 
@@ -278,7 +281,8 @@ router.post('/', async (req, res, next) => {
         data.direction,
         data.entryPrice,
         data.exitPrice,
-        data.quantity
+        data.quantity,
+        data.fundingCost
       );
       realizedPnL = pnlResult.pnl;
       realizedPnLPct = pnlResult.pnlPct;
@@ -295,6 +299,7 @@ router.post('/', async (req, res, next) => {
         positionSizeUsd,
         entryDate: data.entryDate,
         exitDate: data.exitDate,
+        fundingCost: data.fundingCost ?? 0,
         status,
         realizedPnL,
         realizedPnLPct,
@@ -331,6 +336,7 @@ router.put('/:id', async (req, res, next) => {
     const entryPrice = data.entryPrice ?? existing.entryPrice;
     const exitPrice = data.exitPrice ?? existing.exitPrice;
     const quantity = data.quantity ?? existing.quantity;
+    const fundingCost = data.fundingCost ?? existing.fundingCost;
     const entryDate = data.entryDate ?? existing.entryDate;
     const nextExitDate = data.exitDate ?? existing.exitDate;
 
@@ -342,13 +348,21 @@ router.put('/:id', async (req, res, next) => {
     let realizedPnLPct = existing.realizedPnLPct;
     let status = existing.status;
 
-    if (exitPrice && (data.entryPrice || data.exitPrice || data.quantity || data.direction)) {
+    if (
+      exitPrice &&
+      (data.entryPrice ||
+        data.exitPrice ||
+        data.quantity ||
+        data.direction ||
+        data.fundingCost !== undefined)
+    ) {
       status = TradeStatus.CLOSED;
       const pnlResult = calculateTradePnL(
         direction as TradeDirection,
         entryPrice,
         exitPrice,
-        quantity
+        quantity,
+        fundingCost
       );
       realizedPnL = pnlResult.pnl;
       realizedPnLPct = pnlResult.pnlPct;
@@ -405,7 +419,8 @@ router.patch('/:id/close', async (req, res, next) => {
       existing.direction as TradeDirection,
       existing.entryPrice,
       data.exitPrice,
-      existing.quantity
+      existing.quantity,
+      data.fundingCost ?? existing.fundingCost
     );
 
     const trade = await prisma.trade.update({
@@ -413,6 +428,7 @@ router.patch('/:id/close', async (req, res, next) => {
       data: {
         exitPrice: data.exitPrice,
         exitDate,
+        fundingCost: data.fundingCost ?? existing.fundingCost,
         status: TradeStatus.CLOSED,
         realizedPnL: pnlResult.pnl,
         realizedPnLPct: pnlResult.pnlPct,
@@ -462,6 +478,7 @@ const bulkImportTradeSchema = z
     quantity: z.number().positive(),
     entryDate: validDateString,
     exitDate: validDateString.optional().nullable(),
+    fundingCost: z.number().nonnegative().optional(),
     status: z.enum(TRADE_STATUSES).optional(),
     notes: z.string().optional().nullable(),
     tags: z.array(z.string()).optional().nullable(),
@@ -530,7 +547,8 @@ router.post('/bulk-import', async (req, res, next) => {
             tradeData.direction,
             tradeData.entryPrice,
             tradeData.exitPrice,
-            tradeData.quantity
+            tradeData.quantity,
+            tradeData.fundingCost
           );
           realizedPnL = pnlResult.pnl;
           realizedPnLPct = pnlResult.pnlPct;
@@ -547,6 +565,7 @@ router.post('/bulk-import', async (req, res, next) => {
             positionSizeUsd,
             entryDate,
             exitDate,
+            fundingCost: tradeData.fundingCost ?? 0,
             status,
             realizedPnL,
             realizedPnLPct,

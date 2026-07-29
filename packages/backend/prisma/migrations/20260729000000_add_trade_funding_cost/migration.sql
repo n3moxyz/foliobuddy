@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Trade"
+ADD COLUMN "fundingCost" DOUBLE PRECISION NOT NULL DEFAULT 0;

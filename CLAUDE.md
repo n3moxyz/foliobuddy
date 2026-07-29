@@ -157,6 +157,8 @@ Investor create, stake update, owner reassignment, and delete/reassign are multi
 
 Trade create/update/close/import dates must be real calendar values and `exitDate >= entryDate`. Analytics month buckets use UTC. `TradeAnalytics.profitFactor = null` is the JSON-safe sentinel for a genuinely infinite profit factor (wins with no losses); the UI renders it as `∞`. Best/worst trade fields are null unless a positive/negative trade actually exists.
 
+Trades support an optional non-negative USD `fundingCost` (database default `0`). Closed-trade `realizedPnL` is net of funding (`price P&L - fundingCost`), and `realizedPnLPct` uses that net value over entry position size, so all trade analytics inherit the deduction. Create/edit/bulk-import, clipboard, exports, and demo mode must preserve the field; trade details show the funding deduction separately beside net Realized P&L.
+
 ### Lazy-Loaded Routes
 
 All pages lazy-loaded (`React.lazy()` + `Suspense`); Vite `manualChunks` splits heavy vendors (recharts, socket.io-client, @sentry/react, @clerk/clerk-react).

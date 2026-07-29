@@ -99,6 +99,29 @@ describe('POST /api/trades', () => {
     expect(createCall.data.status).toBe('CLOSED');
   });
 
+  it('deducts funding cost from a closed trade PnL', async () => {
+    mockPrisma.asset.findUnique.mockResolvedValue(mockAsset());
+    mockPrisma.trade.create.mockResolvedValue(
+      mockTrade({ fundingCost: 250, realizedPnL: 9750, realizedPnLPct: 24.375 })
+    );
+
+    const res = await request(app).post('/api/trades').send({
+      assetId: 'asset-1',
+      direction: 'LONG',
+      entryPrice: 40000,
+      exitPrice: 50000,
+      quantity: 1,
+      fundingCost: 250,
+      entryDate: '2024-01-01',
+    });
+
+    expect(res.status).toBe(201);
+    const createCall = mockPrisma.trade.create.mock.calls[0][0];
+    expect(createCall.data.fundingCost).toBe(250);
+    expect(createCall.data.realizedPnL).toBe(9750);
+    expect(createCall.data.realizedPnLPct).toBe(24.375);
+  });
+
   it('creates an OPEN trade with null PnL when no exit price', async () => {
     const asset = mockAsset();
     mockPrisma.asset.findUnique.mockResolvedValue(asset);
@@ -147,6 +170,48 @@ describe('POST /api/trades', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Validation error');
+  });
+
+  it('rejects a negative funding cost', async () => {
+    const res = await request(app).post('/api/trades').send({
+      assetId: 'asset-1',
+      direction: 'LONG',
+      entryPrice: 100,
+      quantity: 1,
+      fundingCost: -1,
+      entryDate: '2024-01-01',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Validation error');
+  });
+});
+
+describe('PUT /api/trades/:id', () => {
+  it('recalculates a closed trade when funding cost is edited or cleared', async () => {
+    mockPrisma.trade.findFirst.mockResolvedValue(mockTrade({ fundingCost: 100 }));
+    mockPrisma.trade.update.mockResolvedValue(
+      mockTrade({ fundingCost: 250, realizedPnL: 9750, realizedPnLPct: 24.375 })
+    );
+
+    const withFunding = await request(app).put('/api/trades/trade-1').send({ fundingCost: 250 });
+
+    expect(withFunding.status).toBe(200);
+    expect(mockPrisma.trade.update.mock.calls[0][0].data).toMatchObject({
+      fundingCost: 250,
+      realizedPnL: 9750,
+      realizedPnLPct: 24.375,
+    });
+
+    mockPrisma.trade.update.mockClear();
+    const cleared = await request(app).put('/api/trades/trade-1').send({ fundingCost: 0 });
+
+    expect(cleared.status).toBe(200);
+    expect(mockPrisma.trade.update.mock.calls[0][0].data).toMatchObject({
+      fundingCost: 0,
+      realizedPnL: 10000,
+      realizedPnLPct: 25,
+    });
   });
 });
 

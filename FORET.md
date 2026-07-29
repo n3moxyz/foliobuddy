@@ -2141,6 +2141,10 @@ Recently completed:
   - CI failed before type-checking because npm 10.8.2 rejected a root lockfile last rewritten by npm 11; optional peer rows for `@emnapi/core` and `@emnapi/runtime` were missing. The durable fix was to declare npm 10.8.2 as the repository package manager, regenerate the lockfile with that exact version, and prove it with a clean isolated `npm ci` rather than the already-populated local `node_modules`.
   - The simultaneous backend deploy failure was independent: Coolify returned HTTP 401 before starting a build, so the encrypted GitHub `COOLIFY_API_TOKEN` had to be rotated. A red deploy workflow can mean “no build was attempted”; read the first failed step before debugging application code.
   - Lesson: lockfiles are package-manager output, so the generator version is part of the build contract. And credentials need their own failure branch—an API 401 cannot be repaired by rerunning tests or redeploying the same commit.
+- [x] **Trade funding-cost tracking:**
+  - Trades now carry an optional non-negative USD funding cost. It sits between Quantity and Notes in create/edit, survives clipboard/bulk-import/export/demo workflows, and appears as its own deduction beside Realized P&L in the detail sheet.
+  - Closed-trade P&L is deliberately stored net: directional price P&L minus funding cost, with the return percentage recalculated from that net result. Because analytics already aggregate stored realized P&L, total P&L, win/loss classification, ticker dossiers, monthly reviews, and rankings all stay on one consistent definition.
+  - Existing rows migrate safely to `0` through a non-null database default. Lesson: transaction costs belong in the central P&L calculation, not as display-only frontend arithmetic, or every downstream analytical view eventually disagrees.
 
 ---
 

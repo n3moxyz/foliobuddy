@@ -489,9 +489,10 @@ const initialTrades: Trade[] = [
     positionSizeUsd: 33600,
     entryDate: '2026-01-10T00:00:00.000Z',
     exitDate: '2026-02-04T00:00:00.000Z',
+    fundingCost: 50,
     status: 'CLOSED',
-    realizedPnL: 5450,
-    realizedPnLPct: 16.2,
+    realizedPnL: 5400,
+    realizedPnLPct: 16.07,
     notes: 'Range reclaim breakout',
     tags: 'swing,btc',
   },
@@ -506,6 +507,7 @@ const initialTrades: Trade[] = [
     positionSizeUsd: 12720,
     entryDate: '2026-01-21T00:00:00.000Z',
     exitDate: '2026-02-20T00:00:00.000Z',
+    fundingCost: 0,
     status: 'CLOSED',
     realizedPnL: 3380,
     realizedPnLPct: 26.6,
@@ -523,6 +525,7 @@ const initialTrades: Trade[] = [
     positionSizeUsd: 16320,
     entryDate: '2026-02-28T00:00:00.000Z',
     exitDate: '2026-03-02T00:00:00.000Z',
+    fundingCost: 0,
     status: 'CLOSED',
     realizedPnL: -765,
     realizedPnLPct: -4.7,
@@ -540,6 +543,7 @@ const initialTrades: Trade[] = [
     positionSizeUsd: 19920,
     entryDate: '2026-03-05T00:00:00.000Z',
     exitDate: null,
+    fundingCost: 0,
     status: 'OPEN',
     realizedPnL: null,
     realizedPnLPct: null,
@@ -557,6 +561,7 @@ const initialTrades: Trade[] = [
     positionSizeUsd: 210032,
     entryDate: '2026-03-25T00:00:00.000Z',
     exitDate: '2026-03-27T00:00:00.000Z',
+    fundingCost: 0,
     status: 'CLOSED',
     realizedPnL: 18849,
     realizedPnLPct: 8.97,
@@ -574,6 +579,7 @@ const initialTrades: Trade[] = [
     positionSizeUsd: 157408,
     entryDate: '2026-03-11T00:00:00.000Z',
     exitDate: '2026-03-11T00:00:00.000Z',
+    fundingCost: 0,
     status: 'CLOSED',
     realizedPnL: 4254,
     realizedPnLPct: 2.7,
@@ -591,6 +597,7 @@ const initialTrades: Trade[] = [
     positionSizeUsd: 194995,
     entryDate: '2026-02-09T00:00:00.000Z',
     exitDate: '2026-02-13T00:00:00.000Z',
+    fundingCost: 0,
     status: 'CLOSED',
     realizedPnL: -5760,
     realizedPnLPct: -2.95,
@@ -608,6 +615,7 @@ const initialTrades: Trade[] = [
     positionSizeUsd: 220590,
     entryDate: '2026-01-22T00:00:00.000Z',
     exitDate: '2026-01-30T00:00:00.000Z',
+    fundingCost: 0,
     status: 'CLOSED',
     realizedPnL: 13989,
     realizedPnLPct: 6.34,
@@ -625,6 +633,7 @@ const initialTrades: Trade[] = [
     positionSizeUsd: 682385,
     entryDate: '2026-01-30T00:00:00.000Z',
     exitDate: '2026-02-01T00:00:00.000Z',
+    fundingCost: 0,
     status: 'CLOSED',
     realizedPnL: -68003,
     realizedPnLPct: -9.96,
@@ -1467,12 +1476,14 @@ function calculateTradePnL(
   direction: Trade['direction'],
   entryPrice: number,
   exitPrice: number,
-  quantity: number
+  quantity: number,
+  fundingCost = 0
 ) {
-  const pnl =
+  const pricePnL =
     direction === 'SHORT'
       ? (entryPrice - exitPrice) * quantity
       : (exitPrice - entryPrice) * quantity;
+  const pnl = pricePnL - fundingCost;
   const positionSizeUsd = entryPrice * quantity;
   return {
     pnl: round(pnl),
@@ -1508,6 +1519,7 @@ type DemoTradeInput = {
   quantity?: number;
   entryDate?: string;
   exitDate?: string | null;
+  fundingCost?: number;
   status?: Trade['status'];
   notes?: string | null;
   tags?: string[] | null;
@@ -1523,11 +1535,12 @@ function normalizeTradeInput(data: DemoTradeInput, existing?: Trade): Trade {
   const entryPrice = data.entryPrice ?? existing?.entryPrice ?? 0;
   const exitPrice = data.exitPrice ?? existing?.exitPrice ?? null;
   const quantity = data.quantity ?? existing?.quantity ?? 0;
+  const fundingCost = data.fundingCost ?? existing?.fundingCost ?? 0;
   const status = data.status ?? (exitPrice ? 'CLOSED' : 'OPEN');
   const positionSizeUsd = round(entryPrice * quantity);
   const realized =
     exitPrice && status === 'CLOSED'
-      ? calculateTradePnL(direction, entryPrice, exitPrice, quantity)
+      ? calculateTradePnL(direction, entryPrice, exitPrice, quantity, fundingCost)
       : null;
   const entryDate = data.entryDate ?? existing?.entryDate ?? new Date().toISOString();
   const exitDate = data.exitDate ?? existing?.exitDate ?? null;
@@ -1544,6 +1557,7 @@ function normalizeTradeInput(data: DemoTradeInput, existing?: Trade): Trade {
     positionSizeUsd,
     entryDate: new Date(entryDate).toISOString(),
     exitDate: exitDate ? new Date(exitDate).toISOString() : null,
+    fundingCost,
     status,
     realizedPnL: realized?.pnl ?? null,
     realizedPnLPct: realized?.pnlPct ?? null,
@@ -1571,11 +1585,12 @@ function updateDemoTrade(id: string, data: Partial<CreateTradeData>) {
 
 function closeDemoTrade(
   id: string,
-  data: { exitPrice: number; exitDate?: string; notes?: string }
+  data: { exitPrice: number; exitDate?: string; fundingCost?: number; notes?: string }
 ) {
   return updateDemoTrade(id, {
     exitPrice: data.exitPrice,
     exitDate: data.exitDate ?? new Date().toISOString(),
+    fundingCost: data.fundingCost,
     notes: data.notes,
   });
 }
@@ -2059,6 +2074,7 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
     const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
       exitPrice: number;
       exitDate?: string;
+      fundingCost?: number;
       notes?: string;
     };
     return json(closeDemoTrade(id, body));

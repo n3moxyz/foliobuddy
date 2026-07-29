@@ -30,6 +30,7 @@ function trade(overrides: Partial<Trade> = {}): Trade {
     positionSizeUsd: 100,
     entryDate: '2026-01-01T00:00:00.000Z',
     exitDate: '2026-01-03T00:00:00.000Z',
+    fundingCost: 0,
     status: 'CLOSED',
     realizedPnL: 10,
     realizedPnLPct: 10,
