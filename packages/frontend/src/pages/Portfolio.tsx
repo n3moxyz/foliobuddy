@@ -614,18 +614,47 @@ export default function Portfolio() {
       )}
 
       {!positionsLoading && ownedPositions.length > 0 && (
-        <div className="sm:hidden">
-          <PositionTable
-            positions={ownedPositions}
-            currency={currency}
-            fxRate={fxRate}
-            usdFxRates={usdFxRates}
-            sectionPrefix="mobile-owned"
-            groupBy="broker"
-            mobileVariant="compact"
-            showMobileColumnToggle={false}
-            onUpdateNav={(p) => setNavAsset(p.asset)}
-          />
+        <div className="space-y-4 sm:hidden">
+          {sections.map((section) => (
+            <CollapsibleCard
+              key={`mobile-${section.id}`}
+              title={`${section.label} (${section.positions.length})`}
+              icon={section.icon}
+              accentColor={section.accentColor}
+              isExpanded={isExpanded(section.id)}
+              onToggle={() => toggle(section.id)}
+              headerRight={
+                <span className="flex shrink-0 flex-col items-end gap-0.5 font-mono text-xs leading-tight tabular-nums">
+                  {section.pnlUsd !== null && (
+                    <span className={getPnLColorClass(section.pnlUsd)}>
+                      {formatCurrency(convertValue(section.pnlUsd), currency, 0)} (
+                      {formatPercent(section.pnlPct)})
+                    </span>
+                  )}
+                  <span className="font-semibold text-muted-foreground">
+                    {formatCurrency(convertValue(section.total), currency, 0)}
+                  </span>
+                </span>
+              }
+              headerExtra={
+                section.id === 'equities' ? (
+                  <div className="mt-2 flex justify-end">{renderEquityGroupToggle()}</div>
+                ) : undefined
+              }
+            >
+              <PositionTable
+                positions={section.positions}
+                currency={currency}
+                fxRate={fxRate}
+                usdFxRates={usdFxRates}
+                sectionPrefix={`mobile-${section.id}`}
+                groupBy={section.id === 'equities' ? equityGroupBy : 'storage'}
+                mobileVariant="compact"
+                showMobileColumnToggle={false}
+                onUpdateNav={section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined}
+              />
+            </CollapsibleCard>
+          ))}
         </div>
       )}
 
