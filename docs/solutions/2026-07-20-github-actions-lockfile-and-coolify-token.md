@@ -22,8 +22,8 @@ the Coolify API no longer accepted.
 
 - Pin the repository package-manager contract to `npm@10.8.2` in `package.json`.
 - Regenerate `package-lock.json` with npm 10.8.2 and verify `npm ci` in a clean directory.
-- Create a fresh Coolify API token, replace the GitHub Actions `COOLIFY_API_TOKEN` repository
-  secret, and rerun the failed backend deployment.
+- Create a fresh Coolify API token with `read` + `deploy` permissions, replace the GitHub Actions
+  `COOLIFY_API_TOKEN` repository secret, and rerun the failed backend deployment.
 
 Never print, commit, or paste the token anywhere except Coolify's token creation flow and GitHub's
 encrypted secret form.
@@ -40,5 +40,10 @@ npm run format:check
 npm ls --workspaces --depth=0
 ```
 
-For deployment recovery, the GitHub job must receive HTTP 200 from `POST /api/v1/deploy`, wait for
-the Coolify rebuild, and finish with a successful backend `/health` response.
+For deployment recovery, the GitHub job must receive HTTP 200 from `POST /api/v1/deploy`, parse the
+returned `deployment_uuid`, and poll `GET /api/v1/deployments/:uuid` until that exact deployment
+finishes successfully. Only then should it check backend `/health`.
+
+A fixed sleep followed by `/health` is not sufficient: Coolify keeps the previous container serving
+during a rolling rebuild. The old release can remain healthy for minutes and make CI green while
+the requested deployment is still building or about to fail.

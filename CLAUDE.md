@@ -188,6 +188,15 @@ Root `package.json` overrides `exceljs`'s transitive `uuid` to `11.1.1` (ExcelJS
 
 ExcelJS treats worksheet name `History` as protected; exports use `Snapshots`. Keep `export.test.ts` coverage.
 
+### Coolify Deployment Verification
+
+`.github/workflows/deploy-backend.yml` must verify the exact deployment returned by Coolify, not
+sleep for a fixed interval and probe `/health`. During a rolling rebuild the previous container can
+remain healthy for several minutes, making a plain health check a false positive. Parse the
+`deployment_uuid` returned by `POST /api/v1/deploy`, poll that deployment to a successful terminal
+state, verify its commit when Coolify returns one, and only then run the public health check.
+The GitHub `COOLIFY_API_TOKEN` therefore needs both `read` and `deploy` permissions.
+
 ### Ownership Checks on Mutations
 
 Protected update/delete routes must filter by both `id` and `req.userId!`, never `id` alone (prevents cross-user mutation via guessed IDs).

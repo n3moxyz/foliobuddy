@@ -77,8 +77,8 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error || `Request failed (HTTP ${response.status})`);
   }
 
   // Handle 204 No Content

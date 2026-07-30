@@ -15,6 +15,7 @@ jobs:
 
     steps:
       - name: Trigger Coolify Deploy
+        id: deploy
         timeout-minutes: 2
         run: |
           # Requires COOLIFY_API_TOKEN secret to be configured in GitHub Actions
@@ -30,9 +31,54 @@ jobs:
             echo "Deploy failed with status $http_code"
             exit 1
           fi
+          deployment_uuid=$(echo "$body" | jq -r '.deployments[0].deployment_uuid // empty')
+          if [ -z "$deployment_uuid" ]; then
+            echo "Coolify did not return a deployment UUID"
+            exit 1
+          fi
+          echo "deployment_uuid=$deployment_uuid" >> "$GITHUB_OUTPUT"
 
-      - name: Wait for Coolify rebuild
-        run: sleep 120
+      - name: Wait for exact Coolify deployment
+        timeout-minutes: 20
+        run: |
+          deployment_uuid="${{ steps.deploy.outputs.deployment_uuid }}"
+          for i in $(seq 1 60); do
+            response=$(curl -s -w "\n%{http_code}" \
+              "${{ secrets.COOLIFY_URL }}/api/v1/deployments/${deployment_uuid}" \
+              -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
+            http_code=$(echo "$response" | tail -1)
+            body=$(echo "$response" | head -n -1)
+
+            if [ "$http_code" -ne 200 ]; then
+              echo "Deployment status check failed with HTTP $http_code"
+              echo "$body"
+              exit 1
+            fi
+
+            status=$(echo "$body" | jq -r '.status // empty')
+            commit=$(echo "$body" | jq -r '.commit // empty')
+            echo "Attempt $i: status=${status:-unknown} commit=${commit:-unknown}"
+
+            case "$status" in
+              finished|success)
+                if [ -n "$commit" ] && [ "$commit" != "$GITHUB_SHA" ]; then
+                  echo "Coolify finished unexpected commit $commit (expected $GITHUB_SHA)"
+                  exit 1
+                fi
+                echo "Coolify deployment completed successfully"
+                exit 0
+                ;;
+              failed|cancelled|cancelled-by-user)
+                echo "Coolify deployment ended with status $status"
+                exit 1
+                ;;
+            esac
+
+            sleep 20
+          done
+
+          echo "Coolify deployment did not finish within 20 minutes"
+          exit 1
 
       - name: Health check
         run: |

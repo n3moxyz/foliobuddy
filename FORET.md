@@ -2145,6 +2145,11 @@ Recently completed:
   - Trades now carry an optional non-negative USD funding cost. It sits between Quantity and Notes in create/edit, survives clipboard/bulk-import/export/demo workflows, and appears as its own deduction beside Realized P&L in the detail sheet.
   - Closed-trade P&L is deliberately stored net: directional price P&L minus funding cost, with the return percentage recalculated from that net result. Because analytics already aggregate stored realized P&L, total P&L, win/loss classification, ticker dossiers, monthly reviews, and rankings all stay on one consistent definition.
   - Existing rows migrate safely to `0` through a non-null database default. Lesson: transaction costs belong in the central P&L calculation, not as display-only frontend arithmetic, or every downstream analytical view eventually disagrees.
+- [x] **Trade-save false-negative recovery and truthful deploy checks:**
+  - The first real production funding update looked broken: SKHY showed an `Action failed — Request failed` toast, yet a fresh read proved `fundingCost=23000` had committed and net P&L had correctly moved to `-$153,862` (`-15.28%`). The response path failed after the idempotent PUT reached the database.
+  - Trade updates now recover from that ambiguous boundary by re-reading the trade and comparing only the fields the caller attempted to write. A full match resolves the mutation as success; a mismatch or failed read preserves the original error. Non-JSON failures also include their HTTP status instead of collapsing to the useless `Request failed`.
+  - The investigation caught a second false positive: GitHub Actions slept for 120 seconds and checked `/health`, but Coolify took 6m39s to build commit `916ab3d`; the old container kept answering health checks while the requested release was still building. CI now follows the returned `deployment_uuid` to a successful terminal state and verifies its commit before checking health. The token needs `read` + `deploy`, not `deploy` alone.
+  - Lesson: both writes and deployments have an ambiguous “accepted but response lost” boundary. Reconcile an idempotent write against persisted state, and verify the identity of the release—not just the health of whatever instance currently answers.
 
 ---
 

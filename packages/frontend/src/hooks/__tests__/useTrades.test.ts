@@ -8,6 +8,7 @@ import type { Trade } from '@/lib/types';
 vi.mock('@/lib/api', () => ({
   api: {
     getTrades: vi.fn(),
+    getTrade: vi.fn(),
     createTrade: vi.fn(),
     updateTrade: vi.fn(),
     deleteTrade: vi.fn(),
@@ -82,6 +83,76 @@ describe('useTrades hooks', () => {
     });
 
     expect(api.updateTrade).toHaveBeenCalledWith('t1', { notes: 'updated' });
+  });
+
+  it('recovers when an update commits but its response is lost', async () => {
+    const updateError = new Error('Request failed (HTTP 502)');
+    const persistedTrade = {
+      id: 't1',
+      assetId: 'asset-1',
+      direction: 'LONG',
+      entryPrice: 100,
+      exitPrice: 90,
+      quantity: 2,
+      entryDate: '2026-01-01T00:00:00.000Z',
+      exitDate: '2026-01-02T00:00:00.000Z',
+      fundingCost: 23_000,
+      notes: null,
+      tags: null,
+    } as Trade;
+
+    vi.mocked(api.updateTrade).mockRejectedValue(updateError);
+    vi.mocked(api.getTrade).mockResolvedValue(persistedTrade);
+
+    const queryClient = createTestQueryClient();
+    const wrapper = createQueryClientWrapper(queryClient);
+    const { result } = renderHook(() => useUpdateTrade(), { wrapper });
+
+    const payload = {
+      id: 't1',
+      data: {
+        assetId: 'asset-1',
+        direction: 'LONG' as const,
+        entryPrice: 100,
+        exitPrice: 90,
+        quantity: 2,
+        entryDate: '2026-01-01',
+        exitDate: '2026-01-02',
+        fundingCost: 23_000,
+      },
+    };
+
+    let recovered: Trade | undefined;
+    await act(async () => {
+      recovered = await result.current.mutateAsync(payload);
+    });
+
+    expect(recovered).toBe(persistedTrade);
+    expect(api.getTrade).toHaveBeenCalledWith('t1');
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('preserves the update error when the persisted trade does not match', async () => {
+    const updateError = new Error('Request failed (HTTP 502)');
+    vi.mocked(api.updateTrade).mockRejectedValue(updateError);
+    vi.mocked(api.getTrade).mockResolvedValue({
+      id: 't1',
+      assetId: 'asset-1',
+      fundingCost: 0,
+    } as Trade);
+
+    const queryClient = createTestQueryClient();
+    const wrapper = createQueryClientWrapper(queryClient);
+    const { result } = renderHook(() => useUpdateTrade(), { wrapper });
+
+    await expect(
+      act(async () => {
+        await result.current.mutateAsync({
+          id: 't1',
+          data: { assetId: 'asset-1', fundingCost: 23_000 },
+        });
+      })
+    ).rejects.toBe(updateError);
   });
 
   it('optimistically removes a trade before delete resolves', async () => {
