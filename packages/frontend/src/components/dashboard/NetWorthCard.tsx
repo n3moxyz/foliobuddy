@@ -110,10 +110,10 @@ export function NetWorthCard({
         </div>
         <div className="px-4">
           <div className="flex items-center gap-1">
-            <p className="text-muted-foreground text-sm">MDD</p>
+            <p className="text-muted-foreground text-sm">MDD (YTD)</p>
             <HelpTooltip
-              label="MDD"
-              content="Maximum drawdown: how far your portfolio is below its all-time high"
+              label="MDD (YTD)"
+              content="Maximum drawdown: how far your portfolio is below its year-to-date high"
             />
           </div>
           <p
@@ -129,7 +129,7 @@ export function NetWorthCard({
             <p className="text-muted-foreground text-sm">MDD (1D)</p>
             <HelpTooltip
               label="MDD (1D)"
-              content="Largest day-over-day decline ever recorded in your portfolio"
+              content="Largest day-over-day decline in your portfolio since January 1st"
             />
           </div>
           <p
@@ -204,10 +204,10 @@ export function NetWorthCard({
         </div>
         <div>
           <div className="flex items-center gap-1">
-            <p className="text-muted-foreground text-sm">MDD</p>
+            <p className="text-muted-foreground text-sm">MDD (YTD)</p>
             <HelpTooltip
-              label="MDD"
-              content="Maximum drawdown: how far your portfolio is below its all-time high"
+              label="MDD (YTD)"
+              content="Maximum drawdown: how far your portfolio is below its year-to-date high"
             />
           </div>
           <p
@@ -223,7 +223,7 @@ export function NetWorthCard({
             <p className="text-muted-foreground text-sm">MDD (1D)</p>
             <HelpTooltip
               label="MDD (1D)"
-              content="Largest day-over-day decline ever recorded in your portfolio"
+              content="Largest day-over-day decline in your portfolio since January 1st"
             />
           </div>
           <p

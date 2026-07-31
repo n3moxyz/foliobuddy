@@ -139,7 +139,7 @@ export default function Portfolio() {
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: summary } = usePortfolioSummary();
   const { data: fxRates } = useFxRates();
-  const { currentDrawdownPct, maxDailyDrawdownPct } = useDrawdownStats(summary?.totalValueUsd ?? 0);
+  const { currentDrawdownPct } = useDrawdownStats(summary?.totalValueUsd ?? 0);
   const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
   const [navAsset, setNavAsset] = useState<Position['asset'] | null>(null);
@@ -522,7 +522,7 @@ export default function Portfolio() {
                 )}
               </div>
 
-              <div className="mt-4 grid grid-cols-6 divide-x divide-border">
+              <div className="mt-4 grid grid-cols-5 divide-x divide-border">
                 <div className="pr-4">
                   <div className="flex items-center gap-1">
                     <p className="text-muted-foreground text-sm">YTD Start</p>
@@ -537,10 +537,10 @@ export default function Portfolio() {
                 </div>
                 <div className="px-4">
                   <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground text-sm">MDD</p>
+                    <p className="text-muted-foreground text-sm">MDD (YTD)</p>
                     <HelpTooltip
-                      label="MDD"
-                      content="Maximum drawdown: how far your portfolio is below its all-time high"
+                      label="MDD (YTD)"
+                      content="Maximum drawdown: how far your portfolio is below its year-to-date high"
                     />
                   </div>
                   <p
@@ -551,24 +551,6 @@ export default function Portfolio() {
                     }`}
                   >
                     {formatDrawdown(currentDrawdownPct)}
-                  </p>
-                </div>
-                <div className="px-4">
-                  <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground text-sm">MDD (1D)</p>
-                    <HelpTooltip
-                      label="MDD (1D)"
-                      content="Largest day-over-day decline ever recorded in your portfolio"
-                    />
-                  </div>
-                  <p
-                    className={`font-medium tabular-nums ${
-                      maxDailyDrawdownPct && maxDailyDrawdownPct > 0
-                        ? 'text-loss'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    {formatDrawdown(maxDailyDrawdownPct)}
                   </p>
                 </div>
                 <div className="px-4">

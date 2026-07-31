@@ -25,7 +25,7 @@ describe('normalizeToPercentChange', () => {
 });
 
 describe('calculateCurrentDrawdown', () => {
-  it('measures the decline from the all-time high to the latest value', () => {
+  it('measures the decline from the series high to the latest value', () => {
     expect(calculateCurrentDrawdown([100, 120, 90, 110, 96])).toBe(20);
   });
 
@@ -33,7 +33,7 @@ describe('calculateCurrentDrawdown', () => {
     expect(calculateCurrentDrawdown([100, 40, 90])).toBe(10);
   });
 
-  it('returns zero when the latest value is the all-time high', () => {
+  it('returns zero when the latest value is the series high', () => {
     expect(calculateCurrentDrawdown([100, 90, 120])).toBe(0);
   });
 

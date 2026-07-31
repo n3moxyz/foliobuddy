@@ -220,7 +220,7 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### Portfolio Hero Summary
 
-Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD P&L trend arrow, then a 6-col `divide-x` grid (YTD Start, MDD, MDD (1D), Exposure, Positions, YTD P&L — drawdowns via the shared `useDrawdownStats()`, same definitions as Net Worth), `HelpTooltip` on every label. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add" button. Exposure = owned non-stable/non-cash + local perp ÷ total; custody excluded.
+Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD P&L trend arrow, then a 5-col `divide-x` grid (YTD Start, MDD (YTD), Exposure, Positions, YTD P&L — drawdown via the shared `useDrawdownStats()`, same definition as Net Worth), `HelpTooltip` on every label. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add" button. Exposure = owned non-stable/non-cash + local perp ÷ total; custody excluded.
 
 ### Portfolio Section Headers
 
@@ -284,7 +284,7 @@ Dashboard investor filter defaults to the primary owner (`isOwner = true`), not 
 
 ### Net Worth Card
 
-Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). Desktop `grid-cols-7 divide-x` (YTD P&L, YTD Start, MDD, MDD (1D), Exposure, Positions, Trades), mobile 2-col in the same order. MDD = current drawdown from the all-time high (full snapshot history + live value); MDD (1D) = largest day-over-day decline ever recorded. Both come from `useDrawdownStats()` (`usePortfolio.ts`, shared with the Portfolio hero) — `calculateCurrentDrawdown()` / `calculateMaxDailyDrawdown()` return positive magnitudes, displayed as negative percentages. All labels have `HelpTooltip` (pass `label` for distinct accessible names). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use `useAnimatedNumber`.
+Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). Desktop `grid-cols-7 divide-x` (YTD P&L, YTD Start, MDD (YTD), MDD (1D), Exposure, Positions, Trades), mobile 2-col in the same order. MDD (YTD) = current drawdown from the year's high (YTD snapshots + live value); MDD (1D) = largest day-over-day decline since Jan 1. Both come from `useDrawdownStats()` (`usePortfolio.ts`, shared with the Portfolio hero) — `calculateCurrentDrawdown()` / `calculateMaxDailyDrawdown()` return positive magnitudes, displayed as negative percentages. All labels have `HelpTooltip` (pass `label` for distinct accessible names). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use `useAnimatedNumber`.
 
 ### Performers Card
 

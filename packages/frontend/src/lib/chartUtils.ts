@@ -82,9 +82,9 @@ export function normalizeToPercentChange(values: number[]): number[] {
 }
 
 /**
- * Current decline from the all-time-high value as a positive percentage magnitude.
+ * Current decline from the series high as a positive percentage magnitude.
  * The last valid value is treated as the current portfolio value, so the result
- * is 0 when the portfolio sits at its all-time high.
+ * is 0 when that value is the high. The caller picks the window (e.g. YTD).
  * Returns null until at least two valid positive portfolio values are available.
  */
 export function calculateCurrentDrawdown(values: number[]): number | null {
