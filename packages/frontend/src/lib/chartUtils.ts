@@ -82,22 +82,19 @@ export function normalizeToPercentChange(values: number[]): number[] {
 }
 
 /**
- * Maximum peak-to-trough loss as a positive percentage magnitude.
+ * Current decline from the all-time-high value as a positive percentage magnitude.
+ * The last valid value is treated as the current portfolio value, so the result
+ * is 0 when the portfolio sits at its all-time high.
  * Returns null until at least two valid positive portfolio values are available.
  */
-export function calculateMaxDrawdown(values: number[]): number | null {
+export function calculateCurrentDrawdown(values: number[]): number | null {
   const validValues = values.filter((value) => Number.isFinite(value) && value > 0);
   if (validValues.length < 2) return null;
 
-  let peak = validValues[0];
-  let maxDrawdown = 0;
+  const athValue = Math.max(...validValues);
+  const currentValue = validValues[validValues.length - 1];
 
-  for (const value of validValues.slice(1)) {
-    peak = Math.max(peak, value);
-    maxDrawdown = Math.max(maxDrawdown, ((peak - value) / peak) * 100);
-  }
-
-  return maxDrawdown;
+  return ((athValue - currentValue) / athValue) * 100;
 }
 
 /**

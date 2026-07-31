@@ -3,11 +3,13 @@ import {
   usePositions,
   usePortfolioSummary,
   useDeleteAllPositions,
+  useDrawdownStats,
   useFxRates,
 } from '@/hooks/usePortfolio';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import {
+  formatDrawdown,
   formatPercent,
   getPnLColorClass,
   isMarketExposureCategory,
@@ -137,6 +139,7 @@ export default function Portfolio() {
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: summary } = usePortfolioSummary();
   const { data: fxRates } = useFxRates();
+  const { currentDrawdownPct, maxDailyDrawdownPct } = useDrawdownStats(summary?.totalValueUsd ?? 0);
   const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
   const [navAsset, setNavAsset] = useState<Position['asset'] | null>(null);
@@ -519,7 +522,7 @@ export default function Portfolio() {
                 )}
               </div>
 
-              <div className="mt-4 grid grid-cols-4 divide-x divide-border">
+              <div className="mt-4 grid grid-cols-6 divide-x divide-border">
                 <div className="pr-4">
                   <div className="flex items-center gap-1">
                     <p className="text-muted-foreground text-sm">YTD Start</p>
@@ -530,6 +533,42 @@ export default function Portfolio() {
                   </div>
                   <p className="font-medium tabular-nums">
                     {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
+                  </p>
+                </div>
+                <div className="px-4">
+                  <div className="flex items-center gap-1">
+                    <p className="text-muted-foreground text-sm">MDD</p>
+                    <HelpTooltip
+                      label="MDD"
+                      content="Maximum drawdown: how far your portfolio is below its all-time high"
+                    />
+                  </div>
+                  <p
+                    className={`font-medium tabular-nums ${
+                      currentDrawdownPct && currentDrawdownPct > 0
+                        ? 'text-loss'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {formatDrawdown(currentDrawdownPct)}
+                  </p>
+                </div>
+                <div className="px-4">
+                  <div className="flex items-center gap-1">
+                    <p className="text-muted-foreground text-sm">MDD (1D)</p>
+                    <HelpTooltip
+                      label="MDD (1D)"
+                      content="Largest day-over-day decline ever recorded in your portfolio"
+                    />
+                  </div>
+                  <p
+                    className={`font-medium tabular-nums ${
+                      maxDailyDrawdownPct && maxDailyDrawdownPct > 0
+                        ? 'text-loss'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {formatDrawdown(maxDailyDrawdownPct)}
                   </p>
                 </div>
                 <div className="px-4">

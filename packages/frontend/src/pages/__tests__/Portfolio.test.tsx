@@ -65,6 +65,7 @@ vi.mock('@/hooks/usePortfolio', () => ({
   usePositions: () => ({ data: positions, isLoading: false }),
   usePortfolioSummary: () => ({ data: undefined }),
   useFxRates: () => ({ data: [] }),
+  useDrawdownStats: () => ({ currentDrawdownPct: null, maxDailyDrawdownPct: null }),
   useDeleteAllPositions: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 

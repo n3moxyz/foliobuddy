@@ -5,7 +5,7 @@ import {
   useTopPerformers,
   useWorstPerformers,
   useInvestors,
-  usePerformanceHistory,
+  useDrawdownStats,
 } from '@/hooks/usePortfolio';
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
@@ -24,7 +24,6 @@ import { BenchmarkComparisonChart } from '@/components/dashboard/BenchmarkCompar
 import { ChevronDown, Users } from 'lucide-react';
 import { DbStatusBanner } from '@/components/dashboard/DbStatusBanner';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { calculateMaxDailyDrawdown, calculateMaxDrawdown, getDateRange } from '@/lib/chartUtils';
 
 const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
 const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
@@ -38,22 +37,9 @@ export default function Dashboard() {
   const { data: topPerformers } = useTopPerformers(5);
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: investors } = useInvestors();
-  const ytdDateRange = useMemo(() => getDateRange('YTD'), []);
-  const { data: perfHistoryYtd } = usePerformanceHistory(ytdDateRange);
   const totalValueUsd = summary?.totalValueUsd ?? 0;
   const totalValueSgd = summary?.totalValueSgd ?? 0;
-
-  const { maxDrawdownPct, maxDailyDrawdownPct } = useMemo(() => {
-    const values = (perfHistoryYtd ?? []).map((point) => point.totalValueUsd);
-    if (totalValueUsd > 0) {
-      values.push(totalValueUsd);
-    }
-
-    return {
-      maxDrawdownPct: calculateMaxDrawdown(values),
-      maxDailyDrawdownPct: calculateMaxDailyDrawdown(values),
-    };
-  }, [perfHistoryYtd, totalValueUsd]);
+  const { currentDrawdownPct, maxDailyDrawdownPct } = useDrawdownStats(totalValueUsd);
 
   // Investor filter state - lifted to Dashboard level. Defaults to owner until manually changed.
   const [manualSelectedInvestors, setManualSelectedInvestors] = useState<string[] | null>(null);
@@ -234,7 +220,7 @@ export default function Dashboard() {
             summary={summary}
             currency={currency}
             stakeMultiplier={stakeMultiplier}
-            maxDrawdownPct={maxDrawdownPct}
+            currentDrawdownPct={currentDrawdownPct}
             maxDailyDrawdownPct={maxDailyDrawdownPct}
             exposurePct={exposurePct}
             positionCount={summary.positionCount ?? 0}

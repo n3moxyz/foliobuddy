@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
-import { formatPercent, getPnLColorClass } from '@/lib/utils';
+import { formatDrawdown, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { useAnimatedNumbers } from '@/hooks/useAnimatedNumber';
@@ -12,7 +12,7 @@ interface NetWorthCardProps {
   summary: PortfolioSummary;
   currency: 'USD' | 'SGD';
   stakeMultiplier?: number;
-  maxDrawdownPct?: number | null;
+  currentDrawdownPct?: number | null;
   maxDailyDrawdownPct?: number | null;
   exposurePct?: number;
   positionCount?: number;
@@ -24,7 +24,7 @@ export function NetWorthCard({
   summary,
   currency,
   stakeMultiplier = 1,
-  maxDrawdownPct,
+  currentDrawdownPct,
   maxDailyDrawdownPct,
   exposurePct,
   positionCount = 0,
@@ -62,13 +62,6 @@ export function NetWorthCard({
     costBasisValue,
     altValue,
   ]);
-
-  const formatDrawdown = (drawdownPct: number | null | undefined) =>
-    drawdownPct === null || drawdownPct === undefined
-      ? 'N/A'
-      : drawdownPct === 0
-        ? '0.00%'
-        : `-${drawdownPct.toFixed(2)}%`;
 
   return (
     <div className="pb-6 mb-2 border-b">
@@ -120,15 +113,15 @@ export function NetWorthCard({
             <p className="text-muted-foreground text-sm">MDD</p>
             <HelpTooltip
               label="MDD"
-              content="Maximum drawdown: the largest peak-to-trough decline in your portfolio since January 1st"
+              content="Maximum drawdown: how far your portfolio is below its all-time high"
             />
           </div>
           <p
             className={`font-medium tabular-nums ${
-              maxDrawdownPct && maxDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
+              currentDrawdownPct && currentDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
             }`}
           >
-            {formatDrawdown(maxDrawdownPct)}
+            {formatDrawdown(currentDrawdownPct)}
           </p>
         </div>
         <div className="px-4">
@@ -136,7 +129,7 @@ export function NetWorthCard({
             <p className="text-muted-foreground text-sm">MDD (1D)</p>
             <HelpTooltip
               label="MDD (1D)"
-              content="Largest day-over-day decline in your portfolio since January 1st"
+              content="Largest day-over-day decline ever recorded in your portfolio"
             />
           </div>
           <p
@@ -214,15 +207,15 @@ export function NetWorthCard({
             <p className="text-muted-foreground text-sm">MDD</p>
             <HelpTooltip
               label="MDD"
-              content="Maximum drawdown: the largest peak-to-trough decline in your portfolio since January 1st"
+              content="Maximum drawdown: how far your portfolio is below its all-time high"
             />
           </div>
           <p
             className={`font-medium tabular-nums ${
-              maxDrawdownPct && maxDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
+              currentDrawdownPct && currentDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'
             }`}
           >
-            {formatDrawdown(maxDrawdownPct)}
+            {formatDrawdown(currentDrawdownPct)}
           </p>
         </div>
         <div>
@@ -230,7 +223,7 @@ export function NetWorthCard({
             <p className="text-muted-foreground text-sm">MDD (1D)</p>
             <HelpTooltip
               label="MDD (1D)"
-              content="Largest day-over-day decline in your portfolio since January 1st"
+              content="Largest day-over-day decline ever recorded in your portfolio"
             />
           </div>
           <p
