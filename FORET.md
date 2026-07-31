@@ -2151,6 +2151,11 @@ Recently completed:
   - Trade updates now recover from that ambiguous boundary by re-reading the trade and comparing only the fields the caller attempted to write. A full match resolves the mutation as success; a mismatch or failed read preserves the original error. Non-JSON failures also include their HTTP status instead of collapsing to the useless `Request failed`.
   - The investigation caught a second false positive: GitHub Actions slept for 120 seconds and checked `/health`, but Coolify took 6m39s to build commit `916ab3d`; the old container kept answering health checks while the requested release was still building. CI now follows the returned `deployment_uuid` to a successful terminal state and verifies its commit before checking health. The token needs `read` + `deploy`, not `deploy` alone.
   - Lesson: both writes and deployments have an ambiguous “accepted but response lost” boundary. Reconcile an idempotent write against persisted state, and verify the identity of the release—not just the health of whatever instance currently answers.
+- [x] **FolioBuddy PWA identity:**
+  - The iPhone Home Screen tile showed a generic white `F` because the frontend only exposed an SVG favicon. Safari's saved-site icon needs an explicit 180px Apple touch icon; the favicon is not the controlling asset.
+  - The new flat Embrace mark uses two fitted folio leaves to express “folio + buddy” without another chart, coin, or finance arrow. `logo.svg` is the vector master; tracked 180px, 192px, and 512px PNG exports cover Apple and manifest consumers.
+  - `manifest.webmanifest` now supplies the app name, standalone display mode, theme colors, standard icons, and a separately padded 512px maskable icon so launcher masks do not crop the upper fold.
+  - Lesson: treat the favicon, Apple touch icon, and manifest icons as one identity system with different platform contracts. Keep raster exports synchronized with the SVG source, and give maskable artwork a larger safe margin than the ordinary icon.
 
 ---
 

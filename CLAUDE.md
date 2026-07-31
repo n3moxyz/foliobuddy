@@ -414,7 +414,8 @@ Prereq: Docker Desktop. Add `PRODUCTION_DATABASE_URL` to `packages/backend/.env`
 
 ### Branding
 
-- **App name**: FolioBuddy. **Logo**: `public/logo.svg` (indigo→purple gradient); sidebar icon is inline SVG with `bg-primary` for theme adaptivity.
+- **App name**: FolioBuddy. **Logo**: `packages/frontend/public/logo.svg` (flat Embrace mark: near-black, indigo, warm bone); sidebar icon is inline SVG with `bg-primary` for theme adaptivity.
+- **PWA icons**: `apple-touch-icon.png` plus `public/icons/` are raster exports of the SVG master. Keep them in sync when the logo changes. `manifest.webmanifest` owns install metadata; `index.html` explicitly links the 180px Apple touch icon because the favicon does not control the iOS Home Screen icon.
 - **Package scope**: `@foliobuddy/*` (root `foliobuddy`); repo `n3moxyz/foliobuddy`. Local DB `example_portfolio_db`; prod storage/bucket names in private ops notes.
 
 ### Clickable Rows (Keyboard Safety)

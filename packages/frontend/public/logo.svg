@@ -1,11 +1,19 @@
-<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366f1"/>
-      <stop offset="100%" stop-color="#8b5cf6"/>
-    </linearGradient>
-  </defs>
-  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
-  <path d="M6 22l5-6.5 4 3L24 8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <path d="M19 8h5v5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1024 1024"
+  role="img"
+  aria-labelledby="foliobuddy-logo-title"
+>
+  <title id="foliobuddy-logo-title">FolioBuddy</title>
+  <rect width="1024" height="1024" fill="#0b0b18" />
+  <g id="foliobuddy-mark">
+    <path
+      fill="#665cf6"
+      d="M440 874 330 807c-24-15-38-41-38-69V430c0-56 27-98 75-126l298-172c37-21 83 6 83 49v141c0 55-26 95-74 122l-111 64c-45 26-75 74-75 126v202c0 31-22 50-48 38Z"
+    />
+    <path
+      fill="#f4f0e8"
+      d="m584 504 126-72c32-18 72 6 72 43v232c0 55-27 97-74 124l-143 82c-32 18-72-5-72-42V631c0-53 35-100 91-127Z"
+    />
+  </g>
 </svg>
