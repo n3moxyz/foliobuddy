@@ -20,7 +20,7 @@ Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `mai
 | Name                         | Value                        | Notes                                                                                        |
 | ---------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
 | `VITE_API_URL`               | `/api/v1`                    | MUST include `/v1`. Rewrite in `vercel.json` forwards `/api/*` → `api.foliobuddy.xyz/api/*`. |
-| `VITE_WS_BACKEND_URL`        | `https://api.foliobuddy.xyz` | Direct — Vercel doesn't proxy WebSockets.                                                    |
+| `VITE_WS_BACKEND_URL`        | `https://api.foliobuddy.xyz` | Direct — Vercel doesn't proxy WebSockets. Required: frontend warns + disables WS if missing. |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Set privately                | Use the publishable key for the same Clerk instance as the backend secret key.               |
 | `VITE_SENTRY_DSN`            | (optional)                   | Leave unset to disable.                                                                      |
 
@@ -36,6 +36,12 @@ Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `mai
 | `SENTRY_DSN`       | (optional)                                     |                                                                                                                            |
 | `NODE_ENV`         | `production`                                   | Required — gates the scheduler jobs (price/snapshot crons).                                                                |
 | `PORT`             | `4001`                                         |                                                                                                                            |
+
+## Backend deploy verification (Coolify)
+
+`.github/workflows/deploy-backend.yml` must verify the exact deployment returned by Coolify, not sleep for a fixed interval and probe `/health`. During a rolling rebuild the previous container can stay healthy for several minutes, making a plain health check a false positive. Parse the `deployment_uuid` returned by `POST /api/v1/deploy`, poll that deployment to a successful terminal state, verify its commit when Coolify returns one, and only then run the public health check. The GitHub `COOLIFY_API_TOKEN` needs both `read` and `deploy` permissions.
+
+Deploy ordering: when API version paths change, deploy the backend before the frontend (the frontend calls `/api/v1`).
 
 ## Post-deploy smoke check
 
@@ -74,10 +80,15 @@ printf "https://api.foliobuddy.xyz" | vercel env add VITE_WS_BACKEND_URL product
 echo "https://api.foliobuddy.xyz" | vercel env add VITE_WS_BACKEND_URL production
 ```
 
+## DB backups
+
+On the backend host: `./scripts/backup-db.sh daily|weekly|monthly` and `./scripts/restore-db.sh [path]`. Rotations land in private object storage (bucket names in private ops notes).
+
 ## Monitoring
 
 - **Vercel build failures**: Project → Settings → Git → enable "deployment failure" notifications to Slack/email. Without this, failed frontend builds silently keep the old bundle live.
 - **Uptime**: external monitor (UptimeRobot / BetterStack free tier) hitting `https://foliobuddy.xyz/api/v1/health/db` every 5 min. Hitting that URL (not `api.foliobuddy.xyz` direct) tests the full chain: Vercel edge → rewrite → backend → DB.
+- **Uptime (workflow)**: `.github/workflows/uptime.yml` hits `/api/v1/health/db` every 10 min; non-200 emails the owner.
 - **Sentry**: configured via `SENTRY_DSN`. Backend captures unexpected 500s only; Zod 400s and `AppError`s < 500 are skipped on purpose.
 
 ## Incident postmortems
