@@ -6,7 +6,7 @@
 >
   <title id="foliobuddy-logo-title">FolioBuddy</title>
   <rect width="1024" height="1024" fill="#0b0b18" />
-  <g id="foliobuddy-mark">
+  <g id="foliobuddy-mark" transform="translate(-25)">
     <path
       fill="#665cf6"
       d="M440 874 330 807c-24-15-38-41-38-69V430c0-56 27-98 75-126l298-172c37-21 83 6 83 49v141c0 55-26 95-74 122l-111 64c-45 26-75 74-75 126v202c0 31-22 50-48 38Z"
