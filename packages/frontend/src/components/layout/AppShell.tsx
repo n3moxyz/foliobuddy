@@ -43,6 +43,7 @@ import {
   type ConnectionStatus as WebSocketConnectionStatus,
 } from '@/hooks/useWebSocket';
 import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
+import { BrandMark } from '@/components/layout/BrandMark';
 import { usePrivacyStore } from '@/stores/privacyStore';
 
 interface AppShellProps {
@@ -180,21 +181,7 @@ function AppShellContent({
             )}
             aria-label="FolioBuddy dashboard"
           >
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <svg
-                aria-hidden="true"
-                className="h-5 w-5 text-primary-foreground"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 15l4-5 3.5 2.5L17 5" />
-                <path d="M13 5h4v4" />
-              </svg>
-            </div>
+            <BrandMark className="h-8 w-8" />
             <span className={cn('font-semibold text-lg', sidebarCollapsed && 'lg:hidden')}>
               FolioBuddy
             </span>

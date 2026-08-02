@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { BrandMark } from '@/components/layout/BrandMark';
 import { RefreshCw, Download, Camera } from 'lucide-react';
 
 export default function Settings() {
@@ -300,9 +301,12 @@ export default function Settings() {
       <div>
         <h2 className="text-base font-semibold mb-4">About</h2>
         <div className="space-y-2 text-sm">
-          <p>
-            <strong>FolioBuddy</strong> v1.0.0
-          </p>
+          <div className="flex items-center gap-3">
+            <BrandMark className="h-10 w-10" />
+            <p>
+              <strong>FolioBuddy</strong> v1.0.0
+            </p>
+          </div>
           <p className="text-muted-foreground">
             A portfolio tracking application for managing crypto investments, trade journaling, and
             multi-investor support.

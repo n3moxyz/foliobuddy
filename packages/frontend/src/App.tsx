@@ -8,6 +8,7 @@ import { useAuthSetup, useLocalAuthBypassSetup } from './hooks/useAuthSetup';
 import { useThemeEffect } from './hooks/useThemeEffect';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
+import { BrandMark } from './components/layout/BrandMark';
 import { isLocalAuthBypassEnabled } from './lib/localAuthBypass';
 import { useThemeStore, resolveTheme } from './stores/themeStore';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -101,7 +102,8 @@ function App() {
               <SignedOut>
                 <div className="min-h-screen bg-background flex items-center justify-center">
                   <div className="text-center space-y-6">
-                    <div className="space-y-2">
+                    <div className="flex flex-col items-center gap-2">
+                      <BrandMark className="mb-1 h-14 w-14" />
                       <h1 className="text-3xl font-bold">FolioBuddy</h1>
                       <p className="text-muted-foreground">Sign in to track your portfolio</p>
                     </div>
