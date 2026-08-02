@@ -235,6 +235,12 @@ export function formatPercent(value: number | null | undefined): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
+/** Drawdown magnitudes display as negative percentages; zero and missing values stay neutral. */
+export function formatDrawdown(drawdownPct: number | null | undefined): string {
+  if (drawdownPct === null || drawdownPct === undefined) return 'N/A';
+  return drawdownPct === 0 ? '0.00%' : `-${drawdownPct.toFixed(2)}%`;
+}
+
 export function formatDate(date: Date | string | null | undefined): string {
   if (!date) return '-';
 

@@ -1,5 +1,11 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import {
+  calculateCurrentDrawdown,
+  calculateMaxDailyDrawdown,
+  getDateRange,
+} from '@/lib/chartUtils';
 import type { CreatePositionData, Position, ProviderName, UpdatePositionData } from '@/lib/types';
 
 const portfolioFocusRefreshOptions = {
@@ -160,6 +166,30 @@ export function usePerformanceHistory(params?: {
     staleTime: 5 * 60 * 1000,
     ...portfolioFocusRefreshOptions,
   });
+}
+
+/**
+ * Drawdown stats over YTD snapshots plus the live portfolio value:
+ * MDD (YTD) is the current decline from the year's high; MDD (1D) is the
+ * largest day-over-day decline since January 1st. Percentages are
+ * scale-invariant, so the same values apply whether the page shows net worth
+ * or portfolio totals.
+ */
+export function useDrawdownStats(liveValueUsd: number) {
+  const ytdRange = useMemo(() => getDateRange('YTD'), []);
+  const { data: perfHistory } = usePerformanceHistory(ytdRange);
+
+  return useMemo(() => {
+    const values = (perfHistory ?? []).map((point) => point.totalValueUsd);
+    if (liveValueUsd > 0) {
+      values.push(liveValueUsd);
+    }
+
+    return {
+      currentDrawdownPct: calculateCurrentDrawdown(values),
+      maxDailyDrawdownPct: calculateMaxDailyDrawdown(values),
+    };
+  }, [perfHistory, liveValueUsd]);
 }
 
 export function useInvestors() {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calculateCurrentDrawdown,
   calculateMaxDailyDrawdown,
-  calculateMaxDrawdown,
   downsampleLTTB,
   getDateRange,
   normalizeToPercentChange,
@@ -24,22 +24,26 @@ describe('normalizeToPercentChange', () => {
   });
 });
 
-describe('calculateMaxDrawdown', () => {
-  it('finds the largest decline from any prior peak', () => {
-    expect(calculateMaxDrawdown([100, 120, 90, 110, 80])).toBeCloseTo(33.3333, 4);
+describe('calculateCurrentDrawdown', () => {
+  it('measures the decline from the series high to the latest value', () => {
+    expect(calculateCurrentDrawdown([100, 120, 90, 110, 96])).toBe(20);
   });
 
-  it('resets the peak when the portfolio reaches a new high', () => {
-    expect(calculateMaxDrawdown([100, 80, 120, 90])).toBe(25);
+  it('ignores intermediate troughs deeper than the current one', () => {
+    expect(calculateCurrentDrawdown([100, 40, 90])).toBe(10);
   });
 
-  it('returns zero for a portfolio that never declines', () => {
-    expect(calculateMaxDrawdown([100, 110, 125])).toBe(0);
+  it('returns zero when the latest value is the series high', () => {
+    expect(calculateCurrentDrawdown([100, 90, 120])).toBe(0);
+  });
+
+  it('skips invalid values when finding the high and the latest value', () => {
+    expect(calculateCurrentDrawdown([100, Number.NaN, 80, 0])).toBe(20);
   });
 
   it('requires at least two valid positive values', () => {
-    expect(calculateMaxDrawdown([])).toBeNull();
-    expect(calculateMaxDrawdown([0, Number.NaN, 100])).toBeNull();
+    expect(calculateCurrentDrawdown([])).toBeNull();
+    expect(calculateCurrentDrawdown([0, Number.NaN, 100])).toBeNull();
   });
 });
 
