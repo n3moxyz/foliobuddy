@@ -343,7 +343,7 @@ Portfolio/Trades/History share one pattern: per-row clipboard icon, Copy All hea
 
 ### Branding
 
-- **App name**: FolioBuddy. **Logo**: `packages/frontend/public/logo.svg` (flat Embrace mark: near-black, indigo, warm bone); sidebar icon is inline SVG with `bg-primary` for theme adaptivity.
+- **App name**: FolioBuddy. **Logo**: `packages/frontend/public/logo.svg` (flat Embrace mark: near-black, indigo, warm bone). All in-app identity surfaces use `components/layout/BrandMark.tsx`; do not recreate the retired growth-chart mark inline.
 - **PWA icons**: `apple-touch-icon.png` + `public/icons/` are raster exports of the SVG master — keep in sync when the logo changes. `manifest.webmanifest` owns install metadata; `index.html` links the 180px Apple touch icon explicitly (the favicon doesn't control the iOS Home Screen icon).
 - **Package scope**: `@foliobuddy/*` (root `foliobuddy`); repo `n3moxyz/foliobuddy`. Local DB `example_portfolio_db`; prod storage/bucket names in private ops notes.
 
