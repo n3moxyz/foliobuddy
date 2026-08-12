@@ -537,10 +537,10 @@ export default function Portfolio() {
                 </div>
                 <div className="px-4">
                   <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground text-sm">MDD (YTD)</p>
+                    <p className="text-muted-foreground text-sm">DD from ATH</p>
                     <HelpTooltip
-                      label="MDD (YTD)"
-                      content="Maximum drawdown: how far your portfolio is below its year-to-date high"
+                      label="DD from ATH"
+                      content="How far your portfolio is currently below its year-to-date high"
                     />
                   </div>
                   <p

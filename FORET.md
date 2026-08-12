@@ -2158,6 +2158,11 @@ Recently completed:
   - `BrandMark.tsx` now renders that same master in the desktop sidebar, collapsed navigation, mobile drawer, signed-out screen, and Settings About section. The retired inline growth-chart tile was removed so browser, installed-app, and in-app identity cannot drift independently again.
   - `manifest.webmanifest` now supplies the app name, standalone display mode, theme colors, standard icons, and a separately padded 512px maskable icon so launcher masks do not crop the upper fold.
   - Lesson: treat the favicon, Apple touch icon, and manifest icons as one identity system with different platform contracts. Keep raster exports synchronized with the SVG source, and give maskable artwork a larger safe margin than the ordinary icon.
+- [x] **Net Worth single rail and honest drawdown labels:**
+  - The seven-stat Net Worth strip became a nine-stat scanline. Wide desktops distribute all nine metrics across one row; narrower screens preserve that same scanline as a horizontally scrollable, snap-aligned strip with stable-width cells rather than wrapping it into a clunky second row. A compact footer keeps the alternate SGD/USD total visible beneath the rail.
+  - YTD ATH now reports the highest value across YTD snapshots plus the live value. MDD is finally true maximum drawdown, the largest decline from any running peak to a later trough. MDD (1D) remains the worst consecutive-record decline, while the old MDD (YTD) label is now the accurate DD from ATH: today's distance below the YTD high.
+  - `calculatePortfolioDrawdownStats()` derives ATH and all three drawdowns in one pass, with invalid records breaking only the 1D comparison. That keeps a missing daily point from inventing a one-day crash without throwing away the longer peak-to-trough history.
+  - Lesson: finance labels are part of the data contract. “Maximum drawdown” and “current drawdown” are not interchangeable just because both are negative percentages.
 
 ---
 

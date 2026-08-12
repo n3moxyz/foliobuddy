@@ -39,7 +39,8 @@ export default function Dashboard() {
   const { data: investors } = useInvestors();
   const totalValueUsd = summary?.totalValueUsd ?? 0;
   const totalValueSgd = summary?.totalValueSgd ?? 0;
-  const { currentDrawdownPct, maxDailyDrawdownPct } = useDrawdownStats(totalValueUsd);
+  const { ytdAthUsd, currentDrawdownPct, maxDrawdownPct, maxDailyDrawdownPct } =
+    useDrawdownStats(totalValueUsd);
 
   // Investor filter state - lifted to Dashboard level. Defaults to owner until manually changed.
   const [manualSelectedInvestors, setManualSelectedInvestors] = useState<string[] | null>(null);
@@ -132,16 +133,13 @@ export default function Dashboard() {
         <div className="pb-6 mb-2 border-b">
           <Skeleton className="h-4 w-20 mb-2" />
           <Skeleton className="h-12 w-48 mb-2" />
-          {/* Mirrors NetWorthCard's 2-col mobile / 7-col desktop stat grid —
-              a fixed-width flex row overflows the page on mobile. */}
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-7">
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-20" />
+          {/* Mirrors NetWorthCard's single scroll rail. */}
+          <div className="mt-4 overflow-hidden">
+            <div className="grid min-w-max grid-flow-col auto-cols-[9rem] gap-4 xl:min-w-0 xl:grid-flow-row xl:grid-cols-9 xl:auto-cols-auto">
+              {Array.from({ length: 9 }, (_, index) => (
+                <Skeleton key={index} className="h-11 w-full" />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -220,7 +218,9 @@ export default function Dashboard() {
             summary={summary}
             currency={currency}
             stakeMultiplier={stakeMultiplier}
-            currentDrawdownPct={currentDrawdownPct}
+            ytdAthUsd={ytdAthUsd}
+            drawdownFromAthPct={currentDrawdownPct}
+            maxDrawdownPct={maxDrawdownPct}
             maxDailyDrawdownPct={maxDailyDrawdownPct}
             exposurePct={exposurePct}
             positionCount={summary.positionCount ?? 0}

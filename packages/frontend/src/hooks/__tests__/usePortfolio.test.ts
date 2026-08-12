@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import {
   usePositions,
   useCreatePosition,
+  useDrawdownStats,
   useUpdatePosition,
   useDeletePosition,
 } from '@/hooks/usePortfolio';
@@ -84,6 +85,47 @@ describe('usePortfolio hooks', () => {
 
     await waitFor(() => expect(api.getPositions).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(result.current.data).toEqual(refreshedPositions));
+  });
+
+  it('derives YTD ATH, MDD, daily MDD, and current drawdown from history plus live value', async () => {
+    vi.mocked(api.getPerformanceHistory).mockResolvedValue([
+      {
+        timestamp: '2026-01-01T00:00:00.000Z',
+        totalValueUsd: 100,
+        totalValueSgd: null,
+        unrealizedPnL: null,
+        btcPrice: null,
+        ethPrice: null,
+      },
+      {
+        timestamp: '2026-02-01T00:00:00.000Z',
+        totalValueUsd: 120,
+        totalValueSgd: null,
+        unrealizedPnL: null,
+        btcPrice: null,
+        ethPrice: null,
+      },
+      {
+        timestamp: '2026-03-01T00:00:00.000Z',
+        totalValueUsd: 90,
+        totalValueSgd: null,
+        unrealizedPnL: null,
+        btcPrice: null,
+        ethPrice: null,
+      },
+    ]);
+
+    const queryClient = createTestQueryClient();
+    const wrapper = createQueryClientWrapper(queryClient);
+    const { result } = renderHook(() => useDrawdownStats(96), { wrapper });
+
+    await waitFor(() => expect(result.current.ytdAthUsd).toBe(120));
+    expect(result.current).toEqual({
+      ytdAthUsd: 120,
+      currentDrawdownPct: 20,
+      maxDrawdownPct: 25,
+      maxDailyDrawdownPct: 25,
+    });
   });
 
   it('calls createPosition API on create mutation', async () => {

@@ -81,29 +81,25 @@ export function normalizeToPercentChange(values: number[]): number[] {
   return values.map((value) => ((value - baseline) / baseline) * 100);
 }
 
-/**
- * Current decline from the series high as a positive percentage magnitude.
- * The last valid value is treated as the current portfolio value, so the result
- * is 0 when that value is the high. The caller picks the window (e.g. YTD).
- * Returns null until at least two valid positive portfolio values are available.
- */
-export function calculateCurrentDrawdown(values: number[]): number | null {
-  const validValues = values.filter((value) => Number.isFinite(value) && value > 0);
-  if (validValues.length < 2) return null;
-
-  const athValue = Math.max(...validValues);
-  const currentValue = validValues[validValues.length - 1];
-
-  return ((athValue - currentValue) / athValue) * 100;
+export interface PortfolioDrawdownStats {
+  athValue: number | null;
+  currentDrawdownPct: number | null;
+  maxDrawdownPct: number | null;
+  maxDailyDrawdownPct: number | null;
 }
 
 /**
- * Largest decline between consecutive portfolio values as a positive percentage magnitude.
- * Returns null until at least one consecutive pair of valid positive values is available.
+ * Summarizes a portfolio value series in one pass. Invalid values are ignored
+ * for all-time-high and peak-to-trough calculations, but break consecutive-day
+ * comparisons so MDD (1D) never bridges a missing record.
  */
-export function calculateMaxDailyDrawdown(values: number[]): number | null {
+export function calculatePortfolioDrawdownStats(values: number[]): PortfolioDrawdownStats {
+  let athValue: number | null = null;
+  let currentValue: number | null = null;
+  let maxDrawdownPct: number | null = null;
+  let maxDailyDrawdownPct: number | null = null;
   let previousValue: number | null = null;
-  let maxDrawdown: number | null = null;
+  let validValueCount = 0;
 
   for (const value of values) {
     if (!Number.isFinite(value) || value <= 0) {
@@ -111,15 +107,56 @@ export function calculateMaxDailyDrawdown(values: number[]): number | null {
       continue;
     }
 
+    validValueCount += 1;
+    currentValue = value;
+    athValue = athValue === null ? value : Math.max(athValue, value);
+
+    const drawdownFromPeak = ((athValue - value) / athValue) * 100;
+    maxDrawdownPct = Math.max(maxDrawdownPct ?? 0, drawdownFromPeak);
+
     if (previousValue !== null) {
-      const drawdown = ((previousValue - value) / previousValue) * 100;
-      maxDrawdown = Math.max(maxDrawdown ?? 0, drawdown);
+      const dailyDrawdown = ((previousValue - value) / previousValue) * 100;
+      maxDailyDrawdownPct = Math.max(maxDailyDrawdownPct ?? 0, dailyDrawdown);
     }
 
     previousValue = value;
   }
 
-  return maxDrawdown;
+  return {
+    athValue,
+    currentDrawdownPct:
+      validValueCount >= 2 && athValue !== null && currentValue !== null
+        ? ((athValue - currentValue) / athValue) * 100
+        : null,
+    maxDrawdownPct: validValueCount >= 2 ? maxDrawdownPct : null,
+    maxDailyDrawdownPct,
+  };
+}
+
+/**
+ * Current decline from the series high as a positive percentage magnitude.
+ * The last valid value is treated as the current portfolio value, so the result
+ * is 0 when that value is the high. The caller picks the window (e.g. YTD).
+ * Returns null until at least two valid positive portfolio values are available.
+ */
+export function calculateCurrentDrawdown(values: number[]): number | null {
+  return calculatePortfolioDrawdownStats(values).currentDrawdownPct;
+}
+
+/**
+ * Largest decline from any running peak to a later value, returned as a
+ * positive percentage magnitude. The caller selects the time window.
+ */
+export function calculateMaxDrawdown(values: number[]): number | null {
+  return calculatePortfolioDrawdownStats(values).maxDrawdownPct;
+}
+
+/**
+ * Largest decline between consecutive portfolio values as a positive percentage magnitude.
+ * Returns null until at least one consecutive pair of valid positive values is available.
+ */
+export function calculateMaxDailyDrawdown(values: number[]): number | null {
+  return calculatePortfolioDrawdownStats(values).maxDailyDrawdownPct;
 }
 
 /**

@@ -204,7 +204,7 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### Portfolio Hero Summary
 
-Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD P&L trend arrow, then a 5-col `divide-x` grid (YTD Start, MDD (YTD), Exposure, Positions, YTD P&L — drawdown via the shared `useDrawdownStats()`, same definition as Net Worth), `HelpTooltip` on every label. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add" button. Exposure = owned non-stable/non-cash + local perp ÷ total; custody excluded.
+Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD P&L trend arrow, then a 5-col `divide-x` grid (YTD Start, DD from ATH, Exposure, Positions, YTD P&L — drawdown via the shared `useDrawdownStats()`, same definition as Net Worth), `HelpTooltip` on every label. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add" button. Exposure = owned non-stable/non-cash + local perp ÷ total; custody excluded.
 
 ### Portfolio Section Headers
 
@@ -268,7 +268,7 @@ Dashboard investor filter defaults to the primary owner (`isOwner = true`), not 
 
 ### Net Worth Card
 
-Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). Desktop `grid-cols-7 divide-x` (YTD P&L, YTD Start, MDD (YTD), MDD (1D), Exposure, Positions, Trades), mobile 2-col in the same order. MDD (YTD) = current drawdown from the year's high (YTD snapshots + live value); MDD (1D) = largest day-over-day decline since Jan 1. Both come from `useDrawdownStats()` (`usePortfolio.ts`, shared with the Portfolio hero) — `calculateCurrentDrawdown()` / `calculateMaxDailyDrawdown()` return positive magnitudes, displayed as negative percentages. All labels have `HelpTooltip` (pass `label` for distinct accessible names). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use `useAnimatedNumber`.
+Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). The nine metrics stay in one ordered rail (YTD P&L, YTD Start, YTD ATH, MDD, MDD (1D), DD from ATH, Exposure, Positions, Trades). At `xl+` all nine share the available width; narrower screens keep one horizontally scrollable, snap-aligned rail with stable 9rem cells instead of wrapping into rows. Keep the scrollbar visible and the region keyboard-focusable. A compact footer shows the total in the alternate USD/SGD currency. `useDrawdownStats()` (`usePortfolio.ts`, shared with the Portfolio hero) summarizes YTD snapshots + live value: YTD ATH = highest value, MDD = largest peak-to-trough decline, MDD (1D) = largest day-over-day decline, DD from ATH = current decline from the YTD high. `calculatePortfolioDrawdownStats()` computes all four in one pass; drawdown helpers return positive magnitudes displayed as negative percentages. All labels have `HelpTooltip` (pass `label` for distinct accessible names). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use the shared `useAnimatedNumbers()` loop.
 
 ### Performers Card
 

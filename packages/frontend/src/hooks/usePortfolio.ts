@@ -1,11 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import {
-  calculateCurrentDrawdown,
-  calculateMaxDailyDrawdown,
-  getDateRange,
-} from '@/lib/chartUtils';
+import { calculatePortfolioDrawdownStats, getDateRange } from '@/lib/chartUtils';
 import type { CreatePositionData, Position, ProviderName, UpdatePositionData } from '@/lib/types';
 
 const portfolioFocusRefreshOptions = {
@@ -169,11 +165,11 @@ export function usePerformanceHistory(params?: {
 }
 
 /**
- * Drawdown stats over YTD snapshots plus the live portfolio value:
- * MDD (YTD) is the current decline from the year's high; MDD (1D) is the
- * largest day-over-day decline since January 1st. Percentages are
- * scale-invariant, so the same values apply whether the page shows net worth
- * or portfolio totals.
+ * Value and drawdown stats over YTD snapshots plus the live portfolio value.
+ * MDD is the largest peak-to-trough decline, DD from ATH is the current
+ * decline from the YTD high, and MDD (1D) is the largest day-over-day decline.
+ * Percentages are scale-invariant, so the same values apply whether the page
+ * shows net worth or portfolio totals.
  */
 export function useDrawdownStats(liveValueUsd: number) {
   const ytdRange = useMemo(() => getDateRange('YTD'), []);
@@ -185,9 +181,13 @@ export function useDrawdownStats(liveValueUsd: number) {
       values.push(liveValueUsd);
     }
 
+    const stats = calculatePortfolioDrawdownStats(values);
+
     return {
-      currentDrawdownPct: calculateCurrentDrawdown(values),
-      maxDailyDrawdownPct: calculateMaxDailyDrawdown(values),
+      ytdAthUsd: stats.athValue,
+      currentDrawdownPct: stats.currentDrawdownPct,
+      maxDrawdownPct: stats.maxDrawdownPct,
+      maxDailyDrawdownPct: stats.maxDailyDrawdownPct,
     };
   }, [perfHistory, liveValueUsd]);
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   calculateCurrentDrawdown,
+  calculateMaxDrawdown,
   calculateMaxDailyDrawdown,
+  calculatePortfolioDrawdownStats,
   downsampleLTTB,
   getDateRange,
   normalizeToPercentChange,
@@ -47,6 +49,25 @@ describe('calculateCurrentDrawdown', () => {
   });
 });
 
+describe('calculateMaxDrawdown', () => {
+  it('finds the largest decline from a running peak to a later trough', () => {
+    expect(calculateMaxDrawdown([100, 120, 90, 110, 96])).toBe(25);
+  });
+
+  it('returns zero when the series never falls from a high', () => {
+    expect(calculateMaxDrawdown([100, 110, 125])).toBe(0);
+  });
+
+  it('skips invalid records without losing the running peak', () => {
+    expect(calculateMaxDrawdown([100, Number.NaN, 80])).toBe(20);
+  });
+
+  it('requires at least two valid positive values', () => {
+    expect(calculateMaxDrawdown([])).toBeNull();
+    expect(calculateMaxDrawdown([100])).toBeNull();
+  });
+});
+
 describe('calculateMaxDailyDrawdown', () => {
   it('finds the largest decline between consecutive portfolio values', () => {
     expect(calculateMaxDailyDrawdown([100, 80, 120, 90, 95])).toBe(25);
@@ -63,6 +84,26 @@ describe('calculateMaxDailyDrawdown', () => {
   it('requires at least one consecutive pair of valid positive values', () => {
     expect(calculateMaxDailyDrawdown([])).toBeNull();
     expect(calculateMaxDailyDrawdown([100])).toBeNull();
+  });
+});
+
+describe('calculatePortfolioDrawdownStats', () => {
+  it('returns ATH, maximum drawdowns, and current drawdown from one YTD series', () => {
+    expect(calculatePortfolioDrawdownStats([100, 120, 90, 110, 96])).toEqual({
+      athValue: 120,
+      currentDrawdownPct: 20,
+      maxDrawdownPct: 25,
+      maxDailyDrawdownPct: 25,
+    });
+  });
+
+  it('returns the lone valid value as ATH while drawdowns await more history', () => {
+    expect(calculatePortfolioDrawdownStats([0, Number.NaN, 100])).toEqual({
+      athValue: 100,
+      currentDrawdownPct: null,
+      maxDrawdownPct: null,
+      maxDailyDrawdownPct: null,
+    });
   });
 });
 
