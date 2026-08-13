@@ -34,7 +34,8 @@ const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (error) => {
       toast.error('Action failed', {
-        description: error instanceof Error ? error.message : 'Something went wrong',
+        description:
+          error instanceof Error ? error.message : 'Check your connection and try again.',
       });
     },
   }),

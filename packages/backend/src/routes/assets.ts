@@ -693,8 +693,10 @@ router.post(
         }
       }
       if (!parsed) {
+        // Parser internals stay in the logs; the user-facing message only names the fix.
+        logger.warn(`[parse-ut-stmt] no parser matched: ${parseErrors.join('; ')}`);
         throw new AppError(
-          `Could not recognise statement format. Supported: UOB Kay Hian, FSMOne. (${parseErrors.join('; ')})`,
+          'Could not recognize this statement format. Upload a UOB Kay Hian or FSMOne monthly statement PDF.',
           422
         );
       }

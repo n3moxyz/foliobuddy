@@ -546,7 +546,13 @@ export function PositionTable({
           aria-label={`View ${position.asset.symbol} position`}
           onClick={() => setViewPosition(position)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
+            // Only when the row itself is focused — without this guard, Enter/Space on
+            // the nested actions menu bubbles here and opens the detail dialog over
+            // the menu (WCAG 2.1.1). Same guard as PositionRow/TradeTable/SnapshotTable.
+            if (
+              event.currentTarget === event.target &&
+              (event.key === 'Enter' || event.key === ' ')
+            ) {
               event.preventDefault();
               setViewPosition(position);
             }
@@ -600,7 +606,13 @@ export function PositionTable({
         aria-label={`View ${position.asset.symbol} position`}
         onClick={() => setViewPosition(position)}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
+          // Only when the row itself is focused — without this guard, Enter/Space on
+          // the nested actions menu bubbles here and opens the detail dialog over
+          // the menu (WCAG 2.1.1). Same guard as PositionRow/TradeTable/SnapshotTable.
+          if (
+            event.currentTarget === event.target &&
+            (event.key === 'Enter' || event.key === ' ')
+          ) {
             event.preventDefault();
             setViewPosition(position);
           }

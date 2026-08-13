@@ -1329,7 +1329,7 @@ export function PositionForm({
       if (!assetId) {
         setValidationError('Please select an asset');
       } else if (!isPositiveNumberInput(quantity)) {
-        setValidationError('Please enter a valid quantity');
+        setValidationError('Enter a quantity greater than 0');
       }
       return;
     }
@@ -1352,11 +1352,11 @@ export function PositionForm({
       const qtyNum = parseFloat(quantity);
       const costNumInput = parseFloat(calculatedTotalCost);
       if (!(navNum > 0)) {
-        setValidationError('NAV must be positive');
+        setValidationError('Enter a NAV greater than 0');
         return;
       }
       if (!(qtyNum > 0)) {
-        setValidationError('Please enter a valid units quantity');
+        setValidationError('Enter units greater than 0');
         return;
       }
       if (!(costNumInput >= 0)) {
@@ -1819,7 +1819,7 @@ export function PositionForm({
               {category === 'equity' && equityMode === 'fund' && !isEditing ? (
                 <div className="space-y-3">
                   <label
-                    className={`block cursor-pointer rounded-md border border-dashed p-3 transition-colors ${
+                    className={`block cursor-pointer rounded-md border border-dashed p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 ${
                       utDragOver
                         ? 'border-primary bg-primary/15'
                         : 'border-primary/40 bg-primary/5 hover:bg-primary/10'
