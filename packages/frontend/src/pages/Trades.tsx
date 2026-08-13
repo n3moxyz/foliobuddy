@@ -387,7 +387,7 @@ export default function Trades() {
                 }}
                 disabled={deleteAllMutation.isPending}
               >
-                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All'}
+                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All Trades'}
               </Button>
             </div>
           </div>

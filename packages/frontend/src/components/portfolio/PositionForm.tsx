@@ -1886,6 +1886,18 @@ export function PositionForm({
                     )}
                   </label>
 
+                  {/* Stable live region: parse progress/success is otherwise a silent
+                      visual label swap for screen-reader users. */}
+                  <p role="status" className="sr-only">
+                    {utUploading
+                      ? 'Parsing statement PDF…'
+                      : utMultipleHoldings
+                        ? 'Multiple holdings found. Pick one to auto-fill.'
+                        : utPrefilledFrom
+                          ? `Statement parsed. Fields pre-filled from ${utPrefilledFrom}.`
+                          : ''}
+                  </p>
+
                   {utMultipleHoldings && (
                     <div className="space-y-2 rounded-md border bg-muted/20 p-3">
                       <p className="text-sm font-medium">

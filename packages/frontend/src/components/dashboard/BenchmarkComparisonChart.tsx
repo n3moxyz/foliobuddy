@@ -478,7 +478,9 @@ export function BenchmarkComparisonChart() {
                     <div className="text-sm text-muted-foreground p-2">Searching...</div>
                   )}
                   {!isSearching && searchResults.length === 0 && searchQuery.length >= 1 && (
-                    <div className="text-sm text-muted-foreground p-2">No results</div>
+                    <div className="break-words p-2 text-sm text-muted-foreground">
+                      No results for "{searchQuery}"
+                    </div>
                   )}
                   {searchResults.map((candidate) => (
                     <Button

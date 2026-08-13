@@ -537,56 +537,60 @@ export function PositionTable({
         : 'border-loss/25 bg-loss text-loss';
 
     if (mobileVariant === 'compact') {
+      // The actions menu renders as a SIBLING of the row button (absolute inside this
+      // wrapper): interactive content nested in role="button" is invalid ARIA and
+      // unreliable for screen readers.
       return (
-        <div
-          key={position.id}
-          role="button"
-          tabIndex={0}
-          className="group relative cursor-pointer py-2.5 pl-3 pr-12 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-          aria-label={`View ${position.asset.symbol} position`}
-          onClick={() => setViewPosition(position)}
-          onKeyDown={(event) => {
-            // Only when the row itself is focused — without this guard, Enter/Space on
-            // the nested actions menu bubbles here and opens the detail dialog over
-            // the menu (WCAG 2.1.1). Same guard as PositionRow/TradeTable/SnapshotTable.
-            if (
-              event.currentTarget === event.target &&
-              (event.key === 'Enter' || event.key === ' ')
-            ) {
-              event.preventDefault();
-              setViewPosition(position);
-            }
-          }}
-        >
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-baseline gap-1.5">
-                <p className="min-w-0 truncate text-sm font-semibold leading-tight">
-                  {position.asset.symbol}
+        <div key={position.id} className="relative">
+          <div
+            role="button"
+            tabIndex={0}
+            className="group cursor-pointer py-2.5 pl-3 pr-12 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            aria-label={`View ${position.asset.symbol} position`}
+            onClick={() => setViewPosition(position)}
+            onKeyDown={(event) => {
+              // Only when the row itself is focused — without this guard, Enter/Space on
+              // nested content bubbles here and opens the detail dialog instead
+              // (WCAG 2.1.1). Same guard as PositionRow/TradeTable/SnapshotTable.
+              if (
+                event.currentTarget === event.target &&
+                (event.key === 'Enter' || event.key === ' ')
+              ) {
+                event.preventDefault();
+                setViewPosition(position);
+              }
+            }}
+          >
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-baseline gap-1.5">
+                  <p className="min-w-0 truncate text-sm font-semibold leading-tight">
+                    {position.asset.symbol}
+                  </p>
+                  {options.showUnitTrustBadge && isUnitTrust && (
+                    <span
+                      className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
+                      aria-label="Unit Trust"
+                    >
+                      UT
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 truncate text-xs leading-snug text-muted-foreground">
+                  {position.asset.name}
                 </p>
-                {options.showUnitTrustBadge && isUnitTrust && (
-                  <span
-                    className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
-                    aria-label="Unit Trust"
-                  >
-                    UT
-                  </span>
-                )}
               </div>
-              <p className="mt-0.5 truncate text-xs leading-snug text-muted-foreground">
-                {position.asset.name}
+
+              <p className="shrink-0 text-right font-mono text-sm font-semibold leading-tight tabular-nums">
+                {formatCurrency(marketValue, currency, 0)}
               </p>
-            </div>
 
-            <p className="shrink-0 text-right font-mono text-sm font-semibold leading-tight tabular-nums">
-              {formatCurrency(marketValue, currency, 0)}
-            </p>
-
-            <div
-              className={`min-w-[4.25rem] shrink-0 text-right font-mono text-xs font-medium leading-tight tabular-nums ${pnlTextClass}`}
-            >
-              <p>{formatCurrency(pnlValue, currency, 0)}</p>
-              <p>{formatPercent(position.unrealizedPnLPct)}</p>
+              <div
+                className={`min-w-[4.25rem] shrink-0 text-right font-mono text-xs font-medium leading-tight tabular-nums ${pnlTextClass}`}
+              >
+                <p>{formatCurrency(pnlValue, currency, 0)}</p>
+                <p>{formatPercent(position.unrealizedPnLPct)}</p>
+              </div>
             </div>
           </div>
 
@@ -597,94 +601,97 @@ export function PositionTable({
       );
     }
 
+    // Same sibling structure as the compact variant: the actions menu must not nest
+    // inside the role="button" row.
     return (
-      <div
-        key={position.id}
-        role="button"
-        tabIndex={0}
-        className="group relative cursor-pointer py-2 pl-3 pr-12 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-        aria-label={`View ${position.asset.symbol} position`}
-        onClick={() => setViewPosition(position)}
-        onKeyDown={(event) => {
-          // Only when the row itself is focused — without this guard, Enter/Space on
-          // the nested actions menu bubbles here and opens the detail dialog over
-          // the menu (WCAG 2.1.1). Same guard as PositionRow/TradeTable/SnapshotTable.
-          if (
-            event.currentTarget === event.target &&
-            (event.key === 'Enter' || event.key === ' ')
-          ) {
-            event.preventDefault();
-            setViewPosition(position);
-          }
-        }}
-      >
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-baseline gap-1.5">
-              <p className="max-w-[5.75rem] shrink-0 truncate text-sm font-semibold leading-tight">
-                {position.asset.symbol}
-              </p>
-              {options.showUnitTrustBadge && isUnitTrust && (
-                <span
-                  className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
-                  aria-label="Unit Trust"
-                >
-                  UT
-                </span>
-              )}
-              <p className="min-w-0 truncate text-xs leading-snug text-muted-foreground">
-                {position.asset.name}
+      <div key={position.id} className="relative">
+        <div
+          role="button"
+          tabIndex={0}
+          className="group cursor-pointer py-2 pl-3 pr-12 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          aria-label={`View ${position.asset.symbol} position`}
+          onClick={() => setViewPosition(position)}
+          onKeyDown={(event) => {
+            // Only when the row itself is focused — without this guard, Enter/Space on
+            // nested content bubbles here and opens the detail dialog instead
+            // (WCAG 2.1.1). Same guard as PositionRow/TradeTable/SnapshotTable.
+            if (
+              event.currentTarget === event.target &&
+              (event.key === 'Enter' || event.key === ' ')
+            ) {
+              event.preventDefault();
+              setViewPosition(position);
+            }
+          }}
+        >
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-baseline gap-1.5">
+                <p className="max-w-[5.75rem] shrink-0 truncate text-sm font-semibold leading-tight">
+                  {position.asset.symbol}
+                </p>
+                {options.showUnitTrustBadge && isUnitTrust && (
+                  <span
+                    className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
+                    aria-label="Unit Trust"
+                  >
+                    UT
+                  </span>
+                )}
+                <p className="min-w-0 truncate text-xs leading-snug text-muted-foreground">
+                  {position.asset.name}
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 text-right">
+              <p className="font-mono text-sm font-semibold leading-tight tabular-nums">
+                {formatCurrency(marketValue, currency, 0)}
               </p>
             </div>
+
+            <span
+              className={`min-w-[3.625rem] shrink-0 rounded-md border px-1.5 py-0.5 text-right font-mono text-[10px] font-medium leading-tight tabular-nums ${pnlPillClass}`}
+            >
+              <span className="block">{formatCurrency(pnlValue, currency, 0)}</span>
+              <span className="block">{formatPercent(position.unrealizedPnLPct)}</span>
+            </span>
           </div>
 
-          <div className="shrink-0 text-right">
-            <p className="font-mono text-sm font-semibold leading-tight tabular-nums">
-              {formatCurrency(marketValue, currency, 0)}
-            </p>
+          <div className="mt-1 flex min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden whitespace-nowrap text-[11px] leading-snug text-muted-foreground">
+            <span className="inline-flex shrink-0 gap-1">
+              Qty
+              <span className="font-mono text-foreground">
+                {formatQuantity(position.quantity, position.asset.category)}
+              </span>
+            </span>
+            <span aria-hidden="true" className="shrink-0">
+              ·
+            </span>
+            <span className="inline-flex shrink-0 gap-1">
+              Price
+              <span className="font-mono text-foreground">
+                {formatCurrency(priceValue, currency, getSmartDecimals(priceValue))}
+              </span>
+            </span>
+            <span aria-hidden="true" className="shrink-0">
+              ·
+            </span>
+            <span className="inline-flex shrink-0 gap-1">
+              Avg
+              <span className="font-mono text-foreground">
+                {formatCurrency(avgCostValue, currency, getSmartDecimals(avgCostValue))}
+              </span>
+            </span>
+            <span aria-hidden="true" className="shrink-0">
+              ·
+            </span>
+            <span className="min-w-0 truncate">{mobileStorageLabelFor(position)}</span>
           </div>
-
-          <span
-            className={`min-w-[3.625rem] shrink-0 rounded-md border px-1.5 py-0.5 text-right font-mono text-[10px] font-medium leading-tight tabular-nums ${pnlPillClass}`}
-          >
-            <span className="block">{formatCurrency(pnlValue, currency, 0)}</span>
-            <span className="block">{formatPercent(position.unrealizedPnLPct)}</span>
-          </span>
         </div>
 
         <div className="absolute right-1 top-1/2 -translate-y-1/2">
           {renderMobileActionMenu(position)}
-        </div>
-
-        <div className="mt-1 flex min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden whitespace-nowrap text-[11px] leading-snug text-muted-foreground">
-          <span className="inline-flex shrink-0 gap-1">
-            Qty
-            <span className="font-mono text-foreground">
-              {formatQuantity(position.quantity, position.asset.category)}
-            </span>
-          </span>
-          <span aria-hidden="true" className="shrink-0">
-            ·
-          </span>
-          <span className="inline-flex shrink-0 gap-1">
-            Price
-            <span className="font-mono text-foreground">
-              {formatCurrency(priceValue, currency, getSmartDecimals(priceValue))}
-            </span>
-          </span>
-          <span aria-hidden="true" className="shrink-0">
-            ·
-          </span>
-          <span className="inline-flex shrink-0 gap-1">
-            Avg
-            <span className="font-mono text-foreground">
-              {formatCurrency(avgCostValue, currency, getSmartDecimals(avgCostValue))}
-            </span>
-          </span>
-          <span aria-hidden="true" className="shrink-0">
-            ·
-          </span>
-          <span className="min-w-0 truncate">{mobileStorageLabelFor(position)}</span>
         </div>
       </div>
     );

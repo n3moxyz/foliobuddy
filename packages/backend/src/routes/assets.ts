@@ -675,7 +675,10 @@ router.post(
       }
 
       if (!extractedText.trim()) {
-        throw new AppError('PDF contains no extractable text (scanned image?)', 422);
+        throw new AppError(
+          'This PDF has no selectable text — it may be a scanned copy. Upload a digitally generated statement PDF.',
+          422
+        );
       }
 
       const parsers = [

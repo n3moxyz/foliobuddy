@@ -25,6 +25,7 @@ import {
   Copy,
   Check,
   Pencil,
+  Plus,
   Trash2,
 } from 'lucide-react';
 
@@ -35,6 +36,7 @@ interface SnapshotTableProps {
   liveValueUsd?: number;
   onEdit: (snapshot: Snapshot) => void;
   onDelete: (snapshot: Snapshot) => void;
+  onAddSnapshot?: () => void;
 }
 
 const SNAPSHOT_TABLE_HEADER_SKELETON_KEYS = ['date', 'value', 'source', 'notes'] as const;
@@ -69,6 +71,7 @@ export function SnapshotTable({
   liveValueUsd,
   onEdit,
   onDelete,
+  onAddSnapshot,
 }: SnapshotTableProps) {
   const [expandedSnapshots, setExpandedSnapshots] = useState<Set<string>>(new Set());
   const [loadingPositions, setLoadingPositions] = useState<Set<string>>(new Set());
@@ -174,6 +177,12 @@ export function SnapshotTable({
           Snapshots capture your portfolio value at points in time. They're created automatically
           each day, or you can add one manually.
         </p>
+        {onAddSnapshot && (
+          <Button className="mt-6" onClick={onAddSnapshot}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            Add Snapshot
+          </Button>
+        )}
       </div>
     );
   }

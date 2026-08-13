@@ -19,7 +19,7 @@ export function HelpTooltip({ content, label }: HelpTooltipProps) {
           <button
             type="button"
             aria-label={label ? `Help: ${label}` : 'Help'}
-            className="-my-3 -ml-2 -mr-3 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full align-middle touch-manipulation hover:bg-muted/50"
+            className="-my-3 -ml-2 -mr-3 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full align-middle touch-manipulation hover:bg-muted/50 sm:-my-2 sm:-ml-1.5 sm:-mr-2 sm:h-9 sm:w-9"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
