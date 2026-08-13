@@ -628,6 +628,14 @@ Shell refinement: the left sidebar now has a Codex-style collapsible desktop rai
 
 **The lesson:** When the same interaction pattern exists in three places, an improvement to one is a bug report against the other two. Grep for siblings whenever you fix a shared pattern.
 
+### The Sibling We Missed Anyway (Mobile Card Rows)
+
+**The bug:** The sequel to the entry above. The `currentTarget === target` guard made it into all three _table_ components — but `PositionTable`'s mobile card rows are `div role="button"`, not `<tr>`, so the "grep for siblings" sweep (which looked at tables) never found them. A `better-accessibility` skill review caught it, and a live keyboard test on `/dev/demo/portfolio` at mobile width confirmed the failure was real: pressing Enter on a card's ⋮ actions menu opened the dropdown _and_ the position detail dialog on top of it, burying the menu.
+
+**The fix:** Same two-line guard, plus the CLAUDE.md rule now says "non-table clickable rows need it too" and lists the mobile rows in its references. The same review also found the CreatableSelect popover's pencil/trash buttons were pointer-only (a Radix listbox only exposes arrows/typeahead to the keyboard — Tab never reaches buttons positioned inside it), so custom options now get inline Rename/Remove buttons under the trigger as the keyboard path. Reduced-motion coverage was extended to the tailwindcss-animate utilities too — `data-[state=open]:animate-in` compiles to a class a plain `.animate-in` selector can't match, so the `index.css` block uses `[class*='animate-in']` attribute selectors.
+
+**The lesson:** "Grep for siblings" is only as good as the pattern you grep for — the guard's siblings were _keyboard-activatable rows_, not _table rows_. Name the invariant by behavior, not by markup. And keyboard bugs stay invisible until you test with a keyboard: the live `/dev/demo` route made a two-minute repro possible without touching production data.
+
 ### The Test That Stopped a "Fix" From Shipping a Bug
 
 **The bug-that-wasn't:** React Doctor flagged `PerformersCard`'s `key={assetId}-{index}` as index-key misuse, and the audit dutifully listed it. Removing the index suffix immediately failed a test titled "renders multiple positions for the same asset without duplicate React keys" — the suffix exists because the same asset legitimately appears twice. Reverted, added a comment, and documented it as a known false positive in CLAUDE.md's React Doctor section.
