@@ -294,4 +294,13 @@
   .animate-ping {
     animation: none !important;
   }
+  /* tailwindcss-animate utilities (dialog zoom/slide, tooltip zoom, collapsible height).
+     Attribute selectors because variant-prefixed classes like data-[state=open]:animate-in
+     can't be matched by a plain class selector. Near-zero duration instead of `none` so
+     Radix exit animations still fire animationend and unmount. */
+  [class*='animate-in'],
+  [class*='animate-out'],
+  [class*='animate-collapsible'] {
+    animation-duration: 0.01ms !important;
+  }
 }

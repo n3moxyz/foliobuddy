@@ -89,11 +89,11 @@ First-time Clerk users are auto-created via `ensureUser` middleware.
 
 ### Snapshot System
 
-Captures portfolio state over time; calculates daily/weekly/monthly/YTD returns + benchmark outperformance vs BTC/ETH. Automatic daily snapshots run at **5am SGT** using an explicit `Asia/Singapore` cron timezone; catch-up and first-of-month checks use the Singapore calendar day. Return fields stored as `percent × 100`. YTD anchor = first snapshot of the _current calendar year_ (`timestamp >= Jan 1 UTC` in `portfolioService.getSummary()`) — never an unfiltered `findFirst orderBy:asc`. Backfill one-shot: `packages/backend/scripts/backfill-equity-snapshots.ts` (usage in the script header).
+Captures portfolio state over time; calculates daily/weekly/monthly/YTD returns + benchmark outperformance vs BTC/ETH. Automatic daily snapshots run at **5am SGT** (`Asia/Singapore` cron timezone); catch-up + first-of-month checks use the Singapore calendar day. Return fields stored as `percent × 100`. YTD anchor = first snapshot of the _current calendar year_ (`timestamp >= Jan 1 UTC` in `portfolioService.getSummary()`) — never an unfiltered `findFirst orderBy:asc`. Backfill one-shot: `packages/backend/scripts/backfill-equity-snapshots.ts`.
 
 ### Yahoo Search & Local-Currency Equities
 
-Yahoo `/v1/finance/search` IP-filters by caller region; `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` for ticker-shaped queries with no exact match. Local-currency suffixes `.SI`/`.T`/`.TW`+`.TWO`/`.KS`+`.KQ`/`.OL` → SGD/JPY/TWD/KRW/NOK; ranking prefers primary local exchanges over OTC/EU cross-listings. Keep Kioxia (`285A.T`) + Oslo coverage in `YahooFinanceProvider.test.ts`. Full story: FORET.md.
+Yahoo search IP-filters by caller region; `YahooFinanceProvider.search()` falls back to the IP-neutral `/v7/finance/quote` for ticker-shaped queries with no exact match. Local-currency suffixes `.SI`/`.T`/`.TW`+`.TWO`/`.KS`+`.KQ`/`.OL` → SGD/JPY/TWD/KRW/NOK; ranking prefers primary local exchanges over OTC/EU cross-listings. Keep Kioxia (`285A.T`) + Oslo coverage in `YahooFinanceProvider.test.ts`. Full story: FORET.md.
 
 ### Unit Trust Statement Parsers (PDF Import)
 
@@ -152,7 +152,7 @@ All pages lazy-loaded (`React.lazy()` + `Suspense`); Vite `manualChunks` splits 
 
 ### React Doctor Quality Scan
 
-Advisory frontend audit — see the pinned command in Commands. Triage input, not a refactor plan; be skeptical of React 19 advice on React 18. `react-doctor.config.json` suppresses reviewed noise. Don't suppress new accessibility/keyboard/ownership/render-correctness/data-integrity findings without documenting why they're false positives. Known FPs: `apiMockReady` in `demoMode.tsx` (gates rendering until the fetch mock installs), `autoFocus` on Portfolio's inline perp input (explicit edit-in-place), `PerformersCard` index-suffixed key (same asset can appear twice — test-enforced).
+Advisory frontend audit — see the pinned command in Commands. Triage input, not a refactor plan; be skeptical of React 19 advice on React 18. `react-doctor.config.json` suppresses reviewed noise. Don't suppress new accessibility/keyboard/ownership/render-correctness/data-integrity findings without documenting why they're false positives. Known FPs (reviewed): `apiMockReady` in `demoMode.tsx`, `autoFocus` on Portfolio's inline perp input, `PerformersCard` index-suffixed key (same asset can appear twice — test-enforced).
 
 ### Ownership Checks on Mutations
 
@@ -176,7 +176,7 @@ Feedback layer is sonner: `AppToaster` in `main.tsx` (themed via `resolveTheme`)
 
 iOS HIG-inspired patterns on all pages:
 
-- **Mobile tables → card rows**: below `md`, `PositionTable` renders stacked card rows (`renderMobilePositionRow`); the full table appears only when "All columns" is toggled (gated by `showMobileColumnToggle`). `mobileVariant`: `focus` (symbol+name, value, P&L pill, meta line) or `compact` (value + P&L only). Row actions collapse into a 44px `⋮` menu. Trades column-hides (`hidden md:table-cell`) instead.
+- **Mobile tables → card rows**: below `md`, `PositionTable` renders stacked card rows (`renderMobilePositionRow`); full table only when "All columns" is toggled (`showMobileColumnToggle`). `mobileVariant`: `focus` (symbol+name, value, P&L pill, meta) or `compact` (value + P&L). Row actions collapse into a 44px `⋮` menu. Trades column-hides (`hidden md:table-cell`) instead.
 - **Mobile dialogs → bottom sheet**: content-heavy detail dialogs dock full-width to the bottom edge on mobile (`!bottom-0 … rounded-t-lg` + `pb-[max(1rem,env(safe-area-inset-bottom))]`), centered modal at `sm+`.
 - **Touch targets**: 44px mobile hit areas compacting at `sm+`/`md+` — shared `Button` sizes, sortable headers, allocation legends, `HelpTooltip`. `Input`, `SelectTrigger`, `DropdownMenuItem`, asset-search options, and creatable-select row actions bake the `h-11`/`min-h-11` → `sm:` compaction into the primitives — don't re-add per-call-site heights. Dense row actions need `shrink-0`.
 - **Responsive headers**: `flex-col gap-3 sm:flex-row`; secondary actions move to `DropdownMenu` overflow.
@@ -200,7 +200,7 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### Trades Review Lenses
 
-`Trades.tsx` — three lenses above the shared Trade Tape table: **Review** (default; collapsed `TradeStatsCard` + `TickerPnLCard`, then the All/Open/Closed table), **Ticker Dossier** (`?ticker=SOL`; ticker P&L, win rate, avg hold, largest win/loss, tags, recent closed — the chip clears the param), **Monthly Postmortem** (`?view=monthly`; month summaries, repeatable-edge tags, loss review, open-trade watchlist). Fetches all trades once via `useTrades()`, filters locally so lens summaries survive tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with seeded rows. `TradeForm` edit = optional `trade` prop; defaults entry 5 days ago, exit today. Tape rows are clickable + keyboard-activatable (see Clickable Rows). Lens UI in `TradeLensViews.tsx`, aggregation in `tradeLensModels.ts`.
+`Trades.tsx` — three lenses above the shared Trade Tape table: **Review** (default; collapsed `TradeStatsCard` + `TickerPnLCard`, then the All/Open/Closed table), **Ticker Dossier** (`?ticker=SOL`; per-ticker stats — the chip clears the param), **Monthly Postmortem** (`?view=monthly`; month summaries, edge tags, loss review, open watchlist). Fetches all trades once via `useTrades()`, filters locally so lens summaries survive tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with seeded rows. `TradeForm` edit = optional `trade` prop; defaults entry 5 days ago, exit today. Tape rows are clickable + keyboard-activatable (see Clickable Rows). Lens UI in `TradeLensViews.tsx`, aggregation in `tradeLensModels.ts`.
 
 ### Portfolio Hero Summary
 
@@ -208,16 +208,17 @@ Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tab
 
 ### Portfolio Section Headers
 
-Two-level grouping on all breakpoints: **Crypto/Equities/Cash** (primary, `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, `PositionTable`); Equities honors the persisted By Broker / By Type choice. `CollapsibleCard` takes `icon` + `accentColor` (category tokens `crypto`/`equities`/`cash`/`custody` in `index.css` + `tailwind.config.js`, e.g. `border-crypto/40 bg-crypto/5` — never raw `-500` palette; custody accent centralized in `CUSTODY_CONFIG`). Its heading wraps the trigger (`<h2><button>`, never the reverse — invalid HTML + hides the heading from SR navigation). Secondary triggers always show their dollar total. Desktop (`hidden sm:block`) uses full table rows; mobile (`sm:hidden`) keeps the hierarchy with `mobileVariant="compact"`, no column toggle. Custody renders in its own section on both.
+Two-level grouping on all breakpoints: **Crypto/Equities/Cash** (primary, `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, `PositionTable`); Equities honors the persisted By Broker / By Type choice. `CollapsibleCard` takes `icon` + `accentColor` (category tokens `crypto`/`equities`/`cash`/`custody` in `index.css` + `tailwind.config.js` — never raw `-500` palette; custody accent centralized in `CUSTODY_CONFIG`). Its heading wraps the trigger (`<h2><button>`, never the reverse — invalid HTML + hides the heading from SR navigation). Secondary triggers always show their dollar total. Desktop (`hidden sm:block`) uses full table rows; mobile (`sm:hidden`) keeps the hierarchy with `mobileVariant="compact"`, no column toggle. Custody renders in its own section on both.
 
 ### Custody Positions ("Held for Others")
 
-Positions held for others ("bought BTC for Mum"): `Position.custodyOf String?` — `null`=owned. Excluded from net worth, P&L, allocations, snapshots, exposure (backend filters `custodyOf: null`); Zod `z.string().nullable().optional()` (empty string → null). `Portfolio.tsx` splits owned vs custody (purple "Held for Others" card). `CustodyCheckbox.tsx` sits at the bottom of every form with a name dropdown (positions + `foliobuddy-custody-names` + "Add new person"); edit sends empty string to clear. Clipboard JSON includes `custodyOf` when set.
+Positions held for others: `Position.custodyOf String?` — `null`=owned. Excluded from net worth, P&L, allocations, snapshots, exposure (backend filters `custodyOf: null`); Zod `z.string().nullable().optional()` (empty string → null). `Portfolio.tsx` splits owned vs custody (purple "Held for Others" card). `CustodyCheckbox.tsx` sits at the bottom of every form with a name dropdown (positions + `foliobuddy-custody-names` + "Add new person"); edit sends empty string to clear. Clipboard JSON includes `custodyOf` when set.
 
 ### Creatable Storage Location Dropdowns
 
 CEX exchanges, wallets, brokers, banks use `CreatableSelect` (no generic "Others"): "+ Add new ..." row + pencil/trash for customs.
 
+- Popover pencil/trash are pointer-only (listbox keyboard = arrows/typeahead); the inline Rename/Remove buttons under the trigger for a selected custom are the keyboard path — keep both.
 - Defaults are protected; customs persist under `foliobuddy-storage-location-options` bucketed by storage type, merged via `positionOptions.ts`. Deleting only removes the option — existing positions keep their value (edit forms add it back as a one-off).
 - Fixed domain selects stay fixed (Category, storage type, fiat currency, direction, theme) — only free-text location dropdowns are creatable.
 - Radix Select can emit a trailing empty value after the create row closes — creatable `onValueChange` must ignore empties.
@@ -253,14 +254,14 @@ Add/reduce edits persist as `PositionHistory` rows via `PUT /positions/:id` with
 
 ### Global Value Privacy
 
-The eye button in `AppShell` (right after the currency selector) persists `foliobuddy-values-hidden` via `privacyStore`. Every read-only monetary display must use `useMoneyFormatter()` (`formatCurrency`/`formatPrice`/`formatSignedCurrency`) so a toggle reactively updates every page, dialog, table, chart label/tooltip, and import preview; editable amount inputs stay visible. `positionPriceDisplay.ts` receives `valuesHidden` for native-currency sublabels. Percentages, quantities, counts, and chart geometry stay visible; copied chart images reflect the current state. The store migrates the old `foliobuddy-dashboard-values-hidden` key.
+The `AppShell` eye button persists `foliobuddy-values-hidden` via `privacyStore`. Every read-only monetary display must use `useMoneyFormatter()` (`formatCurrency`/`formatPrice`/`formatSignedCurrency`) so a toggle reactively updates every page, dialog, table, chart label/tooltip, and import preview; editable amount inputs stay visible. `positionPriceDisplay.ts` receives `valuesHidden` for native-currency sublabels. Percentages, quantities, counts, and chart geometry stay visible; copied chart images reflect the current state.
 
 ### Dashboard Charts
 
 - **Portfolio Value**: AreaChart with `$` (default) / `%` lens (`%` rebases the range to its first positive point); periods 7D/1M/3M/1Y/YTD/Max; loading uses `isFetching`. `getDateRange('Max')` MUST send `all=true` to `/snapshots/performance` (empty query = backend's 30-day default).
 - **Portfolio % vs Benchmarks**: normalized % vs BTC/ETH/SPX + custom; each stores `provider` + `providerAssetId` (crypto→CoinGecko, TradFi→Yahoo). SPX = Yahoo `SPY` (not `^GSPC`) via `yahooFinance.chart()` (raw fetches fail on datacenter IPs). On live-history failure `priceService.getAssetHistory()` falls back to stored `PriceHistory` (one point per UTC day) — local scale QA depends on this. Baseline = price at first portfolio timestamp. Tooltip renderer must stay `useCallback`'d (inline arrows defeat Recharts memoization).
-- **Allocation donuts** (4, `AllocationCharts.tsx`): **By Asset** (Crypto/Equities/Cash via `bucketFor()`; slice click drills the detail chart); **Detailed** (`Auto · All · Crypto · Cash · Equities`; Auto = dominant bucket with dynamic `[Bucket] Breakdown` title; sub-2% slices → "Other" via `groupSmallDetailedSlices`); **By Storage** (brokers by location + Bank/Onchain; CEX split into CEX Cash/CEX Crypto; sub-3% custodians → "Other" via `groupSmallStorageSlices`, protecting CEX/Onchain); **Cash Breakdown** (by symbol). Custody filtered out first. Titles and totals sit on separate header rows so dynamic titles never truncate. Center label = top item's %; hover shows `name · $value · %`; no Recharts Tooltip (overlaps legend); legends keep 44px targets.
-- **Chart image copy**: every chart card uses `ChartCopyButton` + `chartCopy.ts` → high-res PNG of the current card (copy button excluded). Recharts draw animations stay disabled so an immediate copy can't capture a partial/empty SVG. Clipboard writes need `ClipboardItem` + `navigator.clipboard.write`; failures toast.
+- **Allocation donuts** (4, `AllocationCharts.tsx`): **By Asset** (Crypto/Equities/Cash via `bucketFor()`; slice click drills the detail chart); **Detailed** (`Auto · All · Crypto · Cash · Equities`; Auto = dominant bucket, dynamic title; sub-2% → "Other" via `groupSmallDetailedSlices`); **By Storage** (CEX split Cash/Crypto; sub-3% → "Other" via `groupSmallStorageSlices`, CEX/Onchain protected); **Cash Breakdown** (by symbol). Custody filtered first. Titles/totals on separate header rows so dynamic titles never truncate. Center label = top item's %; hover shows `name · $value · %`; no Recharts Tooltip (overlaps legend); legends keep 44px targets.
+- **Chart image copy**: every chart card uses `ChartCopyButton` + `chartCopy.ts` → high-res PNG (copy button excluded). Recharts draw animations stay disabled so an immediate copy can't capture a partial SVG. Needs `ClipboardItem` + `navigator.clipboard.write`; failures toast.
 
 ### Dashboard Investor Default
 
@@ -268,15 +269,15 @@ Dashboard investor filter defaults to the primary owner (`isOwner = true`), not 
 
 ### Net Worth Card
 
-Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). The nine metrics stay in one ordered rail (YTD P&L, YTD Start, YTD ATH, MDD, MDD (1D), DD from ATH, Exposure, Positions, Trades). At `xl+` all nine share the available width; narrower screens keep one horizontally scrollable, snap-aligned rail with stable 9rem cells instead of wrapping into rows. Keep the scrollbar visible and the region keyboard-focusable. A compact footer shows the total in the alternate USD/SGD currency. `useDrawdownStats()` (`usePortfolio.ts`, shared with the Portfolio hero) summarizes YTD snapshots + live value: YTD ATH = highest value, MDD = largest peak-to-trough decline, MDD (1D) = largest day-over-day decline, DD from ATH = current decline from the YTD high. `calculatePortfolioDrawdownStats()` computes all four in one pass; drawdown helpers return positive magnitudes displayed as negative percentages. All labels have `HelpTooltip` (pass `label` for distinct accessible names). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use the shared `useAnimatedNumbers()` loop.
+Borderless hero with merged stats; title shows the investor label (`Net Worth (Nemo)`). The nine metrics stay in one ordered rail (YTD P&L, YTD Start, YTD ATH, MDD, MDD (1D), DD from ATH, Exposure, Positions, Trades). At `xl+` all nine share the available width; narrower screens keep one horizontally scrollable, snap-aligned rail with stable 9rem cells instead of wrapping into rows. Keep the scrollbar visible and the region keyboard-focusable. A compact footer shows the total in the alternate USD/SGD currency. `useDrawdownStats()` (`usePortfolio.ts`, shared with the Portfolio hero) summarizes YTD snapshots + live value via `calculatePortfolioDrawdownStats()` (all four drawdown metrics in one pass; helpers return positive magnitudes displayed as negative percentages). All labels have `HelpTooltip` (pass `label` for distinct accessible names). Tooltip buttons sit OUTSIDE `<Link>`s — never nest interactive content in a link. Key values use the shared `useAnimatedNumbers()` loop.
 
 ### Performers Card
 
-Borderless `divide-y` list, profit/loss-tinted title icons, muted tabular ranks. **Ranking** (`getTopPerformers`/`getWorstPerformers`): sort by absolute `unrealizedPnL` in USD, not percent.
+Borderless `divide-y` list, profit/loss-tinted title icons, muted tabular ranks. Ranking (`getTopPerformers`/`getWorstPerformers`): by absolute `unrealizedPnL` USD, not percent.
 
 ### Page Entrance Animations
 
-`animate-fade-in-up` on page headers only — no staggered section animations. Respects `prefers-reduced-motion`.
+`animate-fade-in-up` on page headers only — no staggered section animations. Respects `prefers-reduced-motion`; the `index.css` reduced-motion block zeroes tailwindcss-animate/collapsible utilities via attribute selectors (plain class selectors can't match variant-prefixed classes) — cover new animation utilities there.
 
 ### Settings & Investors Page Layouts
 
@@ -335,7 +336,7 @@ See **Dev Demo Route** (mocked `/api`, `/dev/demo`); **Local QA Auth Bypass** (s
 
 - **Hosts**: backend `https://api.foliobuddy.xyz` (Node), frontend `https://foliobuddy.xyz` (static, rewrites API calls), DB PostgreSQL on a private network.
 - **Auto-deploy**: backend via GitHub Actions on push to main (backend files); frontend via Vercel. DB backups daily/weekly/monthly to private object storage.
-- **Runbook**: `DEPLOYMENT.md` (public shape only; secrets in private ops notes) — Coolify deploy verification, deploy ordering (backend before frontend on API-path changes), env-var workflow (`printf`, never `echo`), uptime, monitoring, smoke checks, DB backups.
+- **Runbook**: `DEPLOYMENT.md` (public shape only; secrets in private ops notes) — deploy verification + ordering (backend before frontend on API-path changes), env-var workflow (`printf`, never `echo`), monitoring, smoke checks, backups.
 
 ### Copy/Paste JSON Import Pattern
 
@@ -344,12 +345,12 @@ Portfolio/Trades/History share one pattern: per-row clipboard icon, Copy All hea
 ### Branding
 
 - **App name**: FolioBuddy. **Logo**: `packages/frontend/public/logo.svg` (flat Embrace mark: near-black, indigo, warm bone). All in-app identity surfaces use `components/layout/BrandMark.tsx`; do not recreate the retired growth-chart mark inline.
-- **PWA icons**: `apple-touch-icon.png` + `public/icons/` are raster exports of the SVG master — keep in sync when the logo changes. `manifest.webmanifest` owns install metadata; `index.html` links the 180px Apple touch icon explicitly (the favicon doesn't control the iOS Home Screen icon).
+- **PWA icons**: `apple-touch-icon.png` + `public/icons/` are raster exports of the SVG master — keep in sync when the logo changes. `manifest.webmanifest` owns install metadata; `index.html` links the 180px Apple touch icon (the favicon doesn't control the iOS icon).
 - **Package scope**: `@foliobuddy/*` (root `foliobuddy`); repo `n3moxyz/foliobuddy`. Local DB `example_portfolio_db`; prod storage/bucket names in private ops notes.
 
 ### Clickable Rows (Keyboard Safety)
 
-Snapshot rows (AUTOMATIC) and position rows are clickable anywhere. Every keyboard-activatable row MUST guard `onKeyDown` with `e.currentTarget === e.target`, and the actions `TableCell` must stop BOTH `onClick` and `onKeyDown` propagation — else Enter/Space on a nested button bubbles to the row and fires the row action instead (WCAG 2.1.1). References: `TradeTable`, `PositionRow`, `SnapshotTable`.
+Snapshot rows (AUTOMATIC) and position rows are clickable anywhere. Every keyboard-activatable row MUST guard `onKeyDown` with `e.currentTarget === e.target`, and the actions `TableCell` must stop BOTH `onClick` and `onKeyDown` propagation — else Enter/Space on a nested button bubbles to the row and fires the row action instead (WCAG 2.1.1). Non-table clickable rows need it too. References: `TradeTable`, `PositionRow`, `SnapshotTable`, `PositionTable` mobile card rows.
 
 ## Design Context
 

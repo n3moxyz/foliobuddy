@@ -84,13 +84,17 @@ export function CreatableSelect({
     window.setTimeout(() => inputRef.current?.focus(), 0);
   };
 
-  const handleStartEditing = (event: MouseEvent<HTMLButtonElement>, option: string) => {
-    stopOptionAction(event);
+  const beginEditingOption = (option: string) => {
     onCancel();
     setEditingOption(option);
     setEditInputValue(option);
     setOpen(false);
     window.setTimeout(() => editInputRef.current?.focus(), 0);
+  };
+
+  const handleStartEditing = (event: MouseEvent<HTMLButtonElement>, option: string) => {
+    stopOptionAction(event);
+    beginEditingOption(option);
   };
 
   const handleCancelEditing = () => {
@@ -119,8 +123,7 @@ export function CreatableSelect({
     handleCancelEditing();
   };
 
-  const handleDeleteOption = (event: MouseEvent<HTMLButtonElement>, option: string) => {
-    stopOptionAction(event);
+  const removeOption = (option: string) => {
     const deleted = onDeleteOption?.(option);
     if (deleted === false) return;
 
@@ -132,6 +135,23 @@ export function CreatableSelect({
     }
     setOpen(false);
   };
+
+  const handleDeleteOption = (event: MouseEvent<HTMLButtonElement>, option: string) => {
+    stopOptionAction(event);
+    removeOption(option);
+  };
+
+  // Keyboard path for managing customs: the pencil/trash buttons inside the Radix
+  // Select popover are pointer-only (a listbox only exposes arrows/typeahead/Enter),
+  // so the same actions surface here for the currently selected custom option.
+  const selectedManageableOption =
+    canManageOptions && value && !adding && !editingOption
+      ? (options.find(
+          (option) =>
+            option.toLocaleLowerCase() === value.toLocaleLowerCase() &&
+            (isOptionEditable?.(option) ?? true)
+        ) ?? null)
+      : null;
 
   return (
     <div className="flex flex-col gap-2">
@@ -202,6 +222,37 @@ export function CreatableSelect({
           <SelectItem value={CREATE_OPTION_VALUE}>{addLabel}</SelectItem>
         </SelectContent>
       </Select>
+
+      {selectedManageableOption && (
+        <div className="flex gap-1.5">
+          {onEditOption && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs text-muted-foreground"
+              onClick={() => beginEditingOption(selectedManageableOption)}
+              aria-label={`Rename ${selectedManageableOption}`}
+            >
+              <Pencil className="mr-1 h-3 w-3" />
+              Rename
+            </Button>
+          )}
+          {onDeleteOption && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs text-muted-foreground"
+              onClick={() => removeOption(selectedManageableOption)}
+              aria-label={`Remove ${selectedManageableOption}`}
+            >
+              <Trash2 className="mr-1 h-3 w-3" />
+              Remove
+            </Button>
+          )}
+        </div>
+      )}
 
       {adding && (
         <div className="flex gap-2">

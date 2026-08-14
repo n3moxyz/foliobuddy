@@ -219,6 +219,7 @@ export default function History() {
             liveValueUsd={summary?.totalValueUsd}
             onEdit={setEditingSnapshot}
             onDelete={setDeletingSnapshot}
+            onAddSnapshot={() => setShowAddForm(true)}
           />
         </div>
       </Tabs>
@@ -325,7 +326,7 @@ export default function History() {
                 }}
                 disabled={deleteAllMutation.isPending}
               >
-                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All'}
+                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All Snapshots'}
               </Button>
             </div>
           </div>

@@ -36,7 +36,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
     if (!asset) return;
     const navNum = parseFloat(nav);
     if (!(navNum > 0)) {
-      setError('NAV must be positive');
+      setError('Enter a NAV greater than 0');
       return;
     }
 
