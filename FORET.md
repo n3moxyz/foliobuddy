@@ -1917,6 +1917,19 @@ const queryClient = new QueryClient({
 - Room system for user-specific messages
 - Built-in heartbeat to detect stale connections
 
+### The Public Landing Page
+
+For a long time, a stranger landing on foliobuddy.xyz hit a bare Clerk sign-in box — the app is invite-only, so the public domain told visitors nothing. The landing page (August 2026) fixes that: signed-out visitors at `/` now get a marketing page that shows what the app does, while sign-in moved to `/sign-in` (any other signed-out path still goes straight to sign-in, since deep links are almost always returning users).
+
+A few decisions worth remembering:
+
+- **The product is the hero.** Instead of screenshots, the hero is a hand-built miniature of the real dashboard — ticking net worth (reusing `useAnimatedNumber`), a self-drawing sparkline, the allocation donut, live-ish position rows — tilted in 3D and following the pointer. It's all fake, deterministic data in `landingData.ts`; the panel is `aria-hidden` and the copy carries the meaning.
+- **The scroll story explains snapshots better than words.** A 320vh section pins a year-long portfolio chart that draws itself as you scroll (inspired by ekrammethod.com). Milestone annotations appear as the line reaches them: daily 5 AM snapshot, drawdown from ATH, benchmark overlay vs BTC, new ATH. The stroke draw uses arc-length fractions (not x-fractions) so the visible line tip and the crosshair dot never desync on steep segments.
+- **SVG gotcha:** font-size on SVG `<text>` is in viewBox units, so axis labels that look fine on desktop become ~4px on a phone. Fix: larger font + fewer labels under the `sm` breakpoint.
+- **No recharts on the landing.** Everything is hand-rolled SVG, so the landing chunk stays ~33 kB (lazy) and the signed-in bundle is untouched.
+- **Forced dark.** The landing wraps itself in a `dark` class div — it's the one art-directed surface, and dark is the brand's primary theme. The app's own theme handling is untouched.
+- **Reduced motion is a real path, not an afterthought:** the scroll section renders fully drawn with all annotations as a static grid, entrances become instant, and the tilt/tick loops never start.
+
 ---
 
 ## Pre-Launch Checklist

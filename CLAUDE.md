@@ -140,6 +140,10 @@ Trades support an optional non-negative USD `fundingCost` (default `0`). Closed-
 
 All pages lazy-loaded (`React.lazy()` + `Suspense`); Vite `manualChunks` splits heavy vendors (recharts, socket.io-client, @sentry/react, @clerk/clerk-react).
 
+### Public Landing Page
+
+Signed-out `/` → lazy `pages/Landing.tsx` (sections in `components/landing/`); other signed-out paths → `pages/SignInPage.tsx`; signed-in `/sign-in` redirects to `/`. Landing forces dark via a `dark` wrapper, uses only deterministic local data (`landingData.ts`, no API calls), hand-rolled SVG (never recharts), and `landing-*` utilities in `index.css` (reduced-motion covered). Never let it grow the signed-in bundle.
+
 ### Dev Demo Route
 
 `src/dev/demoMode.tsx` — local-only `/dev/demo` route for UI testing without Clerk or a backend:
