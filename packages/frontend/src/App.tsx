@@ -1,16 +1,13 @@
 import { useState, lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
-import { dark } from '@clerk/themes';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { SignedIn, SignedOut } from '@clerk/clerk-react';
 import { AppShell } from './components/layout/AppShell';
 import { Skeleton } from './components/ui/skeleton';
 import { useAuthSetup, useLocalAuthBypassSetup } from './hooks/useAuthSetup';
 import { useThemeEffect } from './hooks/useThemeEffect';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
-import { BrandMark } from './components/layout/BrandMark';
 import { isLocalAuthBypassEnabled } from './lib/localAuthBypass';
-import { useThemeStore, resolveTheme } from './stores/themeStore';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const Portfolio = lazy(() => import('./pages/Portfolio'));
@@ -18,6 +15,8 @@ const Trades = lazy(() => import('./pages/Trades'));
 const History = lazy(() => import('./pages/History'));
 const Investors = lazy(() => import('./pages/Investors'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Landing = lazy(() => import('./pages/Landing'));
+const SignInPage = lazy(() => import('./pages/SignInPage'));
 const DemoModeApp = import.meta.env.DEV
   ? lazy(() => import('./dev/demoMode').then((module) => ({ default: module.DemoModeApp })))
   : null;
@@ -52,6 +51,8 @@ function AuthenticatedAppContent({ localAuthBypass = false }: { localAuthBypass?
             <Route path="/history" element={<History />} />
             <Route path="/investors" element={<Investors />} />
             <Route path="/settings" element={<Settings />} />
+            {/* Fresh sign-ins land on /sign-in; bounce them into the app. */}
+            <Route path="/sign-in" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </AppShell>
@@ -70,9 +71,32 @@ function LocalAuthenticatedApp() {
   return <AuthenticatedAppContent localAuthBypass />;
 }
 
+// Signed-out surface: the public landing at /, Clerk sign-in everywhere else
+// (deep links from returning users go straight to sign-in, not marketing).
+function PublicApp() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex min-h-screen items-center justify-center bg-background"
+        >
+          <span className="sr-only">Loading page…</span>
+          <Skeleton className="h-8 w-40" />
+        </div>
+      }
+    >
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="*" element={<SignInPage />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
 function App() {
   const localAuthBypassEnabled = isLocalAuthBypassEnabled();
-  const theme = useThemeStore((state) => state.theme);
 
   return (
     <Routes>
@@ -100,24 +124,7 @@ function App() {
           ) : (
             <>
               <SignedOut>
-                <div className="min-h-screen bg-background flex items-center justify-center">
-                  <div className="text-center space-y-6">
-                    <div className="flex flex-col items-center gap-2">
-                      <BrandMark className="mb-1 h-14 w-14" />
-                      <h1 className="text-3xl font-bold">FolioBuddy</h1>
-                      <p className="text-muted-foreground">Sign in to track your portfolio</p>
-                    </div>
-                    <SignIn
-                      appearance={{
-                        baseTheme: resolveTheme(theme) === 'dark' ? dark : undefined,
-                        elements: {
-                          rootBox: 'mx-auto',
-                          card: 'shadow-sm border',
-                        },
-                      }}
-                    />
-                  </div>
-                </div>
+                <PublicApp />
               </SignedOut>
 
               <SignedIn>

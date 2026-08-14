@@ -283,11 +283,103 @@
   animation: chart-period-change 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ---------- Public landing page (marketing route) ---------- */
+
+/* Press feedback for landing CTAs and demo controls. Longhand properties, not
+   the `transition` shorthand: this unlayered rule beats Tailwind's layered
+   `transition-colors`, and a shorthand would silently strip the color fade
+   from every Button it's combined with. */
+.landing-press {
+  transition-property: transform, color, background-color, border-color;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.landing-press:active {
+  transform: scale(0.97);
+}
+
+/* Reveal-once on scroll: transition-based (interruptible), same character as
+   animate-fade-in-up. Toggled by the Reveal component. */
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Hero sparkline draws itself on mount (pathLength is normalized to 1). */
+@keyframes landing-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.landing-draw-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: landing-draw 1.6s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+}
+
+@keyframes landing-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.landing-fade-late {
+  opacity: 0;
+  animation: landing-fade 0.8s ease-out 1.3s forwards;
+}
+
+/* Hero donut segments sweep in via stroke-dasharray transition. */
+.landing-donut-segment {
+  transition: stroke-dasharray 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Dotted grid backdrop behind the hero — chart-paper vernacular, faded at edges. */
+.landing-grid-bg {
+  background-image: radial-gradient(hsl(var(--muted-foreground) / 0.16) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 90% 80% at 65% 40%, black 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 65% 40%, black 20%, transparent 75%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+  .landing-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .landing-press,
+  .landing-donut-segment {
+    transition: none;
+  }
+  .landing-draw-line {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+  .landing-fade-late {
+    animation: none;
+    opacity: 1;
   }
   .animate-chart-period-change,
   .animate-highlight-flash,
