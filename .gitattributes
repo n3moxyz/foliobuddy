@@ -1,0 +1,23 @@
+# Check out every text file with LF on every OS, regardless of core.autocrlf.
+# Prettier's default endOfLine is "lf", so a CRLF checkout on Windows made
+# `npm run format:check` fail on hundreds of untouched files while CI (Linux)
+# passed. Git auto-detects binaries; images/xlsx are pinned below for safety.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF to run correctly.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets — never touch line endings.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.xlsx binary
+*.zip binary
