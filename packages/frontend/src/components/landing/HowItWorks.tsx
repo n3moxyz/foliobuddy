@@ -13,7 +13,7 @@ const STEPS = [
   {
     title: 'Let it run',
     detail:
-      'Prices refresh every minute. Every morning at 5 AM Singapore time, a snapshot records your whole portfolio — value, allocation, P&L.',
+      'Prices refresh every minute. Every morning, a snapshot records your whole portfolio — value, allocation, P&L.',
   },
   {
     title: 'Review with clear eyes',

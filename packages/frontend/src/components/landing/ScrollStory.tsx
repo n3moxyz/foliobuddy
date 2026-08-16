@@ -92,12 +92,11 @@ export function ScrollStory() {
   return (
     <section aria-labelledby="scroll-story-heading">
       <p className="sr-only">
-        Illustration: one year of a portfolio recorded by FolioBuddy. Every morning at 5 AM
-        Singapore time a snapshot records the whole portfolio, and those snapshots build the value
-        line. Drawdowns are measured plainly from the peak — this example year includes a 9.6
-        percent drawdown from the all-time high. Benchmarks such as Bitcoin, Ethereum and the
-        S&amp;P 500 can be overlaid for comparison, and the illustrative year ends at a new all-time
-        high, up 18.4 percent.
+        Illustration: one year of a portfolio recorded by FolioBuddy. Every morning a snapshot
+        records the whole portfolio, and those snapshots build the value line. Drawdowns are
+        measured plainly from the peak — this example year includes a 9.6 percent drawdown from the
+        all-time high. Benchmarks such as Bitcoin, Ethereum and the S&amp;P 500 can be overlaid for
+        comparison, and the illustrative year ends at a new all-time high, up 18.4 percent.
       </p>
 
       <div ref={containerRef} className={cn(!reduced && 'h-[320vh]')}>

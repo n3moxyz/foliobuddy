@@ -182,7 +182,7 @@ export const SCROLL_MILESTONES: ScrollMilestone[] = [
   {
     id: 'snapshot',
     anchor: 0.16,
-    title: 'Daily snapshot · 5:00 AM SGT',
+    title: 'Daily snapshot',
     detail:
       'Every morning FolioBuddy records your whole portfolio — value, allocation, per-position P&L. The line is built from those snapshots, not from memory.',
   },

@@ -29,7 +29,7 @@ function Block({
 const LEDGER_ROWS = [
   { symbol: 'BTC', detail: 'Binance · CEX', chip: 'Crypto', dot: 'bg-crypto' },
   { symbol: 'NVDA', detail: 'IBKR · Broker', chip: 'Equities', dot: 'bg-equities' },
-  { symbol: 'AB Income', detail: 'FSMOne · Unit Trust', chip: 'Equities', dot: 'bg-equities' },
+  { symbol: 'AB Income', detail: 'Broker · Unit Trust', chip: 'Equities', dot: 'bg-equities' },
   { symbol: 'USDC', detail: 'Onchain · Wallet', chip: 'Cash', dot: 'bg-cash' },
   { symbol: 'ETH', detail: 'Held for Others · Ledger', chip: 'Custody', dot: 'bg-custody' },
 ];
@@ -164,8 +164,8 @@ function StatementDemo() {
       <div className="flex items-center gap-3 rounded-md border border-dashed px-3 py-2.5">
         <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
-          <div className="text-[13px] font-medium leading-tight">UOBKH-statement-Jun.pdf</div>
-          <div className="text-[11px] text-muted-foreground">UOB Kay Hian · FSMOne supported</div>
+          <div className="text-[13px] font-medium leading-tight">broker-statement-Jun.pdf</div>
+          <div className="text-[11px] text-muted-foreground">Monthly holdings statement · PDF</div>
         </div>
       </div>
       <div className="flex justify-center text-muted-foreground">
