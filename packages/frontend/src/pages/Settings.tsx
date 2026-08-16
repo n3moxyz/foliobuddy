@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { BrandMark } from '@/components/layout/BrandMark';
+import { SnapshotScheduleSection } from '@/components/settings/SnapshotScheduleSection';
 import { RefreshCw, Download, Camera } from 'lucide-react';
 
 export default function Settings() {
@@ -174,6 +175,10 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      <Separator />
+
+      <SnapshotScheduleSection />
 
       <Separator />
 
