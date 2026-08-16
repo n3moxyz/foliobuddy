@@ -9,12 +9,16 @@ datasource db {
 
 // User model - supports multi-user if needed
 model User {
-  id              String            @id @default(cuid())
-  email           String            @unique
-  name            String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  positions       Position[]
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String?
+  // Daily snapshot preference: local hour (0-23) in an IANA timezone.
+  // Defaults preserve the original global 5am Asia/Singapore schedule.
+  snapshotHour     Int               @default(5)
+  snapshotTimezone String            @default("Asia/Singapore")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  positions        Position[]
   positionHistory PositionHistory[]
   trades          Trade[]
   investors       Investor[]

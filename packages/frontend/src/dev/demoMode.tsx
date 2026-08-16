@@ -29,6 +29,7 @@ import type {
   Trade,
   TradeAnalytics,
   UpdatePositionData,
+  UserPreferences,
 } from '@/lib/types';
 
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
@@ -948,6 +949,8 @@ const initialPerformance: PerformancePoint[] = [
 ];
 
 const dbHealth: DbHealth = { status: 'ok', latency_ms: 22 };
+// Stateful (resets on refresh) so the Settings snapshot-schedule selects round-trip.
+let demoPreferences: UserPreferences = { snapshotHour: 5, snapshotTimezone: 'Asia/Singapore' };
 const fxRates: FxRate[] = [
   { id: 'usd-sgd', fromCcy: 'USD', toCcy: 'SGD', rate: 1.3471, timestamp: NOW },
   { id: 'usd-jpy', fromCcy: 'USD', toCcy: 'JPY', rate: 150, timestamp: NOW },
@@ -2177,6 +2180,12 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
     return json({ count });
   }
   if (path === '/api/health/db' && method === 'GET') return json(dbHealth);
+  if (path === '/api/users/me/preferences' && method === 'GET') return json(demoPreferences);
+  if (path === '/api/users/me/preferences' && method === 'PATCH') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as Partial<UserPreferences>;
+    demoPreferences = { ...demoPreferences, ...body };
+    return json(demoPreferences);
+  }
   if (path === '/api/fx/rates' && method === 'GET') return json(fxRates);
   if (path === '/api/fx/refresh' && method === 'POST') return json({ rates: fxRates });
   if (path === '/api/prices/current' && method === 'GET') return json(getCurrentPrices());

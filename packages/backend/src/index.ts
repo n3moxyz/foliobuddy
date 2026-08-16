@@ -14,6 +14,7 @@ import snapshotsRouter from './routes/snapshots.js';
 import pricesRouter from './routes/prices.js';
 import fxRouter from './routes/fx.js';
 import exportRouter from './routes/export.js';
+import usersRouter from './routes/users.js';
 import agentRouter from './routes/agent.js';
 import healthRouter from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -114,6 +115,7 @@ v1Router.use('/snapshots', ensureUser, snapshotsRouter);
 v1Router.use('/prices', pricesRouter);
 v1Router.use('/fx', fxRouter);
 v1Router.use('/export', ensureUser, exportRouter);
+v1Router.use('/users', ensureUser, usersRouter);
 v1Router.use('/agent', agentAuth, agentRouter);
 
 app.use('/api/v1', v1Router);

@@ -1930,6 +1930,21 @@ A few decisions worth remembering:
 - **Forced dark.** The landing wraps itself in a `dark` class div — it's the one art-directed surface, and dark is the brand's primary theme. The app's own theme handling is untouched.
 - **Reduced motion is a real path, not an afterthought:** the scroll section renders fully drawn with all annotations as a static grid, entrances become instant, and the tilt/tick loops never start.
 
+### Per-User Snapshot Time
+
+The daily snapshot used to be one hard-coded cron: `0 5 * * *` in `Asia/Singapore`, looping every user. Fine for one person in one city; wrong the moment a friend wants their snapshot at 1 AM, or lives in New York. August 2026 made it a per-user preference: `User.snapshotHour` + `User.snapshotTimezone`, defaulting to `5` / `Asia/Singapore` so nobody's schedule moved on migration.
+
+How it works now — the scheduler ticks **every hour** (`0 * * * *`, UTC) and, for each user, asks "what's the wall-clock hour in _their_ timezone right now?" If it equals their chosen hour, they get snapshotted. Weekly on their local Sunday, monthly on their local 1st, all at the same hour. `lib/snapshotSchedule.ts` does the calendar math through `Intl.DateTimeFormat`, so DST is the runtime's problem, not ours (a New York 8 AM correctly lands at 12:00 UTC in summer and 13:00 UTC in winter — there's a test for exactly that).
+
+Things worth remembering:
+
+- **There is no DB unique constraint on (user, type, day) for snapshots.** CLAUDE.md used to say "unique constraint + check-before-create"; only the second half was ever true, and only in the catch-up path. With an hourly tick a missing dedupe would mean up to 24 snapshots a day, so `createSnapshotOnce()` now checks the user's _local_ calendar day before every create — daily, weekly, and monthly. If you ever add a real constraint, keep the check anyway; the constraint would need a generated local-day column to express, which isn't worth it.
+- **Corrupt preferences degrade to defaults, never to silence.** `resolvePreference()` treats an invalid hour or an unknown timezone (say, from a hand-edited row) as `5` / `Asia/Singapore` instead of throwing inside the loop and starving every other user. The API also validates on the way in — Zod requires an integer 0–23 and a timezone `Intl` can actually format, so `SGT` and `Mars/Olympus` both 400.
+- **The catch-up-on-boot logic went per-user too.** It used to ask "is it past 5 AM SGT?"; now it asks, per user, "has _your_ scheduled instant for today passed, and is today's DAILY snapshot missing?"
+- **One deliberate behaviour change:** weekly snapshots used to fire at Sunday 00:00 UTC for everyone. They now fire at each user's own snapshot hour on their local Sunday — coherent with daily/monthly, and it means all three land together in the user's morning. For the default it moved from 08:00 SGT to 05:00 SGT once.
+- **Frontend `tsconfig.lib` predates `Intl.supportedValuesOf`** (ES2023), so `snapshotPreferences.ts` reads it structurally with a fallback list rather than bumping the whole project's lib target for one call.
+- **Preview-server gotcha while building this:** `preview_start` launches from the session's original directory, so after switching worktrees it kept serving the _old_ worktree's source on :4000 — the new Settings section simply wasn't in the served `Settings.tsx`. If a change "isn't showing up" in a worktree, fetch the source file from the dev server and grep for your symbol before debugging React. Fix was starting Vite by hand from the right directory.
+
 ---
 
 ## Pre-Launch Checklist

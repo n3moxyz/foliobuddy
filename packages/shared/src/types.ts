@@ -527,6 +527,14 @@ export interface FxRate {
   timestamp: string;
 }
 
+/** Per-user daily snapshot schedule: local hour (0-23) in an IANA timezone. */
+export interface UserPreferences {
+  snapshotHour: number;
+  snapshotTimezone: string;
+}
+
+export type UpdateUserPreferencesData = Partial<UserPreferences>;
+
 export interface CurrencyConversion {
   amount: number;
   from: string;

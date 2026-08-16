@@ -37,6 +37,8 @@ import type {
   TradeAnalytics,
   UpdatePositionData,
   UpdateSnapshotData,
+  UpdateUserPreferencesData,
+  UserPreferences,
 } from './types';
 
 export * from './types';
@@ -331,6 +333,14 @@ export const api = {
   convertCurrency: (amount: number, from: string, to: string) =>
     request<CurrencyConversion>(`/fx/convert?amount=${amount}&from=${from}&to=${to}`),
   refreshFxRates: () => request<{ rates: FxRate[] }>('/fx/refresh', { method: 'POST' }),
+
+  // User preferences (daily snapshot schedule)
+  getUserPreferences: () => request<UserPreferences>('/users/me/preferences'),
+  updateUserPreferences: (data: UpdateUserPreferencesData) =>
+    request<UserPreferences>('/users/me/preferences', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 
   // Export
   exportPositionsCsv: () => `${API_BASE}/export/csv/positions`,

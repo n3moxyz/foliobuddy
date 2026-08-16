@@ -89,7 +89,7 @@ First-time Clerk users are auto-created via `ensureUser` middleware.
 
 ### Snapshot System
 
-Captures portfolio state over time; calculates daily/weekly/monthly/YTD returns + benchmark outperformance vs BTC/ETH. Automatic daily snapshots run at **5am SGT** (`Asia/Singapore` cron timezone); catch-up + first-of-month checks use the Singapore calendar day. Return fields stored as `percent × 100`. YTD anchor = first snapshot of the _current calendar year_ (`timestamp >= Jan 1 UTC` in `portfolioService.getSummary()`) — never an unfiltered `findFirst orderBy:asc`. Backfill one-shot: `packages/backend/scripts/backfill-equity-snapshots.ts`.
+Captures portfolio state over time; calculates daily/weekly/monthly/YTD returns + benchmark outperformance vs BTC/ETH. **Per-user schedule**: `User.snapshotHour` (0–23) + `User.snapshotTimezone` (IANA), default `5` / `Asia/Singapore`; edited via `GET/PATCH /users/me/preferences` (Zod: hour int, tz must format in `Intl`) and Settings → Daily Snapshot. Scheduler ticks hourly (`0 * * * *` UTC) and snapshots users whose local hour matches (`lib/snapshotSchedule.ts` — Intl-based, DST-safe); WEEKLY on their local Sunday, MONTHLY on their local 1st. Snapshot has **no DB uniqueness** on (user, type, day) — `createSnapshotOnce()` check-before-create in the user's local day is the only dedupe; keep it. Return fields stored as `percent × 100`. YTD anchor = first snapshot of the _current calendar year_ (`timestamp >= Jan 1 UTC` in `portfolioService.getSummary()`) — never an unfiltered `findFirst orderBy:asc`. Backfill one-shot: `packages/backend/scripts/backfill-equity-snapshots.ts`.
 
 ### Yahoo Search & Local-Currency Equities
 

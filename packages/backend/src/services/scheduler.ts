@@ -5,51 +5,77 @@ import { socketService } from './socketService.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
 import { usdRateEntries } from '../lib/fxConstants.js';
+import {
+  getLocalParts,
+  isSnapshotHourNow,
+  localDayBounds,
+  resolvePreference,
+  scheduledSnapshotAt,
+} from '../lib/snapshotSchedule.js';
 
-const SINGAPORE_TIME_ZONE = 'Asia/Singapore';
-const SINGAPORE_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
-const DAILY_SNAPSHOT_HOUR_SGT = 5;
+const SNAPSHOT_USER_SELECT = { id: true, snapshotHour: true, snapshotTimezone: true } as const;
 
-function getSingaporeSnapshotDay(now: Date): {
-  dayOfMonth: number;
-  scheduledAt: Date;
-  start: Date;
-  end: Date;
-} {
-  const singaporeNow = new Date(now.getTime() + SINGAPORE_UTC_OFFSET_MS);
-  const start = new Date(
-    Date.UTC(singaporeNow.getUTCFullYear(), singaporeNow.getUTCMonth(), singaporeNow.getUTCDate()) -
-      SINGAPORE_UTC_OFFSET_MS
-  );
+type SnapshotUser = {
+  id: string;
+  snapshotHour: number;
+  snapshotTimezone: string;
+};
 
-  return {
-    dayOfMonth: singaporeNow.getUTCDate(),
-    scheduledAt: new Date(start.getTime() + DAILY_SNAPSHOT_HOUR_SGT * 60 * 60 * 1000),
-    start,
-    end: new Date(start.getTime() + 24 * 60 * 60 * 1000),
-  };
+/**
+ * True when the user already has a snapshot of `snapshotType` inside their local
+ * calendar day containing `now`. Snapshot has no DB uniqueness on (user, type, day),
+ * so this check-before-create is the only duplicate guard — required now that the
+ * scheduler ticks hourly rather than once a day.
+ */
+async function hasSnapshotForLocalDay(
+  user: SnapshotUser,
+  snapshotType: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+  now: Date
+): Promise<boolean> {
+  const { timeZone } = resolvePreference(user);
+  const { start, end } = localDayBounds(now, timeZone);
+  const existing = await prisma.snapshot.findFirst({
+    where: {
+      userId: user.id,
+      snapshotType,
+      timestamp: { gte: start, lt: end },
+    },
+    select: { id: true },
+  });
+  return existing !== null;
+}
+
+async function createSnapshotOnce(
+  user: SnapshotUser,
+  snapshotType: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+  now: Date,
+  reason: string
+): Promise<void> {
+  try {
+    if (await hasSnapshotForLocalDay(user, snapshotType, now)) {
+      logger.info(`[Snapshot] ${snapshotType} snapshot already exists today for user ${user.id}`);
+      return;
+    }
+    const snapshotId = await snapshotService.createSnapshot(user.id, snapshotType);
+    logger.info(
+      `[Snapshot] Created ${reason} ${snapshotType} snapshot ${snapshotId} for user ${user.id}`
+    );
+  } catch (error) {
+    logger.error(`[Snapshot] Error creating ${snapshotType} snapshot for user ${user.id}:`, error);
+  }
 }
 
 /**
- * Check and create missing daily snapshots on server startup
- * Only creates a catch-up snapshot if we're past 5am SGT and no snapshot exists for the
- * current Singapore calendar day.
+ * Check and create missing daily snapshots on server startup.
+ * For each user: if their scheduled snapshot time for today (in their timezone)
+ * has already passed and no DAILY snapshot exists for that local day, create one.
  */
 export async function createMissingSnapshots(): Promise<void> {
   try {
     logger.info('[Snapshot] Checking for missing daily snapshots...');
 
     const now = new Date();
-    const snapshotDay = getSingaporeSnapshotDay(now);
-
-    if (now < snapshotDay.scheduledAt) {
-      logger.info('[Snapshot] Before 5am SGT - skipping catch-up (scheduled snapshot not due yet)');
-      return;
-    }
-
-    const users = await prisma.user.findMany({
-      select: { id: true },
-    });
+    const users = await prisma.user.findMany({ select: SNAPSHOT_USER_SELECT });
 
     if (users.length === 0) {
       logger.info('[Snapshot] No users found, skipping catch-up');
@@ -57,29 +83,14 @@ export async function createMissingSnapshots(): Promise<void> {
     }
 
     for (const user of users) {
-      try {
-        const existingSnapshot = await prisma.snapshot.findFirst({
-          where: {
-            userId: user.id,
-            snapshotType: 'DAILY',
-            timestamp: {
-              gte: snapshotDay.start,
-              lt: snapshotDay.end,
-            },
-          },
-        });
-
-        if (!existingSnapshot) {
-          const snapshotId = await snapshotService.createSnapshot(user.id, 'DAILY');
-          logger.info(
-            `[Snapshot] Created catch-up daily snapshot ${snapshotId} for user ${user.id}`
-          );
-        } else {
-          logger.info(`[Snapshot] Daily snapshot already exists for user ${user.id}`);
-        }
-      } catch (error) {
-        logger.error(`[Snapshot] Error checking/creating snapshot for user ${user.id}:`, error);
+      const { hour, timeZone } = resolvePreference(user);
+      if (now < scheduledSnapshotAt(now, timeZone, hour)) {
+        logger.info(
+          `[Snapshot] User ${user.id}: scheduled ${hour}:00 ${timeZone} not due yet - skipping catch-up`
+        );
+        continue;
       }
+      await createSnapshotOnce(user, 'DAILY', now, 'catch-up');
     }
 
     logger.info('[Snapshot] Catch-up check complete');
@@ -130,73 +141,48 @@ export function startEquityRefreshJob(): void {
 }
 
 /**
- * Start the snapshot job (daily at 5am SGT)
+ * Run one hourly snapshot tick: every user whose local wall-clock hour equals
+ * their configured snapshot hour gets a DAILY snapshot, plus WEEKLY on their
+ * local Sunday and MONTHLY on their local 1st. Exported for tests.
+ */
+export async function runSnapshotTick(now: Date = new Date()): Promise<void> {
+  try {
+    const users = await prisma.user.findMany({ select: SNAPSHOT_USER_SELECT });
+    const due = users.filter((user) => isSnapshotHourNow(now, user));
+
+    if (due.length === 0) {
+      logger.debug(`[Snapshot] Hourly tick: no users due at ${now.toISOString()}`);
+      return;
+    }
+
+    logger.info(`[Snapshot] Hourly tick: ${due.length} user(s) due`);
+
+    for (const user of due) {
+      await createSnapshotOnce(user, 'DAILY', now, 'daily');
+
+      const { timeZone } = resolvePreference(user);
+      const local = getLocalParts(now, timeZone);
+
+      if (local.weekday === 0) {
+        await createSnapshotOnce(user, 'WEEKLY', now, 'weekly');
+      }
+      if (local.day === 1) {
+        await createSnapshotOnce(user, 'MONTHLY', now, 'monthly');
+      }
+    }
+  } catch (error) {
+    logger.error('[Snapshot] Error:', error);
+  }
+}
+
+/**
+ * Start the snapshot job. Ticks at the top of every hour (UTC) and lets each
+ * user's stored hour + timezone decide whether they are due — replaces the old
+ * single global 5am Asia/Singapore cron. Defaults reproduce that schedule.
  */
 export function startSnapshotJob(): void {
-  logger.info('📸 Starting snapshot scheduler (5am SGT)');
-
-  cron.schedule(
-    '0 5 * * *',
-    async () => {
-      try {
-        logger.info('[Snapshot] Creating daily snapshots...');
-
-        const users = await prisma.user.findMany({
-          select: { id: true },
-        });
-
-        for (const user of users) {
-          try {
-            const snapshotId = await snapshotService.createSnapshot(user.id, 'DAILY');
-            logger.info(`[Snapshot] Created daily snapshot ${snapshotId} for user ${user.id}`);
-          } catch (error) {
-            logger.error(`[Snapshot] Error creating snapshot for user ${user.id}:`, error);
-          }
-        }
-
-        // The cron fires at 21:00 UTC on the previous date, so use the Singapore date here.
-        if (getSingaporeSnapshotDay(new Date()).dayOfMonth === 1) {
-          logger.info('[Snapshot] First of month - creating monthly snapshots...');
-          for (const user of users) {
-            try {
-              const snapshotId = await snapshotService.createSnapshot(user.id, 'MONTHLY');
-              logger.info(`[Snapshot] Created monthly snapshot ${snapshotId} for user ${user.id}`);
-            } catch (error) {
-              logger.error(
-                `[Snapshot] Error creating monthly snapshot for user ${user.id}:`,
-                error
-              );
-            }
-          }
-        }
-      } catch (error) {
-        logger.error('[Snapshot] Error:', error);
-      }
-    },
-    { timezone: SINGAPORE_TIME_ZONE }
-  );
-
-  // Run weekly on Sunday at 00:00 UTC
-  cron.schedule('0 0 * * 0', async () => {
-    try {
-      logger.info('[Snapshot] Creating weekly snapshots...');
-
-      const users = await prisma.user.findMany({
-        select: { id: true },
-      });
-
-      for (const user of users) {
-        try {
-          const snapshotId = await snapshotService.createSnapshot(user.id, 'WEEKLY');
-          logger.info(`[Snapshot] Created weekly snapshot ${snapshotId} for user ${user.id}`);
-        } catch (error) {
-          logger.error(`[Snapshot] Error creating weekly snapshot for user ${user.id}:`, error);
-        }
-      }
-    } catch (error) {
-      logger.error('[Snapshot] Error:', error);
-    }
-  });
+  logger.info('📸 Starting snapshot scheduler (hourly tick, per-user local hour)');
+  cron.schedule('0 * * * *', () => runSnapshotTick());
 }
 
 /**
