@@ -55,4 +55,20 @@ describe('startup checks', () => {
 
     expect(mocks.logger.warn).not.toHaveBeenCalled();
   });
+
+  it('always states in production that access gating depends on the Clerk access mode', () => {
+    process.env.ADMIN_USER_IDS = 'user_123';
+    warnOnMissingProductionConfig();
+
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('Clerk instance Access mode')
+    );
+  });
+
+  it('does not log the Clerk reminder outside production', () => {
+    process.env.NODE_ENV = 'development';
+    warnOnMissingProductionConfig();
+
+    expect(mocks.logger.info).not.toHaveBeenCalled();
+  });
 });
