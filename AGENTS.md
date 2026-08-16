@@ -28,7 +28,7 @@
 ### Frontend
 
 - `src/App.tsx` (routing); `src/pages/` (Dashboard, Portfolio, Trades, Investors, Settings); `src/stores/` (Zustand)
-- `src/hooks/` - React Query hooks (usePortfolio incl. `useDrawdownStats`, useTrades, …) + `useAnimatedNumber` (rAF ticker), `usePageTitle`, `useKeyboardShortcuts` (single-key nav, disableable via `stores/shortcutsStore` — WCAG 2.1.4), `useMoneyFormatter` (global monetary privacy); tests in `__tests__/`
+- `src/hooks/` - React Query hooks (usePortfolio incl. `useDrawdownStats`, useTrades, …), `useAnimatedNumber` (rAF), `usePageTitle`, `useKeyboardShortcuts` (single-key nav; disableable via `stores/shortcutsStore`, WCAG 2.1.4), `useMoneyFormatter` (monetary privacy); tests in `__tests__/`
 - `src/lib/api.ts` (API client), `types.ts`, `chartColors.ts` (OKLCH CSS-var chart colors), `chartUtils.ts` (time-period date helpers + drawdown math)
 - `src/components/ui/` - `skeleton.tsx`, `HelpTooltip.tsx`, `creatable-select.tsx` ("+ Add new ..." Radix Select), `formatted-number-input.tsx` (thousands-separator input; pure helpers in `-utils.ts` for Fast Refresh)
 - `src/components/layout/PageActionHeader.tsx` - Sticky title/action header for high-scroll data pages
@@ -140,6 +140,10 @@ Trades support an optional non-negative USD `fundingCost` (default `0`). Closed-
 
 All pages lazy-loaded (`React.lazy()` + `Suspense`); Vite `manualChunks` splits heavy vendors (recharts, socket.io-client, @sentry/react, @clerk/clerk-react).
 
+### Public Landing Page
+
+Signed-out `/` → lazy `pages/Landing.tsx` (sections in `components/landing/`); other signed-out paths → `pages/SignInPage.tsx`; signed-in `/sign-in` redirects to `/`. Landing forces dark via a `dark` wrapper, uses only deterministic local data (`landingData.ts`, no API calls), hand-rolled SVG (never recharts), and `landing-*` utilities in `index.css` (reduced-motion covered). Never let it grow the signed-in bundle.
+
 ### Dev Demo Route
 
 `src/dev/demoMode.tsx` — local-only `/dev/demo` route for UI testing without Clerk or a backend:
@@ -170,15 +174,15 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 
 ### Async Feedback (Toasts + Status)
 
-Feedback layer is sonner: `AppToaster` in `main.tsx` (themed via `resolveTheme`) plus a global `MutationCache.onError` that toasts every failed mutation — UI handlers must never fail silently (`console.error`-only catch blocks are a bug). Copy/refresh/snapshot handlers toast success + failure. Loading skeletons carry `role="status"` + sr-only text; inline form errors use `role="alert"` + `aria-invalid`/`aria-describedby` on the field.
+sonner: `AppToaster` in `main.tsx` (themed via `resolveTheme`) + global `MutationCache.onError` toasts every failed mutation — handlers must never fail silently (`console.error`-only catch = bug). Copy/refresh/snapshot handlers toast success + failure. Skeletons carry `role="status"` + sr-only text; inline form errors use `role="alert"` + `aria-invalid`/`aria-describedby`.
 
 ### Responsive Mobile Design
 
 iOS HIG-inspired patterns on all pages:
 
-- **Mobile tables → card rows**: below `md`, `PositionTable` renders stacked card rows (`renderMobilePositionRow`); full table only when "All columns" is toggled (`showMobileColumnToggle`). `mobileVariant`: `focus` (symbol+name, value, P&L pill, meta) or `compact` (value + P&L). Row actions collapse into a 44px `⋮` menu. Trades column-hides (`hidden md:table-cell`) instead.
+- **Mobile tables → card rows**: below `md`, `PositionTable` renders card rows (`renderMobilePositionRow`); full table only when "All columns" is toggled (`showMobileColumnToggle`). `mobileVariant`: `focus` (symbol+name, value, P&L pill, meta) or `compact` (value + P&L). Row actions collapse into a 44px `⋮` menu. Trades column-hides (`hidden md:table-cell`).
 - **Mobile dialogs → bottom sheet**: content-heavy detail dialogs dock full-width to the bottom edge on mobile (`!bottom-0 … rounded-t-lg` + `pb-[max(1rem,env(safe-area-inset-bottom))]`), centered modal at `sm+`.
-- **Touch targets**: 44px mobile hit areas compacting at `sm+`/`md+` — shared `Button` sizes, sortable headers, allocation legends, `HelpTooltip`. `Input`, `SelectTrigger`, `DropdownMenuItem`, asset-search options, and creatable-select row actions bake the `h-11`/`min-h-11` → `sm:` compaction into the primitives — don't re-add per-call-site heights. Dense row actions need `shrink-0`.
+- **Touch targets**: 44px mobile hit areas compacting at `sm+`/`md+` (`Button` sizes, sortable headers, allocation legends, `HelpTooltip`). `Input`, `SelectTrigger`, `DropdownMenuItem`, asset-search options, creatable-select row actions bake `h-11`/`min-h-11` → `sm:` into the primitives — don't re-add per-call-site heights. Dense row actions need `shrink-0`.
 - **Responsive headers**: `flex-col gap-3 sm:flex-row`; secondary actions move to `DropdownMenu` overflow.
 - **Dialog safety**: `w-[calc(100%-2rem)]` margins + `max-h-[85vh] overflow-y-auto`.
 
@@ -188,7 +192,7 @@ iOS HIG-inspired patterns on all pages:
 
 Use `formatCurrency` for totals/sizes/P&L. For cost/total _amounts_ use `currencyDecimals(currency)` (0 for JPY/KRW, else 2) — not magnitude-based `priceDecimals`.
 
-Portfolio rows keep the app currency as primary price + avg cost; if `asset.nativeCurrency` differs, a muted second line under **Price**/**Avg Cost** uses `localPriceLabel()` + the `/fx/rates` USD→native map (full-opacity `text-muted-foreground` — opacity variants fail contrast at 11px). Never store native current price on `Asset` — derive from USD × FX.
+Portfolio rows show app-currency price + avg cost; if `asset.nativeCurrency` differs, a muted second line under **Price**/**Avg Cost** uses `localPriceLabel()` + the `/fx/rates` USD→native map (full-opacity `text-muted-foreground` — opacity variants fail contrast at 11px). Never store native price on `Asset` — derive from USD × FX.
 
 ### Smart Quantity Formatting
 
@@ -196,11 +200,11 @@ Use `formatQuantity()` for read-only quantity displays (tables, dialogs, history
 
 ### Formatted Amount Inputs
 
-Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fields — renders `10,000` while keeping raw-string state so `parseFloat()`/payloads stay safe. Don't use raw `type="number"` for finance amounts unless native min/max is needed. Never coerce leading-negative input positive (`sanitizeNumberInput('-1')` → `''`). Gate submit on `isPositiveNumberInput()`/`isNonNegativeNumberInput()` (`src/lib/formValidation.ts`) — not `required`/`parseFloat` — so the UI guard matches the backend Zod rule.
+Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fields — renders `10,000` over raw-string state so `parseFloat()`/payloads stay safe. Avoid raw `type="number"` for finance amounts unless native min/max is needed. Never coerce leading-negative input positive (`sanitizeNumberInput('-1')` → `''`). Gate submit on `isPositiveNumberInput()`/`isNonNegativeNumberInput()` (`src/lib/formValidation.ts`), not `required`/`parseFloat`, so the UI guard matches backend Zod.
 
 ### Trades Review Lenses
 
-`Trades.tsx` — three lenses above the shared Trade Tape table: **Review** (default; collapsed `TradeStatsCard` + `TickerPnLCard`, then the All/Open/Closed table), **Ticker Dossier** (`?ticker=SOL`; per-ticker stats — the chip clears the param), **Monthly Postmortem** (`?view=monthly`; month summaries, edge tags, loss review, open watchlist). Fetches all trades once via `useTrades()`, filters locally so lens summaries survive tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with seeded rows. `TradeForm` edit = optional `trade` prop; defaults entry 5 days ago, exit today. Tape rows are clickable + keyboard-activatable (see Clickable Rows). Lens UI in `TradeLensViews.tsx`, aggregation in `tradeLensModels.ts`.
+`Trades.tsx` — three lenses above the shared Trade Tape table: **Review** (default; collapsed `TradeStatsCard` + `TickerPnLCard`, then All/Open/Closed table), **Ticker Dossier** (`?ticker=SOL`; per-ticker stats — chip clears the param), **Monthly Postmortem** (`?view=monthly`; month summaries, edge tags, loss review, open watchlist). Fetches all trades once via `useTrades()` and filters locally so lens summaries survive tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with seeded rows. `TradeForm` edit = optional `trade` prop; defaults entry 5 days ago, exit today. Tape rows are clickable + keyboard-activatable (see Clickable Rows). Lens UI: `TradeLensViews.tsx`; aggregation: `tradeLensModels.ts`.
 
 ### Portfolio Hero Summary
 
@@ -208,7 +212,7 @@ Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tab
 
 ### Portfolio Section Headers
 
-Two-level grouping on all breakpoints: **Crypto/Equities/Cash** (primary, `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, `PositionTable`); Equities honors the persisted By Broker / By Type choice. `CollapsibleCard` takes `icon` + `accentColor` (category tokens `crypto`/`equities`/`cash`/`custody` in `index.css` + `tailwind.config.js` — never raw `-500` palette; custody accent centralized in `CUSTODY_CONFIG`). Its heading wraps the trigger (`<h2><button>`, never the reverse — invalid HTML + hides the heading from SR navigation). Secondary triggers always show their dollar total. Desktop (`hidden sm:block`) uses full table rows; mobile (`sm:hidden`) keeps the hierarchy with `mobileVariant="compact"`, no column toggle. Custody renders in its own section on both.
+Two-level grouping on all breakpoints: **Crypto/Equities/Cash** (primary, `Portfolio.tsx` via `CollapsibleCard`) → **CEX/Broker account/Bank/Onchain** (secondary, `PositionTable`); Equities honors the persisted By Broker / By Type choice. `CollapsibleCard` takes `icon` + `accentColor` (category tokens `crypto`/`equities`/`cash`/`custody` in `index.css` + `tailwind.config.js` — never raw `-500` palette; custody accent in `CUSTODY_CONFIG`). Heading wraps trigger (`<h2><button>`, never the reverse — invalid HTML + hides heading from SR nav). Secondary triggers always show their dollar total. Desktop (`hidden sm:block`) = full table rows; mobile (`sm:hidden`) keeps the hierarchy with `mobileVariant="compact"`, no column toggle. Custody gets its own section on both.
 
 ### Custody Positions ("Held for Others")
 
@@ -218,25 +222,25 @@ Positions held for others: `Position.custodyOf String?` — `null`=owned. Exclud
 
 CEX exchanges, wallets, brokers, banks use `CreatableSelect` (no generic "Others"): "+ Add new ..." row + pencil/trash for customs.
 
-- Popover pencil/trash are pointer-only (listbox keyboard = arrows/typeahead); the inline Rename/Remove buttons under the trigger for a selected custom are the keyboard path — keep both.
-- Defaults are protected; customs persist under `foliobuddy-storage-location-options` bucketed by storage type, merged via `positionOptions.ts`. Deleting only removes the option — existing positions keep their value (edit forms add it back as a one-off).
+- Popover pencil/trash are pointer-only (listbox keyboard = arrows/typeahead); inline Rename/Remove buttons under the trigger for a selected custom are the keyboard path — keep both.
+- Defaults are protected; customs persist under `foliobuddy-storage-location-options` bucketed by storage type, merged via `positionOptions.ts`. Deleting only removes the option — existing positions keep their value (edit forms re-add it as a one-off).
 - Fixed domain selects stay fixed (Category, storage type, fiat currency, direction, theme) — only free-text location dropdowns are creatable.
 - Radix Select can emit a trailing empty value after the create row closes — creatable `onValueChange` must ignore empties.
-- Shared `SelectContent` sizes to content and sits above dialogs (`z-[60]`); never force `h-[var(--radix-select-trigger-height)]` or reuse the dialog's `z-50` (menus appear open but clipped).
+- Shared `SelectContent` sizes to content and sits above dialogs (`z-[60]`); never force `h-[var(--radix-select-trigger-height)]` or reuse the dialog's `z-50` (menus open but clipped).
 
 ### Cash Positions (Stablecoins + Fiat)
 
-The former Stables category is now **Cash**. `PositionForm.tsx` Cash shows a **Type** dropdown (USDT, USDC, USDe, FDUSD, DAI, **Cash (fiat)**); Cash (fiat) reveals a **Currency** dropdown (`USD`/`SGD`/`GBP`) and creates/reuses a `CASH` asset (SGD priced from the summary rate at creation; fiat cash is `priceProvider='manual'`). Storage by Type: stablecoins → CEX/Onchain; fiat → Broker account/Bank. Broker defaults `BROKER_LOCATIONS` (`FSMOne`, `IBKR`, `Tiger`, `UOB KH` — never `DBS`); bank defaults `Citi`, `DBS`, `SCB`, `Trust+`, `UOB`. `PositionForm` guards storage-type validity when Type changes.
+Former Stables category is now **Cash**. `PositionForm.tsx` Cash shows a **Type** dropdown (USDT, USDC, USDe, FDUSD, DAI, **Cash (fiat)**); Cash (fiat) reveals a **Currency** dropdown (`USD`/`SGD`/`GBP`) and creates/reuses a `CASH` asset (SGD priced from the summary rate at creation; fiat cash is `priceProvider='manual'`). Storage by Type: stablecoins → CEX/Onchain; fiat → Broker account/Bank. Broker defaults `BROKER_LOCATIONS` (`FSMOne`, `IBKR`, `Tiger`, `UOB KH` — never `DBS`); bank defaults `Citi`, `DBS`, `SCB`, `Trust+`, `UOB`. `PositionForm` guards storage-type validity when Type changes.
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
 Two sub-types via UI toggle (enums unchanged): **Stock / ETF** = `equityMode='single'`, `asset.category='EQUITY'`, `priceProvider='yahoo'` (ETFs go here, not Unit Trust); **Unit Trust** = `equityMode='fund'`, `asset.category='UNIT_TRUST'`, `priceProvider='manual'|'yahoo'`.
 
-**Form:** Equities shows the toggle (create only; edit infers from category). Storage is a creatable broker dropdown (`storageType` stays `'BROKERAGE'`). Cost currency follows `asset.nativeCurrency` — SGD/JPY/TWD/KRW/NOK equities take local cost inputs; backend stores USD. Fallback FX is display-hint only: non-USD submits MUST wait for a real `/fx/rates` row (or real SGD summary rate) before persisting cost basis. Edit converts stored USD → local via `costInitialized`.
+**Form:** toggle on create only (edit infers from category). Storage = creatable broker dropdown (`storageType` stays `'BROKERAGE'`). Cost currency follows `asset.nativeCurrency` (SGD/JPY/TWD/KRW/NOK take local inputs; backend stores USD). Fallback FX is display-only: non-USD submits MUST wait for a real `/fx/rates` row (or real SGD summary rate) before persisting cost basis. Edit converts stored USD → local via `costInitialized`.
 
-**Display:** Equities table defaults to `groupBy='broker'`; header control switches to `equityType` (persists in `foliobuddy-equity-group-by`); UT rows get a `Unit Trust` badge. **NAV-age badge** under the symbol for UT/manual-priced non-cash positions via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null); live tickers + fiat cash skip it.
+**Display:** default `groupBy='broker'`; header control switches to `equityType` (persisted in `foliobuddy-equity-group-by`); UT rows get a `Unit Trust` badge. **NAV-age badge** under the symbol for UT/manual-priced non-cash positions via `priceAgeClass` (muted <7d, amber 7–30d, red ≥30d/null); live tickers + fiat cash skip it.
 
-**Statement upload:** dashed card = `<label>` wrapping the file input (click or drag-drop PDF). A matched UT position is updated, never duplicated: `statementMatching.ts` → `PUT /positions/:id` with parsed units/cost + a `mode='reset'` boundary; manual-priced assets also get parsed NAV via `PATCH /assets/:id/nav`. Cash funding is disabled for matched statements (reconciliation, not a funded purchase).
+**Statement upload:** dashed card = `<label>` wrapping the file input (click or drag-drop PDF). Matched UT positions are updated, never duplicated: `statementMatching.ts` → `PUT /positions/:id` with parsed units/cost + a `mode='reset'` boundary; manual-priced assets also get parsed NAV via `PATCH /assets/:id/nav`. Cash funding is disabled for matched statements (reconciliation, not a purchase).
 
 **Copy/Paste:** clipboard includes `priceProvider`, `providerAssetId`, `nativeCurrency`, `exchange` for non-coingecko assets. Bulk import honors them only when creating a new Asset (defaults `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`); existing symbols match by symbol first.
 
@@ -250,11 +254,11 @@ Two sub-types via UI toggle (enums unchanged): **Stock / ETF** = `equityMode='si
 
 ### Position Add/Reduce History
 
-Add/reduce edits persist as `PositionHistory` rows via `PUT /positions/:id` with `positionDelta`; backend validates next quantity/cost basis against delta metadata, then updates position + history in one transaction. Funded adds share one `operationId` with the paired cash reduce so canceling restores both. `Edit Totals` writes a `mode='reset'` row (old rows collapse), never deletes history. `DELETE .../history/:historyId` cancels only the newest add/reduce row while totals still match. `/dev/demo/portfolio` mirrors this. Full narrative: FORET.md.
+Add/reduce edits persist as `PositionHistory` rows via `PUT /positions/:id` with `positionDelta`; backend validates next quantity/cost basis against delta metadata, then updates position + history in one transaction. Funded adds share an `operationId` with the paired cash reduce so canceling restores both. `Edit Totals` writes a `mode='reset'` row (old rows collapse), never deletes history. `DELETE .../history/:historyId` cancels only the newest add/reduce row while totals still match. `/dev/demo/portfolio` mirrors this. Narrative: FORET.md.
 
 ### Global Value Privacy
 
-The `AppShell` eye button persists `foliobuddy-values-hidden` via `privacyStore`. Every read-only monetary display must use `useMoneyFormatter()` (`formatCurrency`/`formatPrice`/`formatSignedCurrency`) so a toggle reactively updates every page, dialog, table, chart label/tooltip, and import preview; editable amount inputs stay visible. `positionPriceDisplay.ts` receives `valuesHidden` for native-currency sublabels. Percentages, quantities, counts, and chart geometry stay visible; copied chart images reflect the current state.
+The `AppShell` eye button persists `foliobuddy-values-hidden` via `privacyStore`. Every read-only monetary display must use `useMoneyFormatter()` (`formatCurrency`/`formatPrice`/`formatSignedCurrency`) so a toggle reactively updates every page, dialog, table, chart label/tooltip and import preview; editable inputs stay visible. `positionPriceDisplay.ts` receives `valuesHidden` for native-currency sublabels. Percentages, quantities, counts and chart geometry stay visible; copied chart images reflect current state.
 
 ### Dashboard Charts
 
@@ -302,31 +306,12 @@ All pages use the same header pattern: `flex-col gap-3 sm:flex-row ... justify-b
 
 ## Environment Variables
 
-### Backend (`.env`)
+Source of truth: `packages/backend/.env.example` and `packages/frontend/.env.example` (every var, with comments). Gotchas not in those files:
 
-```
-DATABASE_URL=              # Local: postgresql://dev:dev@localhost:5433/example_portfolio_db
-PRODUCTION_DATABASE_URL=   # Optional DB mirror source; never commit a real value
-PORT=4001                  # DO NOT use 3001 (reserved for other projects)
-CLERK_SECRET_KEY=
-ADMIN_USER_IDS=            # Clerk IDs allowed to edit/delete the global Asset catalog
-ALLOWED_ORIGINS=http://localhost:4000
-RATE_LIMIT_MAX=10000       # Local dev override (prod defaults to 200)
-ALLOW_LOCAL_AUTH_BYPASS=false  # Local scale QA only; ignored when NODE_ENV=production
-LOCAL_AUTH_USER_ID=local-scale-user
-SENTRY_DSN=                # Optional error tracking (skipped if empty)
-```
-
-Boot warns when `ADMIN_USER_IDS` is empty (else global catalog edit/delete 403s for every user).
-
-### Frontend (`.env`)
-
-```
-VITE_API_URL=http://localhost:4001/api/v1    # Backend API URL (or prod URL for frontend-only dev)
-VITE_WS_BACKEND_URL=http://localhost:4001    # WebSocket URL
-VITE_CLERK_PUBLISHABLE_KEY=                  # Clerk frontend key
-VITE_LOCAL_AUTH_BYPASS=false                 # Local scale QA only; requires Vite DEV mode
-```
+- Backend `PORT=4001` — never 3001 (reserved for other projects). `RATE_LIMIT_MAX=10000` for local dev (prod defaults to 200).
+- Boot warns when `ADMIN_USER_IDS` is empty (else global catalog edit/delete 403s for every user).
+- `ALLOW_LOCAL_AUTH_BYPASS` / `VITE_LOCAL_AUTH_BYPASS` are local scale-QA only: ignored under `NODE_ENV=production` / non-DEV Vite builds.
+- `VITE_API_URL` must include the full `/api/v1` path.
 
 ### Frontend-Only Development / UI Testing
 
