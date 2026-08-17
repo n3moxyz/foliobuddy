@@ -11,7 +11,7 @@ export const DEFAULT_SNAPSHOT_HOUR = 5;
 export const DEFAULT_SNAPSHOT_TIMEZONE = 'Asia/Singapore';
 
 const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
+const DAY_SCAN_STEP_MS = 15 * 60 * 1000;
 
 // Cache the supported list once; Intl.supportedValuesOf allocates a fresh array per call.
 let supportedTimeZones: Set<string> | null = null;
@@ -56,6 +56,7 @@ function getPartsFormatter(timeZone: string): Intl.DateTimeFormat {
       month: 'numeric',
       day: 'numeric',
       hour: 'numeric',
+      minute: 'numeric',
       weekday: 'short',
     });
     partsFormatterCache.set(timeZone, formatter);
@@ -81,33 +82,67 @@ export function getLocalParts(instant: Date, timeZone: string): LocalParts {
 
 /**
  * UTC instant of local midnight for the local calendar day containing `instant`.
- * Iterates once to absorb the zone's offset (DST-safe: uses the offset that
- * actually applies at that midnight, not at `instant`).
+ * Iterates until the requested wall-clock midnight is stable. Some zones
+ * change offset between UTC midnight and local midnight, so one correction
+ * can otherwise land at 23:00 on the previous local date.
  */
 export function startOfLocalDay(instant: Date, timeZone: string): Date {
   const local = getLocalParts(instant, timeZone);
-  // First guess: treat local Y-M-D as UTC, then correct by the observed offset.
-  const guess = Date.UTC(local.year, local.month - 1, local.day);
-  const guessLocal = getLocalParts(new Date(guess), timeZone);
-  const guessAsUtc = Date.UTC(
-    guessLocal.year,
-    guessLocal.month - 1,
-    guessLocal.day,
-    guessLocal.hour
-  );
-  const offsetMs = guessAsUtc - guess;
-  return new Date(guess - offsetMs);
+  const targetAsUtc = Date.UTC(local.year, local.month - 1, local.day);
+  let candidate = targetAsUtc;
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const candidateDate = new Date(candidate);
+    const candidateLocal = getLocalParts(candidateDate, timeZone);
+    const minute = Number(
+      getPartsFormatter(timeZone)
+        .formatToParts(candidateDate)
+        .find((part) => part.type === 'minute')?.value ?? 0
+    );
+    const candidateAsUtc = Date.UTC(
+      candidateLocal.year,
+      candidateLocal.month - 1,
+      candidateLocal.day,
+      candidateLocal.hour,
+      minute
+    );
+    const correction = targetAsUtc - candidateAsUtc;
+    if (correction === 0) return candidateDate;
+    candidate += correction;
+  }
+
+  return new Date(candidate);
 }
 
 /** UTC bounds [start, end) of the local calendar day containing `instant`. */
 export function localDayBounds(instant: Date, timeZone: string): { start: Date; end: Date } {
   const start = startOfLocalDay(instant, timeZone);
-  return { start, end: new Date(start.getTime() + DAY_MS) };
+  // Moving well into the following local day and resolving its midnight avoids
+  // assuming a local day is always 24 elapsed hours (DST days are 23 or 25).
+  const end = startOfLocalDay(new Date(start.getTime() + 36 * HOUR_MS), timeZone);
+  return { start, end };
 }
 
 /** UTC instant when the user's snapshot is scheduled on the local day containing `instant`. */
 export function scheduledSnapshotAt(instant: Date, timeZone: string, hour: number): Date {
-  return new Date(startOfLocalDay(instant, timeZone).getTime() + hour * HOUR_MS);
+  const { start, end } = localDayBounds(instant, timeZone);
+  const localDate = getLocalParts(instant, timeZone);
+
+  // Search the actual local day so a skipped hour runs at the first valid
+  // instant after the jump and a repeated hour chooses its first occurrence.
+  for (let time = start.getTime(); time < end.getTime(); time += DAY_SCAN_STEP_MS) {
+    const candidate = new Date(time);
+    const local = getLocalParts(candidate, timeZone);
+    const sameDate =
+      local.year === localDate.year &&
+      local.month === localDate.month &&
+      local.day === localDate.day;
+    if (sameDate && local.hour >= hour) return candidate;
+  }
+
+  // Every valid local day has an instant at or after hour 0; this is defensive
+  // for unusual historical timezone transitions outside the scheduler's scope.
+  return start;
 }
 
 export interface SnapshotUserPreference {
@@ -132,11 +167,13 @@ export function resolvePreference(pref: Partial<SnapshotUserPreference> | null |
   return { hour, timeZone };
 }
 
-/** True when the user's local wall-clock hour at `instant` equals their snapshot hour. */
+/** True during the hourly scheduler window that contains the user's local schedule. */
 export function isSnapshotHourNow(
   instant: Date,
   pref: Partial<SnapshotUserPreference> | null | undefined
 ): boolean {
   const { hour, timeZone } = resolvePreference(pref);
-  return getLocalParts(instant, timeZone).hour === hour;
+  const scheduled = scheduledSnapshotAt(instant, timeZone, hour).getTime();
+  const now = instant.getTime();
+  return now >= scheduled && now < scheduled + HOUR_MS;
 }

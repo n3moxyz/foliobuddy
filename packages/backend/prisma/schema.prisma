@@ -19,10 +19,10 @@ model User {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   positions        Position[]
-  positionHistory PositionHistory[]
-  trades          Trade[]
-  investors       Investor[]
-  snapshots       Snapshot[]
+  positionHistory  PositionHistory[]
+  trades           Trade[]
+  investors        Investor[]
+  snapshots        Snapshot[]
 }
 
 // Asset model - represents any tradeable asset
@@ -195,30 +195,32 @@ model InvestorStake {
 // snapshotType: DAILY | WEEKLY | MONTHLY
 // source: AUTOMATIC | MANUAL
 model Snapshot {
-  id             String             @id @default(cuid())
-  userId         String
-  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timestamp      DateTime           @default(now())
-  snapshotType   String             @default("DAILY")
-  source         String             @default("AUTOMATIC")
-  totalValueUsd  Float
-  totalValueSgd  Float?
-  usdSgdRate     Float?
-  totalCostBasis Float?
-  unrealizedPnL  Float?
-  realizedPnL    Float?
-  dailyReturn    Float?
-  weeklyReturn   Float?
-  monthlyReturn  Float?
-  ytdReturn      Float?
-  athValueUsd    Float?
-  btcPrice       Float?
-  ethPrice       Float?
-  btcOutperform  Float?
-  ethOutperform  Float?
-  notes          String?
-  positions      SnapshotPosition[]
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp          DateTime           @default(now())
+  snapshotType       String             @default("DAILY")
+  scheduledLocalDate String? // YYYY-MM-DD; scheduler idempotency key component
+  source             String             @default("AUTOMATIC")
+  totalValueUsd      Float
+  totalValueSgd      Float?
+  usdSgdRate         Float?
+  totalCostBasis     Float?
+  unrealizedPnL      Float?
+  realizedPnL        Float?
+  dailyReturn        Float?
+  weeklyReturn       Float?
+  monthlyReturn      Float?
+  ytdReturn          Float?
+  athValueUsd        Float?
+  btcPrice           Float?
+  ethPrice           Float?
+  btcOutperform      Float?
+  ethOutperform      Float?
+  notes              String?
+  positions          SnapshotPosition[]
 
+  @@unique([userId, snapshotType, scheduledLocalDate])
   @@index([userId, timestamp])
   @@index([snapshotType])
   @@index([userId, snapshotType, timestamp])

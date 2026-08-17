@@ -21,11 +21,27 @@ type SnapshotUser = {
   snapshotTimezone: string;
 };
 
+function scheduledLocalDate(user: SnapshotUser, now: Date): string {
+  const { timeZone } = resolvePreference(user);
+  const local = getLocalParts(now, timeZone);
+  return `${local.year}-${String(local.month).padStart(2, '0')}-${String(local.day).padStart(2, '0')}`;
+}
+
+function isScheduledSnapshotConflict(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 'P2002') {
+    return false;
+  }
+  const target =
+    'meta' in error && error.meta && typeof error.meta === 'object' && 'target' in error.meta
+      ? error.meta.target
+      : null;
+  return Array.isArray(target) && target.includes('scheduledLocalDate');
+}
+
 /**
  * True when the user already has a snapshot of `snapshotType` inside their local
- * calendar day containing `now`. Snapshot has no DB uniqueness on (user, type, day),
- * so this check-before-create is the only duplicate guard — required now that the
- * scheduler ticks hourly rather than once a day.
+ * calendar day containing `now`. This is the cheap duplicate guard; the database
+ * `scheduledLocalDate` uniqueness constraint closes cross-process races at insert.
  */
 async function hasSnapshotForLocalDay(
   user: SnapshotUser,
@@ -56,11 +72,19 @@ async function createSnapshotOnce(
       logger.info(`[Snapshot] ${snapshotType} snapshot already exists today for user ${user.id}`);
       return;
     }
-    const snapshotId = await snapshotService.createSnapshot(user.id, snapshotType);
+    const snapshotId = await snapshotService.createSnapshot(
+      user.id,
+      snapshotType,
+      scheduledLocalDate(user, now)
+    );
     logger.info(
       `[Snapshot] Created ${reason} ${snapshotType} snapshot ${snapshotId} for user ${user.id}`
     );
   } catch (error) {
+    if (isScheduledSnapshotConflict(error)) {
+      logger.info(`[Snapshot] ${snapshotType} snapshot already claimed today for user ${user.id}`);
+      return;
+    }
     logger.error(`[Snapshot] Error creating ${snapshotType} snapshot for user ${user.id}:`, error);
   }
 }
