@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
+import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 import { cn, formatCurrency, formatPrice } from '@/lib/utils';
 import {
   buildChartGeometry,
@@ -41,8 +42,8 @@ function HeroSparkline({ animate }: { animate: boolean }) {
     >
       <defs>
         <linearGradient id="hero-spark-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+          <stop offset="0%" stopColor={PORTFOLIO_LINE_COLOR} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={PORTFOLIO_LINE_COLOR} stopOpacity="0" />
         </linearGradient>
       </defs>
       <path
@@ -53,7 +54,7 @@ function HeroSparkline({ animate }: { animate: boolean }) {
       <path
         d={geometry.path}
         fill="none"
-        stroke="hsl(var(--primary))"
+        stroke={PORTFOLIO_LINE_COLOR}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"

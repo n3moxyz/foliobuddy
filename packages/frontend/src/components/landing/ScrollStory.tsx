@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { BRAND_COLORS, PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
   BENCHMARK_SERIES,
@@ -165,7 +166,7 @@ export function ScrollStory() {
                 <path
                   d={benchmark.path}
                   fill="none"
-                  stroke="oklch(var(--chart-btc))"
+                  stroke={BRAND_COLORS.btc}
                   strokeWidth="1.5"
                   strokeDasharray="0.014 0.008"
                   strokeLinecap="round"
@@ -188,7 +189,7 @@ export function ScrollStory() {
               <path
                 d={portfolio.path}
                 fill="none"
-                stroke="hsl(var(--primary))"
+                stroke={PORTFOLIO_LINE_COLOR}
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -198,8 +199,8 @@ export function ScrollStory() {
               />
               <defs>
                 <linearGradient id="story-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.16" />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+                  <stop offset="0%" stopColor={PORTFOLIO_LINE_COLOR} stopOpacity="0.16" />
+                  <stop offset="100%" stopColor={PORTFOLIO_LINE_COLOR} stopOpacity="0" />
                 </linearGradient>
               </defs>
 
@@ -230,7 +231,7 @@ export function ScrollStory() {
                       cy={y}
                       r="4"
                       fill="none"
-                      stroke="hsl(var(--primary))"
+                      stroke={PORTFOLIO_LINE_COLOR}
                       strokeWidth="2"
                     />
                   </g>
@@ -248,13 +249,13 @@ export function ScrollStory() {
                   strokeWidth="1"
                   opacity={0.35}
                 />
-                <circle cx={readoutX} cy={readoutY} r="5" fill="hsl(var(--primary))" />
+                <circle cx={readoutX} cy={readoutY} r="5" fill={PORTFOLIO_LINE_COLOR} />
                 <circle
                   cx={readoutX}
                   cy={readoutY}
                   r="9"
                   fill="none"
-                  stroke="hsl(var(--primary))"
+                  stroke={PORTFOLIO_LINE_COLOR}
                   strokeWidth="1"
                   opacity="0.4"
                 />
@@ -280,7 +281,10 @@ export function ScrollStory() {
               className="pointer-events-none absolute right-0 top-0 hidden items-center gap-2 font-mono text-[11px] text-muted-foreground transition-opacity duration-300 sm:flex"
               style={{ opacity: benchT > 0 ? 1 : 0 }}
             >
-              <span className="inline-block h-0 w-5 border-t-2 border-dashed border-[oklch(var(--chart-btc))]" />
+              <span
+                className="inline-block h-0 w-5 border-t-2 border-dashed"
+                style={{ borderColor: BRAND_COLORS.btc }}
+              />
               BTC, same year
             </div>
           </div>
