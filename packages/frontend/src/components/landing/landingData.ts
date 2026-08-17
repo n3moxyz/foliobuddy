@@ -1,6 +1,8 @@
 // Deterministic illustrative data for the public landing page.
 // Everything here is fake but plausible — no live API calls, no user data.
 
+import { CATEGORY_COLORS } from '@/lib/chartColors';
+
 export interface SeriesPoint {
   /** 0..1 fraction along the x axis */
   t: number;
@@ -268,9 +270,9 @@ export interface AllocationSlice {
 }
 
 export const HERO_ALLOCATION: AllocationSlice[] = [
-  { label: 'Crypto', pct: 54, color: 'hsl(var(--accent-crypto))' },
-  { label: 'Equities', pct: 31, color: 'hsl(var(--accent-equities))' },
-  { label: 'Cash', pct: 15, color: 'hsl(var(--accent-cash))' },
+  { label: 'Crypto', pct: 54, color: CATEGORY_COLORS.crypto },
+  { label: 'Equities', pct: 31, color: CATEGORY_COLORS.equities },
+  { label: 'Cash', pct: 15, color: CATEGORY_COLORS.cash },
 ];
 
 export const HERO_NET_WORTH = 487230;

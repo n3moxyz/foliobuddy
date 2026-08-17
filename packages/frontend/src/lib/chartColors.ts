@@ -50,6 +50,12 @@ export const STABLES_COLORS: string[] = [
   chartColor('--chart-cash-5'),
 ];
 
+export const CATEGORY_COLORS = {
+  crypto: ASSET_COLORS[0],
+  equities: ASSET_COLORS[1],
+  cash: STABLES_COLORS[0],
+} as const;
+
 export const ADDITIONAL_BENCHMARK_COLORS: string[] = [
   chartColor('--chart-benchmark-1'),
   chartColor('--chart-benchmark-2'),
