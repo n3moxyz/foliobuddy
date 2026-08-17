@@ -31,21 +31,28 @@
 - **P2 Clerk production instance created**: `ins_3I2EtX7ODqnA6Fg3PrdDsqCMDGA` under app `app_38h5HTkXq6GQEFDHKjZI3fj6M1K`,
   cloned from dev, domain `foliobuddy.xyz`. Waitlist access mode carried over (badge shows). Dev instance
   `ins_38h5HV8eAF1Wx8D4wo58H6TKWiy` untouched (keep forever — prod keys refuse localhost).
-- **P3 DNS (Cloudflare, zone foliobuddy.xyz, all DNS-only)** — 4 of 5 added and resolving:
+- **P3 DNS (Cloudflare, zone foliobuddy.xyz, all DNS-only)** — 5 of 5 added and resolving (Domain Connect auto-setup
+  failed with a Cloudflare provider error; all records were added manually via the dashboard — the connected Cloudflare
+  MCP has no DNS tools). No CAA records exist on the zone.
   - `clerk` → `frontend-api.clerk.services` ✅
   - `accounts` → `accounts.clerk.services` ✅
   - `clkmail` → `mail.qfd96cyv28j1.clerk.services` ✅
   - `clk._domainkey` → `dkim1.qfd96cyv28j1.clerk.services` ✅
-  - `clk2._domainkey` → `dkim2.qfd96cyv28j1.clerk.services` ❌ **still to add** (Domain Connect auto-setup failed with
-    a Cloudflare provider error; records were added manually). No CAA records exist on the zone.
+  - `clk2._domainkey` → `dkim2.qfd96cyv28j1.clerk.services` ✅ (added 2026-08-17, resolves on 1.1.1.1)
+- **P4 Clerk domain**: Domains → **Verify configuration** → DNS configuration **Verified**; SSL certificates
+  (Frontend API + Account portal) moved to **Issuing** automatically (no separate deploy click). Domain badge stays
+  “Pending” until certs land. Poll: reload Domains page, or `curl -sI https://clerk.foliobuddy.xyz/v1/environment`.
+- **P5 cloned settings verified on prod** (read-only check): Access mode = Waitlist ✅; Email: sign-up/sign-in with
+  email, verification **code** only (link unchecked) ✅; Password: “Sign-up with password” OFF, “Add password to
+  account” OFF ✅; Paths = Account Portal defaults (`https://accounts.foliobuddy.xyz/sign-in|sign-up`) ✅.
+  SSO connections page: GitHub + Google both present, **Setup required** (custom credentials needed);
+  Google redirect URI confirmed = `https://clerk.foliobuddy.xyz/v1/oauth_callback`, scopes openid/email/profile.
 
 ### Next (in order)
 
-1. **DNS**: add `clk2._domainkey` CNAME (DNS only). Clerk → Production → Configure → Domains → **Verify configuration**
-   → expect 5/5 → **Deploy certificates** (Frontend API + Account portal). Poll:
-   `nslookup -type=CNAME clk2._domainkey.foliobuddy.xyz 1.1.1.1`.
-2. **Verify cloned settings on prod**: Access mode = Waitlist; User & authentication → Email: verification code, no
-   password (“Sign-up with password” and “Add password to account” OFF); Paths = defaults (Account Portal); Sessions defaults.
+1. ~~DNS + verify~~ done. Confirm certs issued (Domains page shows Frontend API + Account portal ✅, badge no longer
+   Pending). If still Pending after ~30 min, re-click Verify configuration.
+2. ~~Verify cloned settings~~ done (see P5).
 3. **Google OAuth** (user handles secrets): console.cloud.google.com → new project “FolioBuddy” → OAuth consent screen:
    External, app name FolioBuddy, support email, **no logo**, authorized domain `foliobuddy.xyz`, default scopes →
    **Publish to In production** (non-sensitive scopes → no review). Credentials → OAuth client ID → Web application →
