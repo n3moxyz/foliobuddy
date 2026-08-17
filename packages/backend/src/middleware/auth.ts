@@ -55,6 +55,10 @@ export async function ensureUser(req: Request, res: Response, next: NextFunction
           name: null,
         },
       });
+      // Visible marker for first sign-ins. After a Clerk instance migration an
+      // unexpected auto-create means an id was not remapped (see
+      // scripts/remap-clerk-user-ids.ts).
+      logger.warn(`Auto-created User row for ${userId} on first sign-in`);
     }
 
     // Attach userId to request for use in routes
