@@ -81,10 +81,15 @@ export function getLocalParts(instant: Date, timeZone: string): LocalParts {
 }
 
 /**
- * UTC instant of local midnight for the local calendar day containing `instant`.
- * Iterates until the requested wall-clock midnight is stable. Some zones
- * change offset between UTC midnight and local midnight, so one correction
- * can otherwise land at 23:00 on the previous local date.
+ * UTC instant when the local calendar day containing `instant` begins.
+ *
+ * Usually that is wall-clock 00:00, found by iterating until the requested
+ * midnight is stable (some zones change offset between UTC midnight and local
+ * midnight, so one correction can land at 23:00 on the previous local date).
+ * But on a spring-forward day where the jump happens AT midnight (e.g.
+ * America/Santiago: 23:59 -> 01:00), wall-clock 00:00 does not exist. In that
+ * case the loop can never converge, so fall back to the first instant whose
+ * local date is the target date — the true start of that (23-hour) day.
  */
 export function startOfLocalDay(instant: Date, timeZone: string): Date {
   const local = getLocalParts(instant, timeZone);
@@ -111,6 +116,23 @@ export function startOfLocalDay(instant: Date, timeZone: string): Date {
     candidate += correction;
   }
 
+  // Wall-clock midnight does not exist today (transition at 00:00). Walk forward
+  // from the last candidate (which sits on the previous local date) to the first
+  // instant that reads as the target date.
+  const isTargetDate = (d: Date) => {
+    const p = getLocalParts(d, timeZone);
+    return p.year === local.year && p.month === local.month && p.day === local.day;
+  };
+  let probe = candidate;
+  for (let i = 0; i < 24 * 4; i += 1) {
+    if (isTargetDate(new Date(probe))) {
+      // Back off to the earliest 15-minute boundary that is still the target date.
+      let earliest = probe;
+      while (isTargetDate(new Date(earliest - DAY_SCAN_STEP_MS))) earliest -= DAY_SCAN_STEP_MS;
+      return new Date(earliest);
+    }
+    probe += DAY_SCAN_STEP_MS;
+  }
   return new Date(candidate);
 }
 
