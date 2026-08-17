@@ -112,6 +112,16 @@ describe('snapshotSchedule', () => {
         end: new Date('2026-11-02T05:00:00.000Z'),
       });
     });
+
+    it('stays on the requested date when the offset changes after UTC midnight', () => {
+      const jerusalem = 'Asia/Jerusalem';
+      const instant = new Date('2026-03-27T12:00:00Z');
+      expect(startOfLocalDay(instant, jerusalem).toISOString()).toBe('2026-03-26T22:00:00.000Z');
+      expect(localDayBounds(instant, jerusalem)).toEqual({
+        start: new Date('2026-03-26T22:00:00.000Z'),
+        end: new Date('2026-03-27T21:00:00.000Z'),
+      });
+    });
   });
 
   describe('scheduledSnapshotAt', () => {
@@ -134,6 +144,12 @@ describe('snapshotSchedule', () => {
       expect(scheduledSnapshotAt(new Date('2026-11-01T12:00:00Z'), NY, 23).toISOString()).toBe(
         '2026-11-02T04:00:00.000Z'
       );
+    });
+
+    it('uses the requested local date when UTC and local midnight have different offsets', () => {
+      expect(
+        scheduledSnapshotAt(new Date('2026-03-27T12:00:00Z'), 'Asia/Jerusalem', 5).toISOString()
+      ).toBe('2026-03-27T02:00:00.000Z');
     });
   });
 
