@@ -42,7 +42,11 @@ class SnapshotService {
   /**
    * Create a new portfolio snapshot
    */
-  async createSnapshot(userId: string, snapshotType: string = 'DAILY'): Promise<string> {
+  async createSnapshot(
+    userId: string,
+    snapshotType: string = 'DAILY',
+    scheduledLocalDate?: string
+  ): Promise<string> {
     const [summary, fxRates, btcPrice, ethPrice, positions] = await Promise.all([
       portfolioService.getSummary(userId),
       priceService.getExchangeRates(),
@@ -66,6 +70,7 @@ class SnapshotService {
       data: {
         userId,
         snapshotType,
+        scheduledLocalDate,
         source: 'AUTOMATIC',
         totalValueUsd: summary.totalValueUsd,
         totalValueSgd: summary.totalValueUsd * usdSgdRate,

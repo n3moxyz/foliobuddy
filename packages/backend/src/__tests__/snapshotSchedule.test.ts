@@ -101,6 +101,17 @@ describe('snapshotSchedule', () => {
         '2026-07-15T04:00:00.000Z'
       );
     });
+
+    it('uses the next local midnight for 23-hour and 25-hour DST days', () => {
+      expect(localDayBounds(new Date('2026-03-08T12:00:00Z'), NY)).toEqual({
+        start: new Date('2026-03-08T05:00:00.000Z'),
+        end: new Date('2026-03-09T04:00:00.000Z'),
+      });
+      expect(localDayBounds(new Date('2026-11-01T12:00:00Z'), NY)).toEqual({
+        start: new Date('2026-11-01T04:00:00.000Z'),
+        end: new Date('2026-11-02T05:00:00.000Z'),
+      });
+    });
   });
 
   describe('scheduledSnapshotAt', () => {
@@ -110,6 +121,18 @@ describe('snapshotSchedule', () => {
       );
       expect(scheduledSnapshotAt(new Date('2026-07-31T21:01:00Z'), SGT, 1).toISOString()).toBe(
         '2026-07-31T17:00:00.000Z'
+      );
+    });
+
+    it('runs a skipped DST hour at the first valid instant and uses the first repeated hour', () => {
+      expect(scheduledSnapshotAt(new Date('2026-03-08T12:00:00Z'), NY, 2).toISOString()).toBe(
+        '2026-03-08T07:00:00.000Z'
+      );
+      expect(scheduledSnapshotAt(new Date('2026-11-01T12:00:00Z'), NY, 1).toISOString()).toBe(
+        '2026-11-01T05:00:00.000Z'
+      );
+      expect(scheduledSnapshotAt(new Date('2026-11-01T12:00:00Z'), NY, 23).toISOString()).toBe(
+        '2026-11-02T04:00:00.000Z'
       );
     });
   });
@@ -135,6 +158,12 @@ describe('snapshotSchedule', () => {
       expect(isSnapshotHourNow(new Date('2026-07-15T12:00:00Z'), ny8)).toBe(true);
       expect(isSnapshotHourNow(new Date('2026-01-15T13:00:00Z'), ny8)).toBe(true);
       expect(isSnapshotHourNow(new Date('2026-01-15T12:00:00Z'), ny8)).toBe(false);
+    });
+
+    it('fires when spring-forward skips the selected hour', () => {
+      const ny2 = { snapshotHour: 2, snapshotTimezone: NY };
+      expect(isSnapshotHourNow(new Date('2026-03-08T07:00:00Z'), ny2)).toBe(true);
+      expect(isSnapshotHourNow(new Date('2026-03-08T08:00:00Z'), ny2)).toBe(false);
     });
 
     it('treats a corrupted preference as the default rather than never firing', () => {

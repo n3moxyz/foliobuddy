@@ -169,7 +169,11 @@ describe('scheduler', () => {
 
       expect(mocks.prisma.user.findMany).toHaveBeenCalledWith({ select: SNAPSHOT_USER_SELECT });
       expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledTimes(1);
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith('sgt-5am', 'DAILY');
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith(
+        'sgt-5am',
+        'DAILY',
+        '2026-07-16'
+      );
     });
 
     it('fires the 1am-SGT user at 17:00Z and the 8am-New-York user at 12:00Z (EDT)', async () => {
@@ -180,12 +184,20 @@ describe('scheduler', () => {
       ]);
 
       await runSnapshotTick(new Date('2026-07-15T17:00:00.000Z'));
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith('sgt-1am', 'DAILY');
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith(
+        'sgt-1am',
+        'DAILY',
+        '2026-07-16'
+      );
       expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledTimes(1);
 
       mocks.snapshotService.createSnapshot.mockClear();
       await runSnapshotTick(new Date('2026-07-15T12:00:00.000Z'));
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith('ny-8am', 'DAILY');
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith(
+        'ny-8am',
+        'DAILY',
+        '2026-07-15'
+      );
       expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledTimes(1);
     });
 
@@ -224,8 +236,18 @@ describe('scheduler', () => {
       // 21:00Z Jul 31 = 05:00 Aug 1 in Singapore
       await runSnapshotTick(new Date('2026-07-31T21:00:00.000Z'));
 
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(1, 'sgt-5am', 'DAILY');
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(2, 'sgt-5am', 'MONTHLY');
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(
+        1,
+        'sgt-5am',
+        'DAILY',
+        '2026-08-01'
+      );
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(
+        2,
+        'sgt-5am',
+        'MONTHLY',
+        '2026-08-01'
+      );
     });
 
     it("adds a WEEKLY snapshot on the user's local Sunday", async () => {
@@ -234,8 +256,18 @@ describe('scheduler', () => {
       // 21:00Z Sat Jul 18 = 05:00 Sun Jul 19 in Singapore
       await runSnapshotTick(new Date('2026-07-18T21:00:00.000Z'));
 
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(1, 'sgt-5am', 'DAILY');
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(2, 'sgt-5am', 'WEEKLY');
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(
+        1,
+        'sgt-5am',
+        'DAILY',
+        '2026-07-19'
+      );
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenNthCalledWith(
+        2,
+        'sgt-5am',
+        'WEEKLY',
+        '2026-07-19'
+      );
       expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledTimes(2);
     });
 
@@ -246,7 +278,26 @@ describe('scheduler', () => {
 
       await runSnapshotTick(new Date('2026-07-15T21:00:00.000Z'));
 
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith('broken', 'DAILY');
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith(
+        'broken',
+        'DAILY',
+        '2026-07-16'
+      );
+    });
+
+    it('treats a database idempotency conflict as an already-created snapshot', async () => {
+      mocks.prisma.user.findMany.mockResolvedValue([sgtUser('sgt-5am', 5)]);
+      mocks.snapshotService.createSnapshot.mockRejectedValue({
+        code: 'P2002',
+        meta: { target: ['userId', 'snapshotType', 'scheduledLocalDate'] },
+      });
+
+      await runSnapshotTick(new Date('2026-07-15T21:00:00.000Z'));
+
+      expect(mocks.logger.error).not.toHaveBeenCalled();
+      expect(mocks.logger.info).toHaveBeenCalledWith(
+        '[Snapshot] DAILY snapshot already claimed today for user sgt-5am'
+      );
     });
   });
 
@@ -271,7 +322,11 @@ describe('scheduler', () => {
         },
         select: { id: true },
       });
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith('user-1', 'DAILY');
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith(
+        'user-1',
+        'DAILY',
+        '2026-08-01'
+      );
     });
 
     it('skips users whose local snapshot time has not arrived yet, per user', async () => {
@@ -285,7 +340,11 @@ describe('scheduler', () => {
       await createMissingSnapshots();
 
       expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledTimes(1);
-      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith('sgt-1am', 'DAILY');
+      expect(mocks.snapshotService.createSnapshot).toHaveBeenCalledWith(
+        'sgt-1am',
+        'DAILY',
+        '2026-08-01'
+      );
     });
   });
 });
