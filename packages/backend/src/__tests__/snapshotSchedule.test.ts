@@ -102,6 +102,23 @@ describe('snapshotSchedule', () => {
       );
     });
 
+    it('handles zones whose DST jump happens AT midnight, so 00:00 does not exist', () => {
+      // America/Santiago springs forward 2026-09-06: local 23:59 -> 01:00. There is no
+      // wall-clock 00:00 on Sept 6, so "start of day" is the first instant reading Sept 6.
+      const santiago = 'America/Santiago';
+      const noon = new Date('2026-09-06T15:00:00Z');
+      const start = startOfLocalDay(noon, santiago);
+      const startLocal = getLocalParts(start, santiago);
+      expect([startLocal.month, startLocal.day, startLocal.hour]).toEqual([9, 6, 1]);
+      // 23-hour day: bounds span exactly 23h and end at the next real midnight.
+      const bounds = localDayBounds(noon, santiago);
+      expect((bounds.end.getTime() - bounds.start.getTime()) / 3600000).toBe(23);
+      expect(getLocalParts(bounds.end, santiago).day).toBe(7);
+      // And the mirror image: fall-back night of Apr 4->5 makes Apr 4 a 25-hour day.
+      const fallBack = localDayBounds(new Date('2026-04-04T15:00:00Z'), santiago);
+      expect((fallBack.end.getTime() - fallBack.start.getTime()) / 3600000).toBe(25);
+    });
+
     it('uses the next local midnight for 23-hour and 25-hour DST days', () => {
       expect(localDayBounds(new Date('2026-03-08T12:00:00Z'), NY)).toEqual({
         start: new Date('2026-03-08T05:00:00.000Z'),
