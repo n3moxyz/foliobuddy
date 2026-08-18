@@ -22,8 +22,10 @@ the Coolify API no longer accepted.
 
 - Pin the repository package-manager contract to `npm@10.8.2` in `package.json`.
 - Regenerate `package-lock.json` with npm 10.8.2 and verify `npm ci` in a clean directory.
-- Create a fresh Coolify API token with `read` + `deploy` permissions, replace the GitHub Actions
-  `COOLIFY_API_TOKEN` repository secret, and rerun the failed backend deployment.
+- Create a fresh Coolify API token with `read` + `deploy` + `write` permissions (`write` is what
+  `sync-backend-env.yml` needs to upsert env vars — a read+deploy token gets `403 Missing required
+permissions: write`), replace the GitHub Actions `COOLIFY_API_TOKEN` repository secret, and rerun
+  the failed backend deployment.
 
 Never print, commit, or paste the token anywhere except Coolify's token creation flow and GitHub's
 encrypted secret form.
