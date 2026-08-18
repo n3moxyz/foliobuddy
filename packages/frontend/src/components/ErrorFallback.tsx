@@ -5,17 +5,10 @@ import { AlertTriangle } from 'lucide-react';
 interface ErrorFallbackProps {
   error?: Error;
   eventId?: string;
-  resetError?: () => void;
 }
 
-export function ErrorFallback({ error, eventId, resetError }: ErrorFallbackProps) {
-  const handleReload = () => {
-    if (resetError) {
-      resetError();
-    } else {
-      window.location.reload();
-    }
-  };
+export function ErrorFallback({ error, eventId }: ErrorFallbackProps) {
+  const handleReload = () => window.location.reload();
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
