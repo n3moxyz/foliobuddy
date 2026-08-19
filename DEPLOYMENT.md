@@ -31,6 +31,8 @@ Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `mai
 | `DATABASE_URL`     | Set privately                                  | Production PostgreSQL connection string.                                                                                   |
 | `CLERK_SECRET_KEY` | Set privately                                  | Must match frontend's publishable key instance.                                                                            |
 | `ADMIN_USER_IDS`   | Set privately                                  | Comma-separated Clerk user IDs allowed to edit/delete global Asset catalog records. Unset → no one passes the admin guard. |
+| `AGENT_API_KEY`    | Set privately                                  | Shared read-only key for `/api/v1/agent/*`; rotate independently of Clerk.                                                 |
+| `AGENT_USER_ID`    | Set privately                                  | Exactly one Clerk user ID whose portfolio the agent endpoint reads. Must track owner identity rotations.                   |
 | `ALLOWED_ORIGINS`  | `https://foliobuddy.xyz,http://localhost:4000` | Exact origin matching — no wildcards.                                                                                      |
 | `RATE_LIMIT_MAX`   | (unset → 200)                                  | Override only for load testing.                                                                                            |
 | `SENTRY_DSN`       | (optional)                                     |                                                                                                                            |
@@ -69,6 +71,13 @@ Drift between host env vars and what the code expects caused an outage on 2026-0
 2. Update the deployment provider dashboard to match.
 3. Redeploy (`vercel deploy --prod` or push to `main`).
 4. Run the smoke check above.
+
+When rotating the owner's Clerk identity, update `ADMIN_USER_IDS` and
+`AGENT_USER_ID` together. The manual `sync-backend-env.yml` workflow uses the
+single-ID `ADMIN_USER_IDS` GitHub secret for both mappings and rejects a
+comma-separated value. A valid `AGENT_API_KEY` with a stale `AGENT_USER_ID`
+authenticates successfully but returns an empty portfolio, so verify the agent
+endpoint has a non-zero position count after the redeploy.
 
 When adding/removing values via `vercel env add`, pipe the value through `printf` (not `echo`) to avoid a trailing newline:
 

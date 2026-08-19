@@ -1,8 +1,10 @@
 name: Sync Backend Env to Coolify
 
-# Pushes the ADMIN_USER_IDS GitHub secret into the Coolify app's environment
-# and redeploys so the container picks it up. Re-run after rotating the secret:
-#   gh secret set ADMIN_USER_IDS --body "user_xxx,user_yyy"
+# Pushes the current owner Clerk user ID into both admin and agent mappings in
+# Coolify, then redeploys. This repository currently supports one owner ID in
+# this workflow because AGENT_USER_ID must be exactly one Clerk user ID.
+# Re-run after rotating Clerk or the owner ID:
+#   gh secret set ADMIN_USER_IDS --body "user_xxx"
 #   gh workflow run sync-backend-env.yml
 on:
   workflow_dispatch:
@@ -13,26 +15,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Upsert ADMIN_USER_IDS in Coolify
-        timeout-minutes: 2
+      - name: Validate owner user ID
+        timeout-minutes: 1
         run: |
-          payload='{"key":"ADMIN_USER_IDS","value":"${{ secrets.ADMIN_USER_IDS }}","is_preview":false}'
-          base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
-          auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
-
-          # Create first; fall back to update if the key already exists
-          http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X POST "$base" \
-            -H "$auth" -H "Content-Type: application/json" -d "$payload")
-          echo "POST status: $http_code -> $(cat /tmp/resp)"
-          if [ "$http_code" -ge 400 ]; then
-            http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X PATCH "$base" \
-              -H "$auth" -H "Content-Type: application/json" -d "$payload")
-            echo "PATCH status: $http_code -> $(cat /tmp/resp)"
-          fi
-          if [ "$http_code" -ge 400 ]; then
-            echo "Failed to upsert env var"
+          owner_user_id='${{ secrets.ADMIN_USER_IDS }}'
+          if [ -z "$owner_user_id" ]; then
+            echo "ADMIN_USER_IDS secret is empty"
             exit 1
           fi
+          case "$owner_user_id" in
+            *,*)
+              echo "ADMIN_USER_IDS contains multiple IDs; AGENT_USER_ID requires exactly one"
+              exit 1
+              ;;
+          esac
+
+      - name: Upsert owner mappings in Coolify
+        timeout-minutes: 2
+        run: |
+          base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
+          auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
+          owner_user_id='${{ secrets.ADMIN_USER_IDS }}'
+
+          for key in ADMIN_USER_IDS AGENT_USER_ID; do
+            payload=$(jq -nc --arg key "$key" --arg value "$owner_user_id" \
+              '{key:$key,value:$value,is_preview:false}')
+
+            # Create first; fall back to update if the key already exists.
+            # Do not print response bodies: Coolify may return secret values.
+            http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X POST "$base" \
+              -H "$auth" -H "Content-Type: application/json" -d "$payload")
+            echo "$key POST status: $http_code"
+            if [ "$http_code" -ge 400 ]; then
+              http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X PATCH "$base" \
+                -H "$auth" -H "Content-Type: application/json" -d "$payload")
+              echo "$key PATCH status: $http_code"
+            fi
+            if [ "$http_code" -ge 400 ]; then
+              echo "Failed to upsert $key"
+              exit 1
+            fi
+          done
 
       - name: Trigger Coolify Deploy
         timeout-minutes: 2
