@@ -1,0 +1,163 @@
+name: Repair Agent Portfolio Owner
+
+# One-shot recovery for an accepted AGENT_API_KEY that returns an empty
+# portfolio because AGENT_USER_ID no longer points at the database owner.
+# The workflow never prints user IDs, emails, holdings, or secret values.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    name: Find owner, remap agent, redeploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve unique portfolio owner and update Coolify
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
+          auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
+          env_json=$(curl --fail-with-body -sS "$base" -H "$auth")
+
+          database_url=$(jq -r '[.. | objects | select(.key? == "DATABASE_URL" and (.is_preview? != true)) | .value][0] // empty' <<<"$env_json")
+          if [ -z "$database_url" ]; then
+            echo "DATABASE_URL was not available from Coolify"
+            exit 1
+          fi
+          echo "::add-mask::$database_url"
+
+          python3 -m pip install --quiet 'psycopg[binary]>=3.2,<4'
+          DATABASE_URL="$database_url" python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import psycopg
+
+          query = '''
+          SELECT "userId", COUNT(*)::int,
+                 COALESCE(SUM(COALESCE("marketValueUsd", 0)), 0)::float8
+          FROM "Position"
+          WHERE "custodyOf" IS NULL
+          GROUP BY "userId"
+          ORDER BY COUNT(*) DESC
+          '''
+
+          with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+              rows = conn.execute(query).fetchall()
+
+          candidates = [row for row in rows if row[1] >= 10 and row[2] >= 100_000]
+          if len(candidates) != 1:
+              counts = sorted((int(row[1]), round(float(row[2]))) for row in rows)
+              raise SystemExit(
+                  f"Expected exactly one substantial portfolio owner; found {len(candidates)}. "
+                  f"Anonymous portfolio shapes: {counts}"
+              )
+
+          owner_id, position_count, total_value = candidates[0]
+          Path("/tmp/agent-owner-id").write_text(owner_id, encoding="utf-8")
+          print(
+              f"Unique portfolio owner confirmed: {position_count} positions, "
+              f"approximately US${total_value:,.0f}"
+          )
+          PY
+
+          owner_id=$(cat /tmp/agent-owner-id)
+          echo "::add-mask::$owner_id"
+          payload=$(jq -nc --arg value "$owner_id" \
+            '{key:"AGENT_USER_ID",value:$value,is_preview:false}')
+
+          http_code=$(curl -sS -o /tmp/coolify-response -w "%{http_code}" -X POST "$base" \
+            -H "$auth" -H "Content-Type: application/json" -d "$payload")
+          if [ "$http_code" -ge 400 ]; then
+            http_code=$(curl -sS -o /tmp/coolify-response -w "%{http_code}" -X PATCH "$base" \
+              -H "$auth" -H "Content-Type: application/json" -d "$payload")
+          fi
+          if [ "$http_code" -ge 400 ]; then
+            echo "Failed to update AGENT_USER_ID (HTTP $http_code)"
+            exit 1
+          fi
+          echo "AGENT_USER_ID updated without exposing the user ID"
+
+      - name: Trigger Coolify deploy
+        id: deploy
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            "${{ secrets.COOLIFY_URL }}/api/v1/deploy" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"uuid":"${{ secrets.COOLIFY_APP_UUID }}","force":true}')
+          http_code=$(tail -n 1 <<<"$response")
+          body=$(sed '$d' <<<"$response")
+          if [ "$http_code" -ne 200 ]; then
+            echo "Deploy failed with HTTP $http_code"
+            exit 1
+          fi
+          deployment_uuid=$(jq -r '.deployments[0].deployment_uuid // empty' <<<"$body")
+          if [ -z "$deployment_uuid" ]; then
+            echo "Coolify did not return a deployment UUID"
+            exit 1
+          fi
+          echo "deployment_uuid=$deployment_uuid" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for exact Coolify deployment
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          deployment_uuid="${{ steps.deploy.outputs.deployment_uuid }}"
+          for i in $(seq 1 60); do
+            body=$(curl --fail-with-body -sS \
+              "${{ secrets.COOLIFY_URL }}/api/v1/deployments/${deployment_uuid}" \
+              -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
+            status=$(jq -r '.status // empty' <<<"$body")
+            echo "Attempt $i: deployment status=${status:-unknown}"
+            case "$status" in
+              finished|success) exit 0 ;;
+              failed|cancelled|cancelled-by-user) exit 1 ;;
+            esac
+            sleep 20
+          done
+          echo "Coolify deployment did not finish within 20 minutes"
+          exit 1
+
+      - name: Verify agent portfolio is non-empty
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
+          auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
+          env_json=$(curl --fail-with-body -sS "$base" -H "$auth")
+          api_key=$(jq -r '[.. | objects | select(.key? == "AGENT_API_KEY" and (.is_preview? != true)) | .value][0] // empty' <<<"$env_json")
+          if [ -z "$api_key" ]; then
+            echo "AGENT_API_KEY was not available from Coolify"
+            exit 1
+          fi
+          echo "::add-mask::$api_key"
+
+          for i in 1 2 3 4 5; do
+            http_code=$(curl -sS -o /tmp/portfolio.json -w "%{http_code}" \
+              'https://foliobuddy.xyz/api/v1/agent/portfolio' \
+              -H "x-api-key: $api_key" -H 'Accept: application/json')
+            if [ "$http_code" -eq 200 ]; then
+              result=$(python3 - <<'PY'
+          import json
+          payload = json.load(open('/tmp/portfolio.json'))
+          positions = payload.get('positions') or []
+          total = (payload.get('summary') or {}).get('totalValueUsd') or 0
+          if not positions or total <= 0:
+              raise SystemExit(1)
+          print(f"position_count={len(positions)} total_value_usd={total:.2f}")
+          PY
+              ) && {
+                echo "Agent portfolio verified: $result"
+                exit 0
+              }
+            fi
+            sleep 15
+          done
+          echo "Agent endpoint remained empty after deployment"
+          exit 1
