@@ -37,7 +37,9 @@ Scripts in `packages/backend/scripts/` (pure helpers + tests in `src/lib/clerkUs
 1. **`clerk-mirror-users.ts`** — reads users from the source instance (`CLERK_SOURCE_SECRET_KEY`),
    creates them on the target (`CLERK_TARGET_SECRET_KEY`) with their primary email and
    `external_id` = old id, reuses same-email users instead of duplicating, and writes
-   `scripts/clerk-user-id-map.json` (gitignored). Dry-run by default, `--apply` to create.
+   `scripts/clerk-user-id-map.json` (gitignored). It aborts rather than writing an incomplete or
+   unsafe map when a source user has no email or a same-email target has a conflicting
+   `external_id`. Dry-run by default, `--apply` to create.
 2. **`remap-clerk-user-ids.ts --map <map>`** — dry-run plan with per-user child counts, then
    `--apply` re-keys `User` rows in one transaction and writes an audit file;
    `--rollback <audit> --apply` replays it in reverse. Guards: refuses if any `User` FK is not

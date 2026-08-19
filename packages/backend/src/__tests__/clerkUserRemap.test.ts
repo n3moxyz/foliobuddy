@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY_CHILD_COUNTS,
+  assertTargetExternalIdCompatible,
   buildRollbackMappings,
   countsMatch,
   findNonCascadingUserFks,
   isEmptyCounts,
   placeholderEmail,
   planRemap,
+  requireSourceUserEmail,
   validateMappings,
   type UserChildCounts,
   type UserIdMapping,
@@ -31,6 +33,26 @@ const OWNER_COUNTS: UserChildCounts = {
   snapshots: 210,
   priceHistoryUpdates: 5,
 };
+
+describe('mirror identity guards', () => {
+  it('requires every source user to have an email before producing a map', () => {
+    expect(requireSourceUserEmail(OWNER.sourceId, OWNER.email)).toBe(OWNER.email);
+    expect(() => requireSourceUserEmail(OWNER.sourceId, null)).toThrow(
+      'has no email address; add one or provide an explicit manual mapping'
+    );
+  });
+
+  it('rejects a same-email target that belongs to another source user', () => {
+    expect(() =>
+      assertTargetExternalIdCompatible(OWNER.email, OWNER.sourceId, 'user_differentSource')
+    ).toThrow('belongs to a different source user');
+
+    expect(() =>
+      assertTargetExternalIdCompatible(OWNER.email, OWNER.sourceId, OWNER.sourceId)
+    ).not.toThrow();
+    expect(() => assertTargetExternalIdCompatible(OWNER.email, OWNER.sourceId, null)).not.toThrow();
+  });
+});
 
 describe('validateMappings', () => {
   it('accepts a well-formed mapping list', () => {

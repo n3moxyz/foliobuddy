@@ -22,7 +22,12 @@
 import { createClerkClient, type User } from '@clerk/express';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { CLERK_USER_ID_PATTERN, type UserIdMapping } from '../src/lib/clerkUserRemap.js';
+import {
+  CLERK_USER_ID_PATTERN,
+  assertTargetExternalIdCompatible,
+  requireSourceUserEmail,
+  type UserIdMapping,
+} from '../src/lib/clerkUserRemap.js';
 
 const MAP_PATH = resolve(process.cwd(), 'scripts/clerk-user-id-map.json');
 const PAGE_SIZE = 100;
@@ -72,22 +77,13 @@ async function listAllUsers(client: ReturnType<typeof createClerkClient>): Promi
 }
 
 function toSourceUsers(users: User[]): SourceUser[] {
-  return users.flatMap((user) => {
-    const email = primaryEmail(user);
-    if (!email) {
-      log(`! Skipping ${user.id}: no email address on the source instance`);
-      return [];
-    }
-    return [
-      {
-        id: user.id,
-        email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        createdAt: new Date(user.createdAt),
-      },
-    ];
-  });
+  return users.map((user) => ({
+    id: user.id,
+    email: requireSourceUserEmail(user.id, primaryEmail(user)),
+    firstName: user.firstName,
+    lastName: user.lastName,
+    createdAt: new Date(user.createdAt),
+  }));
 }
 
 async function findTargetByEmail(
@@ -105,9 +101,7 @@ async function mirrorOne(
 ): Promise<MirrorResult> {
   const existing = await findTargetByEmail(target, source.email);
   if (existing) {
-    if (existing.externalId && existing.externalId !== source.id) {
-      log(`! ${source.email}: target externalId ${existing.externalId} != source ${source.id}`);
-    }
+    assertTargetExternalIdCompatible(source.email, source.id, existing.externalId);
     return {
       mapping: { email: source.email, sourceId: source.id, targetId: existing.id },
       status: 'exists',

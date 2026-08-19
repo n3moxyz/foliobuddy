@@ -20,6 +20,27 @@ export interface UserIdMapping {
   targetId: string;
 }
 
+export function requireSourceUserEmail(userId: string, email: string | null): string {
+  if (!email) {
+    throw new Error(
+      `Source user ${userId} has no email address; add one or provide an explicit manual mapping`
+    );
+  }
+  return email;
+}
+
+export function assertTargetExternalIdCompatible(
+  email: string,
+  sourceId: string,
+  targetExternalId: string | null
+): void {
+  if (targetExternalId && targetExternalId !== sourceId) {
+    throw new Error(
+      `${email}: target externalId ${targetExternalId} belongs to a different source user (expected ${sourceId})`
+    );
+  }
+}
+
 /** Child-row counts that must be identical before and after a remap. */
 export interface UserChildCounts {
   positions: number;
