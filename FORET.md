@@ -1946,6 +1946,12 @@ Things worth remembering:
 - **Frontend `tsconfig.lib` predates `Intl.supportedValuesOf`** (ES2023), so `snapshotPreferences.ts` reads it structurally with a fallback list rather than bumping the whole project's lib target for one call.
 - **Preview-server gotcha while building this:** `preview_start` launches from the session's original directory, so after switching worktrees it kept serving the _old_ worktree's source on :4000 — the new Settings section simply wasn't in the served `Settings.tsx`. If a change "isn't showing up" in a worktree, fetch the source file from the dev server and grep for your symbol before debugging React. Fix was starting Vite by hand from the right directory.
 
+### Agent identity mapping must rotate with Clerk
+
+The agent endpoint has two independent controls: `AGENT_API_KEY` proves the caller is allowed, while `AGENT_USER_ID` selects which Clerk user's portfolio is queried. In August 2026 the owner Clerk/admin identity rotated and the Coolify sync updated only `ADMIN_USER_IDS`. Agent calls still returned HTTP 200, but every portfolio field became zero because the accepted key was mapped to a stale user ID.
+
+The durable fix is for `sync-backend-env.yml` to validate the single owner ID, write it to both `ADMIN_USER_IDS` and `AGENT_USER_ID`, redeploy, and then verify the agent endpoint returns a non-zero position count. Authentication success alone is not a sufficient smoke test for account-scoped automation.
+
 ---
 
 ## Pre-Launch Checklist

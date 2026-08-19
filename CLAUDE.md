@@ -310,6 +310,7 @@ Source of truth: `packages/backend/.env.example` and `packages/frontend/.env.exa
 
 - Backend `PORT=4001` — never 3001 (reserved for other projects). `RATE_LIMIT_MAX=10000` for local dev (prod defaults to 200).
 - Boot warns when `ADMIN_USER_IDS` is empty (else global catalog edit/delete 403s for every user).
+- `AGENT_API_KEY` authenticates agent calls, while `AGENT_USER_ID` selects the portfolio. After an owner Clerk-ID rotation, run `sync-backend-env.yml` so `ADMIN_USER_IDS` and the single-user `AGENT_USER_ID` stay aligned; otherwise agent calls can return HTTP 200 with an empty portfolio.
 - `ALLOW_LOCAL_AUTH_BYPASS` / `VITE_LOCAL_AUTH_BYPASS` are local scale-QA only: ignored under `NODE_ENV=production` / non-DEV Vite builds.
 - `VITE_API_URL` must include the full `/api/v1` path.
 
