@@ -100,6 +100,26 @@ describe('ensureUser local auth bypass', () => {
     });
     expect(req.userId).toBe('local-scale-user');
     expect(next).toHaveBeenCalledOnce();
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Auto-created User row for local-scale-user')
+    );
+  });
+
+  it('does not log an auto-create warning for a known user', async () => {
+    mocks.getAuth.mockReturnValue({ userId: 'user_known' });
+    mocks.prisma.user.findUnique.mockResolvedValue({ id: 'user_known' });
+    const req = {} as Request;
+    const res = mockResponse();
+    const next = vi.fn() as NextFunction;
+
+    await ensureUser(req, res, next);
+
+    expect(mocks.prisma.user.create).not.toHaveBeenCalled();
+    expect(mocks.logger.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining('Auto-created User row')
+    );
+    expect(req.userId).toBe('user_known');
+    expect(next).toHaveBeenCalledOnce();
   });
 
   it('ignores local bypass in production', async () => {

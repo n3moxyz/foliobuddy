@@ -52,6 +52,8 @@ blob-report/
 
 # Backfill script audit files (rollback artifacts, per-run)
 packages/backend/scripts/audit-*.json
+# Clerk instance migration artifacts (user emails + ids)
+packages/backend/scripts/clerk-*.json
 
 # Claude Code workspace
 .claude/

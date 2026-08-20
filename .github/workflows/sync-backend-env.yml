@@ -1,10 +1,11 @@
 name: Sync Backend Env to Coolify
 
-# Pushes the current owner Clerk user ID into both admin and agent mappings in
-# Coolify, then redeploys. This repository currently supports one owner ID in
-# this workflow because AGENT_USER_ID must be exactly one Clerk user ID.
-# Re-run after rotating Clerk or the owner ID:
+# Pushes the current owner Clerk user ID plus optional Clerk credentials into
+# Coolify, then redeploys. ADMIN_USER_IDS and AGENT_USER_ID intentionally stay
+# aligned to the same single owner. Re-run after rotating Clerk or the owner ID:
 #   gh secret set ADMIN_USER_IDS --body "user_xxx"
+#   gh secret set CLERK_SECRET_KEY            # interactive paste, never in shell history
+#   gh secret set CLERK_PUBLISHABLE_KEY --body "pk_live_..."
 #   gh workflow run sync-backend-env.yml
 on:
   workflow_dispatch:
@@ -30,15 +31,23 @@ jobs:
               ;;
           esac
 
-      - name: Upsert owner mappings in Coolify
-        timeout-minutes: 2
+      - name: Upsert backend env vars in Coolify
+        timeout-minutes: 3
+        env:
+          ADMIN_USER_IDS: ${{ secrets.ADMIN_USER_IDS }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: |
           base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
           auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
-          owner_user_id='${{ secrets.ADMIN_USER_IDS }}'
 
-          for key in ADMIN_USER_IDS AGENT_USER_ID; do
-            payload=$(jq -nc --arg key "$key" --arg value "$owner_user_id" \
+          upsert() {
+            key="$1"; value="$2"
+            if [ -z "$value" ]; then
+              echo "$key: secret not set, skipping"
+              return 0
+            fi
+            payload=$(jq -nc --arg key "$key" --arg value "$value" \
               '{key:$key,value:$value,is_preview:false}')
 
             # Create first; fall back to update if the key already exists.
@@ -55,7 +64,12 @@ jobs:
               echo "Failed to upsert $key"
               exit 1
             fi
-          done
+          }
+
+          upsert ADMIN_USER_IDS "$ADMIN_USER_IDS"
+          upsert AGENT_USER_ID "$ADMIN_USER_IDS"
+          upsert CLERK_SECRET_KEY "$CLERK_SECRET_KEY"
+          upsert CLERK_PUBLISHABLE_KEY "$CLERK_PUBLISHABLE_KEY"
 
       - name: Trigger Coolify Deploy
         timeout-minutes: 2
