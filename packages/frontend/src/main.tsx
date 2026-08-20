@@ -10,8 +10,10 @@ import { initSentry, Sentry } from './lib/sentry';
 import App from './App';
 import { ErrorFallback } from './components/ErrorFallback';
 import { isLocalAuthBypassEnabled } from './lib/localAuthBypass';
+import { installViteChunkRecovery } from './lib/chunkRecovery';
 import './index.css';
 
+installViteChunkRecovery();
 initSentry();
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -49,9 +51,7 @@ function AppToaster() {
 const app = (
   <React.StrictMode>
     <Sentry.ErrorBoundary
-      fallback={({ error, eventId, resetError }) => (
-        <ErrorFallback error={error as Error} eventId={eventId} resetError={resetError} />
-      )}
+      fallback={({ error, eventId }) => <ErrorFallback error={error as Error} eventId={eventId} />}
     >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={300}>

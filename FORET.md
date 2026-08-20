@@ -612,6 +612,14 @@ Shell refinement: the left sidebar now has a Codex-style collapsible desktop rai
 
 ## Lessons Learned the Hard Way
 
+### A Healthy Deployment Can Still Break an Open Browser Tab
+
+**The bug:** Vite gives lazy-loaded pages fingerprinted filenames. After a production release, a tab that was already open could still ask for the previous Trades chunk. The hosting fallback returned the new `index.html` with HTTP 200 for that missing JavaScript URL, so the browser rejected it and Sentry recorded `Failed to fetch dynamically imported module`. The existing error screen's Reload button only reset React's error boundary, which retried the already-rejected lazy import instead of fetching the current application shell.
+
+**The fix:** The app now handles Vite's `vite:preloadError` event and performs one hard reload to pick up the current asset map. A session-scoped one-minute cooldown prevents a missing asset or network outage from creating a reload loop; if recovery still fails, the normal Sentry error boundary remains available. Its Reload button now always performs a real page reload.
+
+**The lesson:** A 200 response is not proof that a chunk exists—verify its content type. Hashed assets also make deploy recovery part of the client contract: refresh stale tabs once, cap retries, and leave a truthful manual fallback.
+
 ### The Primary Theme Was the Least Accessible One
 
 **The bug:** A full `/audit` (five parallel dimension reviews plus a script that mathematically computed WCAG contrast for every token pair in both themes) found that dark mode — our default and "optimized" theme — held nearly all the contrast failures. The root cause was subtle: `--destructive` and `--primary` are _fill_ tokens, tuned so white text sits on them nicely in buttons. But ~25 places used them _as text_: every form validation error rendered at 1.86:1 in dark mode (functionally invisible), and every selected-state chip, the active sidebar item, and link-variant buttons sat at 3.3–3.6:1. Light mode passed almost everything, so nothing ever looked broken while developing in light — and in dark, dim red error text just read as "moody design."
