@@ -1,9 +1,9 @@
 name: Sync Backend Env to Coolify
 
-# Pushes the ADMIN_USER_IDS, CLERK_SECRET_KEY and CLERK_PUBLISHABLE_KEY GitHub
-# secrets into the Coolify app's environment and redeploys so the container
-# picks them up. Empty/unset secrets are skipped, so you can rotate one at a time:
-#   gh secret set ADMIN_USER_IDS --body "user_xxx,user_yyy"
+# Pushes the current owner Clerk user ID plus optional Clerk credentials into
+# Coolify, then redeploys. ADMIN_USER_IDS and AGENT_USER_ID intentionally stay
+# aligned to the same single owner. Re-run after rotating Clerk or the owner ID:
+#   gh secret set ADMIN_USER_IDS --body "user_xxx"
 #   gh secret set CLERK_SECRET_KEY            # interactive paste, never in shell history
 #   gh secret set CLERK_PUBLISHABLE_KEY --body "pk_live_..."
 #   gh workflow run sync-backend-env.yml
@@ -16,7 +16,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Upsert env vars in Coolify
+      - name: Validate owner user ID
+        timeout-minutes: 1
+        run: |
+          owner_user_id='${{ secrets.ADMIN_USER_IDS }}'
+          if [ -z "$owner_user_id" ]; then
+            echo "ADMIN_USER_IDS secret is empty"
+            exit 1
+          fi
+          case "$owner_user_id" in
+            *,*)
+              echo "ADMIN_USER_IDS contains multiple IDs; AGENT_USER_ID requires exactly one"
+              exit 1
+              ;;
+          esac
+
+      - name: Upsert backend env vars in Coolify
         timeout-minutes: 3
         env:
           ADMIN_USER_IDS: ${{ secrets.ADMIN_USER_IDS }}
@@ -32,15 +47,18 @@ jobs:
               echo "$key: secret not set, skipping"
               return 0
             fi
-            payload=$(printf '{"key":"%s","value":"%s","is_preview":false}' "$key" "$value")
-            # Create first; fall back to update if the key already exists
+            payload=$(jq -nc --arg key "$key" --arg value "$value" \
+              '{key:$key,value:$value,is_preview:false}')
+
+            # Create first; fall back to update if the key already exists.
+            # Do not print response bodies: Coolify may return secret values.
             http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X POST "$base" \
               -H "$auth" -H "Content-Type: application/json" -d "$payload")
-            echo "$key POST status: $http_code -> $(cat /tmp/resp)"
+            echo "$key POST status: $http_code"
             if [ "$http_code" -ge 400 ]; then
               http_code=$(curl -s -o /tmp/resp -w "%{http_code}" -X PATCH "$base" \
                 -H "$auth" -H "Content-Type: application/json" -d "$payload")
-              echo "$key PATCH status: $http_code -> $(cat /tmp/resp)"
+              echo "$key PATCH status: $http_code"
             fi
             if [ "$http_code" -ge 400 ]; then
               echo "Failed to upsert $key"
@@ -49,6 +67,7 @@ jobs:
           }
 
           upsert ADMIN_USER_IDS "$ADMIN_USER_IDS"
+          upsert AGENT_USER_ID "$ADMIN_USER_IDS"
           upsert CLERK_SECRET_KEY "$CLERK_SECRET_KEY"
           upsert CLERK_PUBLISHABLE_KEY "$CLERK_PUBLISHABLE_KEY"
 

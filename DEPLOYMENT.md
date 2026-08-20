@@ -26,18 +26,19 @@ Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `mai
 
 ### Backend host
 
-| Name                              | Value                                          | Notes                                                                                                                                                                                     |
-| --------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                    | Set privately                                  | Production PostgreSQL connection string.                                                                                                                                                  |
-| `CLERK_SECRET_KEY`                | `sk_live_…` (GitHub secret → Coolify)          | Clerk **production** instance. Synced by `sync-backend-env.yml` — edit the GitHub secret, not the Coolify UI (the next sync overwrites it).                                               |
-| `CLERK_PUBLISHABLE_KEY`           | `pk_live_…` (GitHub secret → Coolify)          | Same instance as above; read by Clerk's Express middleware. Synced by `sync-backend-env.yml`.                                                                                             |
-| `ADMIN_USER_IDS`                  | GitHub secret → Coolify                        | Comma-separated Clerk user IDs allowed to edit/delete global Asset catalog records. Unset → no one passes the admin guard. Ids are per Clerk instance — re-set after any instance switch. |
-| `AGENT_API_KEY` / `AGENT_USER_ID` | (unset in prod)                                | OpenClaw agent access (bypasses Clerk). Intentionally not set on the production host; if ever enabled, `AGENT_USER_ID` must be a **production**-instance user id.                         |
-| `ALLOWED_ORIGINS`                 | `https://foliobuddy.xyz,http://localhost:4000` | Exact origin matching — no wildcards.                                                                                                                                                     |
-| `RATE_LIMIT_MAX`                  | (unset → 200)                                  | Override only for load testing.                                                                                                                                                           |
-| `SENTRY_DSN`                      | (optional)                                     |                                                                                                                                                                                           |
-| `NODE_ENV`                        | `production`                                   | Required — gates the scheduler jobs (price/snapshot crons).                                                                                                                               |
-| `PORT`                            | `4001`                                         |                                                                                                                                                                                           |
+| Name                    | Value                                          | Notes                                                                                                                                                                                                      |
+| ----------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | Set privately                                  | Production PostgreSQL connection string.                                                                                                                                                                   |
+| `CLERK_SECRET_KEY`      | `sk_live_…` (GitHub secret → Coolify)          | Clerk **production** instance. Synced by `sync-backend-env.yml` — edit the GitHub secret, not the Coolify UI (the next sync overwrites it).                                                                |
+| `CLERK_PUBLISHABLE_KEY` | `pk_live_…` (GitHub secret → Coolify)          | Same instance as above; read by Clerk's Express middleware. Synced by `sync-backend-env.yml`.                                                                                                              |
+| `ADMIN_USER_IDS`        | GitHub secret → Coolify                        | Exactly one owner Clerk user ID. The sync workflow validates it and writes the same value to `AGENT_USER_ID`; re-set it after any Clerk instance switch.                                                    |
+| `AGENT_API_KEY`         | Set privately                                  | Shared read-only key for `/api/v1/agent/*`; rotate independently of Clerk.                                                                                                                                |
+| `AGENT_USER_ID`         | Derived by `sync-backend-env.yml`              | Portfolio owner for the agent endpoint. Do not edit it independently; it must stay aligned with `ADMIN_USER_IDS` or agent calls can return HTTP 200 with an empty portfolio.                               |
+| `ALLOWED_ORIGINS`       | `https://foliobuddy.xyz,http://localhost:4000` | Exact origin matching — no wildcards.                                                                                                                                                                      |
+| `RATE_LIMIT_MAX`        | (unset → 200)                                  | Override only for load testing.                                                                                                                                                                            |
+| `SENTRY_DSN`            | (optional)                                     |                                                                                                                                                                                                            |
+| `NODE_ENV`              | `production`                                   | Required — gates the scheduler jobs (price/snapshot crons).                                                                                                                                                |
+| `PORT`                  | `4001`                                         |                                                                                                                                                                                                            |
 
 ## Backend deploy verification (Coolify)
 
@@ -49,12 +50,12 @@ Backend image builds run on the small API host. If a deployment fails with `exit
 
 ### Backend secrets sync (`sync-backend-env.yml`)
 
-`ADMIN_USER_IDS`, `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` live as GitHub Actions secrets and are pushed into the Coolify app by the manual workflow, which then redeploys and health-checks. Unset secrets are skipped, so rotate one at a time:
+`ADMIN_USER_IDS`, `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` live as GitHub Actions secrets and are pushed into the Coolify app by the manual workflow, which then redeploys and health-checks. `ADMIN_USER_IDS` is required and must contain exactly one owner; the workflow mirrors it into `AGENT_USER_ID`. Either Clerk key may be omitted when rotating only the other value.
 
 ```bash
 gh secret set CLERK_SECRET_KEY            # interactive paste — never in shell history
 gh secret set CLERK_PUBLISHABLE_KEY --body "pk_live_..."
-gh secret set ADMIN_USER_IDS --body "user_xxx,user_yyy"
+gh secret set ADMIN_USER_IDS --body "user_xxx"
 gh workflow run sync-backend-env.yml
 ```
 
@@ -78,7 +79,7 @@ One Clerk application, two instances. **Development** (`pk_test_`/`sk_test_`) is
 1. `CLERK_SOURCE_SECRET_KEY=… CLERK_TARGET_SECRET_KEY=… npx tsx scripts/clerk-mirror-users.ts` — dry-run table of source users; `--apply` creates them on the target (primary email, `external_id` = old id) and writes `scripts/clerk-user-id-map.json` (gitignored). Existing target users with the same email are reused, never duplicated.
 2. Rehearse on a fresh `npm run db:sync` copy: `DATABASE_URL=postgresql://dev:dev@localhost:5433/example_portfolio_db npx tsx scripts/remap-clerk-user-ids.ts --map scripts/clerk-user-id-map.json` (dry-run) → `--apply` → `--rollback scripts/audit-clerk-remap-<iso>.json --apply`. The script refuses to run if any `User` FK is not `ON UPDATE CASCADE`, a source id is missing, or a target id already has data; an empty target stub (premature sign-in) is deleted first. It writes the real email into `User.email` (was `<id>@clerk.user`).
 3. Take a DB backup, then cut over in this order so no dev-token request can write during the switch: **backend keys** (`gh secret set` + `sync-backend-env.yml`; every API call 401s from here) → **DB remap** on production (`DATABASE_URL=<prod> … --apply`, then verify: 0 rows under old ids, child counts unchanged, 0 orphans) → **frontend key** in Vercel + redeploy **without** build cache → sign in via Google in a private window, check data, `Live` badge, no `Auto-created User row` warning in backend logs.
-4. `ADMIN_USER_IDS` must be the owner's **new** id (it's a GitHub secret — set it in the same sync run). If `AGENT_USER_ID` is ever enabled it must be remapped too.
+4. `ADMIN_USER_IDS` must be the owner's **new** id (it's a GitHub secret — set it in the same sync run). The workflow writes that same value to `AGENT_USER_ID` so the admin and agent portfolio owner cannot drift.
 
 Rollback is per layer and independent: restore the three backend secrets + re-run the sync; `remap-clerk-user-ids.ts --rollback <audit> --apply`; restore the Vercel key + redeploy.
 
@@ -108,6 +109,13 @@ Drift between host env vars and what the code expects caused an outage on 2026-0
 2. Update the deployment provider dashboard to match — except the backend vars listed under "Backend secrets sync", which are GitHub secrets: `gh secret set …` then `gh workflow run sync-backend-env.yml` (that run also redeploys).
 3. Redeploy (`vercel deploy --prod` or push to `main`).
 4. Run the smoke check above.
+
+When rotating the owner's Clerk identity, update `ADMIN_USER_IDS` and
+`AGENT_USER_ID` together. The manual `sync-backend-env.yml` workflow uses the
+single-ID `ADMIN_USER_IDS` GitHub secret for both mappings and rejects a
+comma-separated value. A valid `AGENT_API_KEY` with a stale `AGENT_USER_ID`
+authenticates successfully but returns an empty portfolio, so verify the agent
+endpoint has a non-zero position count after the redeploy.
 
 When adding/removing values via `vercel env add`, pipe the value through `printf` (not `echo`) to avoid a trailing newline:
 
