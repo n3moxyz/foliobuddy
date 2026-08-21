@@ -102,6 +102,12 @@ export function SnapshotTable({
           setPositionsCache((prev) => ({ ...prev, [snapshotId]: positions }));
         } catch (error) {
           console.error('Failed to load positions:', error);
+          toast.error('Could not load snapshot positions', {
+            description: error instanceof Error ? error.message : 'Please try again.',
+          });
+          // Leave the row collapsed so the next click retries instead of showing
+          // "No positions recorded" for a snapshot that simply failed to load.
+          return;
         } finally {
           setLoadingPositions((prev) => {
             const next = new Set(prev);

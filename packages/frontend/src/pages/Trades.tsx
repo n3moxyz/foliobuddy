@@ -6,6 +6,7 @@ import {
   useDeleteAllTrades,
   useDeleteTrade,
 } from '@/hooks/useTrades';
+import { toast } from 'sonner';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
@@ -172,6 +173,8 @@ export default function Trades() {
                     if (success) {
                       setCopiedAll(true);
                       setTimeout(() => setCopiedAll(false), 2000);
+                    } else {
+                      toast.error('Copy failed', { description: 'Clipboard access was denied.' });
                     }
                   }
                 }}
@@ -208,6 +211,10 @@ export default function Trades() {
                         if (success) {
                           setCopiedAll(true);
                           setTimeout(() => setCopiedAll(false), 2000);
+                        } else {
+                          toast.error('Copy failed', {
+                            description: 'Clipboard access was denied.',
+                          });
                         }
                       }
                     }}

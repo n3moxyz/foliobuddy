@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useSnapshots, useDeleteSnapshot, useDeleteAllSnapshots } from '@/hooks/useSnapshots';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
@@ -115,6 +116,8 @@ export default function History() {
     if (success) {
       setCopiedAll(true);
       setTimeout(() => setCopiedAll(false), 2000);
+    } else {
+      toast.error('Copy failed', { description: 'Clipboard access was denied.' });
     }
   };
 

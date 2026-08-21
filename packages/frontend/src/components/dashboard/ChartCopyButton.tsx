@@ -28,9 +28,12 @@ export function ChartCopyButton({ targetRef, chartName }: ChartCopyButtonProps) 
       await copyChartAsPng(targetRef.current);
       setCopied(true);
       toast.success(`${chartName} copied as an image`);
-    } catch {
+    } catch (error) {
       toast.error('Chart copy failed', {
-        description: 'Allow clipboard access or try a browser that supports copying PNG images.',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Allow clipboard access or try a browser that supports copying PNG images.',
       });
     } finally {
       setIsCopying(false);

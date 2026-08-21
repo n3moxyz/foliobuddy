@@ -174,7 +174,7 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 
 ### Async Feedback (Toasts + Status)
 
-sonner: `AppToaster` in `main.tsx` (themed via `resolveTheme`) + global `MutationCache.onError` toasts every failed mutation — handlers must never fail silently (`console.error`-only catch = bug). Copy/refresh/snapshot handlers toast success + failure. Skeletons carry `role="status"` + sr-only text; inline form errors use `role="alert"` + `aria-invalid`/`aria-describedby`.
+sonner: `AppToaster` in `main.tsx` (gets the raw `theme` — Sonner resolves `system` + tracks OS changes itself; never pre-resolve it; `className="pointer-events-auto"` keeps toasts hoverable/dismissible while a Radix modal body-locks pointer events — toast clicks still count as outside-clicks for the open dialog) + global `MutationCache.onError` toasts every failed mutation — handlers must never fail silently (`console.error`-only catch = bug). Copy/refresh/snapshot handlers toast success + failure. Skeletons carry `role="status"` + sr-only text; inline form errors use `role="alert"` + `aria-invalid`/`aria-describedby`.
 
 ### Responsive Mobile Design
 
