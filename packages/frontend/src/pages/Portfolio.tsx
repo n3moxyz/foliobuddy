@@ -6,6 +6,7 @@ import {
   useDrawdownStats,
   useFxRates,
 } from '@/hooks/usePortfolio';
+import { toast } from 'sonner';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import {
@@ -365,6 +366,8 @@ export default function Portfolio() {
                   if (success) {
                     setCopiedAll(true);
                     setTimeout(() => setCopiedAll(false), 2000);
+                  } else {
+                    toast.error('Copy failed', { description: 'Clipboard access was denied.' });
                   }
                 }
               }}
@@ -435,6 +438,8 @@ export default function Portfolio() {
                       if (success) {
                         setCopiedAll(true);
                         setTimeout(() => setCopiedAll(false), 2000);
+                      } else {
+                        toast.error('Copy failed', { description: 'Clipboard access was denied.' });
                       }
                     }
                   }}

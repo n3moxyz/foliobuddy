@@ -5,7 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
 import { Toaster, toast } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useThemeStore, resolveTheme } from '@/stores/themeStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { initSentry, Sentry } from './lib/sentry';
 import App from './App';
 import { ErrorFallback } from './components/ErrorFallback';
@@ -44,8 +44,21 @@ const queryClient = new QueryClient({
 });
 
 function AppToaster() {
+  // Pass the raw preference through: Sonner resolves 'system' itself and keeps its own
+  // prefers-color-scheme listener, so OS appearance changes re-theme toasts live.
+  // Resolving here would freeze the toaster on whatever the OS was at first render.
   const theme = useThemeStore((state) => state.theme);
-  return <Toaster theme={resolveTheme(theme)} position="bottom-right" closeButton richColors />;
+  // pointer-events-auto: Radix modal dialogs set body { pointer-events: none } while open,
+  // which would otherwise make toasts (hover-to-pause, swipe, the close button) inert.
+  return (
+    <Toaster
+      theme={theme}
+      position="bottom-right"
+      closeButton
+      richColors
+      className="pointer-events-auto"
+    />
+  );
 }
 
 const app = (
