@@ -3,12 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
-import { Toaster, toast } from 'sonner';
+import { toast } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useThemeStore } from '@/stores/themeStore';
 import { initSentry, Sentry } from './lib/sentry';
 import App from './App';
 import { ErrorFallback } from './components/ErrorFallback';
+import { AppToaster } from './components/layout/AppToaster';
 import { isLocalAuthBypassEnabled } from './lib/localAuthBypass';
 import { installViteChunkRecovery } from './lib/chunkRecovery';
 import './index.css';
@@ -42,24 +42,6 @@ const queryClient = new QueryClient({
     },
   }),
 });
-
-function AppToaster() {
-  // Pass the raw preference through: Sonner resolves 'system' itself and keeps its own
-  // prefers-color-scheme listener, so OS appearance changes re-theme toasts live.
-  // Resolving here would freeze the toaster on whatever the OS was at first render.
-  const theme = useThemeStore((state) => state.theme);
-  // pointer-events-auto: Radix modal dialogs set body { pointer-events: none } while open,
-  // which would otherwise make toasts (hover-to-pause, swipe, the close button) inert.
-  return (
-    <Toaster
-      theme={theme}
-      position="bottom-right"
-      closeButton
-      richColors
-      className="pointer-events-auto"
-    />
-  );
-}
 
 const app = (
   <React.StrictMode>
