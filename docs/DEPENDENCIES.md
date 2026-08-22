@@ -13,3 +13,7 @@ Root `package.json` overrides `exceljs`'s transitive `uuid` to `11.1.1` (ExcelJS
 ## ExcelJS worksheet naming
 
 ExcelJS treats the worksheet name `History` as protected; exports use `Snapshots` instead. Keep `export.test.ts` coverage for this.
+
+## Pinned: `@radix-ui/react-dismissable-layer`
+
+`packages/frontend` depends on `@radix-ui/react-dismissable-layer` directly only to wrap the Sonner `<Toaster>` in `DismissableLayerBranch` (see `components/layout/AppToaster.tsx`). The Branch works through a module-level React context, so it must be the **same module instance** the Radix dialogs use — keep it pinned to the exact version the lockfile resolves for every Radix consumer of it (currently `1.1.11`, shared by react-dialog, react-popover, react-select, react-tooltip and react-menu/react-dropdown-menu). A caret range that drifts to a newer copy would silently break the Branch (toast clicks would start closing open dialogs again). After bumping **any** `@radix-ui/*` package, run `npm ls @radix-ui/react-dismissable-layer` — it must list exactly one version — and move this pin to match.
