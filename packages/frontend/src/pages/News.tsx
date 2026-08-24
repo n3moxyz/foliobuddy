@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Coins, ExternalLink, Globe, LineChart, Newspaper, RefreshCw } from 'lucide-react';
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
@@ -181,7 +182,7 @@ export default function News() {
 
       {isLoading ? (
         <NewsSkeleton />
-      ) : isError ? (
+      ) : isError && !news ? (
         <div className="py-16 text-center">
           <Newspaper className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <h2 className="mb-1 text-lg font-semibold">Couldn't load news</h2>
@@ -199,9 +200,22 @@ export default function News() {
           <p className="mx-auto max-w-sm text-sm text-muted-foreground">
             Add crypto or equity positions and headlines for your holdings will show up here.
           </p>
+          <Button asChild className="mt-4" size="sm">
+            <Link to="/portfolio">Go to Portfolio</Link>
+          </Button>
         </div>
       ) : news ? (
         <div className="space-y-4">
+          {/* A failed refetch keeps the last-good headlines visible — never
+              swap loaded content for the full-page error state. */}
+          {isError && (
+            <p
+              role="alert"
+              className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning"
+            >
+              Couldn't refresh — showing the last loaded headlines.
+            </p>
+          )}
           {SECTION_CONFIG.map((section) => {
             const groups = section.id === 'macro' ? [] : news[section.id];
             const storyCount =
