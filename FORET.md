@@ -1960,6 +1960,20 @@ The agent endpoint has two independent controls: `AGENT_API_KEY` proves the call
 
 The durable fix is for `sync-backend-env.yml` to validate the single owner ID, write it to both `ADMIN_USER_IDS` and `AGENT_USER_ID`, redeploy, and then verify the agent endpoint returns a non-zero position count. Authentication success alone is not a sufficient smoke test for account-scoped automation.
 
+### The News Tab (August 2026)
+
+The News tab (`/news`, between Trades and History) answers a simple question every portfolio app eventually gets asked: "what's happening to the stuff I own?" It shows Yahoo Finance headlines for every owned position plus open-trade tickers, in the same Crypto → Equities structure as the Portfolio page, with a Macro section for Fed/CPI/market-wide news standing in for Cash (cash has no news, but the forces moving it do).
+
+The satisfying part: the data pipeline already existed. `YahooFinanceProvider` had been calling Yahoo's search endpoint all along with `newsCount: 0` — the headlines were being explicitly thrown away. The feature is essentially "stop discarding the news field": a `getNews()` method on the provider, a `newsService` that maps holdings to Yahoo tickers, and a page.
+
+Things worth remembering:
+
+- **One symbol universe, two dialects.** CoinGecko crypto assets store plain tickers (`BTC`), so news lookups append `-USD` (Yahoo's crypto convention). Yahoo-priced equities/UTs already store an exact Yahoo ticker in `providerAssetId` (`285A.T`, `D05.SI`) — pass it through untouched. Manual-priced assets, stables, cash, NFTs and angels have nothing queryable and are skipped entirely.
+- **Cache successes (even empty ones), never failures.** A ticker with no news is a valid, cacheable answer; a Yahoo outage is not — caching it would pin an empty feed for the full 15-minute TTL. The split lives in `getNews()`: `set()` only on a successful response.
+- **Dedupe per section, biggest holding wins.** Yahoo tags one story with many tickers, so the same headline would otherwise render under BTC _and_ ETH. Groups are built in position-value order and a per-section `Set` of story ids keeps each story with the largest holding.
+- **No money on the page = no privacy plumbing.** The page deliberately shows no monetary values, so it needed zero `useMoneyFormatter` wiring — the first data page where the global privacy toggle is a no-op by design.
+- **Pre-existing lockfile lesson re-learned:** a casual root `npm install` rewrote `package-lock.json` (pruned optional `@emnapi/*` entries) — exactly the churn `docs/DEPENDENCIES.md` warns about. Restore the committed lockfile and use `npm ci`.
+
 ---
 
 ## Pre-Launch Checklist
