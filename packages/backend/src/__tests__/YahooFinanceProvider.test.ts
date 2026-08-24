@@ -336,4 +336,79 @@ describe('YahooFinanceProvider', () => {
       fxRateToUsd: 1 / 160,
     });
   });
+
+  it('maps search news into news items, tolerating unix-second timestamps, and caches', async () => {
+    searchMock.mockResolvedValue({
+      quotes: [],
+      news: [
+        {
+          uuid: 'story-1',
+          title: 'Bitcoin ETF inflows climb',
+          publisher: 'CoinDesk',
+          link: 'https://example.com/story-1',
+          providerPublishTime: new Date('2026-08-24T08:00:00.000Z'),
+        },
+        {
+          uuid: 'story-2',
+          title: 'Unix-stamped story',
+          publisher: 'Wire',
+          link: 'https://example.com/story-2',
+          providerPublishTime: 1787904000,
+        },
+        { uuid: 'broken', publisher: 'Wire' },
+      ],
+    });
+
+    const provider = new YahooFinanceProvider();
+    const first = await provider.getNews('BTC-USD', 8);
+    const second = await provider.getNews('BTC-USD', 8);
+
+    expect(searchMock).toHaveBeenCalledTimes(1);
+    expect(searchMock).toHaveBeenCalledWith('BTC-USD', {
+      quotesCount: 0,
+      newsCount: 8,
+      lang: 'en-US',
+      region: 'US',
+    });
+    expect(first).toEqual([
+      {
+        id: 'story-1',
+        title: 'Bitcoin ETF inflows climb',
+        publisher: 'CoinDesk',
+        url: 'https://example.com/story-1',
+        publishedAt: '2026-08-24T08:00:00.000Z',
+      },
+      {
+        id: 'story-2',
+        title: 'Unix-stamped story',
+        publisher: 'Wire',
+        url: 'https://example.com/story-2',
+        publishedAt: new Date(1787904000 * 1000).toISOString(),
+      },
+    ]);
+    expect(second).toEqual(first);
+  });
+
+  it('returns an empty news list on failure without caching the failure', async () => {
+    searchMock.mockRejectedValueOnce(new Error('rate limited')).mockResolvedValueOnce({
+      quotes: [],
+      news: [
+        {
+          uuid: 'story-3',
+          title: 'Recovered story',
+          publisher: 'Wire',
+          link: 'https://example.com/story-3',
+          providerPublishTime: new Date('2026-08-24T09:00:00.000Z'),
+        },
+      ],
+    });
+
+    const provider = new YahooFinanceProvider();
+    const failed = await provider.getNews('ETH-USD', 8);
+    const retried = await provider.getNews('ETH-USD', 8);
+
+    expect(failed).toEqual([]);
+    expect(retried).toHaveLength(1);
+    expect(searchMock).toHaveBeenCalledTimes(2);
+  });
 });

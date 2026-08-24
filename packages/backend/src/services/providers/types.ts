@@ -22,6 +22,14 @@ export interface ProviderHistoricalPoint {
   nativePrice?: number | null;
 }
 
+export interface ProviderNewsItem {
+  id: string;
+  title: string;
+  publisher: string;
+  url: string;
+  publishedAt: string | null;
+}
+
 export interface AssetPriceProvider {
   readonly name: ProviderName;
   /** How often the scheduler should refresh prices from this provider, in minutes. `Infinity` means never auto-refresh. */

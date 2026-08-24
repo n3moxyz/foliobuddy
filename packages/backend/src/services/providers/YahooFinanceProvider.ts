@@ -6,6 +6,7 @@ import { USD_SGD_FALLBACK_RATE } from '../../lib/constants.js';
 import type {
   AssetPriceProvider,
   ProviderHistoricalPoint,
+  ProviderNewsItem,
   ProviderPrice,
   ProviderSearchResult,
 } from './types.js';
@@ -21,6 +22,8 @@ const PRICE_CACHE_MAX_ENTRIES = 200;
 const HISTORICAL_CACHE_DURATION_MS = 30 * 60 * 1000;
 const HISTORICAL_CACHE_MAX_ENTRIES = 50;
 const SEARCH_CACHE_DURATION_MS = 10 * 60 * 1000;
+const NEWS_CACHE_DURATION_MS = 15 * 60 * 1000;
+const NEWS_CACHE_MAX_ENTRIES = 300;
 const BATCH_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 8000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -123,6 +126,27 @@ type YahooFinanceChartResult = {
   }>;
 };
 
+type YahooSearchNewsItem = {
+  uuid?: string;
+  title?: string;
+  publisher?: string;
+  link?: string;
+  providerPublishTime?: Date | string | number;
+};
+
+// yahoo-finance2 parses providerPublishTime into a Date, but the raw API
+// returns unix seconds — accept both so a lib change can't corrupt timestamps.
+function newsTimestampToIso(value: Date | string | number | undefined): string | null {
+  if (value === undefined || value === null) return null;
+  const date =
+    value instanceof Date
+      ? value
+      : typeof value === 'number'
+        ? new Date(value > 1e12 ? value : value * 1000)
+        : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 type YahooQuoteLike = {
   symbol?: string;
   quoteType?: string;
@@ -151,6 +175,10 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     100
   );
   private readonly usdFxCache = new TTLCache<string, number>(PRICE_CACHE_DURATION_MS, 20);
+  private readonly newsCache = new TTLCache<string, ProviderNewsItem[]>(
+    NEWS_CACHE_DURATION_MS,
+    NEWS_CACHE_MAX_ENTRIES
+  );
 
   private async fetchJson<T>(url: string): Promise<T | null> {
     const controller = new AbortController();
@@ -431,6 +459,43 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     return sortedResults;
   }
 
+  async getNews(query: string, count: number): Promise<ProviderNewsItem[]> {
+    const cacheKey = `${query.toLowerCase()}:${count}`;
+    const cached = this.newsCache.get(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const res = await yahooFinance.search(query, {
+        quotesCount: 0,
+        newsCount: count,
+        lang: 'en-US',
+        region: 'US',
+      });
+      const rawItems = (res.news ?? []) as YahooSearchNewsItem[];
+      const items: ProviderNewsItem[] = [];
+      for (const raw of rawItems) {
+        if (!raw.title || !raw.link) continue;
+        items.push({
+          id: raw.uuid || raw.link,
+          title: raw.title,
+          publisher: raw.publisher || 'Yahoo Finance',
+          url: raw.link,
+          publishedAt: newsTimestampToIso(raw.providerPublishTime),
+        });
+      }
+      // Empty-but-successful responses are cached; failures are not, so a
+      // transient Yahoo outage doesn't pin an empty feed for the full TTL.
+      this.newsCache.set(cacheKey, items);
+      return items;
+    } catch (err) {
+      logger.warn(
+        `[Yahoo] news search failed for "${query}":`,
+        err instanceof Error ? err.message : err
+      );
+      return [];
+    }
+  }
+
   private async quoteAsSearchResult(symbol: string): Promise<ProviderSearchResult | null> {
     try {
       const q = (await yahooFinance.quote(symbol)) as YahooQuoteLike | null;
@@ -665,5 +730,6 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     this.historicalCache.clear();
     this.searchCache.clear();
     this.usdFxCache.clear();
+    this.newsCache.clear();
   }
 }

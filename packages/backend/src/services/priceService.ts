@@ -33,6 +33,12 @@ class PriceService {
     return this.providers[name];
   }
 
+  // Typed accessor for Yahoo-only capabilities (news) so callers share this
+  // instance's caches instead of constructing a second provider.
+  getYahooProvider(): YahooFinanceProvider {
+    return this.yahoo;
+  }
+
   // ── CoinGecko-only legacy surface (kept for existing callers) ──────────
 
   async getPrices(coingeckoIds: string[]): Promise<Map<string, number>> {
