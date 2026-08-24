@@ -1489,6 +1489,16 @@ Caught it by inspecting `LionGlobal`'s prod quantity (`68_482.15`) vs the script
 
 **Multi-position-same-symbol bonus:** the script identifies positions by `symbol → asset → first-matching-position`, which would silently collapse two `Position` rows sharing one `assetId` into one. But the actual mutation path doesn't go through the position object — `computeContribution` reads `cfg.quantity` from the `BACKFILLS` entry directly, and `applyPlans` deletes by `(snapshotId, assetSymbol)` then `createMany`'s fresh rows from `newTargetPositions`. So two entries with the same symbol produce two `SnapshotPosition` rows per snapshot — exactly what we want. The first-position-wins lookup in the sanity-check loop is purely cosmetic (a quantity mismatch warning). Worth knowing because the obvious-looking "bug" — "you can't backfill two positions with the same symbol" — turns out not to be a bug at all, but only because the mutation path skips the lookup. Another instance of "feature works because the path that matters bypasses the path that doesn't."
 
+### Three 500s That Were Really One Missing `prisma generate`
+
+**The bug:** After a fresh `npm ci` at the monorepo root, three investors route tests failed with 500s where 400/201/204 were expected — but only on the local machine; CI stayed green. The real exception (swallowed by the test's mocked logger) was `Cannot read properties of undefined (reading 'Serializable')`. Prisma's postinstall can't find `packages/backend/prisma/schema.prisma` from the repo root, so it leaves `node_modules/.prisma/client` as an ungenerated stub. The stub has the runtime pieces but none of the schema-generated exports — `Prisma.TransactionIsolationLevel` is `undefined` — so exactly the handlers that evaluate `Prisma.TransactionIsolationLevel.Serializable` at request time threw before their (mocked) transactions ever ran. Tests that rejected input before reaching `$transaction` passed, which made it look like a mock-shape or Windows problem. CI only passes because `ci.yml` runs `npx prisma generate` explicitly between `npm ci` and `npm test`.
+
+**The fix:** A vitest `globalSetup` (`packages/backend/vitest.globalSetup.ts`) probes whether the client is generated and runs `npx prisma generate` automatically when it isn't. This guards every invocation path — `npm test`, root test script, and direct `vitest run` — with near-zero cost when the client is healthy.
+
+**The trap inside the fix:** The first version imported `@prisma/client` directly in the globalSetup to check the enum. That broke a _different_ test: the generated Prisma client auto-loads `packages/backend/.env` into `process.env` on import, globalSetup runs in vitest's main process, and forked workers inherit its env — so the dev `.env`'s `RATE_LIMIT_MAX=10000` leaked into `constants.test.ts`, which asserts the 200 default. Per-file fork isolation normally contains that side effect; the main process is the one place it escapes. The probe now runs in a child process so nothing touches the main process env.
+
+**The lesson:** When N tests fail and they're exactly the ones that reach a particular expression, suspect that expression's runtime dependencies before the test mocks. And treat vitest's `globalSetup` as a shared-environment zone: anything it imports runs its side effects into every worker.
+
 ---
 
 ## Best Practices That Paid Off
