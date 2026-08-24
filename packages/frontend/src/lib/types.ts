@@ -41,3 +41,30 @@ export interface ParsedStatementResponse {
   periodEnd: string | null;
   holdings: ParsedStatementHolding[];
 }
+
+// -- News tab (GET /news) --
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  publisher: string;
+  url: string;
+  publishedAt: string | null;
+}
+
+export interface AssetNewsGroup {
+  assetId: string;
+  symbol: string;
+  name: string;
+  category: string;
+  /** True when the asset is only present via an open trade, not a held position */
+  openTradeOnly: boolean;
+  items: NewsItem[];
+}
+
+export interface PortfolioNewsResponse {
+  crypto: AssetNewsGroup[];
+  equities: AssetNewsGroup[];
+  macro: NewsItem[];
+  fetchedAt: string;
+}

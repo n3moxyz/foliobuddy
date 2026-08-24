@@ -23,6 +23,22 @@ describe('demo mode API mock', () => {
     resetDemoDataForTests();
   });
 
+  it('serves the deterministic news feed grouped by portfolio buckets', async () => {
+    const news = await readJson<{
+      crypto: Array<{ symbol: string; openTradeOnly: boolean; items: Array<{ id: string }> }>;
+      equities: Array<{ symbol: string; items: Array<{ id: string }> }>;
+      macro: Array<{ id: string; publishedAt: string | null }>;
+      fetchedAt: string;
+    }>(await demoRequest('/news'));
+
+    expect(news.crypto.map((group) => group.symbol)).toEqual(['BTC', 'ETH', 'SOL', 'XRP']);
+    expect(news.crypto.find((group) => group.symbol === 'XRP')?.openTradeOnly).toBe(true);
+    expect(news.equities.map((group) => group.symbol)).toEqual(['VOO', 'D05.SI']);
+    expect(news.macro.length).toBeGreaterThan(0);
+    expect(news.macro.every((item) => item.publishedAt !== null)).toBe(true);
+    expect(news.fetchedAt).toBe('2026-06-02T12:00:00.000Z');
+  });
+
   it('bulk-imports trades and recomputes analytics from demo state', async () => {
     const beforeTrades = await readJson<Array<{ id: string }>>(await demoRequest('/trades'));
     const beforeAnalytics = await readJson<{ totalTrades: number; totalPnL: number }>(
