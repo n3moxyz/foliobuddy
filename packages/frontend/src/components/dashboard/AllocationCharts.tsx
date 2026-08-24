@@ -14,9 +14,18 @@ import { ASSET_COLORS, STORAGE_BREAKDOWN_COLORS, STABLES_COLORS } from '@/lib/ch
 import type { Position } from '@/lib/types';
 import { ChartCopyButton } from '@/components/dashboard/ChartCopyButton';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import {
+  isCategoryBucket,
+  PERPS_SLICE,
+  resolveDominantBucket,
+  splitCashAndPerps,
+  type CategoryBucket,
+} from '@/components/dashboard/allocationMath';
 
 interface AllocationChartsProps {
   positions: Position[];
+  /** Open perp position size in USD — carved out of the Cash slice in the By Asset donut. */
+  perpExposure?: number;
   isLoading?: boolean;
 }
 
@@ -26,7 +35,6 @@ interface ChartData {
   percentage: number;
 }
 
-type CategoryBucket = 'Crypto' | 'Equities' | 'Cash';
 type DetailedAssetFilter = 'auto' | 'all' | CategoryBucket;
 
 const ALLOCATION_CHART_SKELETON_KEYS = ['asset', 'detailed', 'storage', 'cash'] as const;
@@ -109,6 +117,8 @@ interface AllocationDonutProps {
   totalValue: number;
   headerControl?: React.ReactNode;
   onSliceClick?: (name: string) => void;
+  /** When provided with onSliceClick, slices it rejects render without the click affordance. */
+  isSliceClickable?: (name: string) => boolean;
 }
 
 const AllocationDonut = memo(function AllocationDonut({
@@ -120,6 +130,7 @@ const AllocationDonut = memo(function AllocationDonut({
   totalValue,
   headerControl,
   onSliceClick,
+  isSliceClickable,
 }: AllocationDonutProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -188,13 +199,18 @@ const AllocationDonut = memo(function AllocationDonut({
                 >
                   {visibleData.map((entry, i) => {
                     const originalIndex = data.findIndex((d) => d.name === entry.name);
+                    const clickable =
+                      onSliceClick != null && (isSliceClickable?.(entry.name) ?? true);
                     return (
                       <Cell
                         key={`cell-${entry.name}`}
                         fill={colors[originalIndex % colors.length]}
                         onMouseEnter={() => setHoveredIndex(i)}
-                        onClick={onSliceClick ? () => onSliceClick(entry.name) : undefined}
-                        style={{ cursor: 'pointer' }}
+                        onClick={clickable ? () => onSliceClick(entry.name) : undefined}
+                        // Non-drillable slices (e.g. Perps) must not advertise a click
+                        // they don't have; donuts without onSliceClick keep the legacy
+                        // pointer cursor for their hover detail.
+                        style={{ cursor: clickable || !onSliceClick ? 'pointer' : 'default' }}
                       />
                     );
                   })}
@@ -264,7 +280,11 @@ const AllocationDonut = memo(function AllocationDonut({
   );
 });
 
-export function AllocationCharts({ positions, isLoading }: AllocationChartsProps) {
+export function AllocationCharts({
+  positions,
+  perpExposure = 0,
+  isLoading,
+}: AllocationChartsProps) {
   // Track hidden items for each chart
   const [hiddenCategory, setHiddenCategory] = useState<Set<string>>(new Set());
   const [hiddenDetailed, setHiddenDetailed] = useState<Set<string>>(new Set());
@@ -315,7 +335,18 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
       categoryMap.set(bucket, (categoryMap.get(bucket) || 0) + (p.marketValueUsd || 0));
     });
 
-    const categoryData: ChartData[] = Array.from(categoryMap.entries())
+    // Perp exposure is deployed margin, not dry powder — move it out of Cash into
+    // its own slice (clamped to the cash bucket, see splitCashAndPerps).
+    const { cash: cashAfterPerps, perps: perpsValue } = splitCashAndPerps(
+      categoryMap.get('Cash') || 0,
+      perpExposure
+    );
+    categoryMap.set('Cash', cashAfterPerps);
+
+    const categoryEntries: Array<[string, number]> = Array.from(categoryMap.entries());
+    if (perpsValue > 0) categoryEntries.push([PERPS_SLICE, perpsValue]);
+
+    const categoryData: ChartData[] = categoryEntries
       .filter(([, v]) => v > 0)
       .map(([name, value]) => ({
         name,
@@ -418,7 +449,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         equities: equitiesTotal,
       },
     };
-  }, [positions]);
+  }, [positions, perpExposure]);
 
   if (isLoading) {
     return (
@@ -459,7 +490,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
 
   // Clicking a slice in the "By Asset" donut drills the detail chart into that bucket.
   const focusDetailedBucket = (name: string) => {
-    if (name === 'Crypto' || name === 'Cash' || name === 'Equities') {
+    if (isCategoryBucket(name)) {
       setDetailedFilter(name);
       setHiddenDetailed(new Set());
     }
@@ -469,8 +500,9 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
   // allocation rotates. Resolved at render time because it depends on loaded positions.
   // Cash is skipped here — it already has its own dedicated "Cash Breakdown" donut —
   // so auto never duplicates that chart (Cash stays reachable via the dropdown).
-  const dominantBucket: CategoryBucket =
-    (categoryAllocation.find((c) => c.name !== 'Cash')?.name as CategoryBucket) ?? 'Equities';
+  const dominantBucket: CategoryBucket = resolveDominantBucket(
+    categoryAllocation.map((c) => c.name)
+  );
   const effectiveBucket: CategoryBucket =
     detailedFilter === 'auto' || detailedFilter === 'all' ? dominantBucket : detailedFilter;
 
@@ -516,6 +548,7 @@ export function AllocationCharts({ positions, isLoading }: AllocationChartsProps
         title="By Asset"
         totalValue={totals.portfolio}
         onSliceClick={focusDetailedBucket}
+        isSliceClickable={isCategoryBucket}
       />
       <AllocationDonut
         data={selectedDetailedAllocation}
