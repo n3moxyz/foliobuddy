@@ -247,6 +247,7 @@ export default function Dashboard() {
         <div>
           <AllocationCharts
             positions={positions.filter((p) => !p.custodyOf)}
+            perpExposure={perpExposure}
             isLoading={positionsLoading}
           />
         </div>
