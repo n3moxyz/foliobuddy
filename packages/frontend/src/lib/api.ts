@@ -24,6 +24,7 @@ import type {
   PaginatedResponse,
   ParsedStatementResponse,
   NewsEnrichmentResponse,
+  NewsFeedbackPayload,
   PerformancePoint,
   Performer,
   PortfolioNewsResponse,
@@ -97,6 +98,8 @@ export const api = {
   // News
   getNews: () => request<PortfolioNewsResponse>('/news'),
   getNewsEnrichment: () => request<NewsEnrichmentResponse>('/news/enrichment'),
+  sendNewsFeedback: (data: NewsFeedbackPayload) =>
+    request<void>('/news/feedback', { method: 'POST', body: JSON.stringify(data) }),
 
   // Positions
   getPositions: () => request<Position[]>('/positions'),

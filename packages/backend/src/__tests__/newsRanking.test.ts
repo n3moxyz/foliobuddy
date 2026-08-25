@@ -319,6 +319,32 @@ describe('isTopStoryCandidate', () => {
     expect(isTopStoryCandidate(trivial)).toBe(false);
   });
 
+  it('grants primary status to articles from a holding official domain', () => {
+    const stories = rankStories(
+      [
+        candidate(
+          makeItem(
+            'ir',
+            'Nvidia announces quarterly results and guidance',
+            'NVIDIA Newsroom',
+            2,
+            'https://nvidianews.nvidia.com/news/q3'
+          ),
+          'NVDA'
+        ),
+      ],
+      NOW,
+      ['nvidia.com']
+    );
+
+    expect(stories[0].ranked).toMatchObject({
+      primarySource: true,
+      sourceTier: 1,
+      sourceLabel: 'Company announcement',
+    });
+    expect(isTopStoryCandidate(stories[0])).toBe(true);
+  });
+
   it('admits tier-3 specialists only with independent corroboration', () => {
     const title = 'Bridge protocol hacked for $120M as attacker drains funds';
     const [uncorroborated] = rankStories(

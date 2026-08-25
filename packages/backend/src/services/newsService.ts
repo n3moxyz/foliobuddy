@@ -10,6 +10,7 @@ import {
   type RankedStory,
 } from './news/ranking.js';
 import { newsEnrichmentService } from './news/enrichmentService.js';
+import { normalizeOfficialDomain } from './news/sourceQuality.js';
 
 export interface AssetNewsGroup {
   assetId: string;
@@ -220,7 +221,10 @@ class NewsService {
     // holding ticker and a macro query appears exactly once, in the most
     // relevant place, tagged with every affected symbol.
     const now = Date.now();
-    const stories = rankStories(candidates, now);
+    const officialDomains = targets
+      .map((target) => normalizeOfficialDomain(target.asset.officialDomain))
+      .filter((domain): domain is string => domain !== null);
+    const stories = rankStories(candidates, now, officialDomains);
 
     const sections = buildHoldingGroups(targets, stories);
     const macro = stories

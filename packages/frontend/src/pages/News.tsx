@@ -1,8 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   Coins,
   ExternalLink,
+  Flag,
   Globe,
   LineChart,
   Newspaper,
@@ -12,11 +15,24 @@ import {
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
 import { useNews, useNewsEnrichment } from '@/hooks/useNews';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { cn, formatRelativeTime } from '@/lib/utils';
-import type { AssetNewsGroup, NewsEnrichment, NewsItem, PortfolioNewsResponse } from '@/lib/types';
+import type {
+  AssetNewsGroup,
+  NewsEnrichment,
+  NewsFeedbackReason,
+  NewsItem,
+  PortfolioNewsResponse,
+} from '@/lib/types';
 
 type NewsSectionId = 'crypto' | 'equities' | 'macro';
 type ExpandableId = NewsSectionId | 'top';
@@ -96,7 +112,7 @@ function totalStoryCount(news: PortfolioNewsResponse): number {
   return holdingCount + news.macro.length;
 }
 
-function newsMetaText(item: NewsItem, groupSymbol?: string): string {
+function newsMetaText(item: NewsItem, groupSymbol?: string, featured?: boolean): string {
   const parts = [`${item.publisher} · ${formatRelativeTime(item.publishedAt)}`];
   const eventLabel = item.importance !== 'low' ? EVENT_LABELS[item.eventType] : undefined;
   if (eventLabel) parts.push(eventLabel);
@@ -108,6 +124,7 @@ function newsMetaText(item: NewsItem, groupSymbol?: string): string {
   } else if (affectedSymbols.length > 0) {
     parts.push(`affects ${affectedSymbols.slice(0, 3).join(', ')}`);
   }
+  if (featured) parts.push('in Top stories');
   return parts.join(' · ');
 }
 
@@ -115,39 +132,68 @@ function NewsRow({
   item,
   groupSymbol,
   enrichment,
+  featured,
+  onFeedback,
 }: {
   item: NewsItem;
   groupSymbol?: string;
   enrichment?: NewsEnrichment;
+  featured?: boolean;
+  onFeedback?: (item: NewsItem, reason: NewsFeedbackReason, symbol?: string) => void;
 }) {
   const showImportant = item.importance === 'high';
   return (
     <li>
-      <a
-        href={item.url}
-        target="_blank"
-        rel="noreferrer"
-        className="group flex min-h-11 flex-col justify-center gap-1 px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <span className="text-sm leading-normal group-hover:underline">
-          {item.title}
-          <ExternalLink
-            className="ml-1.5 inline h-3 w-3 shrink-0 text-muted-foreground"
-            aria-hidden="true"
-          />
-        </span>
-        <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-          {showImportant && (
-            <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
-              Important
-            </span>
-          )}
-          {item.primarySource && (
-            <span className="rounded border px-1.5 py-0.5 font-semibold">Primary source</span>
-          )}
-          <span>{newsMetaText(item, groupSymbol)}</span>
-        </span>
-      </a>
+      <div className="flex items-stretch">
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noreferrer"
+          className="group flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="text-sm leading-normal group-hover:underline">
+            {item.title}
+            <ExternalLink
+              className="ml-1.5 inline h-3 w-3 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </span>
+          <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            {showImportant && (
+              <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
+                Important
+              </span>
+            )}
+            {item.primarySource && (
+              <span className="rounded border px-1.5 py-0.5 font-semibold">Primary source</span>
+            )}
+            <span>{newsMetaText(item, groupSymbol, featured)}</span>
+          </span>
+        </a>
+        {/* Feedback control sits OUTSIDE the link — never nest interactive content. */}
+        {onFeedback && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto min-h-11 w-11 shrink-0 self-stretch rounded-none p-0 text-muted-foreground sm:w-9"
+                aria-label={`Flag story: ${item.title}`}
+              >
+                <Flag className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onFeedback(item, 'not_relevant', groupSymbol)}>
+                Not relevant
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onFeedback(item, 'poor_source', groupSymbol)}>
+                Poor source
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
       {enrichment && (
         <div className="border-t border-dashed px-3 py-2">
           <p className="text-sm leading-normal">{enrichment.summary}</p>
@@ -166,9 +212,13 @@ function NewsRow({
 function AssetNewsGroupCard({
   group,
   config,
+  featuredIds,
+  onFeedback,
 }: {
   group: AssetNewsGroup;
   config: NewsSectionConfig;
+  featuredIds: Set<string>;
+  onFeedback: (item: NewsItem, reason: NewsFeedbackReason, symbol?: string) => void;
 }) {
   return (
     <div className={cn('overflow-hidden rounded-lg border', config.groupBorder)}>
@@ -192,7 +242,13 @@ function AssetNewsGroupCard({
       </div>
       <ul className="divide-y border-t">
         {group.items.map((item) => (
-          <NewsRow key={item.id} item={item} groupSymbol={group.symbol} />
+          <NewsRow
+            key={item.id}
+            item={item}
+            groupSymbol={group.symbol}
+            featured={featuredIds.has(item.id)}
+            onFeedback={onFeedback}
+          />
         ))}
       </ul>
     </div>
@@ -235,6 +291,23 @@ export default function News() {
   const topStories = news?.topStories ?? [];
   // AI summaries arrive asynchronously; the feed never waits for them.
   const { data: enrichmentData } = useNewsEnrichment(topStories.map((item) => item.id));
+  const featuredIds = new Set(topStories.map((item) => item.id));
+
+  const feedbackMutation = useMutation({
+    mutationFn: api.sendNewsFeedback,
+    onSuccess: () => toast.success('Feedback noted'),
+  });
+  const handleFeedback = (item: NewsItem, reason: NewsFeedbackReason, symbol?: string) => {
+    feedbackMutation.mutate({
+      storyId: item.id,
+      title: item.title,
+      publisher: item.publisher,
+      eventType: item.eventType,
+      importance: item.importance,
+      symbol: symbol ?? item.affectedSymbols?.[0],
+      reason,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -316,6 +389,7 @@ export default function News() {
                       key={item.id}
                       item={item}
                       enrichment={enrichmentData?.enrichments[item.id]}
+                      onFeedback={handleFeedback}
                     />
                   ))}
                 </ul>
@@ -350,7 +424,12 @@ export default function News() {
                     <div className={cn('overflow-hidden rounded-lg border', section.groupBorder)}>
                       <ul className="divide-y">
                         {news.macro.map((item) => (
-                          <NewsRow key={item.id} item={item} />
+                          <NewsRow
+                            key={item.id}
+                            item={item}
+                            featured={featuredIds.has(item.id)}
+                            onFeedback={handleFeedback}
+                          />
                         ))}
                       </ul>
                     </div>
@@ -360,7 +439,13 @@ export default function News() {
                 ) : (
                   <div className="space-y-3">
                     {groups.map((group) => (
-                      <AssetNewsGroupCard key={group.assetId} group={group} config={section} />
+                      <AssetNewsGroupCard
+                        key={group.assetId}
+                        group={group}
+                        config={section}
+                        featuredIds={featuredIds}
+                        onFeedback={handleFeedback}
+                      />
                     ))}
                   </div>
                 )}
