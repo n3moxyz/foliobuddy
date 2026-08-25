@@ -51,8 +51,9 @@ const EVENT_RULES: EventRule[] = [
   {
     eventType: 'regulation',
     importance: 'high',
+    // "(?<!per )sec" keeps "4,000 transactions per sec" out of SEC news.
     pattern:
-      /\b(sec|cftc|doj|ftc|fdic|occ|fca|esma|mas)\b|regulators?|antitrust|lawsuit|\bsues?\b|court (rules|ruling|order)|judge (rules|blocks|approves)|settlement|\bfined?\b|sanctions?|subpoena|enforcement|etf approval|approv(es|al).{0,30}\betf\b|\bbans?\b|\bbanned\b|legislation|bill (passes|signed)|executive order|tariffs?/i,
+      /(?<!per )\bsec\b|\b(cftc|doj|ftc|fdic|occ|fca|esma|mas)\b|regulators?|antitrust|lawsuit|\bsues?\b|court (rules|ruling|order)|judge (rules|blocks|approves)|settlement|\bfined?\b|sanctions?|subpoena|enforcement|etf approval|approv(es|al).{0,30}\betf\b|\bbans?\b|\bbanned\b|legislation|bill (passes|signed)|executive order|tariffs?/i,
   },
   {
     eventType: 'earnings',
@@ -98,8 +99,9 @@ const EVENT_RULES: EventRule[] = [
   {
     eventType: 'macro',
     importance: 'high',
+    // "fed(?!\s+(up|into|...))" keeps "investors fed up with…" out of Fed news.
     pattern:
-      /\bfed\b|federal reserve|fomc|rate (cut|hike|decision)|interest rates?|\bcpi\b|inflation (data|report|cools|eases|accelerat)|jobs report|nonfarm payrolls|unemployment rate|\bgdp\b|recession|central bank|treasury yields?|\becb\b|bank of japan|\bboj\b|\bpboc\b|debt ceiling|government shutdown/i,
+      /\bfed\b(?!\s+(up|into|by|through|to)\b)|federal reserve|fomc|rate (cut|hike|decision)|interest rates?|\bcpi\b|inflation (data|report|cools|eases|accelerat)|jobs report|nonfarm payrolls|unemployment rate|\bgdp\b|recession|central bank|treasury yields?|\becb\b|bank of japan|\bboj\b|\bpboc\b|debt ceiling|government shutdown/i,
   },
   {
     // Analyst calls are high only when the headline evidences an actual

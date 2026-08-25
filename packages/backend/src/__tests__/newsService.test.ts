@@ -321,6 +321,34 @@ describe('newsService.getPortfolioNews', () => {
     expect(result.crypto[0].items.map((i) => i.id)).toEqual(['material', 'trivial']);
   });
 
+  it('keeps two assets that share a ticker symbol in separate groups', async () => {
+    const dupCoin = makeAsset({ id: 'asset-dup-crypto', symbol: 'DUP', name: 'Dup Coin' });
+    const dupCorp = makeAsset({
+      id: 'asset-dup-equity',
+      symbol: 'DUP',
+      name: 'Dup Corp',
+      category: 'EQUITY',
+      priceProvider: 'yahoo',
+      providerAssetId: 'DUP',
+    });
+    mocks.positionFindMany.mockResolvedValue([
+      makePosition(dupCoin, { marketValueUsd: 3000 }),
+      makePosition(dupCorp, { marketValueUsd: 1000 }),
+    ]);
+    mocks.getNews.mockImplementation(async (query: string) => {
+      if (query === 'DUP-USD') return [newsItem('coin-story')];
+      if (query === 'DUP') return [newsItem('corp-story')];
+      return [];
+    });
+
+    const result = await newsService.getPortfolioNews('user-1');
+
+    expect(result.crypto.map((g) => g.assetId)).toEqual(['asset-dup-crypto']);
+    expect(result.crypto[0].items.map((i) => i.id)).toEqual(['coin-story']);
+    expect(result.equities.map((g) => g.assetId)).toEqual(['asset-dup-equity']);
+    expect(result.equities[0].items.map((i) => i.id)).toEqual(['corp-story']);
+  });
+
   it('ranks macro stories by importance rather than raw recency', async () => {
     mocks.getNews.mockImplementation(async (query: string) => {
       if (query === '^GSPC') {

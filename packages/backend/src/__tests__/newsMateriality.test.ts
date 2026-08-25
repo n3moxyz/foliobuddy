@@ -50,4 +50,14 @@ describe('classifyMateriality', () => {
       eventType: 'general',
     });
   });
+
+  it('does not mistake idioms and abbreviations for regulators or the Fed', () => {
+    expect(
+      classifyMateriality('Solana processes over 4,000 transactions per sec, new benchmark shows')
+    ).toEqual({ importance: 'low', eventType: 'general' });
+    expect(classifyMateriality('Investors fed up with delays in chip shipments')).toEqual({
+      importance: 'medium',
+      eventType: 'industry',
+    });
+  });
 });

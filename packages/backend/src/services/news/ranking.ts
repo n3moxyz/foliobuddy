@@ -26,7 +26,10 @@ export interface RankedNewsItem extends ProviderNewsItem {
 
 export interface NewsCandidate {
   item: ProviderNewsItem;
-  /** Holding symbol this fetch belongs to; null for macro-query results. */
+  /** Asset id this fetch belongs to; null for macro-query results. Assets are
+   *  keyed by id, never by ticker string — symbols are not unique. */
+  assetId: string | null;
+  /** Display symbol for the holding; null for macro-query results. */
   symbol: string | null;
   held: boolean;
   /** Holding's share of total portfolio value — internal ranking input only. */
@@ -38,12 +41,15 @@ export interface RankedStory {
   /** Internal ordering score — never exposed in API responses. */
   score: number;
   publishedMs: number | null;
-  /** Symbol of the most relevant affected holding; null for macro-only. */
-  primarySymbol: string | null;
+  /** Asset id of the most relevant affected holding; null for macro-only. */
+  primaryAssetId: string | null;
 }
 
 export const NEWS_RANKING_CONFIG = {
-  importanceScore: { high: 50, medium: 25, low: 0 },
+  // "high" (70) always dominates the maximum any story can earn from source
+  // tier + recency combined (30 + 30): a prestigious publisher covering a
+  // trivial topic can never outrank a material story on the same holding.
+  importanceScore: { high: 70, medium: 30, low: 0 },
   tierScore: { 1: 30, 2: 20, 3: 10, 4: 0 },
   heldScore: 15,
   openTradeScore: 5,
@@ -138,6 +144,7 @@ function recencyScore(publishedMs: number | null, nowMs: number): number {
 }
 
 interface Owner {
+  assetId: string;
   symbol: string;
   held: boolean;
   weight: number;
@@ -158,16 +165,17 @@ interface Cluster {
 }
 
 function addOwner(cluster: Cluster, candidate: NewsCandidate): void {
-  if (candidate.symbol === null) {
+  if (candidate.assetId === null || candidate.symbol === null) {
     cluster.macro = true;
     return;
   }
-  const existing = cluster.owners.get(candidate.symbol);
+  const existing = cluster.owners.get(candidate.assetId);
   if (existing) {
     existing.held = existing.held || candidate.held;
     existing.weight = Math.max(existing.weight, candidate.weight);
   } else {
-    cluster.owners.set(candidate.symbol, {
+    cluster.owners.set(candidate.assetId, {
+      assetId: candidate.assetId,
       symbol: candidate.symbol,
       held: candidate.held,
       weight: candidate.weight,
@@ -182,12 +190,12 @@ function mergeClusters(target: Cluster, other: Cluster): void {
     }
   }
   for (const owner of other.owners.values()) {
-    const existing = target.owners.get(owner.symbol);
+    const existing = target.owners.get(owner.assetId);
     if (existing) {
       existing.held = existing.held || owner.held;
       existing.weight = Math.max(existing.weight, owner.weight);
     } else {
-      target.owners.set(owner.symbol, { ...owner });
+      target.owners.set(owner.assetId, { ...owner });
     }
   }
   target.macro = target.macro || other.macro;
@@ -246,7 +254,10 @@ function buildClusters(candidates: NewsCandidate[], nowMs: number): Cluster[] {
     const anchorTime = cluster.articles[0].publishedMs;
     const match = buckets.find((bucket) => {
       const bucketTime = bucket.articles[0].publishedMs;
-      if (anchorTime === null || bucketTime === null) return true;
+      // Without timestamps on both sides the 72h window cannot be checked, so
+      // a signature match alone must NOT merge — recurring headline templates
+      // ("Fed holds rates steady") describe different events months apart.
+      if (anchorTime === null || bucketTime === null) return false;
       return Math.abs(anchorTime - bucketTime) <= NEWS_RANKING_CONFIG.clusterWindowMs;
     });
     if (match) {
@@ -259,8 +270,6 @@ function buildClusters(candidates: NewsCandidate[], nowMs: number): Cluster[] {
   }
   return merged;
 }
-
-const IMPORTANCE_ORDER: Record<NewsImportance, number> = { high: 2, medium: 1, low: 0 };
 
 /** Prefer primary source, then highest tier, then the earliest (original) copy. */
 function pickRepresentative(articles: EnrichedArticle[]): EnrichedArticle {
@@ -284,31 +293,35 @@ function sortOwners(owners: Owner[]): Owner[] {
 
 function buildReasons(
   rep: EnrichedArticle,
-  importance: NewsImportance,
-  eventType: NewsEventType,
+  eventPublishedMs: number | null,
   bestOwner: Owner | null,
   macroOnly: boolean,
   publisherCount: number
 ): string[] {
   const reasons: string[] = [];
-  const eventLabel = EVENT_TYPE_LABELS[eventType];
-  if (eventLabel && importance !== 'low') reasons.push(eventLabel);
+  const eventLabel = EVENT_TYPE_LABELS[rep.eventType];
+  if (eventLabel && rep.importance !== 'low') reasons.push(eventLabel);
   if (rep.source.label) reasons.push(rep.source.label);
   if (bestOwner) reasons.push(bestOwner.held ? 'Held position' : 'Open trade');
   else if (macroOnly) reasons.push('Market-wide');
   if (publisherCount > 1) reasons.push(`Syndicated by ${publisherCount} outlets`);
-  if (rep.publishedMs === null) reasons.push('Undated');
+  if (eventPublishedMs === null) reasons.push('Undated');
   return reasons.slice(0, 4);
 }
 
 function scoreCluster(cluster: Cluster, nowMs: number): RankedStory {
   const rep = pickRepresentative(cluster.articles);
-  const best = cluster.articles.reduce((acc, article) =>
-    IMPORTANCE_ORDER[article.importance] > IMPORTANCE_ORDER[acc.importance] ? article : acc
-  );
   const owners = sortOwners([...cluster.owners.values()]);
   const bestOwner = owners[0] ?? null;
   const publisherCount = new Set(cluster.articles.map((a) => a.item.publisher.toLowerCase())).size;
+
+  // Event time = earliest sanitized member timestamp: a dated syndicate copy
+  // can date an otherwise-undated representative, and scoring/labels never use
+  // raw provider timestamps (a future-skewed original stays "Undated").
+  const memberTimes = cluster.articles
+    .map((article) => article.publishedMs)
+    .filter((ms): ms is number => ms !== null);
+  const eventPublishedMs = memberTimes.length > 0 ? Math.min(...memberTimes) : null;
 
   const cfg = NEWS_RANKING_CONFIG;
   let relevance = 0;
@@ -318,33 +331,33 @@ function scoreCluster(cluster: Cluster, nowMs: number): RankedStory {
       relevance += cfg.largeHoldingScore;
     }
   }
+  // Importance and event type come from the representative's OWN headline —
+  // the label shown to the user must describe the headline they read, so a
+  // clickbait-tailed copy can never borrow a sibling's "high" classification.
   const score =
-    cfg.importanceScore[best.importance] +
+    cfg.importanceScore[rep.importance] +
     cfg.tierScore[rep.source.tier] +
     relevance +
-    recencyScore(rep.publishedMs, nowMs);
+    recencyScore(eventPublishedMs, nowMs);
+
+  const uniqueSymbols = [...new Set(owners.map((owner) => owner.symbol))];
 
   return {
     ranked: {
       ...rep.item,
+      // Expose the sanitized cluster event time, never the raw provider string.
+      publishedAt: eventPublishedMs === null ? null : new Date(eventPublishedMs).toISOString(),
       sourceTier: rep.source.tier,
       sourceLabel: rep.source.label,
       primarySource: rep.source.primary,
-      importance: best.importance,
-      eventType: best.eventType,
-      affectedSymbols: owners.map((owner) => owner.symbol),
-      rankingReasons: buildReasons(
-        rep,
-        best.importance,
-        best.eventType,
-        bestOwner,
-        cluster.macro,
-        publisherCount
-      ),
+      importance: rep.importance,
+      eventType: rep.eventType,
+      affectedSymbols: uniqueSymbols,
+      rankingReasons: buildReasons(rep, eventPublishedMs, bestOwner, cluster.macro, publisherCount),
     },
     score,
-    publishedMs: rep.publishedMs,
-    primarySymbol: bestOwner?.symbol ?? null,
+    publishedMs: eventPublishedMs,
+    primaryAssetId: bestOwner?.assetId ?? null,
   };
 }
 

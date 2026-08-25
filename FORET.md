@@ -1996,6 +1996,7 @@ Things worth remembering:
 - **"Important" is a claim about decision relevance, not truth.** The Top stories block requires high materiality _and_ a tier ≤ 3 source — a dramatic hack claim from an anonymous blog never gets the badge — and it stays empty on quiet days rather than being manufactured.
 - **Test fixtures can be too fake for the clusterer.** `Story spx-1`/`Story spx-2` titles normalized to identical signatures (single digits are dropped) and correctly clustered — the test "failure" was the fixture, not the code. Deterministic clustering needs fixtures with realistic word shapes.
 - **The deploy-window shape gap is real.** The new frontend reading `news.topStories.length` crashes against the old backend's response during the backend-before-frontend deploy gap — surfaced live as an HMR artifact, fixed with a `?? []` guard. New response fields always need one release of frontend tolerance.
+- **"Primary source" must be a registrable suffix, never a prefix or substring.** The adversarial review caught two critical holes in the first cut: any site could self-grant tier 1 via an `ir.`/`investor.` subdomain, and `includes('.gov.')` matched `sec.gov.uk.attacker.com`. Official status now requires an end-anchored government suffix or an explicit allowlist — anything a publisher can self-assign grants nothing. Same review also caught that a cluster's displayed headline and its importance label could come from _different_ members, quietly defeating the clickbait veto — labels now always describe the headline the user actually reads.
 
 ---
 

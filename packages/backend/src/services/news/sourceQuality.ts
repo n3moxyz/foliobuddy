@@ -171,11 +171,16 @@ const PUBLISHER_TIERS = new Map<string, PublisherRule>([
 
 const PRIMARY_DOMAINS = ['ecb.europa.eu', 'bis.org', 'bankofengland.co.uk', 'imf.org'];
 
+// "Primary source" must be earned by a recognised official domain — a
+// registrable suffix, never a substring or a subdomain prefix. Anything a
+// publisher can self-assign (ir./investor. subdomains, ".gov." appearing
+// mid-hostname on an attacker-registered domain) must NOT grant tier 1.
 function isOfficialDomain(domain: string): boolean {
-  if (domain.endsWith('.gov') || domain.includes('.gov.')) return true;
-  if (PRIMARY_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`))) return true;
-  // Company investor-relations subdomains (ir.example.com / investor.example.com).
-  return domain.startsWith('ir.') || domain.startsWith('investor.');
+  if (domain.endsWith('.gov')) return true;
+  // Government ccTLD suffixes: mas.gov.sg, hmrc.gov.uk, govt.nz — anchored to
+  // the END of the hostname so "sec.gov.uk.attacker.com" cannot qualify.
+  if (/(^|\.)govt?\.[a-z]{2,3}$/.test(domain)) return true;
+  return PRIMARY_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`));
 }
 
 export function classifySource(publisher: string, url: string): SourceClassification {

@@ -147,20 +147,19 @@ function buildHoldingGroups(
   targets: NewsTarget[],
   stories: RankedStory[]
 ): Record<NewsBucket, AssetNewsGroup[]> {
-  const byPrimarySymbol = new Map<string, RankedStory[]>();
+  // Grouping keys on asset id, never ticker text — Asset.symbol has no
+  // uniqueness constraint, so two holdings can legitimately share a symbol.
+  const byPrimaryAssetId = new Map<string, RankedStory[]>();
   for (const story of stories) {
-    if (story.primarySymbol === null) continue;
-    const list = byPrimarySymbol.get(story.primarySymbol) ?? [];
+    if (story.primaryAssetId === null) continue;
+    const list = byPrimaryAssetId.get(story.primaryAssetId) ?? [];
     list.push(story);
-    byPrimarySymbol.set(story.primarySymbol, list);
+    byPrimaryAssetId.set(story.primaryAssetId, list);
   }
 
   const sections: Record<NewsBucket, AssetNewsGroup[]> = { crypto: [], equities: [] };
-  const consumed = new Set<string>();
   for (const target of targets) {
-    if (consumed.has(target.asset.symbol)) continue;
-    consumed.add(target.asset.symbol);
-    const own = byPrimarySymbol.get(target.asset.symbol) ?? [];
+    const own = byPrimaryAssetId.get(target.asset.id) ?? [];
     // `stories` arrives globally sorted, so per-group order is preserved.
     const items = own.slice(0, NEWS_PER_ASSET_DISPLAY).map((story) => story.ranked);
     if (items.length === 0) continue;
@@ -206,13 +205,14 @@ class NewsService {
     const candidates: NewsCandidate[] = targets.flatMap((target, index) =>
       (holdingNews[index] ?? []).map((item) => ({
         item,
+        assetId: target.asset.id,
         symbol: target.asset.symbol,
         held: !target.openTradeOnly,
         weight: totalValueUsd > 0 ? target.valueUsd / totalValueUsd : 0,
       }))
     );
     for (const item of macroBatches.flat()) {
-      candidates.push({ item, symbol: null, held: false, weight: 0 });
+      candidates.push({ item, assetId: null, symbol: null, held: false, weight: 0 });
     }
 
     // One clustering space for the whole page: a story fetched under both a
@@ -223,7 +223,7 @@ class NewsService {
 
     const sections = buildHoldingGroups(targets, stories);
     const macro = stories
-      .filter((story) => story.primarySymbol === null)
+      .filter((story) => story.primaryAssetId === null)
       .slice(0, MACRO_NEWS_LIMIT)
       .map((story) => story.ranked);
     // Never manufacture Top stories on a quiet day — the bar is high

@@ -30,9 +30,10 @@ function makeItem(
 function candidate(
   item: ProviderNewsItem,
   symbol: string | null,
-  overrides: Partial<Pick<NewsCandidate, 'held' | 'weight'>> = {}
+  overrides: Partial<Pick<NewsCandidate, 'held' | 'weight' | 'assetId'>> = {}
 ): NewsCandidate {
-  return { item, symbol, held: symbol !== null, weight: 0, ...overrides };
+  // Tests use the symbol as the asset id unless a collision is being simulated.
+  return { item, assetId: symbol, symbol, held: symbol !== null, weight: 0, ...overrides };
 }
 
 describe('sanitizePublishedAt', () => {
@@ -127,7 +128,7 @@ describe('rankStories', () => {
     );
 
     expect(stories).toHaveLength(1);
-    expect(stories[0].primarySymbol).toBe('NVDA');
+    expect(stories[0].primaryAssetId).toBe('NVDA');
     expect(stories[0].ranked.affectedSymbols).toEqual(['NVDA', 'TSM']);
   });
 
@@ -161,6 +162,9 @@ describe('rankStories', () => {
 
     expect(stories.map((s) => s.ranked.id)).toEqual(['dated', 'future']);
     expect(stories[1].publishedMs).toBeNull();
+    // The raw future ISO string must never leak — the API carries only
+    // sanitized timestamps, so the UI cannot render a skewed "just now".
+    expect(stories[1].ranked.publishedAt).toBeNull();
     expect(stories[1].ranked.rankingReasons).toContain('Undated');
   });
 
@@ -204,15 +208,84 @@ describe('rankStories', () => {
     expect(stories).toEqual([]);
   });
 
-  it('tags macro-only stories as market-wide with no primary symbol', () => {
+  it('tags macro-only stories as market-wide with no primary asset', () => {
     const stories = rankStories(
       [candidate(makeItem('macro', 'Fed holds rates steady at June meeting', 'Reuters', 2), null)],
       NOW
     );
 
-    expect(stories[0].primarySymbol).toBeNull();
+    expect(stories[0].primaryAssetId).toBeNull();
     expect(stories[0].ranked.affectedSymbols).toEqual([]);
     expect(stories[0].ranked.rankingReasons).toContain('Market-wide');
+  });
+
+  it('lets high materiality dominate source tier plus recency combined', () => {
+    const stories = rankStories(
+      [
+        candidate(
+          makeItem('hack', 'Exchange hacked for $50M as attacker drains funds', 'Unknown Wire', 47),
+          'ETH'
+        ),
+        candidate(
+          makeItem('fresh-trivial', 'Ether edges higher in quiet trading', 'Reuters', 0.1),
+          'ETH'
+        ),
+      ],
+      NOW
+    );
+
+    expect(stories.map((s) => s.ranked.id)).toEqual(['hack', 'fresh-trivial']);
+  });
+
+  it("labels a cluster from its representative's own headline, never a sibling's", () => {
+    const base = 'Chipmaker files for chapter 11 bankruptcy protection in delaware court';
+    const stories = rankStories(
+      [
+        candidate(makeItem('clean', `${base} on monday`, 'Unknown Wire', 4), 'NVDA'),
+        candidate(makeItem('bait', `${base} heres why it could soar`, 'Reuters', 3), 'NVDA'),
+      ],
+      NOW
+    );
+
+    expect(stories).toHaveLength(1);
+    // Reuters (tier 2) represents the cluster, so the shown headline is the
+    // clickbait-tailed one — its label must be its OWN classification (low),
+    // not the clean sibling's "high"/mna.
+    expect(stories[0].ranked.publisher).toBe('Reuters');
+    expect(stories[0].ranked.importance).toBe('low');
+  });
+
+  it('dates an undated representative from a dated copy of the same article', () => {
+    // Same canonical URL (differently attributed) — the one merge path that
+    // can legitimately join an undated copy to a dated one.
+    const title = 'MicroStrategy announces $2B convertible notes offering';
+    const url = 'https://www.reuters.com/markets/mstr-notes/';
+    const stories = rankStories(
+      [
+        candidate(makeItem('undated-reuters', title, 'Reuters', null, url), 'MSTR'),
+        candidate(makeItem('dated-copy', title, 'Daily Blog', 1, url), 'MSTR'),
+      ],
+      NOW
+    );
+
+    expect(stories).toHaveLength(1);
+    expect(stories[0].ranked.publisher).toBe('Reuters');
+    expect(stories[0].publishedMs).toBe(NOW - 1 * HOUR);
+    expect(stories[0].ranked.publishedAt).toBe(new Date(NOW - 1 * HOUR).toISOString());
+    expect(stories[0].ranked.rankingReasons).not.toContain('Undated');
+  });
+
+  it('never merges same-signature stories on a timestamp it cannot verify', () => {
+    const title = 'Token migration deadline approaches for holders';
+    const stories = rankStories(
+      [
+        candidate(makeItem('dated', title, 'Wire A', 5, 'https://a.example/1'), 'BTC'),
+        candidate(makeItem('undated', title, 'Wire B', null, 'https://b.example/2'), 'BTC'),
+      ],
+      NOW
+    );
+
+    expect(stories).toHaveLength(2);
   });
 });
 

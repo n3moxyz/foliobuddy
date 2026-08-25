@@ -36,9 +36,18 @@ describe('classifySource', () => {
 
     const mas = classifySource('MAS', 'https://www.mas.gov.sg/news/media-releases/1');
     expect(mas.primary).toBe(true);
+  });
 
+  it('never grants primary status to self-assignable or spoofed domains', () => {
+    // An ir./investor. subdomain is publisher-controlled, not a recognised
+    // official domain — it must stay at the unrated default.
     const ir = classifySource('Company Newsroom', 'https://investor.nvidia.com/news/x');
-    expect(ir).toMatchObject({ tier: 1, primary: true });
+    expect(ir).toEqual({ tier: 4, label: null, primary: false, denied: false });
+
+    // ".gov." appearing mid-hostname on an attacker-registered domain.
+    const spoof = classifySource('Wire', 'https://sec.gov.uk.attacker-domain.com/press/1');
+    expect(spoof.primary).toBe(false);
+    expect(spoof.tier).toBe(4);
   });
 
   it('gives unknown publishers a neutral low default without a label', () => {
