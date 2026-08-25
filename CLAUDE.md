@@ -23,7 +23,7 @@
 - `src/routes/`/`src/services/`/`src/middleware/` - endpoints; business logic (portfolio/price/snapshot); auth + error handling
 - `src/lib/` - Utils: `constants.ts` (domain enums), `fxConstants.ts` (USD→native FX fields + finite-positive `usdRateEntries()`), `queryParams.ts` (strict bounded integers + real calendar dates), `domain.ts` (backend copy of finite-safe value/cost-basis math), `authorization.ts` (admin + user-asset guards), `startupChecks.ts` (boot warnings), `TTLCache.ts`, + pagination/tradePnL/sentry/logger
 - `src/__tests__/` - vitest unit + integration tests (`routes/` = supertest + mocked Prisma; `helpers/` = createTestApp/fixtures; scheduler/socket tests cover cron fanout, WS payloads + real Socket.io clients with mocked Clerk)
-- `prisma/schema.prisma` - DB schema
+- `prisma/schema.prisma` - DB schema; `vitest.globalSetup.ts` probes the generated Prisma client in a child process and regenerates it before tests when missing (keep the probe isolated so backend env does not leak into workers)
 
 ### Frontend
 
