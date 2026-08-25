@@ -36,6 +36,16 @@ export interface NewsEnrichmentResponse {
   enrichments: Record<string, NewsEnrichment>;
 }
 
+interface TrackedStory {
+  id: string;
+  cacheKey: string;
+}
+
+/** Success cache key: story + the holding context the explanation was written for. */
+function enrichmentCacheKey(story: RankedNewsItem): string {
+  return `${story.id}|${[...story.affectedSymbols].sort().join(',')}`;
+}
+
 const SUCCESS_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_TTL_MS = 30 * 60 * 1000;
 const TRACKED_IDS_TTL_MS = 30 * 60 * 1000;
@@ -63,7 +73,7 @@ class NewsEnrichmentService {
     MAX_CACHE_ENTRIES
   );
   private readonly failureCache = new TTLCache<string, true>(FAILURE_TTL_MS, MAX_CACHE_ENTRIES);
-  private readonly trackedIdsByUser = new TTLCache<string, string[]>(TRACKED_IDS_TTL_MS, 500);
+  private readonly trackedByUser = new TTLCache<string, TrackedStory[]>(TRACKED_IDS_TTL_MS, 500);
   private readonly inFlight = new Set<string>();
   private queueTail: Promise<void> = Promise.resolve();
   private client: Anthropic | null = null;
@@ -74,19 +84,24 @@ class NewsEnrichmentService {
 
   /** Remember this user's Top stories and enrich them in the background. */
   trackAndQueue(userId: string, stories: RankedNewsItem[]): void {
-    this.trackedIdsByUser.set(
+    this.trackedByUser.set(
       userId,
-      stories.map((story) => story.id)
+      stories.map((story) => ({ id: story.id, cacheKey: enrichmentCacheKey(story) }))
     );
     if (!this.isEnabled()) return;
 
     for (const story of stories) {
-      if (this.successCache.has(story.id) || this.failureCache.has(story.id)) continue;
-      if (this.inFlight.has(story.id)) continue;
-      this.inFlight.add(story.id);
+      const cacheKey = enrichmentCacheKey(story);
+      // Failures are keyed by story id (article retrieval is symbol-independent);
+      // successes by story id + affected symbols, because whyItMatters is
+      // written for a specific holding context — user B with a different
+      // portfolio must never receive user A's explanation.
+      if (this.successCache.has(cacheKey) || this.failureCache.has(story.id)) continue;
+      if (this.inFlight.has(cacheKey)) continue;
+      this.inFlight.add(cacheKey);
       // Serial background chain: enrichment never blocks or fails /news.
       this.queueTail = this.queueTail
-        .then(() => this.enrichStory(story))
+        .then(() => this.enrichStory(story, cacheKey))
         .catch((error) => {
           logger.warn(
             `[NewsEnrichment] enrichment failed for "${story.title}":`,
@@ -95,16 +110,20 @@ class NewsEnrichmentService {
           this.failureCache.set(story.id, true);
         })
         .finally(() => {
-          this.inFlight.delete(story.id);
+          this.inFlight.delete(cacheKey);
         });
     }
   }
 
   getResponseFor(userId: string): NewsEnrichmentResponse {
     const enrichments: Record<string, NewsEnrichment> = {};
-    for (const id of this.trackedIdsByUser.get(userId) ?? []) {
-      const enrichment = this.successCache.get(id);
-      if (enrichment) enrichments[id] = enrichment;
+    for (const tracked of this.trackedByUser.get(userId) ?? []) {
+      const enrichment = this.successCache.get(tracked.cacheKey);
+      // Low-confidence output stays cached for diagnostics but is never shown —
+      // an optional enrichment that adds doubt is decorative fog.
+      if (enrichment && enrichment.confidence !== 'low') {
+        enrichments[tracked.id] = enrichment;
+      }
     }
     return { enabled: this.isEnabled(), enrichments };
   }
@@ -114,7 +133,7 @@ class NewsEnrichmentService {
     return this.client;
   }
 
-  private async enrichStory(story: RankedNewsItem): Promise<void> {
+  private async enrichStory(story: RankedNewsItem, cacheKey: string): Promise<void> {
     const articleText = await fetchArticleText(story.url);
     if (!articleText) {
       // Honesty rule: no article body means no enrichment, not a
@@ -146,7 +165,7 @@ class NewsEnrichmentService {
       return;
     }
 
-    this.successCache.set(story.id, {
+    this.successCache.set(cacheKey, {
       id: story.id,
       summary: parsed.summary,
       whyItMatters: parsed.whyItMatters,
@@ -160,7 +179,7 @@ class NewsEnrichmentService {
   resetForTests(): void {
     this.successCache.clear();
     this.failureCache.clear();
-    this.trackedIdsByUser.clear();
+    this.trackedByUser.clear();
     this.inFlight.clear();
     this.queueTail = Promise.resolve();
     this.client = null;

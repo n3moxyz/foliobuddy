@@ -38,6 +38,17 @@ describe('classifySource', () => {
     expect(mas.primary).toBe(true);
   });
 
+  it('never grants tier 1 from a publisher label alone (spoofed-label regression)', () => {
+    // Yahoo can attribute any publisher string — "SEC" on a random domain is
+    // exactly what the primary badge must not reward.
+    const spoofedLabel = classifySource('SEC', 'https://crypto-hype.example.net/breaking');
+    expect(spoofedLabel).toEqual({ tier: 4, label: null, primary: false, denied: false });
+
+    const spoofedFed = classifySource('Federal Reserve', 'https://newsblog.example.com/x');
+    expect(spoofedFed.primary).toBe(false);
+    expect(spoofedFed.tier).toBe(4);
+  });
+
   it('never grants primary status to self-assignable or spoofed domains', () => {
     // An ir./investor. subdomain is publisher-controlled, not a recognised
     // official domain — it must stay at the unrated default.

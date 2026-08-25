@@ -108,6 +108,64 @@ describe('newsEnrichmentService', () => {
     expect(mocks.fetchArticleText).toHaveBeenCalledTimes(1);
   });
 
+  it('never serves one user an explanation written for another holding context', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    mocks.parse
+      .mockResolvedValueOnce({
+        parsed_output: {
+          summary: 'Shared story summary.',
+          whyItMatters: 'Matters to BTC holders.',
+          confidence: 'high',
+        },
+      })
+      .mockResolvedValueOnce({
+        parsed_output: {
+          summary: 'Shared story summary.',
+          whyItMatters: 'Matters to ETH holders.',
+          confidence: 'high',
+        },
+      });
+
+    const btcStory = makeStory('shared');
+    const ethStory = { ...makeStory('shared'), affectedSymbols: ['ETH'] };
+
+    newsEnrichmentService.trackAndQueue('user-a', [btcStory]);
+    await newsEnrichmentService.settleForTests();
+    newsEnrichmentService.trackAndQueue('user-b', [ethStory]);
+    await newsEnrichmentService.settleForTests();
+
+    // Same story id, different holding context — two distinct enrichments,
+    // each user sees only the one written for their portfolio.
+    expect(mocks.parse).toHaveBeenCalledTimes(2);
+    expect(newsEnrichmentService.getResponseFor('user-a').enrichments.shared.whyItMatters).toBe(
+      'Matters to BTC holders.'
+    );
+    expect(newsEnrichmentService.getResponseFor('user-b').enrichments.shared.whyItMatters).toBe(
+      'Matters to ETH holders.'
+    );
+
+    // Identical holding context DOES share the cache — no third API call.
+    newsEnrichmentService.trackAndQueue('user-c', [makeStory('shared')]);
+    await newsEnrichmentService.settleForTests();
+    expect(mocks.parse).toHaveBeenCalledTimes(2);
+  });
+
+  it('caches low-confidence output for diagnostics but never serves it', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    mocks.parse.mockResolvedValue({
+      parsed_output: { summary: 'Thin page.', whyItMatters: 'Unclear.', confidence: 'low' },
+    });
+
+    newsEnrichmentService.trackAndQueue('user-1', [makeStory('a')]);
+    await newsEnrichmentService.settleForTests();
+
+    expect(newsEnrichmentService.getResponseFor('user-1').enrichments).toEqual({});
+    // Cached: re-queueing the same story does not re-call the API.
+    newsEnrichmentService.trackAndQueue('user-1', [makeStory('a')]);
+    await newsEnrichmentService.settleForTests();
+    expect(mocks.parse).toHaveBeenCalledTimes(1);
+  });
+
   it('treats an unparseable model response as a failure, not an enrichment', async () => {
     process.env.ANTHROPIC_API_KEY = 'test-key';
     mocks.parse.mockResolvedValue({ parsed_output: null });

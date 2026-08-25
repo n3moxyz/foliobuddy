@@ -67,21 +67,11 @@ function rules(tier: SourceTier, names: string[], extra: Partial<PublisherRule> 
   return names.map((name) => [normalizePublisher(name), { tier, ...extra }] as const);
 }
 
+// Tier 1 / primary status is granted ONLY by an official domain
+// (isOfficialDomain) — never by the publisher string alone. A Yahoo result
+// labeled "SEC" or "Federal Reserve" on a random domain is exactly the spoof
+// the primary badge must not reward, so there are no tier-1 name rules here.
 const PUBLISHER_TIERS = new Map<string, PublisherRule>([
-  ...rules(
-    1,
-    [
-      'U.S. Securities and Exchange Commission',
-      'SEC',
-      'Federal Reserve',
-      'European Central Bank',
-      'Bank of England',
-      'Monetary Authority of Singapore',
-      'U.S. Department of Justice',
-      'U.S. Department of the Treasury',
-    ],
-    { primary: true }
-  ),
   ...rules(2, [
     'Reuters',
     'Bloomberg',

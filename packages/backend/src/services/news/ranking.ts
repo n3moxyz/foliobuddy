@@ -43,6 +43,8 @@ export interface RankedStory {
   publishedMs: number | null;
   /** Asset id of the most relevant affected holding; null for macro-only. */
   primaryAssetId: string | null;
+  /** Distinct publishers in the cluster — independent-ish corroboration. */
+  corroboration: number;
 }
 
 export const NEWS_RANKING_CONFIG = {
@@ -358,6 +360,7 @@ function scoreCluster(cluster: Cluster, nowMs: number): RankedStory {
     score,
     publishedMs: eventPublishedMs,
     primaryAssetId: bestOwner?.assetId ?? null,
+    corroboration: publisherCount,
   };
 }
 
@@ -376,7 +379,11 @@ export function rankStories(candidates: NewsCandidate[], nowMs: number): RankedS
     .sort(compareStories);
 }
 
-/** "Important"/Top-stories bar: high materiality from a credible (≤3) source. */
+// Top-stories bar: high materiality AND an evidentiary floor — tier 1–2
+// qualifies alone; tier 3 (a wide quality range) needs at least a second
+// distinct publisher on the same story; tier 4 never qualifies.
 export function isTopStoryCandidate(story: RankedStory): boolean {
-  return story.ranked.importance === 'high' && story.ranked.sourceTier <= 3;
+  if (story.ranked.importance !== 'high') return false;
+  if (story.ranked.sourceTier <= 2) return true;
+  return story.ranked.sourceTier === 3 && story.corroboration >= 2;
 }
