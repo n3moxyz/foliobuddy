@@ -19,6 +19,7 @@ import {
   MoreVertical,
   Eye,
   EyeOff,
+  Newspaper,
 } from 'lucide-react';
 import { UserButton } from '@clerk/clerk-react';
 import { dark } from '@clerk/themes';
@@ -62,6 +63,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, shortcut: 'D' },
   { name: 'Portfolio', href: '/portfolio', icon: Wallet, shortcut: 'P' },
   { name: 'Trades', href: '/trades', icon: TrendingUp, shortcut: 'T' },
+  { name: 'News', href: '/news', icon: Newspaper, shortcut: 'N' },
   { name: 'History', href: '/history', icon: History, shortcut: 'H' },
   { name: 'Investors', href: '/investors', icon: Users, shortcut: 'I' },
   { name: 'Settings', href: '/settings', icon: Settings, shortcut: 'S' },

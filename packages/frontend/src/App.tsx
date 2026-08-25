@@ -12,6 +12,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const Portfolio = lazy(() => import('./pages/Portfolio'));
 const Trades = lazy(() => import('./pages/Trades'));
+const News = lazy(() => import('./pages/News'));
 const History = lazy(() => import('./pages/History'));
 const Investors = lazy(() => import('./pages/Investors'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -48,6 +49,7 @@ function AuthenticatedAppContent({ localAuthBypass = false }: { localAuthBypass?
             <Route path="/" element={<Dashboard />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/trades" element={<Trades />} />
+            <Route path="/news" element={<News />} />
             <Route path="/history" element={<History />} />
             <Route path="/investors" element={<Investors />} />
             <Route path="/settings" element={<Settings />} />

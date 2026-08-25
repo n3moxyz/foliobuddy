@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  formatDate,
   formatNativeAmount,
   formatNativePrice,
   formatQuantity,
+  formatRelativeTime,
   isMarketExposureCategory,
 } from '@/lib/utils';
 import { localAmountLabel, localPriceLabel } from '@/components/portfolio/positionPriceDisplay';
@@ -17,6 +19,34 @@ describe('isMarketExposureCategory', () => {
 
     expect(isMarketExposureCategory('STABLECOIN')).toBe(false);
     expect(isMarketExposureCategory('CASH')).toBe(false);
+  });
+});
+
+describe('formatRelativeTime', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-24T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('scales units from minutes to days and falls back to formatDate beyond a week', () => {
+    expect(formatRelativeTime('2026-08-24T11:59:40.000Z')).toBe('just now');
+    expect(formatRelativeTime('2026-08-24T11:15:00.000Z')).toBe('45m ago');
+    expect(formatRelativeTime('2026-08-24T05:00:00.000Z')).toBe('7h ago');
+    expect(formatRelativeTime('2026-08-21T12:00:00.000Z')).toBe('3d ago');
+    expect(formatRelativeTime('2026-08-01T12:00:00.000Z')).toBe(
+      formatDate('2026-08-01T12:00:00.000Z')
+    );
+  });
+
+  it('treats missing, invalid, and future timestamps safely', () => {
+    expect(formatRelativeTime(null)).toBe('-');
+    expect(formatRelativeTime(undefined)).toBe('-');
+    expect(formatRelativeTime('not-a-date')).toBe('-');
+    expect(formatRelativeTime('2026-08-24T12:05:00.000Z')).toBe('just now');
   });
 });
 

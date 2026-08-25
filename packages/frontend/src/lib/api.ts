@@ -25,6 +25,7 @@ import type {
   ParsedStatementResponse,
   PerformancePoint,
   Performer,
+  PortfolioNewsResponse,
   PortfolioSummary,
   Position,
   PositionHistoryEntry,
@@ -92,6 +93,9 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // News
+  getNews: () => request<PortfolioNewsResponse>('/news'),
+
   // Positions
   getPositions: () => request<Position[]>('/positions'),
   getPositionSummary: () => request<PortfolioSummary>('/positions/summary'),

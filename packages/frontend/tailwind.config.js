@@ -59,6 +59,7 @@ export default {
         equities: 'hsl(var(--accent-equities) / <alpha-value>)',
         cash: 'hsl(var(--accent-cash) / <alpha-value>)',
         custody: 'hsl(var(--accent-custody) / <alpha-value>)',
+        macro: 'hsl(var(--accent-macro) / <alpha-value>)',
       },
       borderRadius: {
         lg: 'var(--radius)',

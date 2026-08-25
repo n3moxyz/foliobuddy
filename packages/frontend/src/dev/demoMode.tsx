@@ -20,7 +20,10 @@ import type {
   DbHealth,
   FxRate,
   Investor,
+  AssetNewsGroup,
+  NewsItem,
   PerformancePoint,
+  PortfolioNewsResponse,
   Position,
   PositionHistoryEntry,
   PortfolioSummary,
@@ -35,6 +38,7 @@ import type {
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Portfolio = lazy(() => import('@/pages/Portfolio'));
 const Trades = lazy(() => import('@/pages/Trades'));
+const News = lazy(() => import('@/pages/News'));
 const History = lazy(() => import('@/pages/History'));
 const Investors = lazy(() => import('@/pages/Investors'));
 const Settings = lazy(() => import('@/pages/Settings'));
@@ -159,6 +163,119 @@ function demoAsset(id: string): Asset {
   if (!asset) throw new Error(`Missing demo asset: ${id}`);
   return asset;
 }
+
+function demoNewsItem(id: string, title: string, publisher: string, hoursAgo: number): NewsItem {
+  return {
+    id,
+    title,
+    publisher,
+    url: `https://example.com/news/${id}`,
+    publishedAt: new Date(new Date(NOW).getTime() - hoursAgo * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+function demoNewsGroup(assetId: string, openTradeOnly: boolean, items: NewsItem[]): AssetNewsGroup {
+  const asset = demoAsset(assetId);
+  return {
+    assetId: asset.id,
+    symbol: asset.symbol,
+    name: asset.name,
+    category: asset.category,
+    openTradeOnly,
+    items,
+  };
+}
+
+const demoNews: PortfolioNewsResponse = {
+  crypto: [
+    demoNewsGroup('btc', false, [
+      demoNewsItem(
+        'btc-1',
+        'Bitcoin ETF inflows hit three-week high as funds add $480M',
+        'CoinDesk',
+        2
+      ),
+      demoNewsItem(
+        'btc-2',
+        'Miner reserves fall to multi-year lows ahead of difficulty adjustment',
+        'The Block',
+        5
+      ),
+      demoNewsItem(
+        'btc-3',
+        'Institutional custody demand pushes cold storage premiums higher',
+        'Blockworks',
+        11
+      ),
+    ]),
+    demoNewsGroup('eth', false, [
+      demoNewsItem(
+        'eth-1',
+        'Ethereum core devs set date for next upgrade public testnet',
+        'CoinDesk',
+        7
+      ),
+      demoNewsItem(
+        'eth-2',
+        'Layer-2 fees drop to record lows after blob capacity increase',
+        'The Defiant',
+        14
+      ),
+    ]),
+    demoNewsGroup('sol', false, [
+      demoNewsItem(
+        'sol-1',
+        'Solana validator client update lands on mainnet after staged rollout',
+        'CoinDesk',
+        8
+      ),
+    ]),
+    demoNewsGroup('xrp', true, [
+      demoNewsItem(
+        'xrp-1',
+        'XRP futures open interest climbs as volatility returns',
+        'The Block',
+        4
+      ),
+    ]),
+  ],
+  equities: [
+    demoNewsGroup('voo', false, [
+      demoNewsItem(
+        'voo-1',
+        'S&P 500 index funds see steady inflows despite valuation worries',
+        'Yahoo Finance',
+        3
+      ),
+      demoNewsItem(
+        'voo-2',
+        'Earnings season preview: what index investors should watch',
+        'Morningstar',
+        9
+      ),
+    ]),
+    demoNewsGroup('d05-si', false, [
+      demoNewsItem(
+        'dbs-1',
+        'DBS posts record fee income on wealth management recovery',
+        'The Business Times',
+        6
+      ),
+    ]),
+  ],
+  macro: [
+    demoNewsItem('macro-1', 'Fed minutes show split over timing of next rate cut', 'Reuters', 1),
+    demoNewsItem(
+      'macro-2',
+      'Core CPI cools to 2.6% ahead of the September meeting',
+      'Bloomberg',
+      4
+    ),
+    demoNewsItem('macro-3', 'Dollar slips as 10-year yield retreats below 4%', 'Yahoo Finance', 6),
+    demoNewsItem('macro-4', 'Oil steadies after inventory draw surprises traders', 'Reuters', 12),
+  ],
+  fetchedAt: NOW,
+};
 
 const initialPositions: Position[] = [
   {
@@ -2187,6 +2304,7 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
     return json(demoPreferences);
   }
   if (path === '/api/fx/rates' && method === 'GET') return json(fxRates);
+  if (path === '/api/news' && method === 'GET') return json(demoNews);
   if (path === '/api/fx/refresh' && method === 'POST') return json({ rates: fxRates });
   if (path === '/api/prices/current' && method === 'GET') return json(getCurrentPrices());
   if (path === '/api/prices/refresh' && method === 'POST')
@@ -2561,6 +2679,7 @@ function DemoPages() {
             <Route index element={<Dashboard />} />
             <Route path="portfolio" element={<Portfolio />} />
             <Route path="trades" element={<Trades />} />
+            <Route path="news" element={<News />} />
             <Route path="history" element={<History />} />
             <Route path="investors" element={<Investors />} />
             <Route path="settings" element={<Settings />} />

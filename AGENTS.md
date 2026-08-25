@@ -27,7 +27,7 @@
 
 ### Frontend
 
-- `src/App.tsx` (routing); `src/pages/` (Dashboard, Portfolio, Trades, Investors, Settings); `src/stores/` (Zustand)
+- `src/App.tsx` (routing); `src/pages/` (Dashboard, Portfolio, Trades, News, History, Investors, Settings); `src/stores/` (Zustand)
 - `src/hooks/` - React Query hooks (usePortfolio incl. `useDrawdownStats`, useTrades, …), `useAnimatedNumber` (rAF), `usePageTitle`, `useKeyboardShortcuts` (single-key nav; disableable via `stores/shortcutsStore`, WCAG 2.1.4), `useMoneyFormatter` (monetary privacy); tests in `__tests__/`
 - `src/lib/api.ts` (API client), `chunkRecovery.ts` (chunk reload), `types.ts`, `chartColors.ts` (OKLCH CSS-var chart colors), `chartUtils.ts` (time-period date helpers + drawdown math)
 - `src/components/ui/` - `skeleton.tsx`, `HelpTooltip.tsx`, `creatable-select.tsx` ("+ Add new ..." Radix Select), `formatted-number-input.tsx` (thousands-separator input; pure helpers in `-utils.ts` for Fast Refresh)
@@ -208,6 +208,10 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 ### Trades Review Lenses
 
 `Trades.tsx` — 3 lenses above the shared Trade Tape table: **Review** (default; collapsed stats cards + All/Open/Closed table), **Ticker Dossier** (`?ticker=SOL`; chip clears param), **Monthly Postmortem** (`?view=monthly`; month summaries, edge tags, loss review, open watchlist). Fetches all trades once (`useTrades()`), filters locally so lens summaries survive tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` in sync with seeded rows. `TradeForm` edit = optional `trade` prop; defaults entry 5 days ago, exit today. Tape rows clickable + keyboard-activatable (see Clickable Rows). Lens UI: `TradeLensViews.tsx`; aggregation: `tradeLensModels.ts`.
+
+### News Tab
+
+`/news` (nav between Trades and History, shortcut `N`): Yahoo Finance headlines for owned positions (`custodyOf: null`) + open-trade assets — Crypto → Equities → Macro sections, per-asset sub-groups. `GET /news` → `newsService`: assets map to Yahoo tickers (coingecko crypto = `SYMBOL-USD`; yahoo-priced equities/UT = `providerAssetId`; manual/stables/cash/NFT/angel skipped) → `YahooFinanceProvider.getNews()` (`search()` with `newsCount > 0` — all other call sites keep `0`; 15-min TTLCache/ticker; failures return `[]` uncached). Per-section dedupe (largest holding wins), 5 items/asset, empty groups dropped; macro = `MACRO_NEWS_QUERIES` merged, cap 10. Frontend: `pages/News.tsx` + `useNews` (5-min staleTime), `--accent-macro` token, `formatRelativeTime()` (utils). No monetary values → no privacy wiring. Demo `/api/news` payload stays deterministic (`demoNewsGroup()`).
 
 ### Portfolio Hero Summary
 
