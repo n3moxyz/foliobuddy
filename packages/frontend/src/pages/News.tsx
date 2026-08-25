@@ -77,7 +77,7 @@ function NewsRow({ item }: { item: NewsItem }) {
         rel="noreferrer"
         className="group flex min-h-11 flex-col justify-center gap-0.5 px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <span className="text-sm leading-snug group-hover:underline">
+        <span className="text-sm leading-normal group-hover:underline">
           {item.title}
           <ExternalLink
             className="ml-1.5 inline h-3 w-3 shrink-0 text-muted-foreground"
@@ -110,12 +110,12 @@ function AssetNewsGroupCard({
           </span>
           <span className="truncate text-xs text-muted-foreground">{group.name}</span>
           {group.openTradeOnly && (
-            <span className="shrink-0 rounded border border-primary/30 px-1.5 py-0.5 text-xs text-primary">
+            <span className="shrink-0 rounded border border-primary/30 px-1.5 py-0.5 text-xs font-semibold text-primary">
               Open trade
             </span>
           )}
         </div>
-        <span className="shrink-0 text-xs text-muted-foreground">
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
           {storyCountLabel(group.items.length)}
         </span>
       </div>
@@ -167,16 +167,21 @@ export default function News() {
         title="News"
         subtitle={subtitle}
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            className="touch-manipulation"
-            onClick={() => refetch()}
-            disabled={isFetching}
-          >
-            <RefreshCw className={cn('h-4 w-4 mr-1', isFetching && 'animate-spin')} />
-            Refresh
-          </Button>
+          <>
+            <span role="status" aria-live="polite" className="sr-only">
+              {isFetching ? 'Refreshing news' : ''}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="touch-manipulation"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw className={cn('h-4 w-4 mr-1', isFetching && 'animate-spin')} />
+              {isFetching ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </>
         }
       />
 
@@ -187,7 +192,7 @@ export default function News() {
           <Newspaper className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <h2 className="mb-1 text-lg font-semibold">Couldn't load news</h2>
           <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-            {error instanceof Error ? error.message : 'Something went wrong fetching headlines.'}
+            {error instanceof Error ? error.message : 'Please try again.'}
           </p>
           <Button className="mt-4" size="sm" onClick={() => refetch()}>
             Try again
@@ -205,7 +210,7 @@ export default function News() {
           </Button>
         </div>
       ) : news ? (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* A failed refetch keeps the last-good headlines visible — never
               swap loaded content for the full-page error state. */}
           {isError && (
