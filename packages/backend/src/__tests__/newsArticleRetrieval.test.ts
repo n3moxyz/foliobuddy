@@ -64,6 +64,11 @@ describe('isPrivateIp', () => {
     expect(isPrivateIp('::1', 6)).toBe(true);
     expect(isPrivateIp('fd00::1', 6)).toBe(true);
     expect(isPrivateIp('::ffff:10.0.0.1', 6)).toBe(true);
+    // fe80::/10 spans fe80–febf — not just literal "fe80" (review regression).
+    expect(isPrivateIp('fe80::1', 6)).toBe(true);
+    expect(isPrivateIp('fe9f::1', 6)).toBe(true);
+    expect(isPrivateIp('feb0::1', 6)).toBe(true);
+    expect(isPrivateIp('fec0::1', 6)).toBe(true);
     expect(isPrivateIp('8.8.8.8', 4)).toBe(false);
     expect(isPrivateIp('2606:4700::1111', 6)).toBe(false);
   });
@@ -86,7 +91,7 @@ describe('fetchArticleText', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('fetch', mocks.fetch);
-    mocks.lookup.mockResolvedValue({ address: '93.184.216.34', family: 4 });
+    mocks.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
     mocks.fetch.mockResolvedValue(htmlResponse(goodHtml));
   });
 
@@ -103,8 +108,18 @@ describe('fetchArticleText', () => {
     expect(await fetchArticleText('http://localhost/admin')).toBeNull();
     expect(await fetchArticleText('ftp://news.example.com/x')).toBeNull();
 
-    mocks.lookup.mockResolvedValue({ address: '10.0.0.5', family: 4 });
+    mocks.lookup.mockResolvedValue([{ address: '10.0.0.5', family: 4 }]);
     expect(await fetchArticleText('https://internal-looking.example.com/x')).toBeNull();
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects a hostname when ANY resolved address is private (multi-address regression)', async () => {
+    mocks.lookup.mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+      { address: '192.168.1.10', family: 4 },
+    ]);
+
+    expect(await fetchArticleText('https://dual-homed.example.com/x')).toBeNull();
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
@@ -113,8 +128,8 @@ describe('fetchArticleText', () => {
       new Response(null, { status: 302, headers: { location: 'https://evil.example.net/meta' } })
     );
     mocks.lookup
-      .mockResolvedValueOnce({ address: '93.184.216.34', family: 4 }) // original host
-      .mockResolvedValueOnce({ address: '169.254.169.254', family: 4 }); // redirect target
+      .mockResolvedValueOnce([{ address: '93.184.216.34', family: 4 }]) // original host
+      .mockResolvedValueOnce([{ address: '169.254.169.254', family: 4 }]); // redirect target
 
     expect(await fetchArticleText('https://news.example.com/story')).toBeNull();
     // The redirect target was checked and never fetched.

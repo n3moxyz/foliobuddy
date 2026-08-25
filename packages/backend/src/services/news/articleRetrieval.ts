@@ -42,8 +42,10 @@ export function isPrivateIp(address: string, family: number): boolean {
   if (family === 6) {
     const a = address.toLowerCase();
     if (a.startsWith('::ffff:')) return isPrivateIp(a.slice(7), 4);
+    // fc00::/7 unique-local, fe80::/10 link-local (fe80–febf, not just the
+    // literal "fe80" prefix), fec0::/10 deprecated site-local.
     return (
-      a === '::1' || a === '::' || a.startsWith('fc') || a.startsWith('fd') || a.startsWith('fe80')
+      a === '::1' || a === '::' || a.startsWith('fc') || a.startsWith('fd') || /^fe[89a-f]/.test(a)
     );
   }
   const octets = address.split('.').map(Number);
@@ -57,13 +59,17 @@ export function isPrivateIp(address: string, family: number): boolean {
   return false;
 }
 
-// Best-effort DNS gate: rejects hostnames that resolve to private/loopback/
-// link-local space. A rebinding TOCTOU window remains, but this closes the
-// practical redirect-to-internal primitive.
+// Best-effort DNS gate: resolves EVERY address for the hostname and rejects
+// if any lands in private/loopback/link-local/special-use space — a
+// multi-address record must not pass on its first public entry. A rebinding
+// TOCTOU window remains (fetch resolves again and undici's global fetch
+// cannot pin the connection to the validated address), but this closes the
+// practical redirect-to-internal primitive for a server fetching publishers.
 async function resolvesToPublicAddress(hostname: string): Promise<boolean> {
   try {
-    const { address, family } = await lookup(hostname);
-    return !isPrivateIp(address, family);
+    const addresses = await lookup(hostname, { all: true });
+    if (addresses.length === 0) return false;
+    return addresses.every((entry) => !isPrivateIp(entry.address, entry.family));
   } catch {
     return false;
   }

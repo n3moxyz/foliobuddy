@@ -318,4 +318,24 @@ describe('isTopStoryCandidate', () => {
     expect(isTopStoryCandidate(poorSource)).toBe(false);
     expect(isTopStoryCandidate(trivial)).toBe(false);
   });
+
+  it('admits tier-3 specialists only with independent corroboration', () => {
+    const title = 'Bridge protocol hacked for $120M as attacker drains funds';
+    const [uncorroborated] = rankStories(
+      [candidate(makeItem('solo', title, 'CoinDesk', 2, 'https://coindesk.com/a'), 'ETH')],
+      NOW
+    );
+    const [corroborated] = rankStories(
+      [
+        candidate(makeItem('copy-a', title, 'CoinDesk', 2, 'https://coindesk.com/a'), 'ETH'),
+        candidate(makeItem('copy-b', title, 'The Block', 3, 'https://theblock.co/b'), 'ETH'),
+      ],
+      NOW
+    );
+
+    expect(uncorroborated.ranked.sourceTier).toBe(3);
+    expect(isTopStoryCandidate(uncorroborated)).toBe(false);
+    expect(corroborated.corroboration).toBe(2);
+    expect(isTopStoryCandidate(corroborated)).toBe(true);
+  });
 });
