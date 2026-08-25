@@ -44,12 +44,27 @@ export interface ParsedStatementResponse {
 
 // -- News tab (GET /news) --
 
+export type NewsSourceTier = 1 | 2 | 3 | 4;
+export type NewsImportance = 'high' | 'medium' | 'low';
+
 export interface NewsItem {
   id: string;
   title: string;
   publisher: string;
   url: string;
   publishedAt: string | null;
+  /** 1 = primary/authoritative … 4 = low-confidence or unrated */
+  sourceTier: NewsSourceTier;
+  /** Interpretable source label ("Primary source", "Trusted press", …); null when unrated */
+  sourceLabel: string | null;
+  primarySource: boolean;
+  /** Likely decision relevance from the headline — never verified truth */
+  importance: NewsImportance;
+  eventType: string;
+  /** Every holding the clustered story touches, most relevant first */
+  affectedSymbols: string[];
+  /** Concise user-safe explanations — no values, no scoring weights */
+  rankingReasons: string[];
 }
 
 export interface AssetNewsGroup {
@@ -63,6 +78,8 @@ export interface AssetNewsGroup {
 }
 
 export interface PortfolioNewsResponse {
+  /** Highest-ranked genuinely material stories; empty on quiet days */
+  topStories: NewsItem[];
   crypto: AssetNewsGroup[];
   equities: AssetNewsGroup[];
   macro: NewsItem[];
