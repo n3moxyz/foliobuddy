@@ -39,6 +39,19 @@ describe('demo mode API mock', () => {
     expect(news.fetchedAt).toBe('2026-06-02T12:00:00.000Z');
   });
 
+  it('serves deterministic AI enrichments for a subset of demo top stories', async () => {
+    const enrichment = await readJson<{
+      enabled: boolean;
+      enrichments: Record<string, { provenance: string; confidence: string }>;
+    }>(await demoRequest('/news/enrichment'));
+
+    expect(enrichment.enabled).toBe(true);
+    expect(Object.keys(enrichment.enrichments).sort()).toEqual(['btc-1', 'macro-1']);
+    expect(Object.values(enrichment.enrichments).every((e) => e.provenance === 'article')).toBe(
+      true
+    );
+  });
+
   it('exposes ranking metadata and material top stories in the demo news feed', async () => {
     const news = await readJson<{
       topStories: Array<{ id: string; importance: string; sourceTier: number }>;

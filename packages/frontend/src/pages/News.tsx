@@ -13,10 +13,10 @@ import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useNews } from '@/hooks/useNews';
+import { useNews, useNewsEnrichment } from '@/hooks/useNews';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { cn, formatRelativeTime } from '@/lib/utils';
-import type { AssetNewsGroup, NewsItem, PortfolioNewsResponse } from '@/lib/types';
+import type { AssetNewsGroup, NewsEnrichment, NewsItem, PortfolioNewsResponse } from '@/lib/types';
 
 type NewsSectionId = 'crypto' | 'equities' | 'macro';
 type ExpandableId = NewsSectionId | 'top';
@@ -111,7 +111,15 @@ function newsMetaText(item: NewsItem, groupSymbol?: string): string {
   return parts.join(' · ');
 }
 
-function NewsRow({ item, groupSymbol }: { item: NewsItem; groupSymbol?: string }) {
+function NewsRow({
+  item,
+  groupSymbol,
+  enrichment,
+}: {
+  item: NewsItem;
+  groupSymbol?: string;
+  enrichment?: NewsEnrichment;
+}) {
   const showImportant = item.importance === 'high';
   return (
     <li>
@@ -140,6 +148,17 @@ function NewsRow({ item, groupSymbol }: { item: NewsItem; groupSymbol?: string }
           <span>{newsMetaText(item, groupSymbol)}</span>
         </span>
       </a>
+      {enrichment && (
+        <div className="border-t border-dashed px-3 py-2">
+          <p className="text-sm leading-normal">{enrichment.summary}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Why it matters — {enrichment.whyItMatters}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            AI summary from the article · {enrichment.confidence} confidence
+          </p>
+        </div>
+      )}
     </li>
   );
 }
@@ -214,6 +233,8 @@ export default function News() {
   const hasAnyStories = news ? totalStoryCount(news) > 0 : false;
   // Tolerate a pre-ranking backend response during the deploy window.
   const topStories = news?.topStories ?? [];
+  // AI summaries arrive asynchronously; the feed never waits for them.
+  const { data: enrichmentData } = useNewsEnrichment(topStories.map((item) => item.id));
 
   return (
     <div className="space-y-6">
@@ -291,7 +312,11 @@ export default function News() {
               <div className="overflow-hidden rounded-lg border border-primary/20">
                 <ul className="divide-y">
                   {topStories.map((item) => (
-                    <NewsRow key={item.id} item={item} />
+                    <NewsRow
+                      key={item.id}
+                      item={item}
+                      enrichment={enrichmentData?.enrichments[item.id]}
+                    />
                   ))}
                 </ul>
               </div>

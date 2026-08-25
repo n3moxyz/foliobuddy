@@ -16,6 +16,9 @@ vi.mock('../lib/prisma.js', () => ({
 vi.mock('../services/priceService.js', () => ({
   priceService: { getYahooProvider: () => ({ getNews: mocks.getNews }) },
 }));
+vi.mock('../services/news/enrichmentService.js', () => ({
+  newsEnrichmentService: { trackAndQueue: vi.fn(), getResponseFor: vi.fn() },
+}));
 
 const { newsService, newsBucketFor, yahooNewsTicker } = await import('../services/newsService.js');
 

@@ -21,6 +21,7 @@ import type {
   FxRate,
   Investor,
   AssetNewsGroup,
+  NewsEnrichmentResponse,
   NewsItem,
   PerformancePoint,
   PortfolioNewsResponse,
@@ -367,6 +368,33 @@ const demoNews: PortfolioNewsResponse = {
     }),
   ],
   fetchedAt: NOW,
+};
+
+// One story stays un-enriched (dbs-1) to exercise the graceful-absence state.
+const demoNewsEnrichment: NewsEnrichmentResponse = {
+  enabled: true,
+  enrichments: {
+    'macro-1': {
+      id: 'macro-1',
+      summary:
+        'Minutes from the last FOMC meeting show members split between a September and a December start for rate cuts.',
+      whyItMatters:
+        'The timing of the first cut drives discount rates and dollar strength across every risk asset in the portfolio.',
+      provenance: 'article',
+      confidence: 'high',
+      enrichedAt: NOW,
+    },
+    'btc-1': {
+      id: 'btc-1',
+      summary:
+        'US spot Bitcoin ETFs recorded $480M of net inflows, the largest single-day total in three weeks.',
+      whyItMatters:
+        'Sustained ETF inflows absorb sell pressure and have historically supported BTC spot prices.',
+      provenance: 'article',
+      confidence: 'moderate',
+      enrichedAt: NOW,
+    },
+  },
 };
 
 const initialPositions: Position[] = [
@@ -2397,6 +2425,7 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
   }
   if (path === '/api/fx/rates' && method === 'GET') return json(fxRates);
   if (path === '/api/news' && method === 'GET') return json(demoNews);
+  if (path === '/api/news/enrichment' && method === 'GET') return json(demoNewsEnrichment);
   if (path === '/api/fx/refresh' && method === 'POST') return json({ rates: fxRates });
   if (path === '/api/prices/current' && method === 'GET') return json(getCurrentPrices());
   if (path === '/api/prices/refresh' && method === 'POST')
