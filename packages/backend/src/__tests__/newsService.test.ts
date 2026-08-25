@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProviderNewsItem } from '../services/providers/types.js';
 
 const mocks = vi.hoisted(() => ({
@@ -45,11 +45,22 @@ function makePosition(asset: Record<string, unknown>, overrides: Record<string, 
 function newsItem(id: string, publishedAt: string | null = '2026-08-24T10:00:00.000Z') {
   return {
     id,
-    title: `Story ${id}`,
+    // Distinct signature per id — single-character tokens are dropped by
+    // titleSignature, so "Story a"/"Story b" would otherwise cluster together.
+    title: `Story ${id.replace(/-/g, '')}x`,
     publisher: 'Test Wire',
     url: `https://example.com/${id}`,
     publishedAt,
   } satisfies ProviderNewsItem;
+}
+
+function customItem(
+  id: string,
+  title: string,
+  publisher: string,
+  publishedAt: string | null
+): ProviderNewsItem {
+  return { id, title, publisher, url: `https://example.com/${id}`, publishedAt };
 }
 
 describe('newsBucketFor', () => {
@@ -90,9 +101,15 @@ describe('yahooNewsTicker', () => {
 describe('newsService.getPortfolioNews', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-25T12:00:00.000Z'));
     mocks.positionFindMany.mockResolvedValue([]);
     mocks.tradeFindMany.mockResolvedValue([]);
     mocks.getNews.mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('queries only owned positions and open trades', async () => {
@@ -176,6 +193,8 @@ describe('newsService.getPortfolioNews', () => {
     expect(result.crypto.map((g) => g.symbol)).toEqual(['ETH', 'BTC', 'SOL']);
     expect(result.crypto.map((g) => g.openTradeOnly)).toEqual([false, false, true]);
     expect(result.equities).toEqual([]);
+    // A quiet feed of trivial stories must not manufacture Top stories.
+    expect(result.topStories).toEqual([]);
   });
 
   it('dedupes a story shared across tickers so the larger holding keeps it', async () => {
@@ -196,6 +215,7 @@ describe('newsService.getPortfolioNews', () => {
 
     expect(result.crypto.map((g) => g.symbol)).toEqual(['ETH', 'BTC']);
     expect(result.crypto[0].items.map((i) => i.id)).toEqual(['shared-story']);
+    expect(result.crypto[0].items[0].affectedSymbols).toEqual(['ETH', 'BTC']);
     expect(result.crypto[1].items.map((i) => i.id)).toEqual(['btc-only']);
   });
 
@@ -248,6 +268,114 @@ describe('newsService.getPortfolioNews', () => {
 
     expect(result.crypto).toEqual([]);
     expect(result.equities).toEqual([]);
+    expect(result.macro).toEqual([]);
+    expect(result.topStories).toEqual([]);
     expect(Number.isNaN(Date.parse(result.fetchedAt))).toBe(false);
+  });
+
+  it('never exposes portfolio values or ranking weights in the response', async () => {
+    const btc = makeAsset();
+    mocks.positionFindMany.mockResolvedValue([makePosition(btc, { marketValueUsd: 123456 })]);
+    mocks.getNews.mockImplementation(async (query: string) =>
+      query === 'BTC-USD' ? [newsItem('btc-1')] : []
+    );
+
+    const result = await newsService.getPortfolioNews('user-1');
+    const serialized = JSON.stringify(result);
+
+    expect(serialized).not.toContain('valueUsd');
+    expect(serialized).not.toContain('marketValue');
+    expect(serialized).not.toContain('weight');
+    expect(serialized).not.toContain('score');
+    expect(serialized).not.toContain('123456');
+  });
+
+  it('surfaces genuinely material stories as top stories with interpretable labels', async () => {
+    const btc = makeAsset();
+    mocks.positionFindMany.mockResolvedValue([makePosition(btc, { marketValueUsd: 5000 })]);
+    mocks.getNews.mockImplementation(async (query: string) => {
+      if (query !== 'BTC-USD') return [];
+      return [
+        customItem(
+          'material',
+          'SEC approves spot Bitcoin ETF options',
+          'Reuters',
+          '2026-08-25T06:00:00.000Z'
+        ),
+        newsItem('trivial', '2026-08-25T11:00:00.000Z'),
+      ];
+    });
+
+    const result = await newsService.getPortfolioNews('user-1');
+
+    expect(result.topStories.map((i) => i.id)).toEqual(['material']);
+    expect(result.topStories[0]).toMatchObject({
+      importance: 'high',
+      eventType: 'regulation',
+      sourceTier: 2,
+      primarySource: false,
+      affectedSymbols: ['BTC'],
+    });
+    expect(result.topStories[0].rankingReasons).toContain('Regulation');
+    // The story also stays in its holding group, ranked above the trivial one.
+    expect(result.crypto[0].items.map((i) => i.id)).toEqual(['material', 'trivial']);
+  });
+
+  it('keeps two assets that share a ticker symbol in separate groups', async () => {
+    const dupCoin = makeAsset({ id: 'asset-dup-crypto', symbol: 'DUP', name: 'Dup Coin' });
+    const dupCorp = makeAsset({
+      id: 'asset-dup-equity',
+      symbol: 'DUP',
+      name: 'Dup Corp',
+      category: 'EQUITY',
+      priceProvider: 'yahoo',
+      providerAssetId: 'DUP',
+    });
+    mocks.positionFindMany.mockResolvedValue([
+      makePosition(dupCoin, { marketValueUsd: 3000 }),
+      makePosition(dupCorp, { marketValueUsd: 1000 }),
+    ]);
+    mocks.getNews.mockImplementation(async (query: string) => {
+      if (query === 'DUP-USD') return [newsItem('coin-story')];
+      if (query === 'DUP') return [newsItem('corp-story')];
+      return [];
+    });
+
+    const result = await newsService.getPortfolioNews('user-1');
+
+    expect(result.crypto.map((g) => g.assetId)).toEqual(['asset-dup-crypto']);
+    expect(result.crypto[0].items.map((i) => i.id)).toEqual(['coin-story']);
+    expect(result.equities.map((g) => g.assetId)).toEqual(['asset-dup-equity']);
+    expect(result.equities[0].items.map((i) => i.id)).toEqual(['corp-story']);
+  });
+
+  it('ranks macro stories by importance rather than raw recency', async () => {
+    mocks.getNews.mockImplementation(async (query: string) => {
+      if (query === '^GSPC') {
+        return [
+          customItem(
+            'drift',
+            'S&P drifts sideways in quiet trading',
+            'Test Wire',
+            '2026-08-25T11:00:00.000Z'
+          ),
+        ];
+      }
+      if (query === 'Federal Reserve') {
+        return [
+          customItem(
+            'fed',
+            'Fed cuts rates by 25 basis points',
+            'Reuters',
+            '2026-08-24T06:00:00.000Z'
+          ),
+        ];
+      }
+      return [];
+    });
+
+    const result = await newsService.getPortfolioNews('user-1');
+
+    expect(result.macro.map((i) => i.id)).toEqual(['fed', 'drift']);
   });
 });

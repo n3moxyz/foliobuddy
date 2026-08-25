@@ -39,6 +39,22 @@ describe('demo mode API mock', () => {
     expect(news.fetchedAt).toBe('2026-06-02T12:00:00.000Z');
   });
 
+  it('exposes ranking metadata and material top stories in the demo news feed', async () => {
+    const news = await readJson<{
+      topStories: Array<{ id: string; importance: string; sourceTier: number }>;
+      crypto: Array<{ items: Array<{ importance: string; affectedSymbols: string[] }> }>;
+    }>(await demoRequest('/news'));
+
+    expect(news.topStories.map((item) => item.id)).toEqual(['macro-1', 'btc-1', 'dbs-1']);
+    expect(news.topStories.every((item) => item.importance === 'high')).toBe(true);
+    expect(news.topStories.every((item) => item.sourceTier <= 3)).toBe(true);
+    expect(
+      news.crypto.every((group) =>
+        group.items.every((item) => item.affectedSymbols.length > 0 && item.importance)
+      )
+    ).toBe(true);
+  });
+
   it('bulk-imports trades and recomputes analytics from demo state', async () => {
     const beforeTrades = await readJson<Array<{ id: string }>>(await demoRequest('/trades'));
     const beforeAnalytics = await readJson<{ totalTrades: number; totalPnL: number }>(

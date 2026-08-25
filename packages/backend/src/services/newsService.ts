@@ -2,7 +2,13 @@ import type { Asset } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { priceService } from './priceService.js';
 import { AssetCategory, PriceProvider, TradeStatus } from '../lib/constants.js';
-import type { ProviderNewsItem } from './providers/types.js';
+import {
+  isTopStoryCandidate,
+  rankStories,
+  type NewsCandidate,
+  type RankedNewsItem,
+  type RankedStory,
+} from './news/ranking.js';
 
 export interface AssetNewsGroup {
   assetId: string;
@@ -10,24 +16,28 @@ export interface AssetNewsGroup {
   name: string;
   category: string;
   openTradeOnly: boolean;
-  items: ProviderNewsItem[];
+  items: RankedNewsItem[];
 }
 
 export interface PortfolioNewsResponse {
+  /** Highest-ranked genuinely material stories; empty on quiet days. */
+  topStories: RankedNewsItem[];
   crypto: AssetNewsGroup[];
   equities: AssetNewsGroup[];
-  macro: ProviderNewsItem[];
+  macro: RankedNewsItem[];
   fetchedAt: string;
 }
 
-const NEWS_PER_ASSET_FETCH = 8;
+const NEWS_PER_ASSET_FETCH = 10;
 const NEWS_PER_ASSET_DISPLAY = 5;
-const MACRO_NEWS_PER_QUERY = 6;
+const MACRO_NEWS_PER_QUERY = 8;
 const MACRO_NEWS_LIMIT = 10;
+const TOP_STORIES_LIMIT = 4;
 const NEWS_FETCH_CONCURRENCY = 5;
 
 // Macro feed sources: broad-market tickers plus recurring policy topics.
-// Yahoo's search endpoint returns general market coverage for all of these.
+// Yahoo's search endpoint returns general market coverage for all of these;
+// ranking (not query membership) decides what actually surfaces.
 const MACRO_NEWS_QUERIES = ['^GSPC', '^TNX', 'DX-Y.NYB', 'Federal Reserve', 'inflation'];
 
 type NewsBucket = 'crypto' | 'equities';
@@ -133,26 +143,26 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
-function byPublishedAtDesc(a: ProviderNewsItem, b: ProviderNewsItem): number {
-  return (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
-}
-
-function buildHoldingSections(
+function buildHoldingGroups(
   targets: NewsTarget[],
-  newsPerTarget: ProviderNewsItem[][]
+  stories: RankedStory[]
 ): Record<NewsBucket, AssetNewsGroup[]> {
-  // The same story often tags several tickers — dedupe within a section so the
-  // highest-value holding keeps it and it never renders twice.
-  const seen: Record<NewsBucket, Set<string>> = { crypto: new Set(), equities: new Set() };
-  const sections: Record<NewsBucket, AssetNewsGroup[]> = { crypto: [], equities: [] };
+  // Grouping keys on asset id, never ticker text — Asset.symbol has no
+  // uniqueness constraint, so two holdings can legitimately share a symbol.
+  const byPrimaryAssetId = new Map<string, RankedStory[]>();
+  for (const story of stories) {
+    if (story.primaryAssetId === null) continue;
+    const list = byPrimaryAssetId.get(story.primaryAssetId) ?? [];
+    list.push(story);
+    byPrimaryAssetId.set(story.primaryAssetId, list);
+  }
 
-  targets.forEach((target, index) => {
-    const items = (newsPerTarget[index] ?? [])
-      .filter((item) => !seen[target.bucket].has(item.id))
-      .sort(byPublishedAtDesc)
-      .slice(0, NEWS_PER_ASSET_DISPLAY);
-    for (const item of items) seen[target.bucket].add(item.id);
-    if (items.length === 0) return;
+  const sections: Record<NewsBucket, AssetNewsGroup[]> = { crypto: [], equities: [] };
+  for (const target of targets) {
+    const own = byPrimaryAssetId.get(target.asset.id) ?? [];
+    // `stories` arrives globally sorted, so per-group order is preserved.
+    const items = own.slice(0, NEWS_PER_ASSET_DISPLAY).map((story) => story.ranked);
+    if (items.length === 0) continue;
     sections[target.bucket].push({
       assetId: target.asset.id,
       symbol: target.asset.symbol,
@@ -161,22 +171,8 @@ function buildHoldingSections(
       openTradeOnly: target.openTradeOnly,
       items,
     });
-  });
-
+  }
   return sections;
-}
-
-function dedupeMacro(batches: ProviderNewsItem[][]): ProviderNewsItem[] {
-  const seen = new Set<string>();
-  return batches
-    .flat()
-    .filter((item) => {
-      if (seen.has(item.id)) return false;
-      seen.add(item.id);
-      return true;
-    })
-    .sort(byPublishedAtDesc)
-    .slice(0, MACRO_NEWS_LIMIT);
 }
 
 class NewsService {
@@ -204,13 +200,45 @@ class NewsService {
       ),
     ]);
 
-    const sections = buildHoldingSections(targets, holdingNews);
+    // Portfolio share is a ranking input only — it never leaves the service.
+    const totalValueUsd = targets.reduce((sum, target) => sum + target.valueUsd, 0);
+    const candidates: NewsCandidate[] = targets.flatMap((target, index) =>
+      (holdingNews[index] ?? []).map((item) => ({
+        item,
+        assetId: target.asset.id,
+        symbol: target.asset.symbol,
+        held: !target.openTradeOnly,
+        weight: totalValueUsd > 0 ? target.valueUsd / totalValueUsd : 0,
+      }))
+    );
+    for (const item of macroBatches.flat()) {
+      candidates.push({ item, assetId: null, symbol: null, held: false, weight: 0 });
+    }
+
+    // One clustering space for the whole page: a story fetched under both a
+    // holding ticker and a macro query appears exactly once, in the most
+    // relevant place, tagged with every affected symbol.
+    const now = Date.now();
+    const stories = rankStories(candidates, now);
+
+    const sections = buildHoldingGroups(targets, stories);
+    const macro = stories
+      .filter((story) => story.primaryAssetId === null)
+      .slice(0, MACRO_NEWS_LIMIT)
+      .map((story) => story.ranked);
+    // Never manufacture Top stories on a quiet day — the bar is high
+    // materiality from a credible source, and an empty list is a valid result.
+    const topStories = stories
+      .filter(isTopStoryCandidate)
+      .slice(0, TOP_STORIES_LIMIT)
+      .map((story) => story.ranked);
 
     return {
+      topStories,
       crypto: sections.crypto,
       equities: sections.equities,
-      macro: dedupeMacro(macroBatches),
-      fetchedAt: new Date().toISOString(),
+      macro,
+      fetchedAt: new Date(now).toISOString(),
     };
   }
 }

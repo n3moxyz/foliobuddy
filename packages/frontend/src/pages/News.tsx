@@ -1,6 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Coins, ExternalLink, Globe, LineChart, Newspaper, RefreshCw } from 'lucide-react';
+import {
+  Coins,
+  ExternalLink,
+  Globe,
+  LineChart,
+  Newspaper,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react';
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { Button } from '@/components/ui/button';
@@ -11,6 +19,7 @@ import { cn, formatRelativeTime } from '@/lib/utils';
 import type { AssetNewsGroup, NewsItem, PortfolioNewsResponse } from '@/lib/types';
 
 type NewsSectionId = 'crypto' | 'equities' | 'macro';
+type ExpandableId = NewsSectionId | 'top';
 
 interface NewsSectionConfig {
   id: NewsSectionId;
@@ -56,6 +65,25 @@ const SECTION_CONFIG: NewsSectionConfig[] = [
   },
 ];
 
+// Interpretable event labels; unlabeled types render no tag (restraint over
+// badge soup). Mirrors the backend's EVENT_TYPE_LABELS.
+const EVENT_LABELS: Record<string, string> = {
+  earnings: 'Earnings',
+  regulation: 'Regulation',
+  mna: 'M&A',
+  financing: 'Financing',
+  contract: 'Orders',
+  security: 'Security',
+  leadership: 'Leadership',
+  tokenomics: 'Tokenomics',
+  flows: 'Flows',
+  macro: 'Macro',
+  rating: 'Analyst call',
+  product: 'Product',
+  partnership: 'Partnership',
+  industry: 'Industry data',
+};
+
 function storyCountLabel(count: number): string {
   return count === 1 ? '1 story' : `${count} stories`;
 }
@@ -68,14 +96,30 @@ function totalStoryCount(news: PortfolioNewsResponse): number {
   return holdingCount + news.macro.length;
 }
 
-function NewsRow({ item }: { item: NewsItem }) {
+function newsMetaText(item: NewsItem, groupSymbol?: string): string {
+  const parts = [`${item.publisher} · ${formatRelativeTime(item.publishedAt)}`];
+  const eventLabel = item.importance !== 'low' ? EVENT_LABELS[item.eventType] : undefined;
+  if (eventLabel) parts.push(eventLabel);
+  // Tolerate a pre-ranking backend response during the deploy window.
+  const affectedSymbols = item.affectedSymbols ?? [];
+  if (groupSymbol) {
+    const also = affectedSymbols.filter((symbol) => symbol !== groupSymbol).slice(0, 3);
+    if (also.length > 0) parts.push(`also affects ${also.join(', ')}`);
+  } else if (affectedSymbols.length > 0) {
+    parts.push(`affects ${affectedSymbols.slice(0, 3).join(', ')}`);
+  }
+  return parts.join(' · ');
+}
+
+function NewsRow({ item, groupSymbol }: { item: NewsItem; groupSymbol?: string }) {
+  const showImportant = item.importance === 'high';
   return (
     <li>
       <a
         href={item.url}
         target="_blank"
         rel="noreferrer"
-        className="group flex min-h-11 flex-col justify-center gap-0.5 px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="group flex min-h-11 flex-col justify-center gap-1 px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="text-sm leading-normal group-hover:underline">
           {item.title}
@@ -84,8 +128,16 @@ function NewsRow({ item }: { item: NewsItem }) {
             aria-hidden="true"
           />
         </span>
-        <span className="text-xs text-muted-foreground">
-          {item.publisher} · {formatRelativeTime(item.publishedAt)}
+        <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          {showImportant && (
+            <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
+              Important
+            </span>
+          )}
+          {item.primarySource && (
+            <span className="rounded border px-1.5 py-0.5 font-semibold">Primary source</span>
+          )}
+          <span>{newsMetaText(item, groupSymbol)}</span>
         </span>
       </a>
     </li>
@@ -121,7 +173,7 @@ function AssetNewsGroupCard({
       </div>
       <ul className="divide-y border-t">
         {group.items.map((item) => (
-          <NewsRow key={item.id} item={item} />
+          <NewsRow key={item.id} item={item} groupSymbol={group.symbol} />
         ))}
       </ul>
     </div>
@@ -146,20 +198,22 @@ function NewsSkeleton() {
 export default function News() {
   usePageTitle('News');
   const { data: news, isLoading, isError, error, refetch, isFetching } = useNews();
-  const [expanded, setExpanded] = useState<Record<NewsSectionId, boolean>>({
+  const [expanded, setExpanded] = useState<Record<ExpandableId, boolean>>({
+    top: true,
     crypto: true,
     equities: true,
     macro: true,
   });
 
-  const toggleSection = (id: NewsSectionId) =>
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleSection = (id: ExpandableId) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const subtitle = news
     ? `${storyCountLabel(totalStoryCount(news))} · updated ${formatRelativeTime(news.fetchedAt)}`
     : 'Headlines for your holdings';
 
   const hasAnyStories = news ? totalStoryCount(news) > 0 : false;
+  // Tolerate a pre-ranking backend response during the deploy window.
+  const topStories = news?.topStories ?? [];
 
   return (
     <div className="space-y-6">
@@ -220,6 +274,28 @@ export default function News() {
             >
               Couldn't refresh — showing the last loaded headlines.
             </p>
+          )}
+          {topStories.length > 0 && (
+            <CollapsibleCard
+              title="Top stories"
+              icon={<Sparkles className="h-4 w-4 text-primary" />}
+              accentColor="border-primary/30 bg-primary/5"
+              isExpanded={expanded.top}
+              onToggle={() => toggleSection('top')}
+              headerRight={
+                <span className="text-sm tabular-nums text-muted-foreground">
+                  {storyCountLabel(topStories.length)}
+                </span>
+              }
+            >
+              <div className="overflow-hidden rounded-lg border border-primary/20">
+                <ul className="divide-y">
+                  {topStories.map((item) => (
+                    <NewsRow key={item.id} item={item} />
+                  ))}
+                </ul>
+              </div>
+            </CollapsibleCard>
           )}
           {SECTION_CONFIG.map((section) => {
             const groups = section.id === 'macro' ? [] : news[section.id];

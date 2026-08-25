@@ -164,13 +164,43 @@ function demoAsset(id: string): Asset {
   return asset;
 }
 
-function demoNewsItem(id: string, title: string, publisher: string, hoursAgo: number): NewsItem {
+type DemoNewsExtra = Partial<
+  Pick<
+    NewsItem,
+    | 'sourceTier'
+    | 'sourceLabel'
+    | 'primarySource'
+    | 'importance'
+    | 'eventType'
+    | 'affectedSymbols'
+    | 'rankingReasons'
+  >
+>;
+
+const DEMO_SPECIALIST: DemoNewsExtra = { sourceTier: 3, sourceLabel: 'Specialist' };
+const DEMO_PRESS: DemoNewsExtra = { sourceTier: 2, sourceLabel: 'Trusted press' };
+
+function demoNewsItem(
+  id: string,
+  title: string,
+  publisher: string,
+  hoursAgo: number,
+  extra: DemoNewsExtra = {}
+): NewsItem {
   return {
     id,
     title,
     publisher,
     url: `https://example.com/news/${id}`,
     publishedAt: new Date(new Date(NOW).getTime() - hoursAgo * 60 * 60 * 1000).toISOString(),
+    sourceTier: 4,
+    sourceLabel: null,
+    primarySource: false,
+    importance: 'low',
+    eventType: 'general',
+    affectedSymbols: [],
+    rankingReasons: [],
+    ...extra,
   };
 }
 
@@ -182,30 +212,71 @@ function demoNewsGroup(assetId: string, openTradeOnly: boolean, items: NewsItem[
     name: asset.name,
     category: asset.category,
     openTradeOnly,
-    items,
+    items: items.map((item) =>
+      item.affectedSymbols.length > 0 ? item : { ...item, affectedSymbols: [asset.symbol] }
+    ),
   };
 }
 
+// Shared between their holding group and the Top stories block, exactly as the
+// backend duplicates its highest-ranked material stories.
+const demoBtcEtfStory = demoNewsItem(
+  'btc-1',
+  'Bitcoin ETF inflows hit three-week high as funds add $480M',
+  'CoinDesk',
+  2,
+  {
+    ...DEMO_SPECIALIST,
+    importance: 'high',
+    eventType: 'flows',
+    affectedSymbols: ['BTC'],
+    rankingReasons: ['Flows', 'Specialist', 'Held position'],
+  }
+);
+const demoDbsEarningsStory = demoNewsItem(
+  'dbs-1',
+  'DBS posts record fee income on wealth management recovery',
+  'The Business Times',
+  6,
+  {
+    ...DEMO_SPECIALIST,
+    importance: 'high',
+    eventType: 'earnings',
+    affectedSymbols: ['D05.SI'],
+    rankingReasons: ['Earnings', 'Specialist', 'Held position'],
+  }
+);
+const demoFedMinutesStory = demoNewsItem(
+  'macro-1',
+  'Fed minutes show split over timing of next rate cut',
+  'Reuters',
+  1,
+  {
+    ...DEMO_PRESS,
+    importance: 'high',
+    eventType: 'macro',
+    rankingReasons: ['Macro', 'Trusted press', 'Market-wide'],
+  }
+);
+
 const demoNews: PortfolioNewsResponse = {
+  topStories: [demoFedMinutesStory, demoBtcEtfStory, demoDbsEarningsStory],
   crypto: [
     demoNewsGroup('btc', false, [
-      demoNewsItem(
-        'btc-1',
-        'Bitcoin ETF inflows hit three-week high as funds add $480M',
-        'CoinDesk',
-        2
-      ),
+      demoBtcEtfStory,
       demoNewsItem(
         'btc-2',
         'Miner reserves fall to multi-year lows ahead of difficulty adjustment',
         'The Block',
-        5
+        5,
+        { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Held position'] }
       ),
       demoNewsItem(
         'btc-3',
         'Institutional custody demand pushes cold storage premiums higher',
         'Blockworks',
-        11
+        11,
+        { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Held position'] }
       ),
     ]),
     demoNewsGroup('eth', false, [
@@ -213,13 +284,20 @@ const demoNews: PortfolioNewsResponse = {
         'eth-1',
         'Ethereum core devs set date for next upgrade public testnet',
         'CoinDesk',
-        7
+        7,
+        {
+          ...DEMO_SPECIALIST,
+          importance: 'medium',
+          eventType: 'product',
+          rankingReasons: ['Product', 'Specialist', 'Held position'],
+        }
       ),
       demoNewsItem(
         'eth-2',
         'Layer-2 fees drop to record lows after blob capacity increase',
         'The Defiant',
-        14
+        14,
+        { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Held position'] }
       ),
     ]),
     demoNewsGroup('sol', false, [
@@ -227,7 +305,13 @@ const demoNews: PortfolioNewsResponse = {
         'sol-1',
         'Solana validator client update lands on mainnet after staged rollout',
         'CoinDesk',
-        8
+        8,
+        {
+          ...DEMO_SPECIALIST,
+          importance: 'medium',
+          eventType: 'product',
+          rankingReasons: ['Product', 'Specialist', 'Held position'],
+        }
       ),
     ]),
     demoNewsGroup('xrp', true, [
@@ -235,7 +319,8 @@ const demoNews: PortfolioNewsResponse = {
         'xrp-1',
         'XRP futures open interest climbs as volatility returns',
         'The Block',
-        4
+        4,
+        { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Open trade'] }
       ),
     ]),
   ],
@@ -245,34 +330,41 @@ const demoNews: PortfolioNewsResponse = {
         'voo-1',
         'S&P 500 index funds see steady inflows despite valuation worries',
         'Yahoo Finance',
-        3
+        3,
+        { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Held position'] }
       ),
       demoNewsItem(
         'voo-2',
         'Earnings season preview: what index investors should watch',
         'Morningstar',
-        9
+        9,
+        { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Held position'] }
       ),
     ]),
-    demoNewsGroup('d05-si', false, [
-      demoNewsItem(
-        'dbs-1',
-        'DBS posts record fee income on wealth management recovery',
-        'The Business Times',
-        6
-      ),
-    ]),
+    demoNewsGroup('d05-si', false, [demoDbsEarningsStory]),
   ],
   macro: [
-    demoNewsItem('macro-1', 'Fed minutes show split over timing of next rate cut', 'Reuters', 1),
+    demoFedMinutesStory,
     demoNewsItem(
       'macro-2',
       'Core CPI cools to 2.6% ahead of the September meeting',
       'Bloomberg',
-      4
+      4,
+      {
+        ...DEMO_PRESS,
+        importance: 'high',
+        eventType: 'macro',
+        rankingReasons: ['Macro', 'Trusted press', 'Market-wide'],
+      }
     ),
-    demoNewsItem('macro-3', 'Dollar slips as 10-year yield retreats below 4%', 'Yahoo Finance', 6),
-    demoNewsItem('macro-4', 'Oil steadies after inventory draw surprises traders', 'Reuters', 12),
+    demoNewsItem('macro-3', 'Dollar slips as 10-year yield retreats below 4%', 'Yahoo Finance', 6, {
+      ...DEMO_SPECIALIST,
+      rankingReasons: ['Specialist', 'Market-wide'],
+    }),
+    demoNewsItem('macro-4', 'Oil steadies after inventory draw surprises traders', 'Reuters', 12, {
+      ...DEMO_PRESS,
+      rankingReasons: ['Trusted press', 'Market-wide'],
+    }),
   ],
   fetchedAt: NOW,
 };

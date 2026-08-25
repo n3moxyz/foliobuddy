@@ -1984,6 +1984,20 @@ Things worth remembering:
 - **No money on the page = no privacy plumbing.** The page deliberately shows no monetary values, so it needed zero `useMoneyFormatter` wiring — the first data page where the global privacy toggle is a no-op by design.
 - **Pre-existing lockfile lesson re-learned:** a casual root `npm install` rewrote `package-lock.json` (pruned optional `@emnapi/*` entries) — exactly the churn `docs/DEPENDENCIES.md` warns about. Restore the committed lockfile and use `npm ci`.
 
+### The News Ranking Layer (August 2026)
+
+The first version of the News tab treated Yahoo's newest results as equally valuable headlines — a Motley Fool listicle from ten minutes ago outranked a two-day-old earnings release. The ranking layer (`packages/backend/src/services/news/`) fixes that with four deterministic dimensions scored separately: **source quality** (publisher tiers 1–4 from a testable classification module), **materiality** (headline event patterns — earnings, regulation, M&A, security, tokenomics…), **portfolio relevance** (held beats open-trade-only, with a small size boost that can never rescue junk), and **recency** (24-hour half-life decay, so important news ages slowly and noise ages fast). No LLM in the loop — every ranking is explainable, testable, and cheap enough for every page load.
+
+Things worth remembering:
+
+- **Clickbait patterns veto event patterns.** "Bitcoin price prediction: could BTC reach $200K after ETF approval?" names a real regulatory event, but the headline is speculation — the classifier checks clickbait first and forces `low` importance. Order of checks _is_ the policy.
+- **Unknown publishers are unrated, not bad.** They score like tier 4 but carry a `null` label so the UI never claims to know something it doesn't. The denylist stays tiny — only clearly spammy sources; quality complaints belong in tier 4, not the denylist.
+- **One clustering space for the whole page.** Stories cluster by id → canonical URL → normalized-title signature (72h window), holdings and macro together — so a Fed story fetched under both `BTC-USD` and `^GSPC` renders exactly once, in the most relevant spot, tagged with every affected symbol. Five outlets syndicating one press release become one row represented by the best publisher, never five confirmations.
+- **"Important" is a claim about decision relevance, not truth.** The Top stories block requires high materiality _and_ a tier ≤ 3 source — a dramatic hack claim from an anonymous blog never gets the badge — and it stays empty on quiet days rather than being manufactured.
+- **Test fixtures can be too fake for the clusterer.** `Story spx-1`/`Story spx-2` titles normalized to identical signatures (single digits are dropped) and correctly clustered — the test "failure" was the fixture, not the code. Deterministic clustering needs fixtures with realistic word shapes.
+- **The deploy-window shape gap is real.** The new frontend reading `news.topStories.length` crashes against the old backend's response during the backend-before-frontend deploy gap — surfaced live as an HMR artifact, fixed with a `?? []` guard. New response fields always need one release of frontend tolerance.
+- **"Primary source" must be a registrable suffix, never a prefix or substring.** The adversarial review caught two critical holes in the first cut: any site could self-grant tier 1 via an `ir.`/`investor.` subdomain, and `includes('.gov.')` matched `sec.gov.uk.attacker.com`. Official status now requires an end-anchored government suffix or an explicit allowlist — anything a publisher can self-assign grants nothing. Same review also caught that a cluster's displayed headline and its importance label could come from _different_ members, quietly defeating the clickbait veto — labels now always describe the headline the user actually reads.
+
 ---
 
 ## Pre-Launch Checklist
