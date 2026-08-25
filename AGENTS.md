@@ -142,7 +142,7 @@ All pages lazy-loaded (`React.lazy()` + `Suspense`); Vite `manualChunks` splits 
 
 ### Public Landing Page
 
-Signed-out `/` → lazy `pages/Landing.tsx` (sections in `components/landing/`); other signed-out paths → `pages/SignInPage.tsx`; signed-in `/sign-in` redirects to `/`. Landing forces dark via `dark` wrapper, uses only deterministic local data (`landingData.ts`, no API calls), hand-rolled SVG (never recharts) + `landing-*` utilities in `index.css` (reduced-motion covered). Never let it grow signed-in bundle.
+Signed-out `/` → lazy `pages/Landing.tsx` (sections in `components/landing/`); other signed-out paths → `pages/SignInPage.tsx`; signed-in `/sign-in` redirects to `/`. Landing forces dark via `dark` wrapper, uses only deterministic local data (`landingData.ts`, no API calls), hand-rolled SVG (never recharts) + `landing-*` utilities in `index.css` (reduced-motion covered). Never let it grow signed-in bundle. **Key-feature rule**: when a major user-facing feature ships (a new tab/page or headline capability), assess whether it belongs on the landing page and, when appropriate, reflect it — usually a `CapabilityBento` block that demonstrates with deterministic local data (mirror the real UI's look, never fetch). News is the reference example.
 
 ### Dev Demo Route
 

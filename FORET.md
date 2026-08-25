@@ -1946,6 +1946,7 @@ A few decisions worth remembering:
 - **SVG gotcha:** font-size on SVG `<text>` is in viewBox units, so axis labels that look fine on desktop become ~4px on a phone. Fix: larger font + fewer labels under the `sm` breakpoint.
 - **No recharts on the landing.** Everything is hand-rolled SVG, so the landing chunk stays ~33 kB (lazy) and the signed-in bundle is untouched.
 - **Forced dark.** The landing wraps itself in a `dark` class div — it's the one art-directed surface, and dark is the brand's primary theme. The app's own theme handling is untouched.
+- **Ship a feature, reflect it on the landing (August 2026).** Standing rule now in CLAUDE.md: every key user-facing feature gets assessed for a landing page reflection. The News tab is the reference example — a full-width CapabilityBento showcase (the one shape no other row used) with a deterministic mini-feed mirroring the real UI's Important / Primary source badges. Demonstrate, never fetch.
 - **Reduced motion is a real path, not an afterthought:** the scroll section renders fully drawn with all annotations as a static grid, entrances become instant, and the tilt/tick loops never start.
 
 ### Per-User Snapshot Time

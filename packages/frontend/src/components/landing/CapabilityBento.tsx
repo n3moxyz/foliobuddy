@@ -243,6 +243,70 @@ function LivePriceDemo() {
   );
 }
 
+const NEWS_ROWS = [
+  {
+    title: 'SEC approves spot Bitcoin ETF options',
+    meta: 'Reuters · 2h ago · Regulation',
+    symbol: 'BTC',
+    dot: 'bg-crypto',
+    important: true,
+    primary: false,
+  },
+  {
+    title: 'Nvidia raises full-year guidance on data-center demand',
+    meta: 'Company announcement · 5h ago · Earnings',
+    symbol: 'NVDA',
+    dot: 'bg-equities',
+    important: true,
+    primary: true,
+  },
+  {
+    title: 'Fed minutes show split over timing of next rate cut',
+    meta: 'Bloomberg · 1h ago · Macro',
+    symbol: 'Macro',
+    dot: 'bg-macro',
+    important: false,
+    primary: false,
+  },
+  {
+    title: 'Miner reserves fall ahead of difficulty adjustment',
+    meta: 'The Block · 7h ago',
+    symbol: 'BTC',
+    dot: 'bg-crypto',
+    important: false,
+    primary: false,
+  },
+];
+
+function NewsDemo() {
+  return (
+    <div className="divide-y divide-border/60 rounded-md border bg-background/40 px-3">
+      {NEWS_ROWS.map((row) => (
+        <div key={row.title} className="flex items-center justify-between gap-3 py-2.5">
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-medium leading-tight">{row.title}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] leading-tight text-muted-foreground">
+              {row.important && (
+                <span className="rounded border border-primary/30 bg-primary/10 px-1 py-px font-semibold text-primary">
+                  Important
+                </span>
+              )}
+              {row.primary && (
+                <span className="rounded border px-1 py-px font-semibold">Primary source</span>
+              )}
+              <span className="truncate">{row.meta}</span>
+            </div>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className={cn('h-1.5 w-1.5 rounded-full', row.dot)} aria-hidden="true" />
+            {row.symbol}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const EXTRAS = [
   'USD / SGD, switch anywhere',
   'Copy-paste JSON import',
@@ -250,6 +314,7 @@ const EXTRAS = [
   'Live updates, no refresh needed',
   'Dark and light themes',
   'Funding costs on perps',
+  'AI summaries on top stories',
 ];
 
 /**
@@ -333,6 +398,19 @@ export function CapabilityBento() {
             className="h-full"
           >
             <StakesDemo />
+          </Block>
+        </Reveal>
+
+        {/* Full-width showcase — the one shape no other row uses. */}
+        <Reveal className="sm:col-span-2 lg:col-span-12" delay={0}>
+          <Block
+            title="News that knows what you own"
+            lede="Headlines for your holdings, ranked by what they are — not when they posted. Company filings outrank fresh clickbait, five syndicated copies collapse into one story, official announcements earn their badge from the domain, and quiet days stay quiet."
+            className="h-full lg:flex-row lg:items-center lg:gap-10 lg:[&>div:first-child]:max-w-sm lg:[&>div:first-child]:shrink-0"
+          >
+            <div className="min-w-0 lg:flex-1">
+              <NewsDemo />
+            </div>
           </Block>
         </Reveal>
       </div>
