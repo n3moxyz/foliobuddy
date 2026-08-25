@@ -9,6 +9,7 @@ import {
   type RankedNewsItem,
   type RankedStory,
 } from './news/ranking.js';
+import { newsEnrichmentService } from './news/enrichmentService.js';
 
 export interface AssetNewsGroup {
   assetId: string;
@@ -232,6 +233,9 @@ class NewsService {
       .filter(isTopStoryCandidate)
       .slice(0, TOP_STORIES_LIMIT)
       .map((story) => story.ranked);
+
+    // Fire-and-forget: enrichment (Stage 2) never blocks or fails this response.
+    newsEnrichmentService.trackAndQueue(userId, topStories);
 
     return {
       topStories,

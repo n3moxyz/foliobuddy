@@ -4,10 +4,14 @@ import { createTestApp } from '../helpers/createTestApp.js';
 
 const mocks = vi.hoisted(() => ({
   getPortfolioNews: vi.fn(),
+  getResponseFor: vi.fn(),
 }));
 
 vi.mock('../../services/newsService.js', () => ({
   newsService: { getPortfolioNews: mocks.getPortfolioNews },
+}));
+vi.mock('../../services/news/enrichmentService.js', () => ({
+  newsEnrichmentService: { getResponseFor: mocks.getResponseFor },
 }));
 vi.mock('../../middleware/auth.js', () => ({
   ensureUser: (_req: unknown, _res: unknown, next: () => void) => next(),
@@ -67,5 +71,28 @@ describe('News routes', () => {
     const response = await request(app).get('/api/news');
 
     expect(response.status).toBe(500);
+  });
+
+  it('serves enrichment results for the authenticated user', async () => {
+    const payload = {
+      enabled: true,
+      enrichments: {
+        'story-1': {
+          id: 'story-1',
+          summary: 'A factual sentence.',
+          whyItMatters: 'A mechanism sentence.',
+          provenance: 'article',
+          confidence: 'high',
+          enrichedAt: '2026-08-25T06:00:00.000Z',
+        },
+      },
+    };
+    mocks.getResponseFor.mockReturnValue(payload);
+
+    const response = await request(app).get('/api/news/enrichment');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(payload);
+    expect(mocks.getResponseFor).toHaveBeenCalledWith('test-user-id');
   });
 });

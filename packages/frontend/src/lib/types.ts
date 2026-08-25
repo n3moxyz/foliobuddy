@@ -85,3 +85,19 @@ export interface PortfolioNewsResponse {
   macro: NewsItem[];
   fetchedAt: string;
 }
+
+/** AI summary of a Top story, produced from the retrieved article body */
+export interface NewsEnrichment {
+  id: string;
+  summary: string;
+  whyItMatters: string;
+  provenance: 'article';
+  confidence: 'high' | 'moderate' | 'low';
+  enrichedAt: string;
+}
+
+export interface NewsEnrichmentResponse {
+  /** False when the backend has no ANTHROPIC_API_KEY — stop polling */
+  enabled: boolean;
+  enrichments: Record<string, NewsEnrichment>;
+}

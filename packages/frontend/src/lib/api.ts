@@ -23,6 +23,7 @@ import type {
   MonthlyReturn,
   PaginatedResponse,
   ParsedStatementResponse,
+  NewsEnrichmentResponse,
   PerformancePoint,
   Performer,
   PortfolioNewsResponse,
@@ -95,6 +96,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 export const api = {
   // News
   getNews: () => request<PortfolioNewsResponse>('/news'),
+  getNewsEnrichment: () => request<NewsEnrichmentResponse>('/news/enrichment'),
 
   // Positions
   getPositions: () => request<Position[]>('/positions'),
