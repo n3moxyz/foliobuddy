@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   classifySource,
   domainFromUrl,
+  normalizeOfficialDomain,
   normalizePublisher,
 } from '../services/news/sourceQuality.js';
 
@@ -11,6 +12,21 @@ describe('normalizePublisher', () => {
     expect(normalizePublisher("Barron's")).toBe('barron s');
     expect(normalizePublisher('Investing.com')).toBe('investing');
     expect(normalizePublisher('  Reuters  ')).toBe('reuters');
+  });
+});
+
+describe('normalizeOfficialDomain', () => {
+  it('normalizes user-entered forms to a bare registrable domain', () => {
+    expect(normalizeOfficialDomain('https://www.nvidia.com/en-us/')).toBe('nvidia.com');
+    expect(normalizeOfficialDomain('Ethereum.org')).toBe('ethereum.org');
+    expect(normalizeOfficialDomain('investor.dbs.com:443/reports')).toBe('investor.dbs.com');
+  });
+
+  it('rejects junk instead of storing it', () => {
+    expect(normalizeOfficialDomain('')).toBeNull();
+    expect(normalizeOfficialDomain(null)).toBeNull();
+    expect(normalizeOfficialDomain('not a domain')).toBeNull();
+    expect(normalizeOfficialDomain('nodots')).toBeNull();
   });
 });
 
@@ -70,6 +86,25 @@ describe('classifySource', () => {
     expect(classifySource('Analytics Insight', 'https://analyticsinsight.net/x').denied).toBe(true);
     const fool = classifySource('The Motley Fool', 'https://fool.com/x');
     expect(fool).toMatchObject({ tier: 4, label: 'Low confidence', denied: false });
+  });
+
+  it('recognizes issuer newsrooms via stored official domains', () => {
+    const officialDomains = ['nvidia.com'];
+    const ir = classifySource(
+      'NVIDIA Newsroom',
+      'https://nvidianews.nvidia.com/news/q3-results',
+      officialDomains
+    );
+    expect(ir).toMatchObject({ tier: 1, primary: true, label: 'Company announcement' });
+
+    // Lookalike domains never match — suffix-anchored, not substring.
+    const lookalike = classifySource(
+      'NVIDIA Newsroom',
+      'https://nvidia.com.attacker.net/fake',
+      officialDomains
+    );
+    expect(lookalike.primary).toBe(false);
+    expect(lookalike.tier).toBe(4);
   });
 
   it('labels press-release wires distinctly without primary status', () => {

@@ -49,6 +49,25 @@ export function domainFromUrl(url: string): string | null {
   }
 }
 
+/** Normalizes user-entered official domains ("https://www.nvidia.com/en-us/" → "nvidia.com"). */
+export function normalizeOfficialDomain(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const cleaned = input
+    .trim()
+    .toLowerCase()
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//, '')
+    .replace(/[/?#].*$/, '')
+    .replace(/^www\./, '')
+    .replace(/:\d+$/, '');
+  if (cleaned.length === 0 || cleaned.length > 255) return null;
+  if (!cleaned.includes('.') || /[^a-z0-9.-]/.test(cleaned)) return null;
+  return cleaned;
+}
+
+function matchesOfficialDomain(domain: string, officialDomains: readonly string[]): boolean {
+  return officialDomains.some((od) => domain === od || domain.endsWith(`.${od}`));
+}
+
 // Keep small and only for clearly spammy or deceptive sources — quality
 // concerns belong in tier 4, not here.
 const DENYLIST_PUBLISHERS = new Set(
@@ -173,7 +192,11 @@ function isOfficialDomain(domain: string): boolean {
   return PRIMARY_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`));
 }
 
-export function classifySource(publisher: string, url: string): SourceClassification {
+export function classifySource(
+  publisher: string,
+  url: string,
+  officialDomains: readonly string[] = []
+): SourceClassification {
   const normalized = normalizePublisher(publisher);
   const domain = domainFromUrl(url);
 
@@ -183,6 +206,12 @@ export function classifySource(publisher: string, url: string): SourceClassifica
 
   if (domain && isOfficialDomain(domain)) {
     return { tier: 1, label: TIER_LABELS[1], primary: true, denied: false };
+  }
+
+  // Issuer/protocol newsrooms: primary status via the asset's stored
+  // officialDomain — the domain itself is the credential, never the label.
+  if (domain && matchesOfficialDomain(domain, officialDomains)) {
+    return { tier: 1, label: 'Company announcement', primary: true, denied: false };
   }
 
   const rule = PUBLISHER_TIERS.get(normalized);

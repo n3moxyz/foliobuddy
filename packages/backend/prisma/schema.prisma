@@ -35,6 +35,9 @@ model Asset {
   nativeCurrency  String            @default("USD")
   exchange        String?
   factsheetUrl    String?
+  // Registrable domain of the issuer/protocol's official site (e.g. "nvidia.com").
+  // News from this domain earns the Primary source badge for this asset.
+  officialDomain  String?
   isin            String?
   symbol          String
   name            String

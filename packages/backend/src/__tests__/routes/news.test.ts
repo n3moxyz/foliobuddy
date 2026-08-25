@@ -73,6 +73,31 @@ describe('News routes', () => {
     expect(response.status).toBe(500);
   });
 
+  it('accepts story-metadata feedback and logs it without storing values', async () => {
+    const { logger } = await import('../../lib/logger.js');
+    const response = await request(app).post('/api/news/feedback').send({
+      storyId: 'story-1',
+      title: 'Bitcoin story',
+      publisher: 'Wire',
+      eventType: 'general',
+      importance: 'low',
+      symbol: 'BTC',
+      reason: 'not_relevant',
+    });
+
+    expect(response.status).toBe(204);
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('[NewsFeedback]'));
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('not_relevant'));
+  });
+
+  it('rejects malformed feedback payloads', async () => {
+    const response = await request(app)
+      .post('/api/news/feedback')
+      .send({ storyId: 'x', title: 'y', reason: 'i-hate-it' });
+
+    expect(response.status).toBe(400);
+  });
+
   it('serves enrichment results for the authenticated user', async () => {
     const payload = {
       enabled: true,

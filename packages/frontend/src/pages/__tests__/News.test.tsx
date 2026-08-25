@@ -1,14 +1,22 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import News from '../News';
 import type { NewsItem, PortfolioNewsResponse } from '@/lib/types';
 
-const mocks = vi.hoisted(() => ({ useNews: vi.fn(), useNewsEnrichment: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  useNews: vi.fn(),
+  useNewsEnrichment: vi.fn(),
+  sendNewsFeedback: vi.fn(),
+}));
 
 vi.mock('@/hooks/useNews', () => ({
   useNews: mocks.useNews,
   useNewsEnrichment: mocks.useNewsEnrichment,
+}));
+vi.mock('@/lib/api', () => ({
+  api: { sendNewsFeedback: mocks.sendNewsFeedback },
 }));
 
 function fixtureItem(overrides: Partial<NewsItem> & Pick<NewsItem, 'id' | 'title'>): NewsItem {
@@ -64,10 +72,13 @@ function newsQueryState(overrides: Record<string, unknown>) {
 }
 
 function renderNews() {
+  const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <News />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <News />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -173,6 +184,61 @@ describe('News page', () => {
     expect(screen.getByText('Primary source')).toBeInTheDocument();
     // Event label in the meta line; the group row points at the co-affected holding.
     expect(screen.getByText(/Reuters .* Regulation .* also affects ETH/)).toBeInTheDocument();
+  });
+
+  it('offers a feedback flag outside the link and marks featured section rows', async () => {
+    const material = fixtureItem({
+      id: 'material',
+      title: 'SEC approves spot Bitcoin ETF options',
+      importance: 'high',
+      eventType: 'regulation',
+      affectedSymbols: ['BTC'],
+    });
+    mocks.useNews.mockReturnValue(
+      newsQueryState({
+        data: fixtureResponse({
+          topStories: [material],
+          crypto: [
+            {
+              assetId: 'asset-btc',
+              symbol: 'BTC',
+              name: 'Bitcoin',
+              category: 'LIQUID_CRYPTO',
+              openTradeOnly: false,
+              items: [material],
+            },
+          ],
+        }),
+      })
+    );
+
+    renderNews();
+
+    // One flag control per rendered row, each its own tab stop outside the link.
+    const flags = screen.getAllByRole('button', {
+      name: /Flag story: SEC approves spot Bitcoin ETF options/,
+    });
+    expect(flags).toHaveLength(2);
+    // The section copy is marked as already featured; the Top stories copy is not.
+    expect(screen.getByText(/in Top stories/)).toBeInTheDocument();
+
+    // Drive the full flow on the BTC group row: open (Radix opens on
+    // pointerdown), pick a reason, and assert the exact payload sent.
+    fireEvent.pointerDown(flags[1]);
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Not relevant' }));
+
+    // TanStack v5 passes a context object as mutationFn's 2nd arg — assert
+    // the payload (1st arg) only.
+    await waitFor(() => expect(mocks.sendNewsFeedback).toHaveBeenCalled());
+    expect(mocks.sendNewsFeedback.mock.calls[0][0]).toEqual({
+      storyId: 'material',
+      title: 'SEC approves spot Bitcoin ETF options',
+      publisher: 'Wire',
+      eventType: 'regulation',
+      importance: 'high',
+      symbol: 'BTC',
+      reason: 'not_relevant',
+    });
   });
 
   it('renders AI enrichment on top stories and degrades gracefully without it', () => {

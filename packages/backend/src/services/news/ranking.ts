@@ -203,8 +203,12 @@ function mergeClusters(target: Cluster, other: Cluster): void {
   target.macro = target.macro || other.macro;
 }
 
-function enrich(candidate: NewsCandidate, nowMs: number): EnrichedArticle | null {
-  const source = classifySource(candidate.item.publisher, candidate.item.url);
+function enrich(
+  candidate: NewsCandidate,
+  nowMs: number,
+  officialDomains: readonly string[]
+): EnrichedArticle | null {
+  const source = classifySource(candidate.item.publisher, candidate.item.url, officialDomains);
   if (source.denied) return null;
 
   const { importance, eventType } = classifyMateriality(candidate.item.title);
@@ -225,7 +229,11 @@ function enrich(candidate: NewsCandidate, nowMs: number): EnrichedArticle | null
 }
 
 /** id → url → title-signature (within a 72h window) clustering. */
-function buildClusters(candidates: NewsCandidate[], nowMs: number): Cluster[] {
+function buildClusters(
+  candidates: NewsCandidate[],
+  nowMs: number,
+  officialDomains: readonly string[]
+): Cluster[] {
   const byId = new Map<string, Cluster>();
   for (const candidate of candidates) {
     const existing = byId.get(candidate.item.id);
@@ -233,7 +241,7 @@ function buildClusters(candidates: NewsCandidate[], nowMs: number): Cluster[] {
       addOwner(existing, candidate);
       continue;
     }
-    const enriched = enrich(candidate, nowMs);
+    const enriched = enrich(candidate, nowMs, officialDomains);
     if (!enriched) continue;
     const cluster: Cluster = { articles: [enriched], owners: new Map(), macro: false };
     addOwner(cluster, candidate);
@@ -373,8 +381,13 @@ export function compareStories(a: RankedStory, b: RankedStory): number {
   return a.ranked.id.localeCompare(b.ranked.id);
 }
 
-export function rankStories(candidates: NewsCandidate[], nowMs: number): RankedStory[] {
-  return buildClusters(candidates, nowMs)
+export function rankStories(
+  candidates: NewsCandidate[],
+  nowMs: number,
+  /** Portfolio-wide official domains — any match grants Company announcement. */
+  officialDomains: readonly string[] = []
+): RankedStory[] {
+  return buildClusters(candidates, nowMs, officialDomains)
     .map((cluster) => scoreCluster(cluster, nowMs))
     .sort(compareStories);
 }

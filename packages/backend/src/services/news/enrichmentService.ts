@@ -41,6 +41,14 @@ interface TrackedStory {
   cacheKey: string;
 }
 
+interface EnrichmentJob {
+  story: RankedNewsItem;
+  cacheKey: string;
+}
+
+const ENRICHMENT_CONCURRENCY = 2;
+const MAX_PENDING_JOBS = 32;
+
 /** Success cache key: story + the holding context the explanation was written for. */
 function enrichmentCacheKey(story: RankedNewsItem): string {
   return `${story.id}|${[...story.affectedSymbols].sort().join(',')}`;
@@ -75,7 +83,8 @@ class NewsEnrichmentService {
   private readonly failureCache = new TTLCache<string, true>(FAILURE_TTL_MS, MAX_CACHE_ENTRIES);
   private readonly trackedByUser = new TTLCache<string, TrackedStory[]>(TRACKED_IDS_TTL_MS, 500);
   private readonly inFlight = new Set<string>();
-  private queueTail: Promise<void> = Promise.resolve();
+  private readonly pending: EnrichmentJob[] = [];
+  private activeWorkers = 0;
   private client: Anthropic | null = null;
 
   isEnabled(): boolean {
@@ -98,20 +107,39 @@ class NewsEnrichmentService {
       // portfolio must never receive user A's explanation.
       if (this.successCache.has(cacheKey) || this.failureCache.has(story.id)) continue;
       if (this.inFlight.has(cacheKey)) continue;
+      if (this.pending.length >= MAX_PENDING_JOBS) {
+        logger.warn(`[NewsEnrichment] queue full — skipping "${story.title}"`);
+        continue;
+      }
       this.inFlight.add(cacheKey);
-      // Serial background chain: enrichment never blocks or fails /news.
-      this.queueTail = this.queueTail
-        .then(() => this.enrichStory(story, cacheKey))
-        .catch((error) => {
-          logger.warn(
-            `[NewsEnrichment] enrichment failed for "${story.title}":`,
-            error instanceof Error ? error.message : error
-          );
-          this.failureCache.set(story.id, true);
-        })
-        .finally(() => {
-          this.inFlight.delete(cacheKey);
-        });
+      this.pending.push({ story, cacheKey });
+    }
+    this.pump();
+  }
+
+  // Bounded worker pool: enrichment never blocks or fails /news, and a burst
+  // of users cannot pile unbounded work onto one in-memory chain.
+  private pump(): void {
+    while (this.activeWorkers < ENRICHMENT_CONCURRENCY && this.pending.length > 0) {
+      const job = this.pending.shift()!;
+      this.activeWorkers++;
+      void this.runJob(job).finally(() => {
+        this.activeWorkers--;
+        this.inFlight.delete(job.cacheKey);
+        this.pump();
+      });
+    }
+  }
+
+  private async runJob(job: EnrichmentJob): Promise<void> {
+    try {
+      await this.enrichStory(job.story, job.cacheKey);
+    } catch (error) {
+      logger.warn(
+        `[NewsEnrichment] enrichment failed for "${job.story.title}":`,
+        error instanceof Error ? error.message : error
+      );
+      this.failureCache.set(job.story.id, true);
     }
   }
 
@@ -181,13 +209,15 @@ class NewsEnrichmentService {
     this.failureCache.clear();
     this.trackedByUser.clear();
     this.inFlight.clear();
-    this.queueTail = Promise.resolve();
+    this.pending.length = 0;
     this.client = null;
   }
 
-  /** Test hook: await the background enrichment chain. */
+  /** Test hook: await until the worker pool fully drains. */
   async settleForTests(): Promise<void> {
-    await this.queueTail;
+    while (this.activeWorkers > 0 || this.pending.length > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   }
 }
 
