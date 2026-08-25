@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -221,6 +221,24 @@ describe('News page', () => {
     expect(flags).toHaveLength(2);
     // The section copy is marked as already featured; the Top stories copy is not.
     expect(screen.getByText(/in Top stories/)).toBeInTheDocument();
+
+    // Drive the full flow on the BTC group row: open (Radix opens on
+    // pointerdown), pick a reason, and assert the exact payload sent.
+    fireEvent.pointerDown(flags[1]);
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Not relevant' }));
+
+    // TanStack v5 passes a context object as mutationFn's 2nd arg — assert
+    // the payload (1st arg) only.
+    await waitFor(() => expect(mocks.sendNewsFeedback).toHaveBeenCalled());
+    expect(mocks.sendNewsFeedback.mock.calls[0][0]).toEqual({
+      storyId: 'material',
+      title: 'SEC approves spot Bitcoin ETF options',
+      publisher: 'Wire',
+      eventType: 'regulation',
+      importance: 'high',
+      symbol: 'BTC',
+      reason: 'not_relevant',
+    });
   });
 
   it('renders AI enrichment on top stories and degrades gracefully without it', () => {
