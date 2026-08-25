@@ -61,9 +61,10 @@ function customItem(
   id: string,
   title: string,
   publisher: string,
-  publishedAt: string | null
+  publishedAt: string | null,
+  url = ''
 ): ProviderNewsItem {
-  return { id, title, publisher, url: `https://example.com/${id}`, publishedAt };
+  return { id, title, publisher, url: url || `https://example.com/${id}`, publishedAt };
 }
 
 describe('newsBucketFor', () => {
@@ -350,6 +351,41 @@ describe('newsService.getPortfolioNews', () => {
     expect(result.crypto[0].items.map((i) => i.id)).toEqual(['coin-story']);
     expect(result.equities.map((g) => g.assetId)).toEqual(['asset-dup-equity']);
     expect(result.equities[0].items.map((i) => i.id)).toEqual(['corp-story']);
+  });
+
+  it('awards Company announcement status via an asset officialDomain', async () => {
+    const nvda = makeAsset({
+      id: 'asset-nvda',
+      symbol: 'NVDA',
+      name: 'NVIDIA',
+      category: 'EQUITY',
+      priceProvider: 'yahoo',
+      providerAssetId: 'NVDA',
+      officialDomain: 'nvidia.com',
+    });
+    mocks.positionFindMany.mockResolvedValue([makePosition(nvda, { marketValueUsd: 5000 })]);
+    mocks.getNews.mockImplementation(async (query: string) =>
+      query === 'NVDA'
+        ? [
+            customItem(
+              'ir',
+              'Nvidia announces quarterly results and guidance',
+              'NVIDIA Newsroom',
+              '2026-08-25T06:00:00.000Z',
+              'https://nvidianews.nvidia.com/news/q3-results'
+            ),
+          ]
+        : []
+    );
+
+    const result = await newsService.getPortfolioNews('user-1');
+
+    expect(result.equities[0].items[0]).toMatchObject({
+      primarySource: true,
+      sourceTier: 1,
+      sourceLabel: 'Company announcement',
+    });
+    expect(result.topStories.map((i) => i.id)).toEqual(['ir']);
   });
 
   it('ranks macro stories by importance rather than raw recency', async () => {

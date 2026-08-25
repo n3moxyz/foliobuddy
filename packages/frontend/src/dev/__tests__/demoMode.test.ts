@@ -39,6 +39,16 @@ describe('demo mode API mock', () => {
     expect(news.fetchedAt).toBe('2026-06-02T12:00:00.000Z');
   });
 
+  it('accepts news feedback with a bodyless 204', async () => {
+    const response = await demoRequest('/news/feedback', 'POST', {
+      storyId: 'btc-1',
+      title: 'Bitcoin ETF inflows hit three-week high as funds add $480M',
+      reason: 'not_relevant',
+    });
+
+    expect(response.status).toBe(204);
+  });
+
   it('serves deterministic AI enrichments for a subset of demo top stories', async () => {
     const enrichment = await readJson<{
       enabled: boolean;

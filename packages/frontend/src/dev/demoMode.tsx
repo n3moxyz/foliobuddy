@@ -2426,6 +2426,8 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
   if (path === '/api/fx/rates' && method === 'GET') return json(fxRates);
   if (path === '/api/news' && method === 'GET') return json(demoNews);
   if (path === '/api/news/enrichment' && method === 'GET') return json(demoNewsEnrichment);
+  if (path === '/api/news/feedback' && method === 'POST')
+    return new Response(null, { status: 204 });
   if (path === '/api/fx/refresh' && method === 'POST') return json({ rates: fxRates });
   if (path === '/api/prices/current' && method === 'GET') return json(getCurrentPrices());
   if (path === '/api/prices/refresh' && method === 'POST')

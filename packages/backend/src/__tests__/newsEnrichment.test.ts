@@ -176,6 +176,27 @@ describe('newsEnrichmentService', () => {
     expect(newsEnrichmentService.getResponseFor('user-1').enrichments).toEqual({});
   });
 
+  it('bounds worker concurrency and drops jobs beyond the pending cap', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    let inFlightFetches = 0;
+    let maxInFlight = 0;
+    mocks.fetchArticleText.mockImplementation(async () => {
+      inFlightFetches++;
+      maxInFlight = Math.max(maxInFlight, inFlightFetches);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlightFetches--;
+      return 'An article body long enough to summarize.';
+    });
+
+    // 40 distinct stories: 32 fit the pending cap, 8 are dropped with a log.
+    const stories = Array.from({ length: 40 }, (_, i) => makeStory(`s${i}`));
+    newsEnrichmentService.trackAndQueue('user-1', stories);
+    await newsEnrichmentService.settleForTests();
+
+    expect(maxInFlight).toBeLessThanOrEqual(2);
+    expect(mocks.fetchArticleText.mock.calls.length).toBe(32);
+  });
+
   it('survives API errors without affecting other stories in the queue', async () => {
     process.env.ANTHROPIC_API_KEY = 'test-key';
     mocks.parse.mockRejectedValueOnce(new Error('rate limited')).mockResolvedValueOnce({

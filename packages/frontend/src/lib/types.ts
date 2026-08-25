@@ -101,3 +101,16 @@ export interface NewsEnrichmentResponse {
   enabled: boolean;
   enrichments: Record<string, NewsEnrichment>;
 }
+
+export type NewsFeedbackReason = 'not_relevant' | 'poor_source';
+
+/** Story metadata only — never portfolio values */
+export interface NewsFeedbackPayload {
+  storyId: string;
+  title: string;
+  publisher?: string;
+  eventType?: string;
+  importance?: NewsImportance;
+  symbol?: string;
+  reason: NewsFeedbackReason;
+}

@@ -13,6 +13,7 @@ import {
 import { externalProviderCategoryError } from '../lib/domain.js';
 import { requireAdminUser, requireUserHoldsAsset } from '../lib/authorization.js';
 import type { ProviderName } from '../services/providers/types.js';
+import { normalizeOfficialDomain } from '../services/news/sourceQuality.js';
 import { parseUobKhStatement } from '../services/statementParsers/uobKayHian.js';
 import { parseFsmOneStatement } from '../services/statementParsers/fsmOne.js';
 import { logger } from '../lib/logger.js';
@@ -55,7 +56,19 @@ const createAssetSchema = z.object({
   currentPriceUsd: z.number().nonnegative().optional(),
 });
 
-const updateAssetSchema = createAssetSchema.omit({ currentPriceUsd: true }).partial();
+const updateAssetSchema = createAssetSchema
+  .omit({ currentPriceUsd: true })
+  .partial()
+  .extend({
+    // Issuer/protocol official site; normalized to a bare registrable domain.
+    // Invalid input clears the field rather than storing junk.
+    officialDomain: z
+      .string()
+      .max(255)
+      .nullable()
+      .optional()
+      .transform((value) => (value === undefined ? undefined : normalizeOfficialDomain(value))),
+  });
 
 const PROVIDER_FOR_CATEGORY: Record<string, ProviderName> = {
   EQUITY: 'yahoo',
