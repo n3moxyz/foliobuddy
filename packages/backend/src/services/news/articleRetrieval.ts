@@ -199,26 +199,38 @@ async function fetchWithGuardedRedirects(
     const addresses = await resolvePublicAddresses(new URL(current).hostname);
     if (!addresses) return null;
 
-    const dispatcher = createPinnedDispatcher(addresses[0]);
-    let response: Response;
-    try {
-      response = await fetch(current, {
-        headers: { Accept: 'text/html', 'User-Agent': USER_AGENT },
-        signal,
-        redirect: 'manual',
-        dispatcher,
-      } as RequestInit & { dispatcher: Agent });
-    } catch (error) {
-      await dispatcher.close();
-      throw error;
-    }
-    if (!REDIRECT_STATUSES.has(response.status)) return { response, dispatcher };
+    let redirectTarget: string | null = null;
+    let lastError: unknown;
+    for (const address of addresses) {
+      const dispatcher = createPinnedDispatcher(address);
+      let response: Response;
+      try {
+        response = await fetch(current, {
+          headers: { Accept: 'text/html', 'User-Agent': USER_AGENT },
+          signal,
+          redirect: 'manual',
+          dispatcher,
+        } as RequestInit & { dispatcher: Agent });
+      } catch (error) {
+        lastError = error;
+        await dispatcher.close();
+        continue;
+      }
+      if (!REDIRECT_STATUSES.has(response.status)) return { response, dispatcher };
 
-    const location = response.headers.get('location');
-    await response.body?.cancel();
-    await dispatcher.close();
-    if (!location) return null;
-    current = new URL(location, current).toString();
+      const location = response.headers.get('location');
+      await response.body?.cancel();
+      await dispatcher.close();
+      if (!location) return null;
+      redirectTarget = new URL(location, current).toString();
+      break;
+    }
+
+    if (!redirectTarget) {
+      if (lastError) throw lastError;
+      return null;
+    }
+    current = redirectTarget;
   }
   return null;
 }
