@@ -405,7 +405,7 @@ export function CapabilityBento() {
         <Reveal className="sm:col-span-2 lg:col-span-12" delay={0}>
           <Block
             title="News that knows what you own"
-            lede="Headlines for your holdings, ranked by what they are — not when they posted. Company filings outrank fresh clickbait, five syndicated copies collapse into one story, official announcements earn their badge from the domain, and quiet days stay quiet."
+            lede="Headlines for your holdings, ranked by what they are — not just when they posted. Company filings outrank fresh clickbait, five syndicated copies collapse into one story, official announcements earn their badge from the domain, and quiet days stay quiet."
             className="h-full lg:flex-row lg:items-center lg:gap-10 lg:[&>div:first-child]:max-w-sm lg:[&>div:first-child]:shrink-0"
           >
             <div className="min-w-0 lg:flex-1">

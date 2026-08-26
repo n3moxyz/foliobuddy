@@ -36,6 +36,7 @@ const MACRO_NEWS_PER_QUERY = 8;
 const MACRO_NEWS_LIMIT = 10;
 const TOP_STORIES_LIMIT = 4;
 const NEWS_FETCH_CONCURRENCY = 5;
+const MAX_NEWS_TARGETS = 25;
 
 // Macro feed sources: broad-market tickers plus recurring policy topics.
 // Yahoo's search endpoint returns general market coverage for all of these;
@@ -127,22 +128,26 @@ function collectNewsTargets(
   }
 
   // Largest holdings first; open-trade-only targets (value 0) sort last.
-  return Array.from(targets.values()).sort(
-    (a, b) => b.valueUsd - a.valueUsd || a.asset.symbol.localeCompare(b.asset.symbol)
-  );
+  return Array.from(targets.values())
+    .sort((a, b) => b.valueUsd - a.valueUsd || a.asset.symbol.localeCompare(b.asset.symbol))
+    .slice(0, MAX_NEWS_TARGETS);
 }
 
 async function mapWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
   fn: (item: T) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = [];
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = [];
   for (let i = 0; i < items.length; i += concurrency) {
     const chunk = items.slice(i, i + concurrency);
-    results.push(...(await Promise.all(chunk.map(fn))));
+    results.push(...(await Promise.allSettled(chunk.map(fn))));
   }
   return results;
+}
+
+function valuesOrEmpty<T>(results: PromiseSettledResult<T[]>[]): T[][] {
+  return results.map((result) => (result.status === 'fulfilled' ? result.value : []));
 }
 
 function buildHoldingGroups(
@@ -193,7 +198,7 @@ class NewsService {
     const targets = collectNewsTargets(positions, openTrades);
     const yahoo = priceService.getYahooProvider();
 
-    const [holdingNews, macroBatches] = await Promise.all([
+    const [holdingResults, macroResults] = await Promise.all([
       mapWithConcurrency(targets, NEWS_FETCH_CONCURRENCY, (target) =>
         yahoo.getNews(target.ticker, NEWS_PER_ASSET_FETCH)
       ),
@@ -201,6 +206,15 @@ class NewsService {
         yahoo.getNews(query, MACRO_NEWS_PER_QUERY)
       ),
     ]);
+
+    const allResults = [...holdingResults, ...macroResults];
+    const firstSuccess = allResults.find((result) => result.status === 'fulfilled');
+    if (!firstSuccess && allResults.length > 0) {
+      const firstFailure = allResults[0] as PromiseRejectedResult;
+      throw firstFailure.reason;
+    }
+    const holdingNews = valuesOrEmpty(holdingResults);
+    const macroBatches = valuesOrEmpty(macroResults);
 
     // Portfolio share is a ranking input only — it never leaves the service.
     const totalValueUsd = targets.reduce((sum, target) => sum + target.valueUsd, 0);

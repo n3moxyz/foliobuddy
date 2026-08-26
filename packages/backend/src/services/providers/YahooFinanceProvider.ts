@@ -492,7 +492,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
         `[Yahoo] news search failed for "${query}":`,
         err instanceof Error ? err.message : err
       );
-      return [];
+      throw err;
     }
   }
 

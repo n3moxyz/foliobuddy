@@ -389,7 +389,7 @@ describe('YahooFinanceProvider', () => {
     expect(second).toEqual(first);
   });
 
-  it('returns an empty news list on failure without caching the failure', async () => {
+  it('rejects on failure without caching the failure', async () => {
     searchMock.mockRejectedValueOnce(new Error('rate limited')).mockResolvedValueOnce({
       quotes: [],
       news: [
@@ -404,10 +404,9 @@ describe('YahooFinanceProvider', () => {
     });
 
     const provider = new YahooFinanceProvider();
-    const failed = await provider.getNews('ETH-USD', 8);
+    await expect(provider.getNews('ETH-USD', 8)).rejects.toThrow('rate limited');
     const retried = await provider.getNews('ETH-USD', 8);
 
-    expect(failed).toEqual([]);
     expect(retried).toHaveLength(1);
     expect(searchMock).toHaveBeenCalledTimes(2);
   });

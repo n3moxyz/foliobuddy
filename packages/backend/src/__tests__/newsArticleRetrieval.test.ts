@@ -3,11 +3,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   lookup: vi.fn(),
   fetch: vi.fn(),
+  agents: [] as Array<{ options: Record<string, unknown>; close: ReturnType<typeof vi.fn> }>,
 }));
 
 vi.mock('node:dns/promises', () => ({ lookup: mocks.lookup }));
 vi.mock('../lib/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('undici', () => ({
+  Agent: class {
+    close = vi.fn().mockResolvedValue(undefined);
+
+    constructor(public options: Record<string, unknown>) {
+      mocks.agents.push(this);
+    }
+  },
 }));
 
 const { extractArticleText, fetchArticleText, isPrivateIp } =
@@ -90,6 +100,7 @@ describe('fetchArticleText', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.agents.length = 0;
     vi.stubGlobal('fetch', mocks.fetch);
     mocks.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
     mocks.fetch.mockResolvedValue(htmlResponse(goodHtml));
@@ -102,6 +113,35 @@ describe('fetchArticleText', () => {
   it('fetches and extracts a normal article', async () => {
     const text = await fetchArticleText('https://news.example.com/story');
     expect(text).toContain('Body 0.');
+    expect(mocks.agents).toHaveLength(1);
+
+    const connect = mocks.agents[0].options.connect as { lookup: Function };
+    const callback = vi.fn();
+    connect.lookup('news.example.com', { all: false }, callback);
+    expect(callback).toHaveBeenCalledWith(null, '93.184.216.34', 4);
+  });
+
+  it('retries every validated address without another DNS lookup', async () => {
+    mocks.lookup.mockResolvedValue([
+      { address: '2606:2800:220:1:248:1893:25c8:1946', family: 6 },
+      { address: '93.184.216.34', family: 4 },
+    ]);
+    mocks.fetch.mockRejectedValueOnce(new Error('IPv6 route unavailable'));
+
+    expect(await fetchArticleText('https://news.example.com/story')).toContain('Body 0.');
+    expect(mocks.lookup).toHaveBeenCalledTimes(1);
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.agents).toHaveLength(2);
+    expect(mocks.agents[0].close).toHaveBeenCalledTimes(1);
+
+    const firstLookup = (mocks.agents[0].options.connect as { lookup: Function }).lookup;
+    const secondLookup = (mocks.agents[1].options.connect as { lookup: Function }).lookup;
+    const firstCallback = vi.fn();
+    const secondCallback = vi.fn();
+    firstLookup('news.example.com', { all: false }, firstCallback);
+    secondLookup('news.example.com', { all: false }, secondCallback);
+    expect(firstCallback).toHaveBeenCalledWith(null, '2606:2800:220:1:248:1893:25c8:1946', 6);
+    expect(secondCallback).toHaveBeenCalledWith(null, '93.184.216.34', 4);
   });
 
   it('rejects unfetchable urls and hosts resolving to private space', async () => {
