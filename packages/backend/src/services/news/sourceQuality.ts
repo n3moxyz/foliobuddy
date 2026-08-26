@@ -12,6 +12,8 @@
 // signal (official .gov / IR domains can arrive under unexpected labels).
 // A tier is a prior about the source, never a claim that an article is verified.
 
+import { getDomain } from 'tldts';
+
 export type SourceTier = 1 | 2 | 3 | 4;
 
 export interface SourceClassification {
@@ -61,7 +63,7 @@ export function normalizeOfficialDomain(input: string | null | undefined): strin
     .replace(/:\d+$/, '');
   if (cleaned.length === 0 || cleaned.length > 255) return null;
   if (!cleaned.includes('.') || /[^a-z0-9.-]/.test(cleaned)) return null;
-  return cleaned;
+  return getDomain(cleaned, { allowPrivateDomains: true });
 }
 
 function matchesOfficialDomain(domain: string, officialDomains: readonly string[]): boolean {
@@ -188,7 +190,7 @@ function isOfficialDomain(domain: string): boolean {
   if (domain.endsWith('.gov')) return true;
   // Government ccTLD suffixes: mas.gov.sg, hmrc.gov.uk, govt.nz — anchored to
   // the END of the hostname so "sec.gov.uk.attacker.com" cannot qualify.
-  if (/(^|\.)govt?\.[a-z]{2,3}$/.test(domain)) return true;
+  if (/(^|\.)govt?\.[a-z]{2}$/.test(domain)) return true;
   return PRIMARY_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`));
 }
 

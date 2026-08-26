@@ -120,6 +120,51 @@ describe('rankStories', () => {
     expect(stories[0].ranked.rankingReasons).toContain('Syndicated by 2 outlets');
   });
 
+  it('preserves article-identity query parameters while dropping tracking parameters', () => {
+    const distinct = rankStories(
+      [
+        candidate(
+          makeItem(
+            'a',
+            'Issuer announces quarterly earnings results',
+            'Wire A',
+            1,
+            'https://news.example.com/article?id=123&utm_source=x'
+          ),
+          'ABC'
+        ),
+        candidate(
+          makeItem(
+            'b',
+            'Issuer launches a new product family',
+            'Wire B',
+            1,
+            'https://news.example.com/article?id=456&utm_source=x'
+          ),
+          'ABC'
+        ),
+      ],
+      NOW
+    );
+    expect(distinct).toHaveLength(2);
+
+    const title = 'Issuer announces quarterly earnings results';
+    const trackedCopy = rankStories(
+      [
+        candidate(
+          makeItem('c', title, 'Wire A', 1, 'https://news.example.com/article?id=123&utm_source=x'),
+          'ABC'
+        ),
+        candidate(
+          makeItem('d', title, 'Wire B', 1, 'https://news.example.com/article?utm_medium=y&id=123'),
+          'ABC'
+        ),
+      ],
+      NOW
+    );
+    expect(trackedCopy).toHaveLength(1);
+  });
+
   it('shows a story affecting multiple holdings once, tagged with every symbol', () => {
     const shared = makeItem('shared', 'Memory makers rally on AI server demand', 'Wire A', 4);
     const stories = rankStories(
@@ -363,5 +408,19 @@ describe('isTopStoryCandidate', () => {
     expect(isTopStoryCandidate(uncorroborated)).toBe(false);
     expect(corroborated.corroboration).toBe(2);
     expect(isTopStoryCandidate(corroborated)).toBe(true);
+  });
+
+  it('does not count publisher aliases as independent corroboration', () => {
+    const title = 'Bridge protocol hacked for $120M as attacker drains funds';
+    const [aliased] = rankStories(
+      [
+        candidate(makeItem('a', title, 'CoinDesk', 2, 'https://coindesk.com/a'), 'ETH'),
+        candidate(makeItem('b', title, 'CoinDesk.com', 3, 'https://coindesk.com/b'), 'ETH'),
+      ],
+      NOW
+    );
+
+    expect(aliased.corroboration).toBe(1);
+    expect(isTopStoryCandidate(aliased)).toBe(false);
   });
 });

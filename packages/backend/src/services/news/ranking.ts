@@ -9,7 +9,12 @@
 // portfolio values.
 
 import type { ProviderNewsItem } from '../providers/types.js';
-import { classifySource, type SourceClassification, type SourceTier } from './sourceQuality.js';
+import {
+  classifySource,
+  normalizePublisher,
+  type SourceClassification,
+  type SourceTier,
+} from './sourceQuality.js';
 import { classifyMateriality, type NewsEventType, type NewsImportance } from './materiality.js';
 
 export interface RankedNewsItem extends ProviderNewsItem {
@@ -130,7 +135,19 @@ function urlKey(url: string): string {
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
     const path = parsed.pathname.replace(/\/$/, '');
-    return `${host}${path}`;
+    const identityParams = [...parsed.searchParams.entries()]
+      .filter(([key]) => {
+        const normalized = key.toLowerCase();
+        return (
+          !normalized.startsWith('utm_') &&
+          !['fbclid', 'gclid', 'msclkid', 'mc_cid', 'mc_eid'].includes(normalized)
+        );
+      })
+      .sort(([aKey, aValue], [bKey, bValue]) =>
+        aKey === bKey ? aValue.localeCompare(bValue) : aKey.localeCompare(bKey)
+      );
+    const query = new URLSearchParams(identityParams).toString();
+    return `${host}${path}${query ? `?${query}` : ''}`;
   } catch {
     return url.toLowerCase();
   }
@@ -323,7 +340,8 @@ function scoreCluster(cluster: Cluster, nowMs: number): RankedStory {
   const rep = pickRepresentative(cluster.articles);
   const owners = sortOwners([...cluster.owners.values()]);
   const bestOwner = owners[0] ?? null;
-  const publisherCount = new Set(cluster.articles.map((a) => a.item.publisher.toLowerCase())).size;
+  const publisherCount = new Set(cluster.articles.map((a) => normalizePublisher(a.item.publisher)))
+    .size;
 
   // Event time = earliest sanitized member timestamp: a dated syndicate copy
   // can date an otherwise-undated representative, and scoring/labels never use

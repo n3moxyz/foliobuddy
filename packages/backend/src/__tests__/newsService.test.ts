@@ -174,6 +174,41 @@ describe('newsService.getPortfolioNews', () => {
     ]);
   });
 
+  it('caps per-request holding fan-out to the 25 largest news targets', async () => {
+    mocks.positionFindMany.mockResolvedValue(
+      Array.from({ length: 30 }, (_, index) => {
+        const asset = makeAsset({
+          id: `asset-${index}`,
+          symbol: `C${index}`,
+          name: `Coin ${index}`,
+        });
+        return makePosition(asset, { marketValueUsd: 30 - index });
+      })
+    );
+
+    await newsService.getPortfolioNews('user-1');
+
+    const holdingQueries = mocks.getNews.mock.calls
+      .map(([query]) => query as string)
+      .filter((query) => query.endsWith('-USD'));
+    expect(holdingQueries).toHaveLength(25);
+    expect(holdingQueries).toContain('C0-USD');
+    expect(holdingQueries).not.toContain('C29-USD');
+  });
+
+  it('keeps partial Yahoo results but rejects an all-failed refresh', async () => {
+    mocks.getNews.mockImplementation(async (query: string) => {
+      if (query === '^GSPC') return [newsItem('macro-ok')];
+      throw new Error(`Yahoo unavailable for ${query}`);
+    });
+
+    const partial = await newsService.getPortfolioNews('user-1');
+    expect(partial.macro.map((item) => item.id)).toEqual(['macro-ok']);
+
+    mocks.getNews.mockRejectedValue(new Error('Yahoo unavailable'));
+    await expect(newsService.getPortfolioNews('user-1')).rejects.toThrow('Yahoo unavailable');
+  });
+
   it('orders groups by position value, drops empty groups, and flags open-trade-only assets', async () => {
     const btc = makeAsset();
     const eth = makeAsset({ id: 'asset-eth', symbol: 'ETH', name: 'Ethereum' });

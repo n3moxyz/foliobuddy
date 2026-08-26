@@ -19,7 +19,8 @@ describe('normalizeOfficialDomain', () => {
   it('normalizes user-entered forms to a bare registrable domain', () => {
     expect(normalizeOfficialDomain('https://www.nvidia.com/en-us/')).toBe('nvidia.com');
     expect(normalizeOfficialDomain('Ethereum.org')).toBe('ethereum.org');
-    expect(normalizeOfficialDomain('investor.dbs.com:443/reports')).toBe('investor.dbs.com');
+    expect(normalizeOfficialDomain('investor.dbs.com:443/reports')).toBe('dbs.com');
+    expect(normalizeOfficialDomain('team.github.io')).toBe('team.github.io');
   });
 
   it('rejects junk instead of storing it', () => {
@@ -27,6 +28,7 @@ describe('normalizeOfficialDomain', () => {
     expect(normalizeOfficialDomain(null)).toBeNull();
     expect(normalizeOfficialDomain('not a domain')).toBeNull();
     expect(normalizeOfficialDomain('nodots')).toBeNull();
+    expect(normalizeOfficialDomain('co.uk')).toBeNull();
   });
 });
 
@@ -52,6 +54,10 @@ describe('classifySource', () => {
 
     const mas = classifySource('MAS', 'https://www.mas.gov.sg/news/media-releases/1');
     expect(mas.primary).toBe(true);
+
+    const genericSuffix = classifySource('Unknown Agency', 'https://agency.gov.xyz/news/1');
+    expect(genericSuffix.primary).toBe(false);
+    expect(genericSuffix.tier).toBe(4);
   });
 
   it('never grants tier 1 from a publisher label alone (spoofed-label regression)', () => {

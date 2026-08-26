@@ -10,6 +10,9 @@
 // body is streamed with a hard byte cap instead of buffered then measured.
 
 import { lookup } from 'node:dns/promises';
+import type { LookupAddress } from 'node:dns';
+import type { LookupFunction } from 'node:net';
+import { Agent } from 'undici';
 import { logger } from '../../lib/logger.js';
 
 const ARTICLE_FETCH_TIMEOUT_MS = 8000;
@@ -59,20 +62,26 @@ export function isPrivateIp(address: string, family: number): boolean {
   return false;
 }
 
-// Best-effort DNS gate: resolves EVERY address for the hostname and rejects
-// if any lands in private/loopback/link-local/special-use space — a
-// multi-address record must not pass on its first public entry. A rebinding
-// TOCTOU window remains (fetch resolves again and undici's global fetch
-// cannot pin the connection to the validated address), but this closes the
-// practical redirect-to-internal primitive for a server fetching publishers.
-async function resolvesToPublicAddress(hostname: string): Promise<boolean> {
+// Resolve EVERY address and reject the hostname if any result is private.
+// The chosen public address is then pinned into Undici's connector, closing
+// the DNS-rebinding gap between validation and the actual request.
+async function resolvePublicAddresses(hostname: string): Promise<LookupAddress[] | null> {
   try {
     const addresses = await lookup(hostname, { all: true });
-    if (addresses.length === 0) return false;
-    return addresses.every((entry) => !isPrivateIp(entry.address, entry.family));
+    if (addresses.length === 0) return null;
+    if (addresses.some((entry) => isPrivateIp(entry.address, entry.family))) return null;
+    return addresses;
   } catch {
-    return false;
+    return null;
   }
+}
+
+function createPinnedDispatcher(address: LookupAddress): Agent {
+  const pinnedLookup: LookupFunction = (_hostname, options, callback) => {
+    if (options.all) callback(null, [address]);
+    else callback(null, address.address, address.family);
+  };
+  return new Agent({ connect: { lookup: pinnedLookup } });
 }
 
 function decodeEntities(text: string): string {
@@ -174,24 +183,40 @@ export function extractArticleText(html: string): string | null {
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
+interface GuardedResponse {
+  response: Response;
+  dispatcher: Agent;
+}
+
 /** Follows up to MAX_REDIRECTS manually, re-validating every hop. */
 async function fetchWithGuardedRedirects(
   startUrl: string,
   signal: AbortSignal
-): Promise<Response | null> {
+): Promise<GuardedResponse | null> {
   let current = startUrl;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     if (!isFetchableNewsUrl(current)) return null;
-    if (!(await resolvesToPublicAddress(new URL(current).hostname))) return null;
+    const addresses = await resolvePublicAddresses(new URL(current).hostname);
+    if (!addresses) return null;
 
-    const response = await fetch(current, {
-      headers: { Accept: 'text/html', 'User-Agent': USER_AGENT },
-      signal,
-      redirect: 'manual',
-    });
-    if (!REDIRECT_STATUSES.has(response.status)) return response;
+    const dispatcher = createPinnedDispatcher(addresses[0]);
+    let response: Response;
+    try {
+      response = await fetch(current, {
+        headers: { Accept: 'text/html', 'User-Agent': USER_AGENT },
+        signal,
+        redirect: 'manual',
+        dispatcher,
+      } as RequestInit & { dispatcher: Agent });
+    } catch (error) {
+      await dispatcher.close();
+      throw error;
+    }
+    if (!REDIRECT_STATUSES.has(response.status)) return { response, dispatcher };
 
     const location = response.headers.get('location');
+    await response.body?.cancel();
+    await dispatcher.close();
     if (!location) return null;
     current = new URL(location, current).toString();
   }
@@ -219,9 +244,12 @@ async function readBodyCapped(response: Response): Promise<string | null> {
 export async function fetchArticleText(url: string): Promise<string | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ARTICLE_FETCH_TIMEOUT_MS);
+  let guarded: GuardedResponse | null = null;
   try {
-    const response = await fetchWithGuardedRedirects(url, controller.signal);
-    if (!response || !response.ok) return null;
+    guarded = await fetchWithGuardedRedirects(url, controller.signal);
+    if (!guarded) return null;
+    const { response } = guarded;
+    if (!response.ok) return null;
     const contentType = response.headers.get('content-type') ?? '';
     if (!contentType.includes('text/html')) return null;
 
@@ -235,6 +263,10 @@ export async function fetchArticleText(url: string): Promise<string | null> {
     );
     return null;
   } finally {
+    if (guarded) {
+      await guarded.response.body?.cancel().catch(() => undefined);
+      await guarded.dispatcher.close();
+    }
     clearTimeout(timeout);
   }
 }

@@ -3,11 +3,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   lookup: vi.fn(),
   fetch: vi.fn(),
+  agents: [] as Array<{ options: Record<string, unknown>; close: ReturnType<typeof vi.fn> }>,
 }));
 
 vi.mock('node:dns/promises', () => ({ lookup: mocks.lookup }));
 vi.mock('../lib/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('undici', () => ({
+  Agent: class {
+    close = vi.fn().mockResolvedValue(undefined);
+
+    constructor(public options: Record<string, unknown>) {
+      mocks.agents.push(this);
+    }
+  },
 }));
 
 const { extractArticleText, fetchArticleText, isPrivateIp } =
@@ -90,6 +100,7 @@ describe('fetchArticleText', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.agents.length = 0;
     vi.stubGlobal('fetch', mocks.fetch);
     mocks.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
     mocks.fetch.mockResolvedValue(htmlResponse(goodHtml));
@@ -102,6 +113,12 @@ describe('fetchArticleText', () => {
   it('fetches and extracts a normal article', async () => {
     const text = await fetchArticleText('https://news.example.com/story');
     expect(text).toContain('Body 0.');
+    expect(mocks.agents).toHaveLength(1);
+
+    const connect = mocks.agents[0].options.connect as { lookup: Function };
+    const callback = vi.fn();
+    connect.lookup('news.example.com', { all: false }, callback);
+    expect(callback).toHaveBeenCalledWith(null, '93.184.216.34', 4);
   });
 
   it('rejects unfetchable urls and hosts resolving to private space', async () => {
