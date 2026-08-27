@@ -527,13 +527,18 @@ export interface FxRate {
   timestamp: string;
 }
 
-/** Per-user daily snapshot schedule: local hour (0-23) in an IANA timezone. */
+/** Per-user app preferences. Null perp exposure means no device has synced the legacy value yet. */
 export interface UserPreferences {
   snapshotHour: number;
   snapshotTimezone: string;
+  perpExposureUsd: number | null;
 }
 
-export type UpdateUserPreferencesData = Partial<UserPreferences>;
+export interface UpdateUserPreferencesData {
+  snapshotHour?: number;
+  snapshotTimezone?: string;
+  perpExposureUsd?: number;
+}
 
 export interface CurrencyConversion {
   amount: number;

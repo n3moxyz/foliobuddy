@@ -215,7 +215,11 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### Portfolio Hero Summary
 
-Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD trend arrow, then 5-col `divide-x` grid (YTD Start, DD from ATH, Exposure, Positions, YTD P&L — drawdown via shared `useDrawdownStats()`), `HelpTooltip` on every label. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add". Exposure = owned non-stable/non-cash + local perp ÷ total; custody excluded.
+Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD trend arrow, then 5-col `divide-x` grid (YTD Start, DD from ATH, Exposure, Positions, YTD P&L — drawdown via shared `useDrawdownStats()`), `HelpTooltip` on every label. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add". Exposure = owned non-stable/non-cash + server-backed perp ÷ total; custody excluded.
+
+### Perp Exposure Persistence
+
+`User.perpExposureUsd Float?` stores the signed-in user's aggregate open perp size in USD and round-trips through `GET/PATCH /users/me/preferences`; Portfolio and Dashboard consume the shared React Query value so it follows the user across devices. `null` means the server value has never been initialized, while `0` means the user explicitly has no perp exposure. On first load, a valid positive `foliobuddy-perp-exposure` or legacy `pa-portfolio-perp-exposure` value may seed only a `null` server field; a non-null server value always wins. Local keys are cleared only after a successful server sync, never before an attempted migration PATCH succeeds. Perps affect Exposure and the Cash/Perps allocation treatment, never net worth or snapshots. Demo mode mirrors the preference round-trip and resets it to `null`.
 
 ### Portfolio Section Headers
 

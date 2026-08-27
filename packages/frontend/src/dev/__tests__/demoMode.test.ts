@@ -23,6 +23,27 @@ describe('demo mode API mock', () => {
     resetDemoDataForTests();
   });
 
+  it('round-trips server-backed perp exposure and resets its nullable migration state', async () => {
+    const initialPreferences = await readJson<{ perpExposureUsd: number | null }>(
+      await demoRequest('/users/me/preferences')
+    );
+    expect(initialPreferences.perpExposureUsd).toBeNull();
+
+    await demoRequest('/users/me/preferences', 'PATCH', { perpExposureUsd: 350_000 });
+
+    const savedPreferences = await readJson<{ perpExposureUsd: number | null }>(
+      await demoRequest('/users/me/preferences')
+    );
+    expect(savedPreferences.perpExposureUsd).toBe(350_000);
+
+    resetDemoDataForTests();
+
+    const resetPreferences = await readJson<{ perpExposureUsd: number | null }>(
+      await demoRequest('/users/me/preferences')
+    );
+    expect(resetPreferences.perpExposureUsd).toBeNull();
+  });
+
   it('serves the deterministic news feed grouped by portfolio buckets', async () => {
     const news = await readJson<{
       crypto: Array<{ symbol: string; openTradeOnly: boolean; items: Array<{ id: string }> }>;

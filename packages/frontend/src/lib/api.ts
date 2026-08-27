@@ -343,7 +343,7 @@ export const api = {
     request<CurrencyConversion>(`/fx/convert?amount=${amount}&from=${from}&to=${to}`),
   refreshFxRates: () => request<{ rates: FxRate[] }>('/fx/refresh', { method: 'POST' }),
 
-  // User preferences (daily snapshot schedule)
+  // User preferences (snapshot schedule + aggregate perp exposure)
   getUserPreferences: () => request<UserPreferences>('/users/me/preferences'),
   updateUserPreferences: (data: UpdateUserPreferencesData) =>
     request<UserPreferences>('/users/me/preferences', {

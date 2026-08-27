@@ -61,11 +61,11 @@ import type { Position } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { usePerpExposure } from '@/hooks/usePerpExposure';
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { isNonNegativeNumberInput } from '@/lib/formValidation';
 
-const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
-const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
 const PERP_EXPOSURE_INPUT_ID = 'perp-exposure-input';
 const PERP_EXPOSURE_INLINE_INPUT_ID = 'perp-exposure-inline-input';
 const PORTFOLIO_SUMMARY_SKELETON_KEYS = ['total', 'exposure', 'positions', 'pnl', 'cash'] as const;
@@ -141,6 +141,12 @@ export default function Portfolio() {
   const { data: summary } = usePortfolioSummary();
   const { data: fxRates } = useFxRates();
   const { currentDrawdownPct } = useDrawdownStats(summary?.totalValueUsd ?? 0);
+  const {
+    perpExposure,
+    savePerpExposure,
+    isReady: perpExposureReady,
+    isSaving: perpExposureSaving,
+  } = usePerpExposure();
   const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
   const [navAsset, setNavAsset] = useState<Position['asset'] | null>(null);
@@ -148,17 +154,6 @@ export default function Portfolio() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [equityGroupBy, setEquityGroupBy] = useState<EquityGroupBy>(loadEquityGroupBy);
 
-  // Perp exposure state (migrates from legacy key on first load)
-  const [perpExposure, setPerpExposure] = useState(() => {
-    const legacy = localStorage.getItem(LEGACY_PERP_EXPOSURE_KEY);
-    if (legacy !== null) {
-      localStorage.setItem(PERP_EXPOSURE_KEY, legacy);
-      localStorage.removeItem(LEGACY_PERP_EXPOSURE_KEY);
-      return parseFloat(legacy) || 0;
-    }
-    const saved = localStorage.getItem(PERP_EXPOSURE_KEY);
-    return saved ? parseFloat(saved) : 0;
-  });
   const [editingPerp, setEditingPerp] = useState(false);
   const [editingPerpInline, setEditingPerpInline] = useState(false);
   const [perpInput, setPerpInput] = useState('');
@@ -193,23 +188,17 @@ export default function Portfolio() {
   };
 
   const handlePerpDialogOpen = () => {
+    if (!perpExposureReady || perpExposureSaving) return;
     setPerpInput(perpExposure.toString());
     setEditingPerp(true);
   };
 
-  const persistPerpExposure = (value: number) => {
-    setPerpExposure(value);
-    if (value > 0) {
-      localStorage.setItem(PERP_EXPOSURE_KEY, value.toString());
-    } else {
-      localStorage.removeItem(PERP_EXPOSURE_KEY);
-    }
-  };
-
   const handlePerpSave = () => {
-    const value = parseFloat(perpInput) || 0;
-    persistPerpExposure(value);
-    setEditingPerp(false);
+    if (!isNonNegativeNumberInput(perpInput)) return;
+
+    if (savePerpExposure(Number(perpInput))) {
+      setEditingPerp(false);
+    }
   };
 
   const handlePerpKeyDown = (e: React.KeyboardEvent) => {
@@ -221,25 +210,30 @@ export default function Portfolio() {
   };
 
   const handlePerpInlineEdit = () => {
+    if (!perpExposureReady || perpExposureSaving) return;
     setPerpInput((convertValue(perpExposure) ?? perpExposure).toString());
     setEditingPerpInline(true);
   };
 
   const handlePerpInlineSave = () => {
-    if (!perpInput.trim()) {
+    if (!isNonNegativeNumberInput(perpInput)) {
+      setPerpInput((convertValue(perpExposure) ?? perpExposure).toString());
       setEditingPerpInline(false);
       return;
     }
 
-    const displayValue = parseFloat(perpInput) || 0;
-    persistPerpExposure(currency === 'SGD' ? displayValue / fxRate : displayValue);
-    setEditingPerpInline(false);
+    const displayValue = Number(perpInput);
+    const usdValue = currency === 'SGD' ? displayValue / fxRate : displayValue;
+    if (savePerpExposure(usdValue)) {
+      setEditingPerpInline(false);
+    }
   };
 
   const handlePerpInlineKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handlePerpInlineSave();
+      // Blur is the single save path, avoiding an Enter + unmount double PATCH.
+      e.currentTarget.blur();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setPerpInput((convertValue(perpExposure) ?? perpExposure).toString());
@@ -248,10 +242,14 @@ export default function Portfolio() {
   };
 
   const handlePerpDelete = () => {
-    persistPerpExposure(0);
+    if (!perpExposureReady || perpExposureSaving) return;
+    savePerpExposure(0);
     setPerpInput('');
     setEditingPerpInline(false);
   };
+
+  const perpInputIsValid = isNonNegativeNumberInput(perpInput);
+  const perpExposureActionsDisabled = !perpExposureReady || perpExposureSaving;
 
   const handleEquityGroupByChange = (value: EquityGroupBy) => {
     setEquityGroupBy(value);
@@ -448,7 +446,11 @@ export default function Portfolio() {
                   <Copy className="h-4 w-4 mr-2" />
                   Copy All
                 </DropdownMenuItem>
-                <DropdownMenuItem className="min-h-11" onClick={handlePerpDialogOpen}>
+                <DropdownMenuItem
+                  className="min-h-11"
+                  onClick={handlePerpDialogOpen}
+                  disabled={perpExposureActionsDisabled}
+                >
                   <Pencil className="h-4 w-4 mr-2" />
                   {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
                 </DropdownMenuItem>
@@ -741,6 +743,7 @@ export default function Portfolio() {
                         e.stopPropagation();
                         handlePerpDialogOpen();
                       }}
+                      disabled={perpExposureActionsDisabled}
                     >
                       <Pencil className="h-3 w-3 mr-1" />
                       Add Perp
@@ -790,6 +793,7 @@ export default function Portfolio() {
                             onKeyDown={handlePerpInlineKeyDown}
                             className="h-8 w-28 px-2 text-right font-mono text-xs tabular-nums"
                             aria-label={`Perp exposure in ${currency}`}
+                            aria-invalid={!perpInputIsValid}
                             autoFocus
                           />
                         ) : (
@@ -809,6 +813,7 @@ export default function Portfolio() {
                               0
                             )}. Double-click or press Enter to edit.`}
                             title="Double-click to edit"
+                            disabled={perpExposureActionsDisabled}
                           >
                             {formatCurrency(convertValue(perpExposure), currency, 0)}
                           </button>
@@ -823,6 +828,7 @@ export default function Portfolio() {
                               onClick={handlePerpInlineEdit}
                               aria-label="Edit perp exposure"
                               title="Edit perp exposure"
+                              disabled={perpExposureActionsDisabled}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -834,6 +840,7 @@ export default function Portfolio() {
                               onClick={handlePerpDelete}
                               aria-label="Delete perp exposure"
                               title="Delete perp exposure"
+                              disabled={perpExposureActionsDisabled}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -946,13 +953,18 @@ export default function Portfolio() {
                 onValueChange={setPerpInput}
                 onKeyDown={handlePerpKeyDown}
                 placeholder="0"
+                aria-invalid={perpInput.length > 0 && !perpInputIsValid}
               />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setEditingPerp(false)}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={handlePerpSave}>
+              <Button
+                size="sm"
+                onClick={handlePerpSave}
+                disabled={!perpInputIsValid || perpExposureActionsDisabled}
+              >
                 Save
               </Button>
             </div>

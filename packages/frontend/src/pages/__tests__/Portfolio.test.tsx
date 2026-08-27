@@ -1,8 +1,13 @@
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Position } from '@/lib/types';
 import Portfolio from '../Portfolio';
+
+const perpMocks = vi.hoisted(() => ({
+  exposure: 0,
+  save: vi.fn(() => true),
+}));
 
 const positions = [
   {
@@ -74,6 +79,15 @@ vi.mock('@/hooks/usePortfolio', () => ({
   useDeleteAllPositions: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
+vi.mock('@/hooks/usePerpExposure', () => ({
+  usePerpExposure: () => ({
+    perpExposure: perpMocks.exposure,
+    savePerpExposure: perpMocks.save,
+    isReady: true,
+    isSaving: false,
+  }),
+}));
+
 vi.mock('@/components/portfolio/PositionTable', () => ({
   PositionTable: ({
     positions: tablePositions,
@@ -126,6 +140,11 @@ vi.mock('@/components/portfolio/UpdateNavModal', () => ({
 }));
 
 describe('Portfolio responsive grouping', () => {
+  beforeEach(() => {
+    perpMocks.exposure = 0;
+    perpMocks.save.mockClear();
+  });
+
   it('keeps desktop asset categories on mobile while using compact rows', () => {
     render(<Portfolio />);
 
@@ -149,5 +168,33 @@ describe('Portfolio responsive grouping', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'By Type' })[0]);
     expect(equities).toHaveAttribute('data-group-by', 'equityType');
+  });
+
+  it('does not save an invalid perp dialog value', async () => {
+    render(<Portfolio />);
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Add Perp' }));
+
+    const input = screen.getByLabelText('Position Size (USD)');
+    const save = screen.getByRole('button', { name: 'Save' });
+    fireEvent.change(input, { target: { value: '.' } });
+
+    expect(save).toBeDisabled();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(perpMocks.save).not.toHaveBeenCalled();
+  });
+
+  it('saves an inline perp edit exactly once when Enter blurs the input', () => {
+    perpMocks.exposure = 350_000;
+    render(<Portfolio />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit perp exposure' }));
+    const input = screen.getByLabelText('Perp exposure in USD');
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(perpMocks.save).toHaveBeenCalledTimes(1);
+    expect(perpMocks.save).toHaveBeenCalledWith(350_000);
   });
 });

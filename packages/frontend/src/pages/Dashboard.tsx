@@ -24,9 +24,7 @@ import { BenchmarkComparisonChart } from '@/components/dashboard/BenchmarkCompar
 import { ChevronDown, Users } from 'lucide-react';
 import { DbStatusBanner } from '@/components/dashboard/DbStatusBanner';
 import { usePageTitle } from '@/hooks/usePageTitle';
-
-const PERP_EXPOSURE_KEY = 'foliobuddy-perp-exposure';
-const LEGACY_PERP_EXPOSURE_KEY = 'pa-portfolio-perp-exposure';
+import { usePerpExposure } from '@/hooks/usePerpExposure';
 
 export default function Dashboard() {
   usePageTitle('Dashboard');
@@ -37,6 +35,7 @@ export default function Dashboard() {
   const { data: topPerformers } = useTopPerformers(5);
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: investors } = useInvestors();
+  const { perpExposure } = usePerpExposure();
   const totalValueUsd = summary?.totalValueUsd ?? 0;
   const totalValueSgd = summary?.totalValueSgd ?? 0;
   const { ytdAthUsd, currentDrawdownPct, maxDrawdownPct, maxDailyDrawdownPct } =
@@ -66,18 +65,6 @@ export default function Dashboard() {
       .reduce((sum, inv) => sum + inv.stakePercentage, 0);
     return totalStake / 100;
   }, [selectedInvestors, investors]);
-
-  const perpExposure = useMemo(() => {
-    // Migrate from legacy key
-    const legacy = localStorage.getItem(LEGACY_PERP_EXPOSURE_KEY);
-    if (legacy !== null) {
-      localStorage.setItem(PERP_EXPOSURE_KEY, legacy);
-      localStorage.removeItem(LEGACY_PERP_EXPOSURE_KEY);
-      return parseFloat(legacy) || 0;
-    }
-    const saved = localStorage.getItem(PERP_EXPOSURE_KEY);
-    return saved ? parseFloat(saved) : 0;
-  }, []);
 
   const exposurePct = useMemo(() => {
     if (!positions || totalValueUsd <= 0) return 0;

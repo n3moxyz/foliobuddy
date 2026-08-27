@@ -1186,8 +1186,13 @@ const initialPerformance: PerformancePoint[] = [
 ];
 
 const dbHealth: DbHealth = { status: 'ok', latency_ms: 22 };
-// Stateful (resets on refresh) so the Settings snapshot-schedule selects round-trip.
-let demoPreferences: UserPreferences = { snapshotHour: 5, snapshotTimezone: 'Asia/Singapore' };
+// Stateful (resets on refresh) so per-user preferences round-trip through the demo API.
+const INITIAL_DEMO_PREFERENCES: UserPreferences = {
+  snapshotHour: 5,
+  snapshotTimezone: 'Asia/Singapore',
+  perpExposureUsd: null,
+};
+let demoPreferences: UserPreferences = { ...INITIAL_DEMO_PREFERENCES };
 const fxRates: FxRate[] = [
   { id: 'usd-sgd', fromCcy: 'USD', toCcy: 'SGD', rate: 1.3471, timestamp: NOW },
   { id: 'usd-jpy', fromCcy: 'USD', toCcy: 'JPY', rate: 150, timestamp: NOW },
@@ -1206,6 +1211,7 @@ let demoPerformance: PerformancePoint[] = [...initialPerformance];
 let demoIdCounter = 0;
 
 export function resetDemoDataForTests() {
+  demoPreferences = { ...INITIAL_DEMO_PREFERENCES };
   demoAssets = [...initialAssets];
   demoPositions = [...initialPositions];
   demoPositionHistory = [...initialPositionHistory];

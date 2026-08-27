@@ -6,7 +6,19 @@ import { isValidTimeZone, resolvePreference } from '../lib/snapshotSchedule.js';
 
 const router = Router();
 
-const PREFERENCE_SELECT = { snapshotHour: true, snapshotTimezone: true } as const;
+const MAX_PERP_EXPOSURE_USD = 1_000_000_000_000;
+
+const PREFERENCE_SELECT = {
+  snapshotHour: true,
+  snapshotTimezone: true,
+  perpExposureUsd: true,
+} as const;
+
+type PreferenceRow = {
+  snapshotHour: number;
+  snapshotTimezone: string;
+  perpExposureUsd: number | null;
+};
 
 const updatePreferencesSchema = z
   .object({
@@ -17,19 +29,32 @@ const updatePreferencesSchema = z
       .max(64)
       .refine(isValidTimeZone, { message: 'Must be a valid IANA timezone (e.g. Asia/Singapore)' })
       .optional(),
+    perpExposureUsd: z.number().finite().min(0).max(MAX_PERP_EXPOSURE_USD).optional(),
   })
   .strict()
-  .refine((data) => data.snapshotHour !== undefined || data.snapshotTimezone !== undefined, {
-    message: 'Provide snapshotHour and/or snapshotTimezone',
-  });
+  .refine(
+    (data) =>
+      data.snapshotHour !== undefined ||
+      data.snapshotTimezone !== undefined ||
+      data.perpExposureUsd !== undefined,
+    { message: 'Provide at least one preference' }
+  );
 
 /** Shape the stored row defensively so a hand-edited bad value never reaches the UI raw. */
-function toPreferencesResponse(row: { snapshotHour: number; snapshotTimezone: string } | null) {
+function toPreferencesResponse(row: PreferenceRow | null) {
   const { hour, timeZone } = resolvePreference(row);
-  return { snapshotHour: hour, snapshotTimezone: timeZone };
+  const storedPerpExposure = row?.perpExposureUsd;
+  const perpExposureUsd =
+    typeof storedPerpExposure === 'number' &&
+    Number.isFinite(storedPerpExposure) &&
+    storedPerpExposure >= 0 &&
+    storedPerpExposure <= MAX_PERP_EXPOSURE_USD
+      ? storedPerpExposure
+      : null;
+  return { snapshotHour: hour, snapshotTimezone: timeZone, perpExposureUsd };
 }
 
-// GET /api/v1/users/me/preferences - the caller's own snapshot preferences
+// GET /api/v1/users/me/preferences - the caller's own app preferences
 router.get('/me/preferences', async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
@@ -43,7 +68,7 @@ router.get('/me/preferences', async (req, res, next) => {
   }
 });
 
-// PATCH /api/v1/users/me/preferences - update snapshot hour and/or timezone
+// PATCH /api/v1/users/me/preferences - update one or more caller-owned preferences
 router.patch('/me/preferences', async (req, res, next) => {
   try {
     const data = updatePreferencesSchema.parse(req.body);

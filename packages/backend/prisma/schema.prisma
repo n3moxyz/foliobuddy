@@ -16,6 +16,8 @@ model User {
   // Defaults preserve the original global 5am Asia/Singapore schedule.
   snapshotHour     Int               @default(5)
   snapshotTimezone String            @default("Asia/Singapore")
+  // Null means this legacy local-only preference has not yet been synced by any device.
+  perpExposureUsd  Float?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   positions        Position[]
