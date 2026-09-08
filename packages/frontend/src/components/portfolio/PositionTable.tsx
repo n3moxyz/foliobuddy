@@ -149,7 +149,7 @@ export function PositionTable({
   mobileVariant = 'focus',
   showMobileColumnToggle = true,
 }: PositionTableProps) {
-  const { formatCurrency, valuesHidden } = useMoneyFormatter();
+  const { formatCurrency, formatSignedCurrency, valuesHidden } = useMoneyFormatter();
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [deletePosition, setDeletePosition] = useState<Position | null>(null);
@@ -1040,18 +1040,35 @@ export function PositionTable({
       }
 
       const isAdd = entry.mode === 'add';
+      // A reduce with recorded proceeds is a sale: show the sale price instead of
+      // the average cost that came off, and what it realized against that basis.
+      const proceedsUsd =
+        !isAdd && typeof entry.proceedsUsd === 'number' ? entry.proceedsUsd : null;
+      const executionAmountUsd = proceedsUsd ?? entry.costBasisUsd;
       return {
         id: entry.id,
         label: isAdd ? 'Add' : 'Reduce',
         date: entry.createdAt,
         quantity: entry.quantity,
         quantityPrefix: isAdd ? '+' : '-',
-        priceUsd: entry.quantity > 0 ? entry.costBasisUsd / entry.quantity : 0,
+        priceUsd: entry.quantity > 0 ? executionAmountUsd / entry.quantity : 0,
         nextQuantity: entry.nextQuantity,
         nextAvgCostUsd: entry.nextAvgCostUsd,
         toneClass: isAdd ? 'text-profit' : 'text-loss',
         canCancel: entry.id === latestCancelableHistoryId,
         historyEntry: entry,
+        detail:
+          proceedsUsd !== null
+            ? `Sold for ${formatCurrency(
+                convert(proceedsUsd),
+                currency,
+                getSmartDecimals(convert(proceedsUsd))
+              )} · Realized ${formatSignedCurrency(
+                convert(proceedsUsd - entry.costBasisUsd),
+                currency,
+                getSmartDecimals(convert(proceedsUsd - entry.costBasisUsd))
+              )}`
+            : undefined,
       };
     };
 

@@ -256,13 +256,14 @@ Former Stables category is now **Cash**. `PositionForm.tsx` Cash shows a **Type*
 
 `PositionForm.tsx` edit has 2 tabs — `Edit Totals` (manual corrections) + `Add/Reduce Position`:
 
-- `Add` takes extra quantity + total cost, recomputes weighted avg cost; `Reduce` takes quantity only, removes cost basis at current avg cost (avg unchanged unless position hits zero).
-- Custody changes from either tab must persist. Preview shows an Old/New table (quantity, avg cost, total cost).
-- Preview + submit both use shared `applyPositionDelta()` — never hand-roll cost-basis math in form. Rendering in `PositionDeltaEditor.tsx`, math in `positionFormMath.ts`, submit in `PositionForm.tsx`.
+- `Add`: extra quantity + total/avg cost (required) → weighted avg recomputed. `Reduce`: quantity + same total/avg pair as **optional sale proceeds** (`Total Proceeds`/`Avg Price`); basis comes off at current avg (avg unchanged unless position hits zero) — proceeds never touch avg or basis.
+- Optional cash-pile picker on both tabs: `Fund From` (Add; debits pile, must hold ≥ cost) / `Fund To` (Reduce; credits proceeds, empty piles allowed, needs proceeds > 0). Tab switch clears amounts + pile; confirmation copy is direction-aware.
+- Custody changes from either tab persist. Preview = Old/New table (quantity, avg cost, total cost).
+- Preview + submit use shared `applyPositionDelta()` — never hand-roll cost-basis math. UI `PositionDeltaEditor.tsx`, math `positionFormMath.ts`, submit `PositionForm.tsx`.
 
 ### Position Add/Reduce History
 
-Add/reduce edits persist as `PositionHistory` rows via `PUT /positions/:id` with `positionDelta`; backend validates next quantity/cost basis against delta metadata, updates position + history in 1 transaction. Funded adds share an `operationId` with paired cash reduce so canceling restores both. `Edit Totals` writes a `mode='reset'` row (old rows collapse), never deletes history. `DELETE .../history/:historyId` cancels only newest add/reduce row while totals match. `/dev/demo/portfolio` mirrors this. Narrative: FORET.md.
+Add/reduce edits persist as `PositionHistory` rows via `PUT /positions/:id` + `positionDelta`; backend validates next quantity/basis against delta metadata, updates position + history in 1 `Serializable` transaction (pile read inside it; P2034 → 409 retry). `fundingCashPositionId` links a cash pile either way (needs `positionDelta`; never on custody rows — UI hides the picker): funded add ↔ cash `reduce` row; reduce with `positionDelta.proceedsUsd` (reduce-only, stored as `PositionHistory.proceedsUsd`, > 0 when a pile is linked) ↔ cash `add` row (quantity = proceeds ÷ pile USD price, basis = proceeds). Paired rows share an `operationId` so canceling restores both; ledger shows `Sold for … · Realized …` on proceeds rows. `Edit Totals` writes a `mode='reset'` row (old rows collapse), never deletes history. `DELETE .../history/:historyId` cancels only newest add/reduce row while totals match. `/dev/demo/portfolio` mirrors this. Narrative: FORET.md.
 
 ### Global Value Privacy
 

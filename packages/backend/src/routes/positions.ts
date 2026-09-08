@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -33,10 +34,16 @@ const createPositionSchema = z.object({
 const positionDeltaSchema = z.object({
   mode: z.enum(['add', 'reduce']),
   quantity: z.number().positive(),
-  totalCostUsd: z.number().min(0).optional(),
+  // JSON 1e999 parses to Infinity; .finite() keeps it out of the history table.
+  totalCostUsd: z.number().finite().min(0).optional(),
+  // Reduce only: sale proceeds. Never touches cost basis; credited to the linked cash pile.
+  proceedsUsd: z.number().finite().min(0).optional(),
 });
 
 const updatePositionSchema = createPositionSchema.partial().extend({
+  // A full reduce lands on quantity 0 (the delta check below still guards the math);
+  // only creation insists on a positive quantity.
+  quantity: z.number().finite().min(0).optional(),
   positionDelta: positionDeltaSchema.optional(),
 });
 
@@ -53,8 +60,13 @@ interface FundingCashPosition {
   };
 }
 
-interface FundingCashDelta {
-  quantityToReduce: number;
+/**
+ * Change applied to the cash pile linked to a position change: `reduce` when
+ * the pile pays for a purchase, `add` when it receives sale proceeds.
+ */
+interface LinkedCashDelta {
+  mode: 'add' | 'reduce';
+  quantity: number;
   result: ReturnType<typeof applyPositionDelta>;
 }
 
@@ -65,7 +77,7 @@ function numbersClose(a: number, b: number) {
 function buildFundingCashDelta(
   fundingCashPosition: FundingCashPosition,
   purchaseCostUsd: number
-): FundingCashDelta {
+): LinkedCashDelta {
   if (categoryGroup(fundingCashPosition.asset.category) !== CategoryGroup.STABLES) {
     throw new AppError('Funding position must be a cash position', 400);
   }
@@ -89,13 +101,108 @@ function buildFundingCashDelta(
       deltaQuantity: quantityToReduce,
       mode: 'reduce',
     });
-    return { quantityToReduce, result };
+    return { mode: 'reduce', quantity: quantityToReduce, result };
   } catch (error) {
     throw new AppError(
       error instanceof Error ? error.message : 'Funding cash position cannot cover cost',
       400
     );
   }
+}
+
+// Mirror of buildFundingCashDelta for a reduce: the sale proceeds are deposited
+// into the cash pile at its current USD price, so a $100 sale adds ~135 units to
+// an SGD pile but 100 units to a USDC pile. Proceeds carry their own cost basis.
+function buildProceedsCashDelta(
+  cashPosition: FundingCashPosition,
+  proceedsUsd: number
+): LinkedCashDelta {
+  if (categoryGroup(cashPosition.asset.category) !== CategoryGroup.STABLES) {
+    throw new AppError('Proceeds destination must be a cash position', 400);
+  }
+
+  const cashPriceUsd = cashPosition.asset.currentPriceUsd ?? cashPosition.avgCostUsd;
+
+  if (!(proceedsUsd > 0)) {
+    throw new AppError('Sending proceeds to a cash pile requires a positive sale amount', 400);
+  }
+
+  if (!(cashPriceUsd > 0)) {
+    throw new AppError('Proceeds cash position needs a usable USD price', 400);
+  }
+
+  try {
+    const quantityToAdd = proceedsUsd / cashPriceUsd;
+    const result = applyPositionDelta({
+      currentQuantity: cashPosition.quantity,
+      currentAvgCostUsd: cashPosition.avgCostUsd,
+      deltaQuantity: quantityToAdd,
+      mode: 'add',
+      deltaTotalCostUsd: proceedsUsd,
+    });
+    return { mode: 'add', quantity: quantityToAdd, result };
+  } catch (error) {
+    throw new AppError(
+      error instanceof Error ? error.message : 'Proceeds cash position cannot receive the sale',
+      400
+    );
+  }
+}
+
+// Writes the cash side of a linked add/reduce inside the caller's transaction:
+// new totals + value fields on the pile, plus a history row sharing operationId
+// so canceling either side from history restores both.
+// The shared client is `$extends`-wrapped, so Prisma.TransactionClient does not
+// match it; derive the interactive-transaction client type from the instance.
+type TransactionClient = Omit<
+  typeof prisma,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>;
+
+async function applyLinkedCashDelta(
+  tx: TransactionClient,
+  params: {
+    userId: string;
+    cashPosition: FundingCashPosition;
+    delta: LinkedCashDelta;
+    operationId: string;
+    createdAt: Date;
+  }
+) {
+  const { userId, cashPosition, delta, operationId, createdAt } = params;
+  const nextValueFields = calculatePositionValue({
+    quantity: delta.result.nextQuantity,
+    avgCostUsd: delta.result.nextAvgCostUsd,
+    currentPriceUsd: cashPosition.asset.currentPriceUsd,
+  });
+
+  await tx.position.update({
+    where: { id: cashPosition.id },
+    data: {
+      quantity: delta.result.nextQuantity,
+      avgCostUsd: delta.result.nextAvgCostUsd,
+      ...nextValueFields,
+    },
+  });
+
+  await tx.positionHistory.create({
+    data: {
+      userId,
+      positionId: cashPosition.id,
+      assetId: cashPosition.assetId,
+      mode: delta.mode,
+      quantity: delta.quantity,
+      costBasisUsd: delta.result.deltaCostUsd,
+      previousQuantity: cashPosition.quantity,
+      previousAvgCostUsd: cashPosition.avgCostUsd,
+      previousTotalCostUsd: delta.result.currentTotalCostUsd,
+      nextQuantity: delta.result.nextQuantity,
+      nextAvgCostUsd: delta.result.nextAvgCostUsd,
+      nextTotalCostUsd: delta.result.nextTotalCostUsd,
+      operationId,
+      createdAt,
+    },
+  });
 }
 
 router.get('/', async (req, res, next) => {
@@ -580,7 +687,7 @@ router.post('/', async (req, res, next) => {
             positionId: fundingCashPosition.id,
             assetId: fundingCashPosition.assetId,
             mode: 'reduce',
-            quantity: fundingDelta.quantityToReduce,
+            quantity: fundingDelta.quantity,
             costBasisUsd: fundingDelta.result.deltaCostUsd,
             previousQuantity: fundingCashPosition.quantity,
             previousAvgCostUsd: fundingCashPosition.avgCostUsd,
@@ -623,12 +730,38 @@ router.put('/:id', async (req, res, next) => {
       throw new AppError('Position not found', 404);
     }
 
-    if (fundingCashPositionId && (!positionDelta || positionDelta.mode !== 'add')) {
-      throw new AppError('Funding cash source is only supported when adding to a position', 400);
+    if (fundingCashPositionId && !positionDelta) {
+      throw new AppError(
+        'A linked cash position is only supported when adding to or reducing a position',
+        400
+      );
+    }
+
+    if (positionDelta?.mode === 'add' && positionDelta.proceedsUsd !== undefined) {
+      throw new AppError('Sale proceeds are only supported when reducing a position', 400);
+    }
+
+    if (
+      fundingCashPositionId &&
+      positionDelta?.mode === 'reduce' &&
+      !((positionDelta.proceedsUsd ?? 0) > 0)
+    ) {
+      throw new AppError('Sending proceeds to a cash pile requires a positive sale amount', 400);
     }
 
     if (fundingCashPositionId === existing.id) {
       throw new AppError('A position cannot fund itself', 400);
+    }
+
+    // Custody rows sit outside net worth, so moving owned cash into or out of one
+    // would mint value (or a hole) that nothing offsets. Check the custody state
+    // this request leaves behind, not just the stored one.
+    const nextCustodyOf =
+      positionData.custodyOf !== undefined
+        ? positionData.custodyOf?.trim() || null
+        : existing.custodyOf;
+    if (fundingCashPositionId && nextCustodyOf) {
+      throw new AppError('Held-for-others positions cannot be linked to a cash pile', 400);
     }
 
     let valueAsset = existing.asset;
@@ -690,26 +823,6 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
-    const fundingCashPosition = fundingCashPositionId
-      ? await prisma.position.findFirst({
-          where: {
-            id: fundingCashPositionId,
-            userId: req.userId!,
-            custodyOf: null,
-          },
-          include: { asset: true },
-        })
-      : null;
-
-    if (fundingCashPositionId && !fundingCashPosition) {
-      throw new AppError('Funding cash position not found', 404);
-    }
-
-    const fundingDelta =
-      fundingCashPosition && positionDelta?.mode === 'add'
-        ? buildFundingCashDelta(fundingCashPosition, positionDelta.totalCostUsd!)
-        : null;
-    const operationId = fundingDelta ? randomUUID() : null;
     const historyCreatedAt = new Date();
 
     const updateData = {
@@ -722,104 +835,108 @@ router.put('/:id', async (req, res, next) => {
         positionData.custodyOf !== undefined ? positionData.custodyOf?.trim() || null : undefined,
     };
 
-    const position = await prisma.$transaction(async (tx) => {
-      const updatedPosition = await tx.position.update({
-        where: { id: req.params.id },
-        data: {
-          ...updateData,
-          ...valueFields,
-        },
-        include: {
-          asset: true,
-        },
-      });
+    // Serializable + reading the linked pile inside the transaction: two linked
+    // changes racing on one pile would otherwise both compute absolute totals from
+    // the same stale snapshot and the second write would silently drop the first.
+    const position = await prisma.$transaction(
+      async (tx) => {
+        const fundingCashPosition = fundingCashPositionId
+          ? await tx.position.findFirst({
+              where: {
+                id: fundingCashPositionId,
+                userId: req.userId!,
+                custodyOf: null,
+              },
+              include: { asset: true },
+            })
+          : null;
 
-      if (positionDelta) {
-        const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
-        const nextTotalCostUsd = updatedPosition.quantity * updatedPosition.avgCostUsd;
-        const costBasisUsd =
-          positionDelta.mode === 'add'
-            ? positionDelta.totalCostUsd!
-            : positionDelta.quantity * existing.avgCostUsd;
+        if (fundingCashPositionId && !fundingCashPosition) {
+          throw new AppError('Funding cash position not found', 404);
+        }
 
-        await tx.positionHistory.create({
+        const linkedCashDelta = fundingCashPosition
+          ? positionDelta?.mode === 'add'
+            ? buildFundingCashDelta(fundingCashPosition, positionDelta.totalCostUsd!)
+            : buildProceedsCashDelta(fundingCashPosition, positionDelta!.proceedsUsd!)
+          : null;
+        const operationId = linkedCashDelta ? randomUUID() : null;
+
+        const updatedPosition = await tx.position.update({
+          where: { id: req.params.id },
           data: {
+            ...updateData,
+            ...valueFields,
+          },
+          include: {
+            asset: true,
+          },
+        });
+
+        if (positionDelta) {
+          const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
+          const nextTotalCostUsd = updatedPosition.quantity * updatedPosition.avgCostUsd;
+          const costBasisUsd =
+            positionDelta.mode === 'add'
+              ? positionDelta.totalCostUsd!
+              : positionDelta.quantity * existing.avgCostUsd;
+
+          await tx.positionHistory.create({
+            data: {
+              userId: req.userId!,
+              positionId: existing.id,
+              assetId: updatedPosition.assetId,
+              mode: positionDelta.mode,
+              quantity: positionDelta.quantity,
+              costBasisUsd,
+              previousQuantity: existing.quantity,
+              previousAvgCostUsd: existing.avgCostUsd,
+              previousTotalCostUsd,
+              nextQuantity: updatedPosition.quantity,
+              nextAvgCostUsd: updatedPosition.avgCostUsd,
+              nextTotalCostUsd,
+              proceedsUsd:
+                positionDelta.mode === 'reduce' ? (positionDelta.proceedsUsd ?? null) : null,
+              operationId,
+              createdAt: historyCreatedAt,
+            },
+          });
+        } else if (manualTotalsChanged) {
+          const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
+          const nextTotalCostUsd = updatedPosition.quantity * updatedPosition.avgCostUsd;
+
+          await tx.positionHistory.create({
+            data: {
+              userId: req.userId!,
+              positionId: existing.id,
+              assetId: updatedPosition.assetId,
+              mode: 'reset',
+              quantity: updatedPosition.quantity,
+              costBasisUsd: nextTotalCostUsd,
+              previousQuantity: existing.quantity,
+              previousAvgCostUsd: existing.avgCostUsd,
+              previousTotalCostUsd,
+              nextQuantity: updatedPosition.quantity,
+              nextAvgCostUsd: updatedPosition.avgCostUsd,
+              nextTotalCostUsd,
+            },
+          });
+        }
+
+        if (fundingCashPosition && linkedCashDelta && operationId) {
+          await applyLinkedCashDelta(tx, {
             userId: req.userId!,
-            positionId: existing.id,
-            assetId: updatedPosition.assetId,
-            mode: positionDelta.mode,
-            quantity: positionDelta.quantity,
-            costBasisUsd,
-            previousQuantity: existing.quantity,
-            previousAvgCostUsd: existing.avgCostUsd,
-            previousTotalCostUsd,
-            nextQuantity: updatedPosition.quantity,
-            nextAvgCostUsd: updatedPosition.avgCostUsd,
-            nextTotalCostUsd,
+            cashPosition: fundingCashPosition,
+            delta: linkedCashDelta,
             operationId,
             createdAt: historyCreatedAt,
-          },
-        });
-      } else if (manualTotalsChanged) {
-        const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
-        const nextTotalCostUsd = updatedPosition.quantity * updatedPosition.avgCostUsd;
+          });
+        }
 
-        await tx.positionHistory.create({
-          data: {
-            userId: req.userId!,
-            positionId: existing.id,
-            assetId: updatedPosition.assetId,
-            mode: 'reset',
-            quantity: updatedPosition.quantity,
-            costBasisUsd: nextTotalCostUsd,
-            previousQuantity: existing.quantity,
-            previousAvgCostUsd: existing.avgCostUsd,
-            previousTotalCostUsd,
-            nextQuantity: updatedPosition.quantity,
-            nextAvgCostUsd: updatedPosition.avgCostUsd,
-            nextTotalCostUsd,
-          },
-        });
-      }
-
-      if (fundingCashPosition && fundingDelta) {
-        const nextValueFields = calculatePositionValue({
-          quantity: fundingDelta.result.nextQuantity,
-          avgCostUsd: fundingDelta.result.nextAvgCostUsd,
-          currentPriceUsd: fundingCashPosition.asset.currentPriceUsd,
-        });
-
-        await tx.position.update({
-          where: { id: fundingCashPosition.id },
-          data: {
-            quantity: fundingDelta.result.nextQuantity,
-            avgCostUsd: fundingDelta.result.nextAvgCostUsd,
-            ...nextValueFields,
-          },
-        });
-
-        await tx.positionHistory.create({
-          data: {
-            userId: req.userId!,
-            positionId: fundingCashPosition.id,
-            assetId: fundingCashPosition.assetId,
-            mode: 'reduce',
-            quantity: fundingDelta.quantityToReduce,
-            costBasisUsd: fundingDelta.result.deltaCostUsd,
-            previousQuantity: fundingCashPosition.quantity,
-            previousAvgCostUsd: fundingCashPosition.avgCostUsd,
-            previousTotalCostUsd: fundingDelta.result.currentTotalCostUsd,
-            nextQuantity: fundingDelta.result.nextQuantity,
-            nextAvgCostUsd: fundingDelta.result.nextAvgCostUsd,
-            nextTotalCostUsd: fundingDelta.result.nextTotalCostUsd,
-            operationId,
-            createdAt: historyCreatedAt,
-          },
-        });
-      }
-
-      return updatedPosition;
-    });
+        return updatedPosition;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     res.json(position);
   } catch (error) {

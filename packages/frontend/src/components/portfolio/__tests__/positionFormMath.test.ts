@@ -96,4 +96,43 @@ describe('positionFormMath', () => {
       })
     ).toBeNull();
   });
+
+  it('ignores deltaTotalCostInput on reduce previews and keeps the current average cost (USD)', () => {
+    const preview = buildPositionDeltaPreview({
+      currentQuantity: 10,
+      currentAvgCostUsd: 5,
+      deltaQuantity: '4',
+      // A proceeds value is supplied but must never feed the cost-basis math below.
+      deltaTotalCostInput: '999999',
+      mode: 'reduce',
+      costCurrency: 'USD',
+      usdFxRates: { USD: 1 },
+    });
+
+    expect(preview).not.toBeNull();
+    expect(preview?.currentAvgCost).toBe(5);
+    expect(preview?.nextAvgCost).toBe(preview?.currentAvgCost);
+    expect(preview?.nextQuantity).toBe(6);
+    expect(preview?.nextTotalCost).toBeCloseTo((10 - 4) * 5);
+  });
+
+  it('ignores deltaTotalCostInput on reduce previews in a non-USD display currency (SGD)', () => {
+    const preview = buildPositionDeltaPreview({
+      currentQuantity: 10,
+      currentAvgCostUsd: 5,
+      deltaQuantity: '4',
+      // Same bogus proceeds value as the USD case — still must be ignored.
+      deltaTotalCostInput: '999999',
+      mode: 'reduce',
+      costCurrency: 'SGD',
+      usdFxRates: { SGD: 1.35 },
+    });
+
+    expect(preview).not.toBeNull();
+    // Display values scale by the USD->SGD rate, but the underlying average is unchanged.
+    expect(preview?.currentAvgCost).toBeCloseTo(5 * 1.35);
+    expect(preview?.nextAvgCost).toBe(preview?.currentAvgCost);
+    expect(preview?.nextQuantity).toBe(6);
+    expect(preview?.nextTotalCost).toBeCloseTo((10 - 4) * 5 * 1.35);
+  });
 });

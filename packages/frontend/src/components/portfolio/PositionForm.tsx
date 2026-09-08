@@ -177,9 +177,14 @@ const NO_FUNDING_CASH_POSITION = 'none';
 const CASH_FUNDING_TOLERANCE = 1e-6;
 const SKIP_FUNDING_CONFIRM_KEY = 'foliobuddy-skip-funded-position-confirm';
 
+// debit = the cash pile pays for a purchase (create / add);
+// credit = the cash pile receives sale proceeds (reduce).
+type CashLinkDirection = 'debit' | 'credit';
+
 interface FundingConfirmationState {
+  direction: CashLinkDirection;
   positionLabel: string;
-  purchaseCostUsd: number;
+  amountUsd: number;
   cashLabel: string;
   cashAvailableUsd: number;
   cashRemainingUsd: number;
@@ -551,20 +556,20 @@ export function PositionForm({
     return true;
   }, [assetId, quantity, category, equityMode, isEditing, utSymbol, utName, utNav]);
 
+  const additionalAmountEntered =
+    additionalCostInputMode === 'total' ? additionalTotalCost : additionalAvgCostInput;
   const isDeltaFormValid = useMemo(() => {
     if (!isPositiveNumberInput(additionalQuantity)) return false;
-    if (deltaMode === 'reduce') return true;
+    if (deltaMode === 'add') return isNonNegativeNumberInput(additionalAmountEntered);
 
-    return additionalCostInputMode === 'total'
-      ? isNonNegativeNumberInput(additionalTotalCost)
-      : isNonNegativeNumberInput(additionalAvgCostInput);
-  }, [
-    additionalQuantity,
-    deltaMode,
-    additionalCostInputMode,
-    additionalTotalCost,
-    additionalAvgCostInput,
-  ]);
+    // Reduce: proceeds are optional, but once typed they must parse, and a
+    // cash pile can only receive a positive amount.
+    const hasCashPile = fundingCashPositionId !== NO_FUNDING_CASH_POSITION;
+    if (additionalAmountEntered.trim() === '') return !hasCashPile;
+    return hasCashPile
+      ? isPositiveNumberInput(additionalAmountEntered)
+      : isNonNegativeNumberInput(additionalAmountEntered);
+  }, [additionalQuantity, deltaMode, additionalAmountEntered, fundingCashPositionId]);
 
   const handlePaste = async () => {
     try {
@@ -761,23 +766,29 @@ export function PositionForm({
     return results;
   }, [filteredAssets, searchResults, equitySearchResults, searchQuery, category, assets]);
 
-  const canUseFundingCash = isEditing
-    ? editMode === 'delta' && deltaMode === 'add' && !isStablecoinCategory(position?.asset.category)
-    : category !== 'cash' && !utStatementMatch;
+  // Custody rows sit outside net worth, so they never link to an owned cash pile.
+  const canUseFundingCash =
+    !isCustody &&
+    (isEditing
+      ? editMode === 'delta' && !isStablecoinCategory(position?.asset.category)
+      : category !== 'cash' && !utStatementMatch);
+  const cashLinkDirection: CashLinkDirection =
+    isEditing && editMode === 'delta' && deltaMode === 'reduce' ? 'credit' : 'debit';
 
   const cashFundingOptions = useMemo(() => {
     if (!canUseFundingCash) return [];
+    // A pile must hold cash to pay for a purchase, but an empty pile can still receive proceeds.
+    const mustHoldCash = cashLinkDirection === 'debit';
     return (positions ?? [])
       .filter(
         (item) =>
           item.id !== position?.id &&
           !item.custodyOf &&
           isStablecoinCategory(item.asset.category) &&
-          item.quantity > 0 &&
-          cashFundingValueUsd(item) > 0
+          (!mustHoldCash || (item.quantity > 0 && cashFundingValueUsd(item) > 0))
       )
       .sort((a, b) => cashFundingValueUsd(b) - cashFundingValueUsd(a));
-  }, [canUseFundingCash, position?.id, positions]);
+  }, [canUseFundingCash, cashLinkDirection, position?.id, positions]);
 
   const selectedFundingCashPosition = useMemo(
     () => cashFundingOptions.find((item) => item.id === fundingCashPositionId) ?? null,
@@ -1166,7 +1177,7 @@ export function PositionForm({
       ? fundingCashPositionId
       : undefined;
 
-  const validateFundingCashSelection = (purchaseCostUsd: number) => {
+  const validateFundingCashSelection = (amountUsd: number) => {
     if (!fundingCashPositionIdForSubmit) return true;
 
     if (!selectedFundingCashPosition) {
@@ -1174,19 +1185,26 @@ export function PositionForm({
       return false;
     }
 
-    if (!(purchaseCostUsd > 0)) {
-      setValidationError('Funded positions need a positive total cost');
+    if (!(amountUsd > 0)) {
+      setValidationError(
+        cashLinkDirection === 'credit'
+          ? 'Enter the sale proceeds to deposit into the selected cash pile'
+          : 'Funded positions need a positive total cost'
+      );
       return false;
     }
 
+    // Deposits never overdraw anything; only purchases need the pile to cover the cost.
+    if (cashLinkDirection === 'credit') return true;
+
     const availableUsd = cashFundingValueUsd(selectedFundingCashPosition);
-    if (availableUsd + CASH_FUNDING_TOLERANCE < purchaseCostUsd) {
+    if (availableUsd + CASH_FUNDING_TOLERANCE < amountUsd) {
       setValidationError(
         `${selectedFundingCashPosition.asset.symbol} cash pile has ${formatCurrency(
           availableUsd,
           'USD',
           0
-        )} available, below the ${formatCurrency(purchaseCostUsd, 'USD', 0)} position cost`
+        )} available, below the ${formatCurrency(amountUsd, 'USD', 0)} position cost`
       );
       return false;
     }
@@ -1195,7 +1213,7 @@ export function PositionForm({
   };
 
   const requestFundingConfirmation = async (
-    purchaseCostUsd: number,
+    amountUsd: number,
     positionLabel: string,
     onConfirm: () => Promise<void>
   ) => {
@@ -1210,11 +1228,15 @@ export function PositionForm({
 
     const cashAvailableUsd = cashFundingValueUsd(selectedFundingCashPosition);
     setFundingConfirmation({
+      direction: cashLinkDirection,
       positionLabel,
-      purchaseCostUsd,
+      amountUsd,
       cashLabel: cashFundingLabel(selectedFundingCashPosition),
       cashAvailableUsd,
-      cashRemainingUsd: Math.max(0, cashAvailableUsd - purchaseCostUsd),
+      cashRemainingUsd:
+        cashLinkDirection === 'credit'
+          ? cashAvailableUsd + amountUsd
+          : Math.max(0, cashAvailableUsd - amountUsd),
       onConfirm,
     });
   };
@@ -1253,16 +1275,21 @@ export function PositionForm({
 
     if (isEditing && editMode === 'delta' && position) {
       const deltaQty = parseFloat(additionalQuantity);
-      if (deltaMode === 'add' && costCurrency !== 'USD' && !costRateIsReal) {
+      // Add always carries an amount (the purchase cost). Reduce only when the user
+      // typed sale proceeds — an empty field means "just shrink the position".
+      const hasAmount = deltaMode === 'add' || additionalAmountEntered.trim() !== '';
+      if (hasAmount && costCurrency !== 'USD' && !costRateIsReal) {
         setValidationError(`FX rate for ${costCurrency} is still loading. Please try again.`);
         return;
       }
-      // In add mode the user enters cost in costCurrency — convert to USD for persistence.
-      // In reduce mode we shrink basis at current avg cost (already USD), no conversion needed.
-      // Only convert in add mode — reduce mode would otherwise leave a latent NaN here.
-      const deltaCostInput = parseFloat(additionalCostInput);
-      const deltaCostAddUsd =
-        deltaMode === 'add' ? toUsdCost(deltaCostInput, costCurrency, usdFxRates) : 0;
+      // Amounts are typed in costCurrency — convert to USD for persistence. Add cost
+      // moves the average; reduce proceeds never touch it (basis comes off at the
+      // current average) and are only recorded / deposited into the linked cash pile.
+      const deltaAmountUsd = hasAmount
+        ? toUsdCost(parseFloat(additionalCostInput), costCurrency, usdFxRates)
+        : undefined;
+      const deltaCostAddUsd = deltaMode === 'add' ? (deltaAmountUsd ?? Number.NaN) : 0;
+      const deltaProceedsUsd = deltaMode === 'reduce' ? deltaAmountUsd : undefined;
 
       if (!(deltaQty > 0)) {
         setValidationError(`Please enter a valid ${deltaMode} quantity`);
@@ -1271,6 +1298,11 @@ export function PositionForm({
 
       if (deltaMode === 'add' && !(deltaCostAddUsd >= 0)) {
         setValidationError(`Please enter a valid ${deltaMode} cost`);
+        return;
+      }
+
+      if (deltaProceedsUsd !== undefined && !(deltaProceedsUsd >= 0)) {
+        setValidationError('Please enter valid sale proceeds');
         return;
       }
 
@@ -1288,7 +1320,8 @@ export function PositionForm({
         return;
       }
 
-      if (deltaMode === 'add' && !validateFundingCashSelection(deltaCostAddUsd)) {
+      const linkedCashAmountUsd = deltaMode === 'add' ? deltaCostAddUsd : (deltaProceedsUsd ?? 0);
+      if (!validateFundingCashSelection(linkedCashAmountUsd)) {
         return;
       }
 
@@ -1304,6 +1337,7 @@ export function PositionForm({
               mode: deltaMode,
               quantity: deltaQty,
               ...(deltaMode === 'add' ? { totalCostUsd: deltaCostAddUsd } : {}),
+              ...(deltaProceedsUsd !== undefined ? { proceedsUsd: deltaProceedsUsd } : {}),
             },
           },
         });
@@ -1313,7 +1347,7 @@ export function PositionForm({
 
       try {
         await requestFundingConfirmation(
-          deltaCostAddUsd,
+          linkedCashAmountUsd,
           `${position.asset.symbol} ${position.asset.name}`,
           saveDeltaPosition
         );
@@ -1504,35 +1538,47 @@ export function PositionForm({
   }
 
   if (fundingConfirmation) {
+    const isCredit = fundingConfirmation.direction === 'credit';
+    const positionActionLabel = isCredit
+      ? 'Reduce position'
+      : isEditing
+        ? 'Add to position'
+        : 'Add position';
     return (
       <div className="space-y-4">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold">Confirm Funded Position</h3>
+          <h3 className="text-base font-semibold">
+            {isCredit ? 'Confirm Sale Proceeds' : 'Confirm Funded Position'}
+          </h3>
           <p className="text-sm text-muted-foreground">
-            This will {isEditing ? 'add to this position' : 'add the new position'} and reduce the
-            selected cash pile.
+            {isCredit
+              ? 'This will reduce this position and deposit the proceeds into the selected cash pile.'
+              : `This will ${isEditing ? 'add to this position' : 'add the new position'} and reduce the selected cash pile.`}
           </p>
         </div>
 
         <div className="space-y-3 rounded-md border bg-muted/20 p-3 text-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-medium">{isEditing ? 'Add to position' : 'Add position'}</p>
+              <p className="font-medium">{positionActionLabel}</p>
               <p className="text-muted-foreground">{fundingConfirmation.positionLabel}</p>
             </div>
             <span className="shrink-0 font-medium tabular-nums">
-              {formatCurrency(fundingConfirmation.purchaseCostUsd, 'USD', 0)}
+              {formatCurrency(fundingConfirmation.amountUsd, 'USD', 0)}
             </span>
           </div>
 
           <div className="border-t border-border/60 pt-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-medium">Reduce cash pile</p>
+                <p className="font-medium">{isCredit ? 'Add to cash pile' : 'Reduce cash pile'}</p>
                 <p className="text-muted-foreground">{fundingConfirmation.cashLabel}</p>
               </div>
-              <span className="shrink-0 font-medium text-loss tabular-nums">
-                -{formatCurrency(fundingConfirmation.purchaseCostUsd, 'USD', 0)}
+              <span
+                className={`shrink-0 font-medium tabular-nums ${isCredit ? 'text-profit' : 'text-loss'}`}
+              >
+                {isCredit ? '+' : '-'}
+                {formatCurrency(fundingConfirmation.amountUsd, 'USD', 0)}
               </span>
             </div>
             <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -1613,7 +1659,7 @@ export function PositionForm({
     canUseFundingCash && cashFundingOptions.length > 0 ? (
       <div className="space-y-1">
         <Label htmlFor="funding-cash-position" className="text-sm">
-          Fund From (Optional)
+          {cashLinkDirection === 'credit' ? 'Fund To (Optional)' : 'Fund From (Optional)'}
         </Label>
         <Select value={fundingCashPositionId} onValueChange={setFundingCashPositionId}>
           <SelectTrigger id="funding-cash-position">
@@ -1721,7 +1767,15 @@ export function PositionForm({
             <PositionDeltaEditor
               position={position}
               deltaMode={deltaMode}
-              onDeltaModeChange={setDeltaMode}
+              onDeltaModeChange={(nextMode) => {
+                // The amount fields mean different things per tab (cost vs proceeds),
+                // so never carry a typed number or a linked pile across the switch.
+                setDeltaMode(nextMode);
+                setAdditionalTotalCost('');
+                setAdditionalAvgCostInput('');
+                setFundingCashPositionId(NO_FUNDING_CASH_POSITION);
+                setValidationError(null);
+              }}
               additionalQuantity={additionalQuantity}
               onAdditionalQuantityChange={(value) => {
                 setAdditionalQuantity(value);

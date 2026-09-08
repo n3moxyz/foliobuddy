@@ -46,6 +46,12 @@ export function errorHandler(err: Error, req: Request, res: Response, next: Next
         return res.status(404).json({
           error: 'Record not found',
         });
+      case 'P2034':
+        // Serializable transactions (investor + linked cash-pile mutations) abort
+        // instead of silently overwriting a concurrent change. Safe to retry.
+        return res.status(409).json({
+          error: 'This change collided with another update. Please retry.',
+        });
       default:
         return res.status(400).json({
           error: 'Database error',

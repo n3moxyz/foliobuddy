@@ -56,6 +56,7 @@ export function PositionDeltaEditor({
   canSubmit,
 }: PositionDeltaEditorProps) {
   const formatPositionQuantity = (value: number) => formatQuantity(value, position.asset.category);
+  const isAdd = deltaMode === 'add';
 
   return (
     <>
@@ -114,90 +115,95 @@ export function PositionDeltaEditor({
         />
       </div>
 
-      {deltaMode === 'add' ? (
-        <div className="space-y-2">
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-muted-foreground">Enter:</span>
-            <label className="flex min-h-11 items-center gap-1.5 cursor-pointer sm:min-h-0">
-              <input
-                type="radio"
-                name="additionalCostMode"
-                checked={additionalCostInputMode === 'total'}
-                onChange={() => onAdditionalCostInputModeChange('total')}
-                className="w-3.5 h-3.5 accent-primary"
-              />
-              <span
-                className={
-                  additionalCostInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'
-                }
-              >
-                Total Cost
-              </span>
-            </label>
-            <label className="flex min-h-11 items-center gap-1.5 cursor-pointer sm:min-h-0">
-              <input
-                type="radio"
-                name="additionalCostMode"
-                checked={additionalCostInputMode === 'avg'}
-                onChange={() => onAdditionalCostInputModeChange('avg')}
-                className="w-3.5 h-3.5 accent-primary"
-              />
-              <span
-                className={
-                  additionalCostInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'
-                }
-              >
-                Avg Cost
-              </span>
-            </label>
-          </div>
+      {/* Same Total/Avg pair in both modes. Add: what the extra quantity cost (required,
+          moves the average). Reduce: what the sold quantity fetched (optional, never
+          touches the average — it only records proceeds and feeds the cash pile). */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-muted-foreground">Enter:</span>
+          <label className="flex min-h-11 items-center gap-1.5 cursor-pointer sm:min-h-0">
+            <input
+              type="radio"
+              name="additionalCostMode"
+              checked={additionalCostInputMode === 'total'}
+              onChange={() => onAdditionalCostInputModeChange('total')}
+              className="w-3.5 h-3.5 accent-primary"
+            />
+            <span
+              className={
+                additionalCostInputMode === 'total' ? 'font-medium' : 'text-muted-foreground'
+              }
+            >
+              {isAdd ? 'Total Cost' : 'Total Proceeds'}
+            </span>
+          </label>
+          <label className="flex min-h-11 items-center gap-1.5 cursor-pointer sm:min-h-0">
+            <input
+              type="radio"
+              name="additionalCostMode"
+              checked={additionalCostInputMode === 'avg'}
+              onChange={() => onAdditionalCostInputModeChange('avg')}
+              className="w-3.5 h-3.5 accent-primary"
+            />
+            <span
+              className={
+                additionalCostInputMode === 'avg' ? 'font-medium' : 'text-muted-foreground'
+              }
+            >
+              {isAdd ? 'Avg Cost' : 'Avg Price'}
+            </span>
+          </label>
+        </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="additionalTotalCost" className="text-sm">
-                Total Cost ({costCurrency})
-              </Label>
-              <FormattedNumberInput
-                id="additionalTotalCost"
-                value={
-                  additionalCostInputMode === 'total'
-                    ? additionalTotalCost
-                    : calculatedAdditionalTotalCost
-                }
-                onValueChange={onAdditionalTotalCostChange}
-                placeholder="0.00"
-                disabled={additionalCostInputMode !== 'total'}
-                className={additionalCostInputMode !== 'total' ? 'bg-muted' : ''}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="additionalAvgCost" className="text-sm">
-                Average Cost ({costCurrency})
-              </Label>
-              <FormattedNumberInput
-                id="additionalAvgCost"
-                value={
-                  additionalCostInputMode === 'avg'
-                    ? additionalAvgCostInput
-                    : calculatedAdditionalAvgCost
-                }
-                onValueChange={onAdditionalAvgCostChange}
-                placeholder="0.00"
-                disabled={additionalCostInputMode !== 'avg'}
-                className={additionalCostInputMode !== 'avg' ? 'bg-muted' : ''}
-                required
-              />
-            </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="additionalTotalCost" className="text-sm">
+              {isAdd ? 'Total Cost' : 'Total Proceeds'} ({costCurrency})
+            </Label>
+            <FormattedNumberInput
+              id="additionalTotalCost"
+              value={
+                additionalCostInputMode === 'total'
+                  ? additionalTotalCost
+                  : calculatedAdditionalTotalCost
+              }
+              onValueChange={onAdditionalTotalCostChange}
+              placeholder="0.00"
+              disabled={additionalCostInputMode !== 'total'}
+              className={additionalCostInputMode !== 'total' ? 'bg-muted' : ''}
+              required={isAdd}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="additionalAvgCost" className="text-sm">
+              {isAdd ? 'Average Cost' : 'Avg Price'} ({costCurrency})
+            </Label>
+            <FormattedNumberInput
+              id="additionalAvgCost"
+              value={
+                additionalCostInputMode === 'avg'
+                  ? additionalAvgCostInput
+                  : calculatedAdditionalAvgCost
+              }
+              onValueChange={onAdditionalAvgCostChange}
+              placeholder="0.00"
+              disabled={additionalCostInputMode !== 'avg'}
+              className={additionalCostInputMode !== 'avg' ? 'bg-muted' : ''}
+              required={isAdd}
+            />
           </div>
         </div>
-      ) : (
-        <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
-          Cost basis will be reduced automatically using the current average cost.
-        </div>
-      )}
 
-      {deltaMode === 'add' && fundingSlot}
+        {!isAdd && (
+          <p className="text-xs text-muted-foreground">
+            Optional: what the sale fetched. Cost basis still comes off at the current average cost;
+            proceeds are recorded in the position history and, with a cash pile selected, deposited
+            into it.
+          </p>
+        )}
+      </div>
+
+      {fundingSlot}
 
       {preview && (
         <div className="rounded-md border bg-muted/20 p-3">
