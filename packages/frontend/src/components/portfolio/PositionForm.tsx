@@ -562,14 +562,12 @@ export function PositionForm({
     if (!isPositiveNumberInput(additionalQuantity)) return false;
     if (deltaMode === 'add') return isNonNegativeNumberInput(additionalAmountEntered);
 
-    // Reduce: proceeds are optional, but once typed they must parse, and a
-    // cash pile can only receive a positive amount.
-    const hasCashPile = fundingCashPositionId !== NO_FUNDING_CASH_POSITION;
-    if (additionalAmountEntered.trim() === '') return !hasCashPile;
-    return hasCashPile
-      ? isPositiveNumberInput(additionalAmountEntered)
-      : isNonNegativeNumberInput(additionalAmountEntered);
-  }, [additionalQuantity, deltaMode, additionalAmountEntered, fundingCashPositionId]);
+    // Reduce: proceeds are optional, but once typed they must parse. Whether a
+    // linked cash pile actually gets a positive amount is checked on submit so
+    // the user sees a message instead of a silently disabled button.
+    if (additionalAmountEntered.trim() === '') return true;
+    return isNonNegativeNumberInput(additionalAmountEntered);
+  }, [additionalQuantity, deltaMode, additionalAmountEntered]);
 
   const handlePaste = async () => {
     try {

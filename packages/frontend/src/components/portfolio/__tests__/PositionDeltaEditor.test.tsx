@@ -56,9 +56,9 @@ describe('PositionDeltaEditor', () => {
   it('reduce mode: proceeds/avg price are optional, funding slot renders, submit reads Reduce Position', () => {
     renderEditor({ deltaMode: 'reduce' });
 
-    // Label text includes a nested "· optional" span, so the full recursive label
-    // content is "Total Proceeds (USD) · optional" — a function matcher is needed
-    // to find the field by its leading text.
+    // Labels render as plain text ("Total Proceeds (USD)"); a function matcher keeps
+    // the lookup resilient to the currency suffix. Optionality is conveyed by the
+    // helper paragraph wired to both inputs via aria-describedby.
     const totalProceedsInput = screen.getByLabelText((content) =>
       content.startsWith('Total Proceeds (USD)')
     );

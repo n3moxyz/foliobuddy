@@ -57,6 +57,9 @@ export function PositionDeltaEditor({
 }: PositionDeltaEditorProps) {
   const formatPositionQuantity = (value: number) => formatQuantity(value, position.asset.category);
   const isAdd = deltaMode === 'add';
+  // Reduce's amount pair is optional; the helper paragraph says so and is wired
+  // to both inputs so screen readers announce it with the field.
+  const proceedsHintId = isAdd ? undefined : 'additionalProceedsHint';
 
   return (
     <>
@@ -171,6 +174,7 @@ export function PositionDeltaEditor({
               placeholder="0.00"
               disabled={additionalCostInputMode !== 'total'}
               className={additionalCostInputMode !== 'total' ? 'bg-muted' : ''}
+              aria-describedby={proceedsHintId}
               required={isAdd}
             />
           </div>
@@ -189,13 +193,14 @@ export function PositionDeltaEditor({
               placeholder="0.00"
               disabled={additionalCostInputMode !== 'avg'}
               className={additionalCostInputMode !== 'avg' ? 'bg-muted' : ''}
+              aria-describedby={proceedsHintId}
               required={isAdd}
             />
           </div>
         </div>
 
         {!isAdd && (
-          <p className="text-xs text-muted-foreground">
+          <p id={proceedsHintId} className="text-xs text-muted-foreground">
             Optional: what the sale fetched. Cost basis still comes off at the current average cost;
             proceeds are recorded in the position history and, with a cash pile selected, deposited
             into it.
