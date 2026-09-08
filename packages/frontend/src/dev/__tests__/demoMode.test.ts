@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  STABLECOIN_CATEGORIES,
+  type Position,
+  type PositionHistoryEntry,
+} from '@foliobuddy/shared';
 import { handleDemoApi, resetDemoDataForTests } from '../demoMode';
 
 function apiUrl(path: string) {
@@ -16,6 +21,28 @@ async function demoRequest(path: string, method = 'GET', body?: unknown) {
 
 async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
+}
+
+async function seedPositions() {
+  return readJson<Position[]>(await demoRequest('/positions'));
+}
+
+async function findSeedPositions() {
+  const positions = await seedPositions();
+  const target = positions.find(
+    (position) => !position.custodyOf && !STABLECOIN_CATEGORIES.includes(position.asset.category)
+  );
+  const cashPile = positions.find(
+    (position) => !position.custodyOf && STABLECOIN_CATEGORIES.includes(position.asset.category)
+  );
+  if (!target || !cashPile) {
+    throw new Error('Expected demo seed data to include a non-cash and a cash owned position');
+  }
+  return { target, cashPile };
+}
+
+async function positionHistoryFor(positionId: string) {
+  return readJson<PositionHistoryEntry[]>(await demoRequest(`/positions/${positionId}/history`));
 }
 
 describe('demo mode API mock', () => {
@@ -249,5 +276,119 @@ describe('demo mode API mock', () => {
     );
 
     expect(updatedPosition?.marketValueUsd).not.toBe(unitTrustPosition!.marketValueUsd);
+  });
+
+  it('reduces a position with proceeds into a linked cash pile, then restores both sides on cancel', async () => {
+    const { target, cashPile } = await findSeedPositions();
+    const reduceQuantity = 0.5;
+    const proceedsUsd = 40000;
+    const nextQuantity = target.quantity - reduceQuantity;
+    const cashPriceUsd = cashPile.asset.currentPriceUsd ?? cashPile.avgCostUsd;
+    const expectedCashQuantity = cashPile.quantity + proceedsUsd / cashPriceUsd;
+
+    const updatedTarget = await readJson<Position>(
+      await demoRequest(`/positions/${target.id}`, 'PUT', {
+        quantity: nextQuantity,
+        avgCostUsd: target.avgCostUsd,
+        fundingCashPositionId: cashPile.id,
+        positionDelta: { mode: 'reduce', quantity: reduceQuantity, proceedsUsd },
+      })
+    );
+
+    expect(updatedTarget.quantity).toBe(nextQuantity);
+    expect(updatedTarget.avgCostUsd).toBe(target.avgCostUsd);
+
+    const positionsAfterReduce = await seedPositions();
+    const cashAfterReduce = positionsAfterReduce.find((position) => position.id === cashPile.id);
+    expect(cashAfterReduce?.quantity).toBe(expectedCashQuantity);
+
+    const targetHistoryAfterReduce = await positionHistoryFor(target.id);
+    const cashHistoryAfterReduce = await positionHistoryFor(cashPile.id);
+    const reduceEntry = targetHistoryAfterReduce[0];
+    const cashEntry = cashHistoryAfterReduce[0];
+
+    expect(reduceEntry.mode).toBe('reduce');
+    expect(reduceEntry.quantity).toBe(reduceQuantity);
+    expect(reduceEntry.proceedsUsd).toBe(proceedsUsd);
+    expect(cashEntry.mode).toBe('add');
+    expect(cashEntry.costBasisUsd).toBe(proceedsUsd);
+    expect(reduceEntry.operationId).toBeTruthy();
+    expect(cashEntry.operationId).toBe(reduceEntry.operationId);
+
+    const restoredTarget = await readJson<Position>(
+      await demoRequest(`/positions/${target.id}/history/${reduceEntry.id}`, 'DELETE')
+    );
+
+    expect(restoredTarget.quantity).toBe(target.quantity);
+    expect(restoredTarget.avgCostUsd).toBe(target.avgCostUsd);
+
+    const positionsAfterCancel = await seedPositions();
+    const targetAfterCancel = positionsAfterCancel.find((position) => position.id === target.id);
+    const cashAfterCancel = positionsAfterCancel.find((position) => position.id === cashPile.id);
+    expect(targetAfterCancel?.quantity).toBe(target.quantity);
+    expect(targetAfterCancel?.avgCostUsd).toBe(target.avgCostUsd);
+    expect(cashAfterCancel?.quantity).toBe(cashPile.quantity);
+    expect(cashAfterCancel?.avgCostUsd).toBe(cashPile.avgCostUsd);
+
+    const targetHistoryAfterCancel = await positionHistoryFor(target.id);
+    const cashHistoryAfterCancel = await positionHistoryFor(cashPile.id);
+    expect(targetHistoryAfterCancel.some((entry) => entry.id === reduceEntry.id)).toBe(false);
+    expect(cashHistoryAfterCancel.some((entry) => entry.id === cashEntry.id)).toBe(false);
+    expect(targetHistoryAfterCancel).toHaveLength(targetHistoryAfterReduce.length - 1);
+    expect(cashHistoryAfterCancel).toHaveLength(cashHistoryAfterReduce.length - 1);
+  });
+
+  it('records sale proceeds on the history row without touching cash when no pile is linked', async () => {
+    const { target, cashPile } = await findSeedPositions();
+    const reduceQuantity = 0.3;
+    const proceedsUsd = 20000;
+    const nextQuantity = target.quantity - reduceQuantity;
+
+    const updatedTarget = await readJson<Position>(
+      await demoRequest(`/positions/${target.id}`, 'PUT', {
+        quantity: nextQuantity,
+        avgCostUsd: target.avgCostUsd,
+        positionDelta: { mode: 'reduce', quantity: reduceQuantity, proceedsUsd },
+      })
+    );
+
+    expect(updatedTarget.quantity).toBe(nextQuantity);
+    expect(updatedTarget.avgCostUsd).toBe(target.avgCostUsd);
+
+    const targetHistory = await positionHistoryFor(target.id);
+    const reduceEntry = targetHistory[0];
+    expect(reduceEntry.mode).toBe('reduce');
+    expect(reduceEntry.proceedsUsd).toBe(proceedsUsd);
+    expect(reduceEntry.operationId ?? null).toBeNull();
+
+    const positionsAfter = await seedPositions();
+    const cashAfter = positionsAfter.find((position) => position.id === cashPile.id);
+    expect(cashAfter?.quantity).toBe(cashPile.quantity);
+    expect(cashAfter?.avgCostUsd).toBe(cashPile.avgCostUsd);
+  });
+
+  it('rejects sale proceeds on an add delta', async () => {
+    const { target } = await findSeedPositions();
+
+    await expect(
+      demoRequest(`/positions/${target.id}`, 'PUT', {
+        quantity: target.quantity + 0.1,
+        avgCostUsd: target.avgCostUsd,
+        positionDelta: { mode: 'add', quantity: 0.1, totalCostUsd: 5000, proceedsUsd: 1000 },
+      })
+    ).rejects.toThrow('Sale proceeds are only supported when reducing a position');
+  });
+
+  it('rejects a linked cash pile on reduce when no positive proceeds are given', async () => {
+    const { target, cashPile } = await findSeedPositions();
+
+    await expect(
+      demoRequest(`/positions/${target.id}`, 'PUT', {
+        quantity: target.quantity - 0.2,
+        avgCostUsd: target.avgCostUsd,
+        fundingCashPositionId: cashPile.id,
+        positionDelta: { mode: 'reduce', quantity: 0.2 },
+      })
+    ).rejects.toThrow('Sending proceeds to a cash pile requires a positive sale amount');
   });
 });

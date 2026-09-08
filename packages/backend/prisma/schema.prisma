@@ -122,6 +122,7 @@ model PositionHistory {
   nextQuantity         Float
   nextAvgCostUsd       Float
   nextTotalCostUsd     Float
+  proceedsUsd          Float?
   operationId          String?
   createdAt            DateTime @default(now())
 

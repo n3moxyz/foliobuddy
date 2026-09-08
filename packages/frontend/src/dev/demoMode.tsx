@@ -1410,68 +1410,89 @@ function createDemoPosition(data: CreatePositionData): Position {
   return position;
 }
 
-function reduceDemoFundingCashPositionByCost(
-  fundingCashPositionIdInput: string | null | undefined,
-  purchaseCostUsd: number,
+function findDemoLinkedCashPosition(cashPositionId: string, isFunding: boolean): Position {
+  const cashPosition = demoPositions.find(
+    (position) => position.id === cashPositionId && !position.custodyOf
+  );
+  if (!cashPosition) {
+    throw new Error('Funding cash position not found');
+  }
+  if (categoryGroup(cashPosition.asset.category) !== CategoryGroup.STABLES) {
+    throw new Error(
+      isFunding
+        ? 'Funding position must be a cash position'
+        : 'Proceeds destination must be a cash position'
+    );
+  }
+  return cashPosition;
+}
+
+// One cash-pile move linked to a position change (mirrors the backend): 'reduce'
+// spends the pile to fund a purchase, 'add' deposits sale proceeds into it.
+function applyDemoLinkedCashDelta(
+  cashPositionIdInput: string | null | undefined,
+  mode: 'add' | 'reduce',
+  amountUsd: number,
   timestamp: string,
   operationId?: string
 ) {
-  const fundingCashPositionId = fundingCashPositionIdInput?.trim();
-  if (!fundingCashPositionId) return;
+  const cashPositionId = cashPositionIdInput?.trim();
+  if (!cashPositionId) return;
+  const isFunding = mode === 'reduce';
+  const cashPosition = findDemoLinkedCashPosition(cashPositionId, isFunding);
 
-  const fundingPosition = demoPositions.find(
-    (position) => position.id === fundingCashPositionId && !position.custodyOf
-  );
-  if (!fundingPosition) {
-    throw new Error('Funding cash position not found');
-  }
-  if (categoryGroup(fundingPosition.asset.category) !== CategoryGroup.STABLES) {
-    throw new Error('Funding position must be a cash position');
-  }
-
-  if (!(purchaseCostUsd > 0)) {
-    throw new Error('Funding cash source requires a positive position cost');
+  if (!(amountUsd > 0)) {
+    throw new Error(
+      isFunding
+        ? 'Funding cash source requires a positive position cost'
+        : 'Sending proceeds to a cash pile requires a positive sale amount'
+    );
   }
 
-  const fundingPriceUsd = fundingPosition.asset.currentPriceUsd ?? fundingPosition.avgCostUsd;
-  if (!(fundingPriceUsd > 0)) {
-    throw new Error('Funding cash position needs a usable USD price');
+  const cashPriceUsd = cashPosition.asset.currentPriceUsd ?? cashPosition.avgCostUsd;
+  if (!(cashPriceUsd > 0)) {
+    throw new Error(
+      isFunding
+        ? 'Funding cash position needs a usable USD price'
+        : 'Proceeds cash position needs a usable USD price'
+    );
   }
 
-  const quantityToReduce = purchaseCostUsd / fundingPriceUsd;
+  const quantity = amountUsd / cashPriceUsd;
   const delta = applyPositionDelta({
-    currentQuantity: fundingPosition.quantity,
-    currentAvgCostUsd: fundingPosition.avgCostUsd,
-    deltaQuantity: quantityToReduce,
-    mode: 'reduce',
+    currentQuantity: cashPosition.quantity,
+    currentAvgCostUsd: cashPosition.avgCostUsd,
+    deltaQuantity: quantity,
+    mode,
+    deltaTotalCostUsd: isFunding ? undefined : amountUsd,
   });
 
-  const updatedFundingPosition = computePosition(fundingPosition.asset, {
-    id: fundingPosition.id,
-    assetId: fundingPosition.assetId,
+  const updatedCashPosition = computePosition(cashPosition.asset, {
+    id: cashPosition.id,
+    assetId: cashPosition.assetId,
     quantity: delta.nextQuantity,
     avgCostUsd: delta.nextAvgCostUsd,
-    storageType: fundingPosition.storageType,
-    storageLocation: fundingPosition.storageLocation,
-    notes: fundingPosition.notes,
-    custodyOf: fundingPosition.custodyOf,
-    createdAt: fundingPosition.createdAt,
+    storageType: cashPosition.storageType,
+    storageLocation: cashPosition.storageLocation,
+    notes: cashPosition.notes,
+    custodyOf: cashPosition.custodyOf,
+    createdAt: cashPosition.createdAt,
     updatedAt: timestamp,
   });
 
   demoPositions = demoPositions.map((position) =>
-    position.id === fundingPosition.id ? updatedFundingPosition : position
+    position.id === cashPosition.id ? updatedCashPosition : position
   );
   demoPositionHistory = [
     {
       id: nextDemoId('hist'),
-      positionId: fundingPosition.id,
-      assetId: fundingPosition.assetId,
-      mode: 'reduce',
-      quantity: quantityToReduce,
+      positionId: cashPosition.id,
+      assetId: cashPosition.assetId,
+      mode,
+      quantity,
       costBasisUsd: delta.deltaCostUsd,
-      previousQuantity: fundingPosition.quantity,
-      previousAvgCostUsd: fundingPosition.avgCostUsd,
+      previousQuantity: cashPosition.quantity,
+      previousAvgCostUsd: cashPosition.avgCostUsd,
       previousTotalCostUsd: delta.currentTotalCostUsd,
       nextQuantity: delta.nextQuantity,
       nextAvgCostUsd: delta.nextAvgCostUsd,
@@ -1481,6 +1502,21 @@ function reduceDemoFundingCashPositionByCost(
     },
     ...demoPositionHistory,
   ];
+}
+
+function reduceDemoFundingCashPositionByCost(
+  fundingCashPositionIdInput: string | null | undefined,
+  purchaseCostUsd: number,
+  timestamp: string,
+  operationId?: string
+) {
+  applyDemoLinkedCashDelta(
+    fundingCashPositionIdInput,
+    'reduce',
+    purchaseCostUsd,
+    timestamp,
+    operationId
+  );
 }
 
 function updateDemoPosition(id: string, data: UpdatePositionData) {
@@ -1495,20 +1531,49 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
   }
 
   const timestamp = new Date().toISOString();
-  const operationId =
-    data.positionDelta?.mode === 'add' && data.fundingCashPositionId
-      ? nextDemoId('operation')
-      : undefined;
-  if (data.fundingCashPositionId) {
-    if (data.positionDelta?.mode !== 'add') {
-      throw new Error('Funding cash source is only supported when adding to a position');
-    }
-    reduceDemoFundingCashPositionByCost(
-      data.fundingCashPositionId,
-      data.positionDelta.totalCostUsd ?? 0,
-      timestamp,
-      operationId
+  // Same guards, same order as PUT /positions/:id in the backend.
+  if (data.fundingCashPositionId && !data.positionDelta) {
+    throw new Error(
+      'A linked cash position is only supported when adding to or reducing a position'
     );
+  }
+  if (data.positionDelta?.mode === 'add' && data.positionDelta.proceedsUsd !== undefined) {
+    throw new Error('Sale proceeds are only supported when reducing a position');
+  }
+  if (
+    data.fundingCashPositionId &&
+    data.positionDelta?.mode === 'reduce' &&
+    !((data.positionDelta.proceedsUsd ?? 0) > 0)
+  ) {
+    throw new Error('Sending proceeds to a cash pile requires a positive sale amount');
+  }
+  if (data.fundingCashPositionId?.trim() === id) {
+    throw new Error('A position cannot fund itself');
+  }
+  const nextCustodyOf =
+    data.custodyOf === undefined ? existing.custodyOf : data.custodyOf?.trim() || null;
+  if (data.fundingCashPositionId && nextCustodyOf) {
+    throw new Error('Held-for-others positions cannot be linked to a cash pile');
+  }
+  const operationId =
+    data.positionDelta && data.fundingCashPositionId ? nextDemoId('operation') : undefined;
+  if (data.fundingCashPositionId && data.positionDelta) {
+    if (data.positionDelta.mode === 'add') {
+      reduceDemoFundingCashPositionByCost(
+        data.fundingCashPositionId,
+        data.positionDelta.totalCostUsd ?? 0,
+        timestamp,
+        operationId
+      );
+    } else {
+      applyDemoLinkedCashDelta(
+        data.fundingCashPositionId,
+        'add',
+        data.positionDelta.proceedsUsd ?? 0,
+        timestamp,
+        operationId
+      );
+    }
   }
 
   const updated = computePosition(asset, {
@@ -1547,6 +1612,8 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
         mode: data.positionDelta.mode,
         quantity: data.positionDelta.quantity,
         costBasisUsd,
+        proceedsUsd:
+          data.positionDelta.mode === 'reduce' ? (data.positionDelta.proceedsUsd ?? null) : null,
         previousQuantity: existing.quantity,
         previousAvgCostUsd: existing.avgCostUsd,
         previousTotalCostUsd,

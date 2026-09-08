@@ -616,7 +616,7 @@ describe('PUT /api/positions/:id', () => {
     });
   });
 
-  it('rejects funding cash source for reduce delta updates', async () => {
+  it('rejects a cash pile on reduce delta updates without positive sale proceeds', async () => {
     mockPrisma.position.findFirst.mockResolvedValue(
       mockPosition({
         id: 'position-1',
@@ -639,8 +639,542 @@ describe('PUT /api/positions/:id', () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Funding cash source is only supported when adding to a position');
+    expect(res.body.error).toBe('Sending proceeds to a cash pile requires a positive sale amount');
     expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects linking a cash pile to a held-for-others position', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-custody',
+        quantity: 10,
+        avgCostUsd: 100,
+        custodyOf: 'Alice',
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+
+    const res = await request(app)
+      .put('/api/positions/position-custody')
+      .send({
+        quantity: 5,
+        avgCostUsd: 100,
+        fundingCashPositionId: 'cash-position-1',
+        positionDelta: { mode: 'reduce', quantity: 5, proceedsUsd: 1000 },
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Held-for-others positions cannot be linked to a cash pile');
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+    expect(mockPrisma.positionHistory.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects linking a cash pile when the same request marks the position as custody', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        quantity: 10,
+        avgCostUsd: 100,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 5,
+        avgCostUsd: 100,
+        custodyOf: 'Alice',
+        fundingCashPositionId: 'cash-position-1',
+        positionDelta: { mode: 'reduce', quantity: 5, proceedsUsd: 1000 },
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Held-for-others positions cannot be linked to a cash pile');
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-finite delta amounts before they reach the history table', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        quantity: 10,
+        avgCostUsd: 100,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .set('Content-Type', 'application/json')
+      .send(
+        '{"quantity":8,"avgCostUsd":100,"positionDelta":{"mode":"reduce","quantity":2,"proceedsUsd":1e999}}'
+      );
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
+
+  it('allows a full exit: reducing to zero with proceeds deposited into a cash pile', async () => {
+    const targetPosition = mockPosition({
+      id: 'position-1',
+      assetId: 'asset-1',
+      quantity: 10,
+      avgCostUsd: 100,
+      asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+    });
+    const cashPosition = mockPosition({
+      id: 'cash-position-1',
+      assetId: 'asset-usdc',
+      quantity: 1000,
+      avgCostUsd: 1,
+      asset: mockAsset({
+        id: 'asset-usdc',
+        symbol: 'USDC',
+        category: 'STABLECOIN',
+        currentPriceUsd: 1,
+      }),
+    });
+    mockPrisma.position.findFirst
+      .mockResolvedValueOnce(targetPosition)
+      .mockResolvedValueOnce(cashPosition);
+    mockPrisma.position.update.mockImplementation(async ({ where, data }) =>
+      mockPosition({
+        id: where.id,
+        assetId: where.id === 'position-1' ? 'asset-1' : 'asset-usdc',
+        quantity: data.quantity,
+        avgCostUsd: data.avgCostUsd,
+        marketValueUsd: data.marketValueUsd,
+        unrealizedPnL: data.unrealizedPnL,
+        unrealizedPnLPct: data.unrealizedPnLPct,
+      })
+    );
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 0,
+        avgCostUsd: 0,
+        fundingCashPositionId: 'cash-position-1',
+        positionDelta: { mode: 'reduce', quantity: 10, proceedsUsd: 1500 },
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.position.update).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: { id: 'position-1' },
+        data: expect.objectContaining({ quantity: 0, avgCostUsd: 0, marketValueUsd: 0 }),
+      })
+    );
+    expect(mockPrisma.position.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'cash-position-1' },
+      data: expect.objectContaining({ quantity: 2500, avgCostUsd: 1 }),
+    });
+    expect(mockPrisma.positionHistory.create).toHaveBeenNthCalledWith(1, {
+      data: expect.objectContaining({
+        mode: 'reduce',
+        quantity: 10,
+        costBasisUsd: 1000,
+        proceedsUsd: 1500,
+        nextQuantity: 0,
+        nextTotalCostUsd: 0,
+      }),
+    });
+  });
+
+  it('reduces the target and deposits sale proceeds into a linked cash pile', async () => {
+    const targetPosition = mockPosition({
+      id: 'position-1',
+      assetId: 'asset-1',
+      quantity: 10,
+      avgCostUsd: 100,
+      asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+    });
+    const cashPosition = mockPosition({
+      id: 'cash-position-1',
+      assetId: 'asset-usdc',
+      quantity: 1000,
+      avgCostUsd: 1,
+      asset: mockAsset({
+        id: 'asset-usdc',
+        symbol: 'USDC',
+        category: 'STABLECOIN',
+        currentPriceUsd: 1,
+      }),
+    });
+    mockPrisma.position.findFirst
+      .mockResolvedValueOnce(targetPosition)
+      .mockResolvedValueOnce(cashPosition);
+    mockPrisma.position.update.mockImplementation(async ({ where, data }) =>
+      where.id === 'position-1'
+        ? mockPosition({
+            id: 'position-1',
+            assetId: 'asset-1',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+            marketValueUsd: data.marketValueUsd,
+            unrealizedPnL: data.unrealizedPnL,
+            unrealizedPnLPct: data.unrealizedPnLPct,
+          })
+        : mockPosition({
+            id: 'cash-position-1',
+            assetId: 'asset-usdc',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+          })
+    );
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 8,
+        avgCostUsd: 100,
+        fundingCashPositionId: 'cash-position-1',
+        positionDelta: {
+          mode: 'reduce',
+          quantity: 2,
+          proceedsUsd: 300,
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.position.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'position-1' },
+      data: expect.objectContaining({
+        quantity: 8,
+        avgCostUsd: 100,
+      }),
+      include: { asset: true },
+    });
+    expect(mockPrisma.position.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'cash-position-1' },
+      data: expect.objectContaining({
+        quantity: 1300,
+        avgCostUsd: 1,
+      }),
+    });
+
+    const historyCalls = mockPrisma.positionHistory.create.mock.calls;
+    expect(historyCalls).toHaveLength(2);
+    const targetHistoryData = historyCalls[0][0].data;
+    const cashHistoryData = historyCalls[1][0].data;
+
+    expect(targetHistoryData).toEqual(
+      expect.objectContaining({
+        userId: 'test-user-id',
+        positionId: 'position-1',
+        assetId: 'asset-1',
+        mode: 'reduce',
+        quantity: 2,
+        costBasisUsd: 200,
+        previousQuantity: 10,
+        previousAvgCostUsd: 100,
+        nextQuantity: 8,
+        nextAvgCostUsd: 100,
+        proceedsUsd: 300,
+      })
+    );
+    expect(cashHistoryData).toEqual(
+      expect.objectContaining({
+        userId: 'test-user-id',
+        positionId: 'cash-position-1',
+        assetId: 'asset-usdc',
+        mode: 'add',
+        quantity: 300,
+        costBasisUsd: 300,
+        previousQuantity: 1000,
+        previousAvgCostUsd: 1,
+        nextQuantity: 1300,
+        nextAvgCostUsd: 1,
+      })
+    );
+
+    expect(targetHistoryData.operationId).toBeTruthy();
+    expect(targetHistoryData.operationId).toBe(cashHistoryData.operationId);
+    expect(targetHistoryData.createdAt).toBe(cashHistoryData.createdAt);
+  });
+
+  it('records proceeds on the history row without a linked cash pile when no pile is selected', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        assetId: 'asset-1',
+        quantity: 10,
+        avgCostUsd: 100,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+    mockPrisma.position.update.mockImplementation(async ({ data }) =>
+      mockPosition({
+        id: 'position-1',
+        assetId: 'asset-1',
+        quantity: data.quantity,
+        avgCostUsd: data.avgCostUsd,
+        marketValueUsd: data.marketValueUsd,
+        unrealizedPnL: data.unrealizedPnL,
+        unrealizedPnLPct: data.unrealizedPnLPct,
+      })
+    );
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 8,
+        avgCostUsd: 100,
+        positionDelta: {
+          mode: 'reduce',
+          quantity: 2,
+          proceedsUsd: 300,
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.position.update).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.positionHistory.create).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.positionHistory.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        mode: 'reduce',
+        quantity: 2,
+        costBasisUsd: 200,
+        proceedsUsd: 300,
+        operationId: null,
+      }),
+    });
+  });
+
+  it('leaves proceedsUsd null on a plain reduce with no sale amount', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        assetId: 'asset-1',
+        quantity: 10,
+        avgCostUsd: 100,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+    mockPrisma.position.update.mockImplementation(async ({ data }) =>
+      mockPosition({
+        id: 'position-1',
+        assetId: 'asset-1',
+        quantity: data.quantity,
+        avgCostUsd: data.avgCostUsd,
+        marketValueUsd: data.marketValueUsd,
+        unrealizedPnL: data.unrealizedPnL,
+        unrealizedPnLPct: data.unrealizedPnLPct,
+      })
+    );
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 8,
+        avgCostUsd: 100,
+        positionDelta: {
+          mode: 'reduce',
+          quantity: 2,
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.positionHistory.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        mode: 'reduce',
+        quantity: 2,
+        costBasisUsd: 200,
+        proceedsUsd: null,
+      }),
+    });
+  });
+
+  it('rejects sale proceeds on an add delta', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        quantity: 10,
+        avgCostUsd: 100,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 15,
+        avgCostUsd: 120,
+        positionDelta: {
+          mode: 'add',
+          quantity: 5,
+          totalCostUsd: 800,
+          proceedsUsd: 100,
+        },
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Sale proceeds are only supported when reducing a position');
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a linked cash position without a position delta', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        quantity: 10,
+        avgCostUsd: 100,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+
+    const res = await request(app).put('/api/positions/position-1').send({
+      quantity: 8,
+      fundingCashPositionId: 'cash-position-1',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(
+      'A linked cash position is only supported when adding to or reducing a position'
+    );
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a proceeds destination that is not a cash position', async () => {
+    mockPrisma.position.findFirst
+      .mockResolvedValueOnce(
+        mockPosition({
+          id: 'position-1',
+          quantity: 10,
+          avgCostUsd: 100,
+          asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+        })
+      )
+      .mockResolvedValueOnce(
+        mockPosition({
+          id: 'crypto-position-1',
+          asset: mockAsset({ id: 'asset-eth', category: 'LIQUID_CRYPTO' }),
+        })
+      );
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 8,
+        avgCostUsd: 100,
+        fundingCashPositionId: 'crypto-position-1',
+        positionDelta: {
+          mode: 'reduce',
+          quantity: 2,
+          proceedsUsd: 300,
+        },
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Proceeds destination must be a cash position');
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a proceeds cash position with no usable price', async () => {
+    mockPrisma.position.findFirst
+      .mockResolvedValueOnce(
+        mockPosition({
+          id: 'position-1',
+          quantity: 10,
+          avgCostUsd: 100,
+          asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+        })
+      )
+      .mockResolvedValueOnce(
+        mockPosition({
+          id: 'cash-position-1',
+          assetId: 'asset-usdc',
+          quantity: 1000,
+          avgCostUsd: 0,
+          asset: mockAsset({
+            id: 'asset-usdc',
+            symbol: 'USDC',
+            category: 'STABLECOIN',
+            currentPriceUsd: null,
+          }),
+        })
+      );
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 8,
+        avgCostUsd: 100,
+        fundingCashPositionId: 'cash-position-1',
+        positionDelta: {
+          mode: 'reduce',
+          quantity: 2,
+          proceedsUsd: 300,
+        },
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Proceeds cash position needs a usable USD price');
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
+
+  it('converts proceeds into the pile currency for a non-USD cash position', async () => {
+    const cashPosition = mockPosition({
+      id: 'cash-position-sgd',
+      assetId: 'asset-sgd',
+      quantity: 500,
+      avgCostUsd: 0.74,
+      asset: mockAsset({
+        id: 'asset-sgd',
+        symbol: 'SGD',
+        category: 'CASH',
+        currentPriceUsd: 0.74,
+      }),
+    });
+    mockPrisma.position.findFirst
+      .mockResolvedValueOnce(
+        mockPosition({
+          id: 'position-1',
+          quantity: 10,
+          avgCostUsd: 100,
+          asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+        })
+      )
+      .mockResolvedValueOnce(cashPosition);
+    mockPrisma.position.update.mockImplementation(async ({ where, data }) =>
+      where.id === 'position-1'
+        ? mockPosition({
+            id: 'position-1',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+          })
+        : mockPosition({
+            id: 'cash-position-sgd',
+            assetId: 'asset-sgd',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+          })
+    );
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 8,
+        avgCostUsd: 100,
+        fundingCashPositionId: 'cash-position-sgd',
+        positionDelta: {
+          mode: 'reduce',
+          quantity: 2,
+          proceedsUsd: 100,
+        },
+      });
+
+    expect(res.status).toBe(200);
+    const cashHistoryData = mockPrisma.positionHistory.create.mock.calls[1][0].data;
+    expect(cashHistoryData.quantity).toBeCloseTo(100 / 0.74, 4);
+    expect(cashHistoryData.costBasisUsd).toBe(100);
   });
 });
 
@@ -801,6 +1335,130 @@ describe('DELETE /api/positions/:id/history/:historyId', () => {
       nextTotalCostUsd: 200,
       operationId: 'operation-1',
       createdAt: new Date('2026-06-15T00:00:00.000Z'),
+    };
+
+    mockPrisma.position.findFirst
+      .mockResolvedValueOnce(targetPosition)
+      .mockResolvedValueOnce(cashPosition);
+    mockPrisma.positionHistory.findFirst
+      .mockResolvedValueOnce(targetHistory)
+      .mockResolvedValueOnce({ id: 'history-1' })
+      .mockResolvedValueOnce({ id: 'cash-history-1' });
+    mockPrisma.positionHistory.findMany.mockResolvedValue([cashHistory]);
+    mockPrisma.position.update.mockImplementation(async ({ where, data }) =>
+      where.id === 'cash-position-1'
+        ? mockPosition({
+            id: 'cash-position-1',
+            assetId: 'asset-usdc',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+            marketValueUsd: data.marketValueUsd,
+            unrealizedPnL: data.unrealizedPnL,
+            unrealizedPnLPct: data.unrealizedPnLPct,
+          })
+        : mockPosition({
+            id: 'position-1',
+            assetId: 'asset-1',
+            quantity: data.quantity,
+            avgCostUsd: data.avgCostUsd,
+            marketValueUsd: data.marketValueUsd,
+            unrealizedPnL: data.unrealizedPnL,
+            unrealizedPnLPct: data.unrealizedPnLPct,
+          })
+    );
+    mockPrisma.positionHistory.deleteMany.mockResolvedValue({ count: 1 });
+
+    const res = await request(app).delete('/api/positions/position-1/history/history-1');
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.position.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'position-1' },
+      data: expect.objectContaining({
+        quantity: 10,
+        avgCostUsd: 100,
+        marketValueUsd: 1500,
+      }),
+      include: { asset: true },
+    });
+    expect(mockPrisma.position.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'cash-position-1' },
+      data: expect.objectContaining({
+        quantity: 1000,
+        avgCostUsd: 1,
+        marketValueUsd: 1000,
+      }),
+      include: { asset: true },
+    });
+    expect(mockPrisma.positionHistory.deleteMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        id: 'history-1',
+        positionId: 'position-1',
+        userId: 'test-user-id',
+      },
+    });
+    expect(mockPrisma.positionHistory.deleteMany).toHaveBeenNthCalledWith(2, {
+      where: {
+        id: 'cash-history-1',
+        positionId: 'cash-position-1',
+        userId: 'test-user-id',
+      },
+    });
+  });
+
+  it('cancels a proceeds reduce and restores the paired cash deposit', async () => {
+    const targetPosition = mockPosition({
+      id: 'position-1',
+      assetId: 'asset-1',
+      quantity: 8,
+      avgCostUsd: 100,
+      asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+    });
+    const cashPosition = mockPosition({
+      id: 'cash-position-1',
+      assetId: 'asset-usdc',
+      quantity: 1300,
+      avgCostUsd: 1,
+      asset: mockAsset({
+        id: 'asset-usdc',
+        symbol: 'USDC',
+        category: 'STABLECOIN',
+        currentPriceUsd: 1,
+      }),
+    });
+    const targetHistory = {
+      id: 'history-1',
+      userId: 'test-user-id',
+      positionId: 'position-1',
+      assetId: 'asset-1',
+      mode: 'reduce',
+      quantity: 2,
+      costBasisUsd: 200,
+      previousQuantity: 10,
+      previousAvgCostUsd: 100,
+      previousTotalCostUsd: 1000,
+      nextQuantity: 8,
+      nextAvgCostUsd: 100,
+      nextTotalCostUsd: 800,
+      proceedsUsd: 300,
+      operationId: 'operation-2',
+      createdAt: new Date('2026-06-16T00:00:00.000Z'),
+    };
+    const cashHistory = {
+      id: 'cash-history-1',
+      userId: 'test-user-id',
+      positionId: 'cash-position-1',
+      assetId: 'asset-usdc',
+      mode: 'add',
+      quantity: 300,
+      costBasisUsd: 300,
+      previousQuantity: 1000,
+      previousAvgCostUsd: 1,
+      previousTotalCostUsd: 1000,
+      nextQuantity: 1300,
+      nextAvgCostUsd: 1,
+      nextTotalCostUsd: 1300,
+      operationId: 'operation-2',
+      createdAt: new Date('2026-06-16T00:00:00.000Z'),
     };
 
     mockPrisma.position.findFirst

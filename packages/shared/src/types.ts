@@ -301,7 +301,15 @@ export interface Position {
 export interface PositionDeltaMetadata {
   mode: PositionDeltaMode;
   quantity: number;
+  /** Add mode only: what the extra quantity cost in USD. */
   totalCostUsd?: number;
+  /**
+   * Reduce mode only: what the sold quantity fetched in USD. Never changes the
+   * position's cost basis (that still comes off at the current average cost);
+   * it is recorded on the history row and, when a cash pile is linked, credited
+   * to that pile.
+   */
+  proceedsUsd?: number;
 }
 
 export interface PositionHistoryEntry {
@@ -317,6 +325,8 @@ export interface PositionHistoryEntry {
   nextQuantity: number;
   nextAvgCostUsd: number;
   nextTotalCostUsd: number;
+  /** Reduce rows only: sale proceeds in USD when the user recorded them. */
+  proceedsUsd?: number | null;
   operationId?: string | null;
   createdAt: string;
 }
@@ -557,6 +567,11 @@ export interface CreatePositionData {
   storageLocation?: string;
   notes?: string;
   custodyOf?: string;
+  /**
+   * Cash position linked to this change. On create and add deltas it is the
+   * source that pays for the purchase; on reduce deltas it is the destination
+   * that receives `positionDelta.proceedsUsd`.
+   */
   fundingCashPositionId?: string | null;
 }
 

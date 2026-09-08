@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, type ReactNode } from 'react';
 import {
   Table,
   TableBody,
@@ -149,7 +149,7 @@ export function PositionTable({
   mobileVariant = 'focus',
   showMobileColumnToggle = true,
 }: PositionTableProps) {
-  const { formatCurrency, valuesHidden } = useMoneyFormatter();
+  const { formatCurrency, formatSignedCurrency, valuesHidden } = useMoneyFormatter();
   const [viewPosition, setViewPosition] = useState<Position | null>(null);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [deletePosition, setDeletePosition] = useState<Position | null>(null);
@@ -999,7 +999,9 @@ export function PositionTable({
       toneClass: string;
       canCancel: boolean;
       historyEntry: PositionHistoryEntry | null;
-      detail?: string;
+      /** Word before the per-unit price; sales say "sold @" so the number reads right alone. */
+      priceLabel?: string;
+      detail?: ReactNode;
     };
 
     let lastResetIndex = -1;
@@ -1017,6 +1019,26 @@ export function PositionTable({
     const latestHistoryEntry = chronologicalHistory[chronologicalHistory.length - 1];
     const latestCancelableHistoryId =
       latestHistoryEntry && latestHistoryEntry.mode !== 'reset' ? latestHistoryEntry.id : null;
+
+    // "Sold for X · Realized ±Y" — the realized figure carries its own profit/loss
+    // tint, independent of the row's direction tint (a reduce is red even when it won).
+    const renderSaleDetail = (proceedsUsd: number, costBasisUsd: number) => {
+      const realizedUsd = proceedsUsd - costBasisUsd;
+      return (
+        <>
+          Sold for{' '}
+          {formatCurrency(convert(proceedsUsd), currency, getSmartDecimals(convert(proceedsUsd)))}
+          {' · Realized '}
+          <span className={realizedUsd >= 0 ? 'text-profit' : 'text-loss'}>
+            {formatSignedCurrency(
+              convert(realizedUsd),
+              currency,
+              getSmartDecimals(convert(realizedUsd))
+            )}
+          </span>
+        </>
+      );
+    };
 
     const rowForHistoryEntry = (entry: PositionHistoryEntry): ActivityRow => {
       if (entry.mode === 'reset') {
@@ -1040,18 +1062,26 @@ export function PositionTable({
       }
 
       const isAdd = entry.mode === 'add';
+      // A reduce with recorded proceeds is a sale: show the sale price instead of
+      // the average cost that came off, and what it realized against that basis.
+      const proceedsUsd =
+        !isAdd && typeof entry.proceedsUsd === 'number' ? entry.proceedsUsd : null;
+      const executionAmountUsd = proceedsUsd ?? entry.costBasisUsd;
       return {
         id: entry.id,
         label: isAdd ? 'Add' : 'Reduce',
         date: entry.createdAt,
         quantity: entry.quantity,
         quantityPrefix: isAdd ? '+' : '-',
-        priceUsd: entry.quantity > 0 ? entry.costBasisUsd / entry.quantity : 0,
+        priceUsd: entry.quantity > 0 ? executionAmountUsd / entry.quantity : 0,
         nextQuantity: entry.nextQuantity,
         nextAvgCostUsd: entry.nextAvgCostUsd,
         toneClass: isAdd ? 'text-profit' : 'text-loss',
         canCancel: entry.id === latestCancelableHistoryId,
         historyEntry: entry,
+        priceLabel: proceedsUsd !== null ? 'sold @' : undefined,
+        detail:
+          proceedsUsd !== null ? renderSaleDetail(proceedsUsd, entry.costBasisUsd) : undefined,
       };
     };
 
@@ -1128,7 +1158,7 @@ export function PositionTable({
                     {formatQuantity(entry.quantity, viewPosition.asset.category)}
                   </span>
                   <span>{viewPosition.asset.symbol}</span>
-                  <span className="text-muted-foreground"> @ </span>
+                  <span className="text-muted-foreground"> {entry.priceLabel ?? '@'} </span>
                   <span className="inline-flex min-w-0 flex-col">
                     <span className="font-mono">
                       {formatCurrency(
@@ -1146,7 +1176,7 @@ export function PositionTable({
                 </p>
               </div>
               {entry.detail && (
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">{entry.detail}</p>
+                <p className="mt-0.5 break-words text-xs text-muted-foreground">{entry.detail}</p>
               )}
             </div>
             <div className="flex shrink-0 items-center justify-end gap-2 text-right">
