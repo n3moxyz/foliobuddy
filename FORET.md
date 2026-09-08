@@ -612,6 +612,10 @@ Shell refinement: the left sidebar now has a Codex-style collapsible desktop rai
 
 ## Lessons Learned the Hard Way
 
+### Keeping Agent Guides Small Without Losing Rules
+
+The agent guides grew to 39,947 characters as features accumulated. The trim keeps commands, security rules, defaults, and gotchas in `CLAUDE.md` and its `AGENTS.md` mirror, while the full backend/frontend file map lives in [docs/CODEBASE.md](docs/CODEBASE.md). Both guides link to it and must stay under 35,000 characters. When shortening them, compare the old rules and identifiers with the new guides and linked references; a shorter paragraph is only useful if it still leads to the same action. Keep bug explanations here and operational detail in the existing runbooks.
+
 ### A Healthy Deployment Can Still Break an Open Browser Tab
 
 **The bug:** Vite gives lazy-loaded pages fingerprinted filenames. After a production release, a tab that was already open could still ask for the previous Trades chunk. The hosting fallback returned the new `index.html` with HTTP 200 for that missing JavaScript URL, so the browser rejected it and Sentry recorded `Failed to fetch dynamically imported module`. The existing error screen's Reload button only reset React's error boundary, which retried the already-rejected lazy import instead of fetching the current application shell.
