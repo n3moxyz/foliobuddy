@@ -243,7 +243,7 @@ Create-only sub-type toggle (edit infers category; enums unchanged); `equityMode
 
 - **Form:** creatable broker, `storageType='BROKERAGE'`; cost currency = `asset.nativeCurrency` (SGD/JPY/TWD/KRW/NOK inputs, stored USD). Non-USD cost basis MUST await real `/fx/rates` (or SGD summary rate); fallback FX display-only. Edit USD→local via `costInitialized`.
 - **Display:** default `groupBy='broker'`; header toggles `equityType`, persisted `foliobuddy-equity-group-by`. UT: `Unit Trust` badge + `NavStatus` (`priceAsOf` age, failed-check line); manual-priced non-UT non-cash: `priceAgeClass` age (muted <7d, amber 7–30d, red ≥30d/null).
-- **Upload:** dashed `<label>` wraps PDF input (click/drag-drop); matched UTs update, never duplicate: `statementMatching.ts` → `PUT /positions/:id` (parsed units/cost, `mode='reset'`) + parsed NAV via `PATCH /assets/:id/nav` (statement history only). No cash funding for matched statements (reconciliation).
+- **Upload:** dashed `<label>` wraps PDF input (click/drag-drop); matched UTs update, never duplicate: `statementMatching.ts` → `PUT /positions/:id` (parsed units/cost, `mode='reset'`) + parsed NAV via `PATCH /assets/:id/nav` (history/fallback; automatic NAV wins). No cash funding for matched statements (reconciliation).
 - **Copy/Paste:** non-coingecko clipboard keeps `priceProvider`/`providerAssetId`/`nativeCurrency`/`exchange`/`isin`. Bulk import honors these only for new Assets (defaults `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`); existing assets match verified fund identity before symbol.
 
 ### Position Edit Modes
