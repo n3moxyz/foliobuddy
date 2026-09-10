@@ -2,7 +2,7 @@ import type { Asset } from '@/lib/types';
 import { formatDateTime, getPriceAgeInfo, priceAgeClass } from '@/lib/utils';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
-export function navDateLabel(value: string | null | undefined): string {
+function navDateLabel(value: string | null | undefined): string {
   if (!value || !Number.isFinite(new Date(value).getTime())) return 'NAV date unavailable';
   return `NAV as of ${new Date(value).toLocaleDateString('en-GB', {
     day: '2-digit',

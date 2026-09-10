@@ -406,7 +406,10 @@ export function PositionTable({
     }
   };
 
-  const handleView = useCallback((position: Position) => setViewPosition(position), []);
+  const handleView = useCallback(
+    (position: Position) => setViewPosition(position),
+    [setViewPosition]
+  );
   const handleEdit = useCallback((position: Position) => setEditPosition(position), []);
 
   const renderPositionRow = useCallback(

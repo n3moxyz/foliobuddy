@@ -345,7 +345,7 @@ See `PRODUCT.md` — source of truth for users, brand, aesthetic, design princip
 - Wrong ports/"DB Down": check `.env.local` first; it overrides Vite `.env`.
 - Always Prisma `onDelete: Cascade` (avoids FK errors); snapshots need unique constraint + check-before-create.
 - Position P&L displays as %; bulk import `skipPriceFetch: true`, scheduler fetches in 1 min.
-- Push/PR CI: typecheck, full tests, frontend build, `npm run format:check`.
+- Push/PR CI: typecheck, full tests, Postgres 17 NAV verify script (NAV runbook), frontend build, `npm run format:check`.
 - npm 10.8.2/`uuid` override/ExcelJS rules: `docs/DEPENDENCIES.md`.
 - Sentry: unexpected 500s only, skip Zod 400s + AppErrors <500. Node `console.error` crashes on ZodError: integration tests MUST mock logger.
 - vitest `exclude: ['dist/**']` prevents duplicate runs after `npm run build`.
