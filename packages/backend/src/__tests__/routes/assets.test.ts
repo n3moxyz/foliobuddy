@@ -226,6 +226,98 @@ describe('PUT /api/assets/:id', () => {
     expect(res.body.error).toBe('Admin access required');
     expect(mockPrisma.asset.update).not.toHaveBeenCalled();
   });
+
+  describe('as an admin', () => {
+    const pricedFund = () =>
+      mockManualAsset({
+        priceProvider: 'fund-manager',
+        providerAssetId: 'SG9999004360',
+        isin: 'SG9999004360',
+        nativeCurrency: 'SGD',
+        currentPriceNative: 6.0462,
+        currentPriceUsd: 4.32,
+        priceSource: 'fund-manager',
+      });
+
+    beforeEach(() => {
+      process.env.ADMIN_USER_IDS = 'test-user-id';
+      mockPrisma.asset.update.mockImplementation(async ({ data }) => ({
+        ...pricedFund(),
+        ...data,
+      }));
+    });
+
+    it.each([
+      ['nativeCurrency', { nativeCurrency: 'USD' }],
+      ['priceProvider', { priceProvider: 'manual' }],
+      ['providerAssetId', { providerAssetId: 'SG9999004361' }],
+      ['category', { category: 'EQUITY' }],
+    ])('rejects a %s change behind a stored native NAV without writing', async (_field, body) => {
+      mockPrisma.asset.findUnique.mockResolvedValue(pricedFund());
+
+      const res = await request(app)
+        .put('/api/assets/asset-1')
+        .send({ name: 'Amova renamed', ...body });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error).toContain('cannot change');
+      expect(mockPrisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+        isolationLevel: 'Serializable',
+      });
+      expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+    });
+
+    it('allows cosmetic metadata and unchanged identity on a priced fund', async () => {
+      mockPrisma.asset.findUnique.mockResolvedValue(pricedFund());
+
+      const res = await request(app).put('/api/assets/asset-1').send({
+        name: 'Amova Singapore Equity Fund - SGD Class',
+        symbol: 'amovasin',
+        officialDomain: 'https://sg.amova-am.com/general/funds',
+        nativeCurrency: 'SGD',
+        providerAssetId: 'SG9999004360',
+        category: 'UNIT_TRUST',
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.asset.update).toHaveBeenCalledWith({
+        where: { id: 'asset-1' },
+        data: expect.objectContaining({
+          name: 'Amova Singapore Equity Fund - SGD Class',
+          symbol: 'AMOVASIN',
+          officialDomain: 'amova-am.com',
+          nativeCurrency: 'SGD',
+        }),
+      });
+      const written = mockPrisma.asset.update.mock.calls[0][0].data;
+      expect(written).not.toHaveProperty('currentPriceNative');
+      expect(written).not.toHaveProperty('currentPriceUsd');
+      expect(res.body.currentPriceNative).toBe(6.0462);
+    });
+
+    it('still lets identity change on an asset with no stored native NAV', async () => {
+      mockPrisma.asset.findUnique.mockResolvedValue(
+        mockManualAsset({ nativeCurrency: 'SGD', currentPriceNative: null })
+      );
+
+      const res = await request(app).put('/api/assets/asset-1').send({ nativeCurrency: 'USD' });
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.asset.update).toHaveBeenCalledWith({
+        where: { id: 'asset-1' },
+        data: expect.objectContaining({ nativeCurrency: 'USD' }),
+      });
+    });
+
+    it('returns 404 for an unknown asset without writing', async () => {
+      mockPrisma.asset.findUnique.mockResolvedValue(null);
+
+      const res = await request(app).put('/api/assets/missing').send({ name: 'x' });
+
+      expect(res.status).toBe(404);
+      expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('DELETE /api/assets/:id', () => {

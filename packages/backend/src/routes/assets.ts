@@ -376,17 +376,39 @@ router.post('/from-provider', async (req, res, next) => {
   }
 });
 
+const PRICED_FUND_IDENTITY_FIELDS = [
+  'nativeCurrency',
+  'priceProvider',
+  'providerAssetId',
+  'category',
+] as const;
+
 router.put('/:id', async (req, res, next) => {
   try {
     requireAdminUser(req.userId);
     const data = updateAssetSchema.parse(req.body);
 
-    const asset = await prisma.asset.update({
-      where: { id: req.params.id },
-      data: {
-        ...data,
-        symbol: data.symbol?.toUpperCase(),
-      },
+    const asset = await navTransaction(async (tx) => {
+      const existing = await tx.asset.findUnique({ where: { id: req.params.id } });
+      if (!existing) throw new AppError('Asset not found', 404);
+      if (
+        existing.currentPriceNative != null &&
+        PRICED_FUND_IDENTITY_FIELDS.some(
+          (field) => data[field] !== undefined && data[field] !== existing[field]
+        )
+      ) {
+        throw new AppError(
+          'A priced fund’s currency, provider identity and category cannot change',
+          409
+        );
+      }
+      return tx.asset.update({
+        where: { id: existing.id },
+        data: {
+          ...data,
+          symbol: data.symbol?.toUpperCase(),
+        },
+      });
     });
 
     res.json(asset);

@@ -12,7 +12,8 @@ the apparent SGD NAV. WebSocket “Live” describes connectivity, not NAV timin
 
 - [Amova SGD Class](https://sg.amova-am.com/general/funds/detail/amova-singapore-equity-fund-sgd-class):
   SG9999004360, DBSTTFI SP. Parse the active header and labelled NAV, not class A/B
-  options or the performance table. The exact FSMOne label maps to this ISIN.
+  options or the performance table. The FSMOne parser maps the exact legacy
+  label and SGD currency from `FUND_MANAGER_SOURCES` to this ISIN.
 - [LionGlobal Decumulation](https://www.lionglobalinvestors.com/en/fund.html?officialNav=LSSD):
   SGXZ58947870, LNWSSGC SP. Fetch `fundlist?fcode=LSSD` and `ffacts?fcode=LSSD`
   at `https://api.lionglobalinvestors.com/` and verify identity/currency/daily frequency.
@@ -52,12 +53,18 @@ imports also cannot regress current valuation.
 ## Operations and verification
 
 The schema migration recovers manual NAV dates from dated history. The startup
-mapping is idempotent and limited to verified ISIN/currency identities or the exact
-known legacy Amova record. Ambiguous candidates are reported and left unchanged;
-established feeds and unaffected funds continue refreshing. Imports reuse the
-verified share-class identity before trying a symbol, and cannot change currency
-or provider identity behind a stored native NAV. Invalid legacy native records
-are explicitly logged and retained while valid FX valuations continue.
+mapping is idempotent and limited to three exact identities: a verified
+ISIN/currency pair, the known legacy Amova record (id/symbol/name/provider), or
+a no-ISIN SGD unit trust already priced by Yahoo on the exact LionGlobal ticker
+`0P0001OPAN.SI`. That Yahoo record is rewritten to the `fund-manager` provider on
+the next startup or hourly tick. Ambiguous candidates are reported and left
+unchanged; established feeds and unaffected funds continue refreshing. Imports
+reuse the verified share-class identity before trying a symbol. Neither imports
+nor the admin catalog edit (`PUT /assets/:id`) can change currency, provider
+identity or category behind a stored native NAV; both answer 409 and write
+nothing, while name, symbol, exchange and official-domain edits stay allowed.
+Invalid legacy native records are explicitly logged and retained while valid FX
+valuations continue.
 Mapping does not alter positions, costs, snapshots or trades. No historical equity
 backfill is involved.
 
