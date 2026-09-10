@@ -4,7 +4,9 @@ import { snapshotService } from './snapshotService.js';
 import { socketService } from './socketService.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
-import { usdRateEntries } from '../lib/fxConstants.js';
+import { upsertUsdRates } from './fxRateService.js';
+import { configureKnownUnitTrusts } from './unitTrustNavService.js';
+import type { ProviderName } from './providers/types.js';
 import {
   getLocalParts,
   isSnapshotHourNow,
@@ -123,15 +125,15 @@ export async function createMissingSnapshots(): Promise<void> {
   }
 }
 
-async function runProviderRefresh(provider: 'coingecko' | 'yahoo', logTag: string): Promise<void> {
+async function runProviderRefresh(provider: ProviderName, logTag: string): Promise<void> {
   try {
     logger.info(`${logTag} Starting...`);
     const result = await priceService.refreshAllPrices(provider);
     logger.info(`${logTag} Updated ${result.updated} prices, ${result.errors} errors`);
 
-    socketService.broadcastPriceUpdate(result.updated);
-
     await priceService.updatePositionValues(result.changedAssetIds);
+
+    socketService.broadcastPriceUpdate(result.updated);
 
     if (result.changedAssetIds.length === 0) return;
 
@@ -162,6 +164,21 @@ export function startPriceRefreshJob(): void {
 export function startEquityRefreshJob(): void {
   logger.info('🏦 Starting equities price refresh scheduler (15min)');
   cron.schedule('*/15 * * * *', () => runProviderRefresh('yahoo', '[Price Refresh Equities]'));
+}
+
+export async function refreshFundManagerNavs(): Promise<void> {
+  try {
+    await configureKnownUnitTrusts(true);
+  } catch (error) {
+    logger.error('[Daily NAV] Configuration failed; continuing established feeds', error);
+  }
+  await runProviderRefresh('fund-manager', '[Daily NAV]');
+}
+
+export function startFundManagerNavJob(): void {
+  // Hourly polling picks up the manager's next published dealing-day NAV.
+  cron.schedule('5 * * * *', () => refreshFundManagerNavs());
+  void refreshFundManagerNavs();
 }
 
 /**
@@ -221,28 +238,7 @@ export function startFxRateJob(): void {
       const rates = await priceService.getExchangeRates();
 
       if (rates) {
-        const now = new Date();
-        const updatedRates = await Promise.all(
-          usdRateEntries(rates).map(({ currency, rate }) =>
-            prisma.fxRate.upsert({
-              where: {
-                fromCcy_toCcy: {
-                  fromCcy: 'USD',
-                  toCcy: currency,
-                },
-              },
-              update: {
-                rate,
-                timestamp: now,
-              },
-              create: {
-                fromCcy: 'USD',
-                toCcy: currency,
-                rate,
-              },
-            })
-          )
-        );
+        const updatedRates = await upsertUsdRates(rates);
 
         logger.info(
           `[FX Rates] Updated ${updatedRates.map((rate) => `${rate.fromCcy}/${rate.toCcy}=${rate.rate}`).join(', ')}`
@@ -272,7 +268,7 @@ export function startPriceHistoryCleanupJob(): void {
         where: {
           timestamp: { lt: ninetyDaysAgo },
           // Keep manual NAV entries indefinitely — unit-trust history would otherwise go stale
-          source: { not: 'manual' },
+          source: { notIn: ['manual', 'fund-manager'] },
         },
       });
 

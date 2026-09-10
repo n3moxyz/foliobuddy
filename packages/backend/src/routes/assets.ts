@@ -4,12 +4,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { priceService } from '../services/priceService.js';
 import { AppError } from '../middleware/errorHandler.js';
-import {
-  ASSET_CATEGORIES,
-  AssetCategory,
-  PriceProvider,
-  USD_SGD_FALLBACK_RATE,
-} from '../lib/constants.js';
+import { ASSET_CATEGORIES, AssetCategory, PriceProvider } from '../lib/constants.js';
 import { externalProviderCategoryError } from '../lib/domain.js';
 import { requireAdminUser, requireUserHoldsAsset } from '../lib/authorization.js';
 import type { ProviderName } from '../services/providers/types.js';
@@ -17,22 +12,13 @@ import { normalizeOfficialDomain } from '../services/news/sourceQuality.js';
 import { parseUobKhStatement } from '../services/statementParsers/uobKayHian.js';
 import { parseFsmOneStatement } from '../services/statementParsers/fsmOne.js';
 import { logger } from '../lib/logger.js';
-
-async function navToUsd(
-  navPrice: number,
-  nativeCurrency: string
-): Promise<{ priceUsd: number; fxRateToUsd: number | null }> {
-  const ccy = nativeCurrency.toUpperCase();
-  if (ccy === 'USD') return { priceUsd: navPrice, fxRateToUsd: null };
-  if (ccy === 'SGD') {
-    const row = await prisma.fxRate.findUnique({
-      where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: 'SGD' } },
-    });
-    const rate = row?.rate ?? USD_SGD_FALLBACK_RATE;
-    return { priceUsd: navPrice / rate, fxRateToUsd: 1 / rate };
-  }
-  throw new AppError(`Unsupported native currency ${ccy}. Only USD and SGD are supported.`, 400);
-}
+import {
+  navToUsd,
+  saveManualNav,
+  navTransaction,
+  parseManualNavDate,
+} from '../services/unitTrustNavService.js';
+import { findFundManagerSource } from '../services/providers/fundManagerSources.js';
 
 function slugifyUtId(symbol: string, isin?: string | null): string {
   if (isin && isin.trim()) return isin.trim().toUpperCase();
@@ -270,6 +256,7 @@ function providerMetadataUpdates(
     providerAssetId: string | null;
     nativeCurrency: string;
     exchange: string | null;
+    currentPriceNative?: number | null;
   },
   data: z.infer<typeof fromProviderSchema>
 ): Prisma.AssetUpdateInput | null {
@@ -277,6 +264,17 @@ function providerMetadataUpdates(
 
   const updates: Prisma.AssetUpdateInput = {};
   const nativeCurrency = data.nativeCurrency?.trim().toUpperCase();
+
+  if (
+    existing.currentPriceNative != null &&
+    (existing.providerAssetId !== data.providerAssetId ||
+      (nativeCurrency && existing.nativeCurrency !== nativeCurrency))
+  ) {
+    throw new AppError(
+      'A priced fund’s currency and share-class identity cannot change during import',
+      409
+    );
+  }
 
   if (existing.providerAssetId !== data.providerAssetId) {
     updates.providerAssetId = data.providerAssetId;
@@ -378,17 +376,39 @@ router.post('/from-provider', async (req, res, next) => {
   }
 });
 
+const PRICED_FUND_IDENTITY_FIELDS = [
+  'nativeCurrency',
+  'priceProvider',
+  'providerAssetId',
+  'category',
+] as const;
+
 router.put('/:id', async (req, res, next) => {
   try {
     requireAdminUser(req.userId);
     const data = updateAssetSchema.parse(req.body);
 
-    const asset = await prisma.asset.update({
-      where: { id: req.params.id },
-      data: {
-        ...data,
-        symbol: data.symbol?.toUpperCase(),
-      },
+    const asset = await navTransaction(async (tx) => {
+      const existing = await tx.asset.findUnique({ where: { id: req.params.id } });
+      if (!existing) throw new AppError('Asset not found', 404);
+      if (
+        existing.currentPriceNative != null &&
+        PRICED_FUND_IDENTITY_FIELDS.some(
+          (field) => data[field] !== undefined && data[field] !== existing[field]
+        )
+      ) {
+        throw new AppError(
+          'A priced fund’s currency, provider identity and category cannot change',
+          409
+        );
+      }
+      return tx.asset.update({
+        where: { id: existing.id },
+        data: {
+          ...data,
+          symbol: data.symbol?.toUpperCase(),
+        },
+      });
     });
 
     res.json(asset);
@@ -434,6 +454,14 @@ router.post('/:id/refresh-price', async (req, res, next) => {
 
     await requireUserHoldsAsset(req.userId!, asset.id);
 
+    if (asset.category === 'UNIT_TRUST' && asset.priceProvider !== 'manual') {
+      try {
+        return res.json(await priceService.refreshUnitTrust(asset.id));
+      } catch {
+        throw new AppError('NAV refresh failed; the last good valuation has been retained', 502);
+      }
+    }
+
     const provider = asset.priceProvider as ProviderName;
     if (provider === 'manual') {
       throw new AppError('Manual assets update via POST /assets/:id/nav', 400);
@@ -477,7 +505,7 @@ const createUnitTrustSchema = z.object({
   nativeCurrency: z.string().min(1).max(8).default('SGD'),
   factsheetUrl: z.string().url().optional().nullable(),
   isin: z.string().min(1).max(20).optional().nullable(),
-  initialNav: z.number().positive().optional(),
+  initialNav: z.number().finite().positive().optional(),
   navAsOfDate: z.string().datetime().optional(),
   yahooSymbol: z.string().min(1).max(40).optional().nullable(),
 });
@@ -485,111 +513,70 @@ const createUnitTrustSchema = z.object({
 router.post('/unit-trust', async (req, res, next) => {
   try {
     const data = createUnitTrustSchema.parse(req.body);
-    const useYahoo = !!data.yahooSymbol;
-    const provider: ProviderName = useYahoo ? 'yahoo' : 'manual';
-    const providerAssetId = useYahoo
-      ? data.yahooSymbol!.toUpperCase()
-      : slugifyUtId(data.symbol, data.isin);
-
+    const nativeCurrency = data.nativeCurrency.toUpperCase();
+    const manager = findFundManagerSource({
+      ...data,
+      nativeCurrency,
+      priceProvider: data.yahooSymbol ? 'yahoo' : 'manual',
+      providerAssetId: data.yahooSymbol,
+    });
+    const provider: ProviderName = manager ? 'fund-manager' : data.yahooSymbol ? 'yahoo' : 'manual';
+    const providerAssetId =
+      manager?.isin ?? data.yahooSymbol?.toUpperCase() ?? slugifyUtId(data.symbol, data.isin);
     const existing = await prisma.asset.findFirst({
       where: {
-        OR: [{ priceProvider: provider, providerAssetId }, { symbol: data.symbol.toUpperCase() }],
+        OR: [
+          { priceProvider: provider, providerAssetId },
+          ...(data.isin ? [{ category: 'UNIT_TRUST', isin: data.isin.toUpperCase() }] : []),
+          { symbol: data.symbol.toUpperCase() },
+        ],
       },
     });
-    if (existing) return res.json(existing);
-
-    let currentPriceUsd: number | null = null;
-    let priceUpdatedAt: Date | null = null;
-    let statementPriceHistory: {
-      priceUsd: number;
-      nativePrice: number;
-      fxRateToUsd: number | null;
-      timestamp: Date;
-    } | null = null;
-
+    if (existing) {
+      if (
+        existing.category !== 'UNIT_TRUST' ||
+        existing.nativeCurrency !== nativeCurrency ||
+        (data.isin && existing.isin && data.isin.toUpperCase() !== existing.isin.toUpperCase())
+      ) {
+        throw new AppError('Existing symbol belongs to a different fund or share class', 409);
+      }
+      return res.json(existing);
+    }
+    // Validate before creating a catalog row; imports with unavailable FX can retry.
     if (data.initialNav !== undefined) {
-      const converted = await navToUsd(data.initialNav, data.nativeCurrency);
-      statementPriceHistory = {
-        priceUsd: converted.priceUsd,
-        nativePrice: data.initialNav,
-        fxRateToUsd: converted.fxRateToUsd,
-        timestamp: data.navAsOfDate ? new Date(data.navAsOfDate) : new Date(),
-      };
-      if (!useYahoo) {
-        currentPriceUsd = converted.priceUsd;
-        priceUpdatedAt = statementPriceHistory.timestamp;
-      }
+      parseManualNavDate(data.navAsOfDate);
+      await navToUsd(data.initialNav, nativeCurrency);
     }
-
-    // For Yahoo-backed unit trusts, pull the live NAV now so currentPriceUsd is fresh
-    // instead of the statement-date NAV (which is preserved separately in PriceHistory).
-    let liveYahooPrice: {
-      priceUsd: number;
-      nativePrice: number;
-      fxRateToUsd: number | null;
-    } | null = null;
-    if (useYahoo) {
-      try {
-        const priceMap = await priceService.getProvider('yahoo').getPrices([providerAssetId]);
-        const priceData = priceMap.get(providerAssetId);
-        if (priceData) {
-          liveYahooPrice = {
-            priceUsd: priceData.priceUsd,
-            nativePrice: priceData.nativePrice ?? 0,
-            fxRateToUsd: priceData.fxRateToUsd ?? null,
-          };
-          currentPriceUsd = priceData.priceUsd;
-          priceUpdatedAt = new Date();
-        }
-      } catch (err) {
-        logger.warn(`[unit-trust] Yahoo price fetch failed for ${providerAssetId}:`, err);
-      }
-    }
-
-    const asset = await prisma.asset.create({
-      data: {
-        priceProvider: provider,
-        providerAssetId,
-        coingeckoId: null,
-        symbol: data.symbol.toUpperCase(),
-        name: data.name,
-        category: AssetCategory.UNIT_TRUST,
-        nativeCurrency: data.nativeCurrency.toUpperCase(),
-        factsheetUrl: data.factsheetUrl ?? null,
-        isin: data.isin ?? null,
-        currentPriceUsd,
-        priceUpdatedAt,
-      },
+    let asset = await navTransaction(async (tx) => {
+      const created = await tx.asset.create({
+        data: {
+          priceProvider: provider,
+          providerAssetId,
+          coingeckoId: null,
+          symbol: data.symbol.toUpperCase(),
+          name: data.name,
+          category: AssetCategory.UNIT_TRUST,
+          nativeCurrency,
+          factsheetUrl: data.factsheetUrl ?? null,
+          isin: manager?.isin ?? data.isin?.toUpperCase() ?? null,
+          priceCheckStatus: provider === 'manual' ? null : 'pending',
+        },
+      });
+      return data.initialNav === undefined
+        ? created
+        : saveManualNav(created.id, data.initialNav, data.navAsOfDate, req.userId!, tx);
     });
-
-    if (statementPriceHistory) {
-      await prisma.priceHistory.create({
-        data: {
-          assetId: asset.id,
-          priceUsd: statementPriceHistory.priceUsd,
-          nativePrice: statementPriceHistory.nativePrice,
-          nativeCurrency: asset.nativeCurrency,
-          fxRateToUsd: statementPriceHistory.fxRateToUsd,
-          source: 'manual',
-          updatedBy: req.userId ?? null,
-          timestamp: statementPriceHistory.timestamp,
-        },
-      });
+    if (provider !== 'manual') {
+      try {
+        asset = await priceService.refreshUnitTrust(asset.id);
+      } catch (error) {
+        logger.warn(
+          '[unit-trust] Automatic NAV unavailable; retaining dated statement fallback',
+          error
+        );
+        asset = await prisma.asset.findUniqueOrThrow({ where: { id: asset.id } });
+      }
     }
-
-    if (liveYahooPrice) {
-      await prisma.priceHistory.create({
-        data: {
-          assetId: asset.id,
-          priceUsd: liveYahooPrice.priceUsd,
-          nativePrice: liveYahooPrice.nativePrice,
-          nativeCurrency: asset.nativeCurrency,
-          fxRateToUsd: liveYahooPrice.fxRateToUsd,
-          source: 'yahoo',
-        },
-      });
-    }
-
     res.status(201).json(asset);
   } catch (error) {
     next(error);
@@ -597,7 +584,7 @@ router.post('/unit-trust', async (req, res, next) => {
 });
 
 const navUpdateSchema = z.object({
-  navPrice: z.number().positive(),
+  navPrice: z.number().finite().positive(),
   asOfDate: z.string().datetime().optional(),
   notes: z.string().max(500).optional(),
 });
@@ -605,56 +592,10 @@ const navUpdateSchema = z.object({
 router.patch('/:id/nav', async (req, res, next) => {
   try {
     const data = navUpdateSchema.parse(req.body);
-
     const asset = await prisma.asset.findUnique({ where: { id: req.params.id } });
     if (!asset) throw new AppError('Asset not found', 404);
-    if (asset.priceProvider !== 'manual') {
-      throw new AppError('NAV updates only apply to manually-priced assets', 400);
-    }
-
     await requireUserHoldsAsset(req.userId!, asset.id);
-
-    const converted = await navToUsd(data.navPrice, asset.nativeCurrency);
-    const timestamp = data.asOfDate ? new Date(data.asOfDate) : new Date();
-
-    await prisma.priceHistory.upsert({
-      where: { assetId_timestamp: { assetId: asset.id, timestamp } },
-      update: {
-        priceUsd: converted.priceUsd,
-        nativePrice: data.navPrice,
-        nativeCurrency: asset.nativeCurrency,
-        fxRateToUsd: converted.fxRateToUsd,
-        source: 'manual',
-        updatedBy: req.userId ?? null,
-      },
-      create: {
-        assetId: asset.id,
-        priceUsd: converted.priceUsd,
-        nativePrice: data.navPrice,
-        nativeCurrency: asset.nativeCurrency,
-        fxRateToUsd: converted.fxRateToUsd,
-        source: 'manual',
-        updatedBy: req.userId ?? null,
-        timestamp,
-      },
-    });
-
-    const latestNav = await prisma.priceHistory.findFirst({
-      where: { assetId: asset.id, source: 'manual' },
-      orderBy: { timestamp: 'desc' },
-    });
-
-    const updated = await prisma.asset.update({
-      where: { id: asset.id },
-      data: {
-        currentPriceUsd: latestNav?.priceUsd ?? converted.priceUsd,
-        priceUpdatedAt: latestNav?.timestamp ?? timestamp,
-      },
-    });
-
-    await priceService.updatePositionValues([asset.id]);
-
-    res.json(updated);
+    res.json(await saveManualNav(asset.id, data.navPrice, data.asOfDate, req.userId!));
   } catch (error) {
     next(error);
   }

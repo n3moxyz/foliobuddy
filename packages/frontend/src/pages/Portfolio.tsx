@@ -149,7 +149,8 @@ export default function Portfolio() {
   } = usePerpExposure();
   const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [navAsset, setNavAsset] = useState<Position['asset'] | null>(null);
+  const [navAssetId, setNavAssetId] = useState<string | null>(null);
+  const navAsset = positions?.find((position) => position.assetId === navAssetId)?.asset;
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
   const [equityGroupBy, setEquityGroupBy] = useState<EquityGroupBy>(loadEquityGroupBy);
@@ -679,7 +680,9 @@ export default function Portfolio() {
                 groupBy={section.id === 'equities' ? equityGroupBy : 'storage'}
                 mobileVariant="compact"
                 showMobileColumnToggle={false}
-                onUpdateNav={section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined}
+                onUpdateNav={
+                  section.id === 'equities' ? (p) => setNavAssetId(p.assetId) : undefined
+                }
               />
             </CollapsibleCard>
           ))}
@@ -859,7 +862,9 @@ export default function Portfolio() {
                 usdFxRates={usdFxRates}
                 sectionPrefix={section.id}
                 groupBy={section.id === 'equities' ? equityGroupBy : 'storage'}
-                onUpdateNav={section.id === 'equities' ? (p) => setNavAsset(p.asset) : undefined}
+                onUpdateNav={
+                  section.id === 'equities' ? (p) => setNavAssetId(p.assetId) : undefined
+                }
               />
             </CollapsibleCard>
           ))}
@@ -928,7 +933,14 @@ export default function Portfolio() {
         </DialogContent>
       </Dialog>
 
-      <UpdateNavModal asset={navAsset} open={!!navAsset} onClose={() => setNavAsset(null)} />
+      {navAsset && (
+        <UpdateNavModal
+          key={navAsset.id}
+          asset={navAsset}
+          open
+          onClose={() => setNavAssetId(null)}
+        />
+      )}
 
       <Dialog open={editingPerp} onOpenChange={setEditingPerp}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">

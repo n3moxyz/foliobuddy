@@ -17,6 +17,11 @@ import {
 } from '../lib/constants.js';
 import { applyPositionDelta, calculatePositionValue } from '../lib/domain.js';
 import { parseBoundedIntegerQuery } from '../lib/queryParams.js';
+import { navTransaction } from '../services/unitTrustNavService.js';
+import {
+  FUND_MANAGER_SOURCES,
+  findFundManagerSource,
+} from '../services/providers/fundManagerSources.js';
 
 const router = Router();
 
@@ -288,7 +293,8 @@ const bulkImportPositionSchema = z.object({
     // Optional provider wiring — honored only when creating a new Asset row.
     // Lets a copy/paste round-trip of equities and unit trusts preserve the
     // price feed (Yahoo / manual NAV) for tickers not yet in the DB.
-    priceProvider: z.enum(['coingecko', 'yahoo', 'manual']).nullable().optional(),
+    priceProvider: z.enum(['coingecko', 'yahoo', 'manual', 'fund-manager']).nullable().optional(),
+    isin: z.string().max(20).nullable().optional(),
     providerAssetId: z.string().nullable().optional(),
     nativeCurrency: z.string().nullable().optional(),
     exchange: z.string().nullable().optional(),
@@ -324,9 +330,62 @@ router.post('/bulk', async (req, res, next) => {
 
     for (const pos of positions) {
       try {
+        const nativeCurrency = pos.asset.nativeCurrency?.trim().toUpperCase() || 'USD';
+        const isin =
+          pos.asset.isin?.trim().toUpperCase() ||
+          (pos.asset.priceProvider === 'fund-manager'
+            ? pos.asset.providerAssetId?.toUpperCase()
+            : null);
+        const manager = findFundManagerSource({
+          ...pos.asset,
+          priceProvider: pos.asset.priceProvider ?? undefined,
+          nativeCurrency,
+          isin,
+        });
+        if (
+          (isin && FUND_MANAGER_SOURCES.some((fund) => fund.isin === isin) && !manager) ||
+          (pos.asset.priceProvider === 'fund-manager' &&
+            (!manager || pos.asset.providerAssetId !== manager.isin))
+        ) {
+          throw new AppError(
+            'Fund manager identity, category or currency does not match the supported share class',
+            400
+          );
+        }
+        const identityMatches = existingAssets.filter(
+          (candidate) =>
+            candidate.category === 'UNIT_TRUST' &&
+            candidate.nativeCurrency === nativeCurrency &&
+            (manager
+              ? findFundManagerSource(candidate)?.isin === manager.isin
+              : !!isin && candidate.isin?.toUpperCase() === isin)
+        );
+        const canonical = identityMatches.find(
+          (candidate) =>
+            candidate.priceProvider === 'fund-manager' &&
+            candidate.providerAssetId === manager?.isin
+        );
+        if (identityMatches.length > 1 && !canonical) {
+          throw new AppError(
+            'Multiple catalog records match this share class; reconcile them before importing',
+            409
+          );
+        }
         let asset =
+          canonical ||
+          identityMatches[0] ||
           (pos.asset.coingeckoId && coingeckoMap.get(pos.asset.coingeckoId)) ||
           assetMap.get(pos.asset.symbol.toUpperCase());
+
+        if (
+          asset &&
+          pos.asset.category === 'UNIT_TRUST' &&
+          (asset.category !== 'UNIT_TRUST' ||
+            asset.nativeCurrency !== nativeCurrency ||
+            (isin && asset.isin && asset.isin.toUpperCase() !== isin))
+        ) {
+          throw new AppError('Existing asset belongs to a different fund or share class', 409);
+        }
 
         if (!asset) {
           // Default priceProvider by category when not supplied: equities → yahoo,
@@ -337,43 +396,62 @@ router.post('/bulk', async (req, res, next) => {
               : pos.asset.category === 'UNIT_TRUST'
                 ? 'manual'
                 : 'coingecko';
-          asset = await prisma.asset.create({
-            data: {
-              coingeckoId: pos.asset.coingeckoId || null,
-              symbol: pos.asset.symbol.toUpperCase(),
-              name: pos.asset.name,
-              category: pos.asset.category,
-              currentPriceUsd: null,
-              priceProvider: pos.asset.priceProvider || defaultProvider,
-              providerAssetId: pos.asset.providerAssetId || null,
-              nativeCurrency: pos.asset.nativeCurrency || 'USD',
-              exchange: pos.asset.exchange || null,
-            },
-          });
+          const data = {
+            coingeckoId: pos.asset.coingeckoId || null,
+            symbol: pos.asset.symbol.toUpperCase(),
+            name: pos.asset.name,
+            category: pos.asset.category,
+            currentPriceUsd: null,
+            priceProvider: manager ? 'fund-manager' : pos.asset.priceProvider || defaultProvider,
+            providerAssetId: manager?.isin ?? pos.asset.providerAssetId ?? null,
+            nativeCurrency,
+            exchange: pos.asset.exchange || null,
+            isin: manager?.isin ?? isin ?? null,
+          };
+          asset = manager
+            ? await prisma.asset.upsert({
+                where: {
+                  priceProvider_providerAssetId: {
+                    priceProvider: 'fund-manager',
+                    providerAssetId: manager.isin,
+                  },
+                },
+                create: data,
+                update: {},
+              })
+            : await prisma.asset.create({ data });
+          existingAssets.push(asset);
           assetMap.set(asset.symbol.toUpperCase(), asset);
           if (asset.coingeckoId) {
             coingeckoMap.set(asset.coingeckoId, asset);
           }
         }
 
-        const valueFields = calculatePositionValue({
-          quantity: pos.quantity,
-          avgCostUsd: pos.avgCostUsd,
-          currentPriceUsd: asset.currentPriceUsd,
-        });
-
-        await prisma.position.create({
-          data: {
-            userId,
-            assetId: asset.id,
+        await navTransaction(async (tx) => {
+          const pricedAsset =
+            asset.category === 'UNIT_TRUST'
+              ? await tx.asset.findUnique({ where: { id: asset.id } })
+              : asset;
+          if (!pricedAsset) throw new AppError('Asset not found', 404);
+          const valueFields = calculatePositionValue({
             quantity: pos.quantity,
             avgCostUsd: pos.avgCostUsd,
-            storageType: pos.storageType,
-            storageLocation: pos.storageLocation?.trim() || null,
-            notes: pos.notes || null,
-            custodyOf: pos.custodyOf?.trim() || null,
-            ...valueFields,
-          },
+            currentPriceUsd: pricedAsset.currentPriceUsd,
+          });
+
+          await tx.position.create({
+            data: {
+              userId,
+              assetId: asset.id,
+              quantity: pos.quantity,
+              avgCostUsd: pos.avgCostUsd,
+              storageType: pos.storageType,
+              storageLocation: pos.storageLocation?.trim() || null,
+              notes: pos.notes || null,
+              custodyOf: pos.custodyOf?.trim() || null,
+              ...valueFields,
+            },
+          });
         });
 
         results.push({ success: true, symbol: pos.asset.symbol });
@@ -424,7 +502,7 @@ router.get('/:id/history', async (req, res, next) => {
 
 router.delete('/:id/history/:historyId', async (req, res, next) => {
   try {
-    const position = await prisma.$transaction(async (tx) => {
+    const position = await navTransaction(async (tx) => {
       const existing = await tx.position.findFirst({
         where: {
           id: req.params.id,
@@ -618,36 +696,41 @@ router.post('/', async (req, res, next) => {
       );
     }
 
-    const valueFields = calculatePositionValue({
-      quantity: data.quantity,
-      avgCostUsd: data.avgCostUsd,
-      currentPriceUsd: asset.currentPriceUsd,
-    });
+    const position = await navTransaction(async (tx) => {
+      const pricedAsset =
+        asset.category === 'UNIT_TRUST'
+          ? await tx.asset.findUnique({ where: { id: asset.id } })
+          : asset;
+      if (!pricedAsset) throw new AppError('Asset not found', 404);
+      const valueFields = calculatePositionValue({
+        quantity: data.quantity,
+        avgCostUsd: data.avgCostUsd,
+        currentPriceUsd: pricedAsset.currentPriceUsd,
+      });
 
-    const storageLocation = data.storageLocation?.trim() || null;
-    const custodyOf = data.custodyOf?.trim() || null;
-    const purchaseCostUsd = data.quantity * data.avgCostUsd;
+      const storageLocation = data.storageLocation?.trim() || null;
+      const custodyOf = data.custodyOf?.trim() || null;
+      const purchaseCostUsd = data.quantity * data.avgCostUsd;
 
-    const fundingCashPosition = fundingCashPositionId
-      ? await prisma.position.findFirst({
-          where: {
-            id: fundingCashPositionId,
-            userId: req.userId!,
-            custodyOf: null,
-          },
-          include: { asset: true },
-        })
-      : null;
+      const fundingCashPosition = fundingCashPositionId
+        ? await tx.position.findFirst({
+            where: {
+              id: fundingCashPositionId,
+              userId: req.userId!,
+              custodyOf: null,
+            },
+            include: { asset: true },
+          })
+        : null;
 
-    if (fundingCashPositionId && !fundingCashPosition) {
-      throw new AppError('Funding cash position not found', 404);
-    }
+      if (fundingCashPositionId && !fundingCashPosition) {
+        throw new AppError('Funding cash position not found', 404);
+      }
 
-    const fundingDelta = fundingCashPosition
-      ? buildFundingCashDelta(fundingCashPosition, purchaseCostUsd)
-      : null;
+      const fundingDelta = fundingCashPosition
+        ? buildFundingCashDelta(fundingCashPosition, purchaseCostUsd)
+        : null;
 
-    const position = await prisma.$transaction(async (tx) => {
       const createdPosition = await tx.position.create({
         data: {
           userId: req.userId!,
@@ -777,7 +860,7 @@ router.put('/:id', async (req, res, next) => {
 
     const quantity = positionData.quantity ?? existing.quantity;
     const avgCostUsd = positionData.avgCostUsd ?? existing.avgCostUsd;
-    const valueFields = calculatePositionValue({
+    let valueFields = calculatePositionValue({
       quantity,
       avgCostUsd,
       currentPriceUsd: valueAsset.currentPriceUsd,
@@ -840,6 +923,30 @@ router.put('/:id', async (req, res, next) => {
     // the same stale snapshot and the second write would silently drop the first.
     const position = await prisma.$transaction(
       async (tx) => {
+        if (valueAsset.category === 'UNIT_TRUST' || existing.asset.category === 'UNIT_TRUST') {
+          const current = await tx.position.findFirst({
+            where: { id: req.params.id, userId: req.userId! },
+            include: { asset: true },
+          });
+          if (!current) throw new AppError('Position not found', 404);
+          if (
+            current.assetId !== existing.assetId ||
+            current.quantity !== existing.quantity ||
+            current.avgCostUsd !== existing.avgCostUsd ||
+            current.custodyOf !== existing.custodyOf
+          ) {
+            throw new AppError('Position changed while saving; refresh and try again', 409);
+          }
+          const pricedAsset = assetChanged
+            ? await tx.asset.findUnique({ where: { id: valueAsset.id } })
+            : current.asset;
+          if (!pricedAsset) throw new AppError('Asset not found', 404);
+          valueFields = calculatePositionValue({
+            quantity,
+            avgCostUsd,
+            currentPriceUsd: pricedAsset.currentPriceUsd,
+          });
+        }
         const fundingCashPosition = fundingCashPositionId
           ? await tx.position.findFirst({
               where: {

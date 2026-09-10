@@ -10,11 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useUpdateAssetNav } from '@/hooks/useAssets';
+import { useUpdateAssetNav, useRefreshAssetPrice } from '@/hooks/useAssets';
 import { getPriceAgeInfo, priceAgeClass } from '@/lib/utils';
 import type { Asset } from '@/lib/types';
 import { ExternalLink } from 'lucide-react';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { NavStatus } from './NavStatus';
+import { toast } from 'sonner';
 
 interface UpdateNavModalProps {
   asset: Asset | null;
@@ -28,6 +30,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
   const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [error, setError] = useState<string | null>(null);
   const updateNav = useUpdateAssetNav();
+  const refreshPrice = useRefreshAssetPrice();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,10 +65,30 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
           <DialogTitle>Update NAV{asset ? `: ${asset.symbol}` : ''}</DialogTitle>
           <DialogDescription>
             {asset
-              ? `Log the latest NAV in ${asset.nativeCurrency}. We'll convert to USD using the current FX rate.`
+              ? asset.priceProvider !== 'manual'
+                ? 'Daily NAV updates automatically. A statement entry is saved as history and cannot replace a verified automatic quote.'
+                : `Log the latest NAV in ${asset.nativeCurrency}. We'll convert to USD using the current FX rate.`
               : ''}
           </DialogDescription>
         </DialogHeader>
+        {asset && <NavStatus asset={asset} detailed />}
+        {asset && asset.priceProvider !== 'manual' && (
+          <Button
+            disabled={refreshPrice.isPending}
+            onClick={async () => {
+              setError(null);
+              try {
+                await refreshPrice.mutateAsync(asset.id);
+                toast.success('Latest published NAV checked');
+                onClose();
+              } catch (error) {
+                setError(error instanceof Error ? error.message : 'NAV check failed');
+              }
+            }}
+          >
+            {refreshPrice.isPending ? 'Checking NAV…' : 'Check latest NAV'}
+          </Button>
+        )}
         {asset && (
           <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Stored USD price</span>

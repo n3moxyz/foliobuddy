@@ -1,4 +1,5 @@
 import { logger } from '../../lib/logger.js';
+import { FUND_MANAGER_SOURCES } from '../providers/fundManagerSources.js';
 import type { ParsedHolding, ParsedStatement } from './uobKayHian.js';
 
 const MONTHS: Record<string, number> = {
@@ -56,6 +57,15 @@ const VALUE_BLOCK_REGEX =
   /([A-Z]{3})\s+([\d,]+\.\d+)\s+(\S+)\s+([A-Z]{3})\s+([\d,]+\.\d+)\s+([\d,]+\.\d+)\s+([A-Z]{3})\s+([\d,]+\.\d+)\s+([A-Z]{3})\s+(-?[\d,]+\.\d+)\s+(-?[\d,]+\.\d+)\s+([A-Z]{3})\s+([\d,]+\.\d+)/g;
 
 const PAYMENT_METHOD_TOKENS = /^(Cash|RSP|CPF-OA|CPF-SA|CPF|SRS|IA)$/i;
+
+// Exact broker label + currency of a verified share class, never a fuzzy
+// match across SGD Class A/B.
+function verifiedIsin(name: string, currency: string): string {
+  const fund = FUND_MANAGER_SOURCES.find(
+    (source) => 'legacy' in source && source.legacy.name === name && source.currency === currency
+  );
+  return fund?.isin ?? '';
+}
 
 function symbolFromName(name: string): string {
   return (
@@ -121,7 +131,7 @@ export function parseFsmOneStatement(text: string): ParsedStatement {
     holdings.push({
       symbol: symbolFromName(name),
       name,
-      isin: '',
+      isin: verifiedIsin(name, productCcy),
       nativeCurrency: productCcy,
       units,
       avgCostNative,

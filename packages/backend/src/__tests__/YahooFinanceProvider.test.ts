@@ -31,6 +31,20 @@ vi.mock('../lib/logger.js', () => ({
 const { YahooFinanceProvider } = await import('../services/providers/YahooFinanceProvider.js');
 
 describe('YahooFinanceProvider', () => {
+  it('preserves the quote valuation date instead of substituting fetch time', async () => {
+    const quoteDay = new Date('2026-09-08T00:00:00Z');
+    quoteMock.mockResolvedValue([
+      {
+        symbol: '0P0001OPAN.SI',
+        currency: 'SGD',
+        regularMarketPrice: 1.597,
+        regularMarketTime: quoteDay,
+      },
+    ]);
+    mockPrisma.fxRate.findUnique.mockResolvedValue({ rate: 1.25 });
+    const prices = await new YahooFinanceProvider().getPrices(['0P0001OPAN.SI']);
+    expect(prices.get('0P0001OPAN.SI')?.asOf).toEqual(quoteDay);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mockPrisma.fxRate.findUnique.mockResolvedValue(null);
@@ -204,6 +218,7 @@ describe('YahooFinanceProvider', () => {
     const prices = await provider.getPrices(['285A.T']);
 
     expect(prices.get('285A.T')).toEqual({
+      asOf: null,
       priceUsd: 16,
       nativePrice: 2400,
       nativeCurrency: 'JPY',
@@ -226,6 +241,7 @@ describe('YahooFinanceProvider', () => {
     const prices = await provider.getPrices(['2330.TW']);
 
     expect(prices.get('2330.TW')).toEqual({
+      asOf: null,
       priceUsd: 20,
       nativePrice: 640,
       nativeCurrency: 'TWD',
@@ -248,6 +264,7 @@ describe('YahooFinanceProvider', () => {
     const prices = await provider.getPrices(['005930.KS']);
 
     expect(prices.get('005930.KS')).toEqual({
+      asOf: null,
       priceUsd: 50,
       nativePrice: 69000,
       nativeCurrency: 'KRW',
@@ -270,6 +287,7 @@ describe('YahooFinanceProvider', () => {
     const prices = await provider.getPrices(['ENH.OL']);
 
     expect(prices.get('ENH.OL')).toEqual({
+      asOf: null,
       priceUsd: 2,
       nativePrice: 21,
       nativeCurrency: 'NOK',
@@ -330,6 +348,7 @@ describe('YahooFinanceProvider', () => {
 
     expect(quoteMock).not.toHaveBeenCalledWith('JPY=X');
     expect(prices.get('285A.T')).toEqual({
+      asOf: null,
       priceUsd: 20,
       nativePrice: 3200,
       nativeCurrency: 'JPY',

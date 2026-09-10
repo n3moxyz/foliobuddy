@@ -2307,3 +2307,11 @@ Your portfolio dashboard doesn't need to be perfect. It needs to be _yours_.
 ---
 
 _Built with TypeScript, Tailwind, and too much coffee. [FolioBuddy](https://github.com/n3moxyz/foliobuddy)._
+
+## September 2026: Daily fund NAVs need their own clock
+
+The Amova SGD Class price was an April statement NAV, while refreshes made it look current. LionGlobal's correct Yahoo ticker lagged the manager by a day. We now check the exact manager share classes hourly and preserve the published native NAV, valuation date, and separate check result. The table and details expose four-decimal NAVs and failures honestly.
+
+This required a small model change: a fund's native NAV is authoritative, and USD plus all broker position values are revalued atomically when FX changes. Rechecking an unchanged NAV never invents a new valuation day. Statement observations have their own history key and cannot overwrite verified automatic quotes. Both Amova broker rows reference the same asset. Unknown funds stay manual. See the daily NAV solution runbook for source identities, migration behavior, rollback limitations and the PostgreSQL integration checks.
+
+Browser failure testing caught a second state problem: the open NAV dialog held an old asset object, and its local error survived closing and opening a different fund. Selecting an asset ID from the current query keeps the dialog's check result fresh. Unmounting it on close resets errors and inputs, while same-fund query updates preserve unsaved statement input. Test the open dialog as well as the row behind it.

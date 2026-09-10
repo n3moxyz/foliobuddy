@@ -1,5 +1,19 @@
 import { formatNativeAmount, formatNativePrice } from '@/lib/utils';
 import { MASKED_MONEY_VALUE } from '@/stores/privacyStore';
+import type { Asset } from '@/lib/types';
+
+export function displayedAssetPrice(asset: Asset, currency: DisplayCurrency, usdSgd: number) {
+  if (
+    asset.category === 'UNIT_TRUST' &&
+    asset.nativeCurrency === currency &&
+    asset.currentPriceNative != null
+  ) {
+    return asset.currentPriceNative;
+  }
+  return asset.currentPriceUsd == null
+    ? null
+    : asset.currentPriceUsd * (currency === 'SGD' ? usdSgd : 1);
+}
 
 export type DisplayCurrency = 'USD' | 'SGD';
 export type UsdFxRatesByCurrency = Record<string, number>;
@@ -35,8 +49,13 @@ export function localPriceLabel(params: {
   displayCurrency: DisplayCurrency;
   usdFxRates: UsdFxRatesByCurrency;
   valuesHidden?: boolean;
+  nativePrice?: number | null;
 }): string | null {
   const { usdPrice, nativeCurrency, displayCurrency, usdFxRates, valuesHidden } = params;
+  if (params.nativePrice != null && nativeCurrency && nativeCurrency !== displayCurrency) {
+    if (valuesHidden) return `(${MASKED_MONEY_VALUE})`;
+    return `(${nativeCurrency} ${params.nativePrice.toFixed(4)})`;
+  }
   return localNativeLabel({
     usdValue: usdPrice,
     nativeCurrency,

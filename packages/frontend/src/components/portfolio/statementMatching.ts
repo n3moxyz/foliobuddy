@@ -47,7 +47,14 @@ export function findMatchingUnitTrustPosition(
   broker: string
 ): UnitTrustStatementMatch | null {
   const unitTrustPositions = (positions ?? []).filter(
-    (position) => position.asset.category === AssetCategory.UNIT_TRUST
+    (position) =>
+      position.asset.category === AssetCategory.UNIT_TRUST &&
+      (!holding.isin ||
+        !position.asset.isin ||
+        normalizeIdentifier(holding.isin) === normalizeIdentifier(position.asset.isin)) &&
+      (!holding.nativeCurrency ||
+        normalizeIdentifier(holding.nativeCurrency) ===
+          normalizeIdentifier(position.asset.nativeCurrency))
   );
   if (unitTrustPositions.length === 0) return null;
 

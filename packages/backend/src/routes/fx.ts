@@ -4,34 +4,9 @@ import { priceService } from '../services/priceService.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { ensureUser } from '../middleware/auth.js';
 import { USD_RATE_FIELDS, usdRateEntries } from '../lib/fxConstants.js';
-import type { ExchangeRates } from '../services/providers/CoinGeckoProvider.js';
+import { upsertUsdRates } from '../services/fxRateService.js';
 
 const router = Router();
-
-async function upsertUsdRates(rates: ExchangeRates) {
-  const now = new Date();
-  return Promise.all(
-    usdRateEntries(rates).map(({ currency, rate }) =>
-      prisma.fxRate.upsert({
-        where: {
-          fromCcy_toCcy: {
-            fromCcy: 'USD',
-            toCcy: currency,
-          },
-        },
-        update: {
-          rate,
-          timestamp: now,
-        },
-        create: {
-          fromCcy: 'USD',
-          toCcy: currency,
-          rate,
-        },
-      })
-    )
-  );
-}
 
 function hasRequiredUsdRates(rates: Array<{ fromCcy: string; toCcy: string }>) {
   return USD_RATE_FIELDS.every(({ currency }) =>

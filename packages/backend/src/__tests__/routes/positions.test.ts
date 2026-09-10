@@ -6,7 +6,7 @@ import { createTestApp } from '../helpers/createTestApp.js';
 // Mock Prisma
 const mockPrisma = {
   $transaction: vi.fn(async (callback) => callback(mockPrisma)),
-  asset: { findUnique: vi.fn(), findMany: vi.fn() },
+  asset: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), upsert: vi.fn() },
   position: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
@@ -60,11 +60,94 @@ vi.mock('../../services/portfolioService.js', () => ({
 const { default: positionsRouter } = await import('../../routes/positions.js');
 const app = createTestApp(positionsRouter, '/api/positions');
 
+describe('bulk unit-trust identity', () => {
+  it('reuses the established manager asset even when an import supplies a new symbol and manual provider', async () => {
+    const established = mockAsset({
+      id: 'amova',
+      category: 'UNIT_TRUST',
+      symbol: 'AMOVASIN',
+      nativeCurrency: 'SGD',
+      isin: 'SG9999004360',
+      priceProvider: 'fund-manager',
+      providerAssetId: 'SG9999004360',
+    });
+    mockPrisma.asset.findMany.mockResolvedValue([established]);
+    mockPrisma.asset.findUnique.mockResolvedValue({ ...established, currentPriceUsd: 4.8 });
+    const res = await request(app)
+      .post('/api/positions/bulk')
+      .send({
+        positions: [
+          {
+            asset: {
+              symbol: 'ALIAS',
+              name: 'Statement name',
+              category: 'UNIT_TRUST',
+              nativeCurrency: 'SGD',
+              priceProvider: 'manual',
+              providerAssetId: 'another-id',
+              isin: 'SG9999004360',
+            },
+            quantity: 10,
+            avgCostUsd: 3,
+          },
+        ],
+      });
+    expect(res.body.successCount).toBe(1);
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    expect(mockPrisma.asset.upsert).not.toHaveBeenCalled();
+    expect(mockPrisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ assetId: 'amova', marketValueUsd: 48 }),
+    });
+  });
+  it('rejects a known ISIN with a different currency before catalog creation', async () => {
+    mockPrisma.asset.findMany.mockResolvedValue([]);
+    const res = await request(app)
+      .post('/api/positions/bulk')
+      .send({
+        positions: [
+          {
+            asset: {
+              symbol: 'WRONG',
+              name: 'Wrong class',
+              category: 'UNIT_TRUST',
+              nativeCurrency: 'USD',
+              priceProvider: 'manual',
+              isin: 'SG9999004360',
+            },
+            quantity: 10,
+          },
+        ],
+      });
+    expect(res.body.successCount).toBe(0);
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 describe('POST /api/positions', () => {
+  it('uses the NAV read inside the transaction if FX changes after the initial catalog lookup', async () => {
+    const oldAsset = mockAsset({ id: 'amova', category: 'UNIT_TRUST', currentPriceUsd: 4.8 });
+    mockPrisma.asset.findUnique
+      .mockResolvedValueOnce(oldAsset)
+      .mockResolvedValueOnce({ ...oldAsset, currentPriceUsd: 4.3 });
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.create.mockResolvedValue(mockPosition());
+    const response = await request(app)
+      .post('/api/positions')
+      .send({ assetId: 'amova', quantity: 100, avgCostUsd: 3 });
+    expect(response.status).toBe(201);
+    expect(mockPrisma.position.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ marketValueUsd: 430, unrealizedPnL: 130 }),
+      })
+    );
+    expect(mockPrisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: 'Serializable',
+    });
+  });
   it('creates a position with computed market value fields', async () => {
     const asset = mockAsset({ currentPriceUsd: 60000 });
     mockPrisma.asset.findUnique.mockResolvedValue(asset);
@@ -371,6 +454,25 @@ describe('DELETE /api/positions/:id', () => {
 });
 
 describe('PUT /api/positions/:id', () => {
+  it('uses the current NAV inside the edit transaction after an intervening FX refresh', async () => {
+    const original = mockPosition({
+      quantity: 10,
+      avgCostUsd: 3,
+      asset: mockAsset({ category: 'UNIT_TRUST', currentPriceUsd: 4.8 }),
+    });
+    const current = { ...original, asset: { ...original.asset, currentPriceUsd: 4.3 } };
+    mockPrisma.position.findFirst.mockResolvedValueOnce(original).mockResolvedValueOnce(current);
+    mockPrisma.position.update.mockResolvedValue(current);
+    const response = await request(app)
+      .put('/api/positions/position-1')
+      .send({ notes: 'Updated broker note' });
+    expect(response.status).toBe(200);
+    expect(mockPrisma.position.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ marketValueUsd: 43, unrealizedPnL: 13 }),
+      })
+    );
+  });
   it('recalculates value fields from the new asset when assetId changes', async () => {
     mockPrisma.position.findFirst.mockResolvedValue(
       mockPosition({

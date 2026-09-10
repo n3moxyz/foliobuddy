@@ -134,7 +134,37 @@ describe('priceService.getAssetHistory', () => {
         timestamp: true,
         priceUsd: true,
         nativePrice: true,
+        source: true,
       },
     });
   });
+  it.each([false, true])(
+    'prefers the automatic observation over a same-day statement regardless of insertion order (%s)',
+    async (reverse) => {
+      mocks.yahooGetHistoricalPrices.mockRejectedValue(new Error('offline'));
+      mocks.assetFindFirst.mockResolvedValue({ id: 'unit-trust' });
+      const rows = [
+        {
+          timestamp: new Date('2026-09-09T00:00:00Z'),
+          priceUsd: 4.8,
+          nativePrice: 6.0462,
+          source: 'yahoo',
+        },
+        {
+          timestamp: new Date('2026-09-09T00:00:00Z'),
+          priceUsd: 4.2,
+          nativePrice: 5.3036,
+          source: 'manual',
+        },
+      ];
+      mocks.priceHistoryFindMany.mockResolvedValue(reverse ? rows.reverse() : rows);
+      expect(await priceService.getAssetHistory('yahoo', 'test-fund', 30)).toEqual([
+        {
+          timestamp: new Date('2026-09-09T00:00:00Z').getTime(),
+          priceUsd: 4.8,
+          nativePrice: 6.0462,
+        },
+      ]);
+    }
+  );
 });

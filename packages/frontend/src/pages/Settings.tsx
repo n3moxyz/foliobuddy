@@ -62,6 +62,9 @@ export default function Settings() {
     try {
       await api.refreshFxRates();
       queryClient.invalidateQueries({ queryKey: ['fx'] });
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
       toast.success('FX rates refreshed');
     } catch (error) {
       console.error('Failed to refresh FX rates:', error);

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     scheduledJobs,
+    configureKnownUnitTrusts: vi.fn(),
     cronSchedule: vi.fn(
       (
         expression: string,
@@ -59,6 +60,9 @@ vi.mock('node-cron', () => ({
   },
 }));
 vi.mock('../services/priceService.js', () => ({ priceService: mocks.priceService }));
+vi.mock('../services/unitTrustNavService.js', () => ({
+  configureKnownUnitTrusts: mocks.configureKnownUnitTrusts,
+}));
 vi.mock('../services/snapshotService.js', () => ({ snapshotService: mocks.snapshotService }));
 vi.mock('../services/socketService.js', () => ({ socketService: mocks.socketService }));
 vi.mock('../lib/prisma.js', () => ({ prisma: mocks.prisma }));
@@ -72,6 +76,7 @@ const {
   startPriceHistoryCleanupJob,
   createMissingSnapshots,
   runSnapshotTick,
+  refreshFundManagerNavs,
 } = await import('../services/scheduler.js');
 
 const SNAPSHOT_USER_SELECT = { id: true, snapshotHour: true, snapshotTimezone: true };
@@ -82,6 +87,19 @@ const sgtUser = (id: string, hour = 5) => ({
 });
 
 describe('scheduler', () => {
+  it('keeps established manager feeds refreshing when mapping fails', async () => {
+    mocks.configureKnownUnitTrusts.mockRejectedValueOnce(new Error('mapping conflict'));
+    mocks.priceService.refreshAllPrices.mockResolvedValue({
+      updated: 1,
+      errors: 0,
+      changedAssetIds: ['amova'],
+    });
+    mocks.prisma.user.findMany.mockResolvedValue([{ id: 'owner' }]);
+    await refreshFundManagerNavs();
+    expect(mocks.priceService.refreshAllPrices).toHaveBeenCalledWith('fund-manager');
+    expect(mocks.socketService.broadcastPriceUpdate).toHaveBeenCalledWith(1);
+    expect(mocks.socketService.broadcastPortfolioUpdate).toHaveBeenCalledWith('owner');
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.scheduledJobs.length = 0;

@@ -24,6 +24,7 @@ import { agentAuth } from './middleware/agentAuth.js';
 import {
   startPriceRefreshJob,
   startEquityRefreshJob,
+  startFundManagerNavJob,
   startSnapshotJob,
   startFxRateJob,
   startPriceHistoryCleanupJob,
@@ -154,6 +155,7 @@ async function startServer() {
     if (isProd) {
       startPriceRefreshJob();
       startEquityRefreshJob();
+      startFundManagerNavJob();
       startSnapshotJob();
       startFxRateJob();
       startPriceHistoryCleanupJob();
