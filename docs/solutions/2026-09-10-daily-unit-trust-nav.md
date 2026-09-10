@@ -87,6 +87,15 @@ native NAV with changed FX, concurrent refresh, history separation, wrong/stale
 quotes, transaction rollback and unchanged snapshots. Parser/service/UI tests
 also run in the ordinary test suites.
 
+The integration script replays both managers' wire responses over loopback HTTP
+through the real providers and refresh service. Fifteen wrong-class, currency,
+price, date and malformed-response cases must retain the last good quote,
+history and every broker value while recording a failed check. Valid responses
+before and after each fund's failure cases verify the setup and recovery. Only
+transport is redirected; parser and persistence logic are never stubbed. This
+gives runtime failure evidence without changing or relying on broken public
+manager endpoints.
+
 Review regressions cover legacy intraday timestamps, same-day source precedence,
 failed-check cache invalidation, initial-save atomicity and open-detail updates.
 FX invalidation is published after every successful FX transaction. Generic

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 
 // Destructive test setup is restricted to this named database on loopback.
 const database = new URL(process.env.DATABASE_URL ?? '');
@@ -42,6 +43,155 @@ const quote = {
 };
 const near = (a: number | null, b: number) =>
   assert.ok(a != null && Math.abs(a - b) < 1e-8, `${a} != ${b}`);
+
+async function verifySourceFailures() {
+  // Replay the upstream wire responses over loopback HTTP. Only transport is
+  // redirected: the real provider, parsers, refresh service and Postgres writes run.
+  const formatManagerDate = (date: Date) =>
+    `${String(date.getUTCDate()).padStart(2, '0')} ${new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(date)} ${date.getUTCFullYear()}`;
+  const future = new Date(now.getTime() + 3 * 86400000);
+  const amova = `<h1>Amova Singapore Equity Fund - SGD Class</h1>
+<span>SG9999004360</span> ISIN Number
+<div>NAV</div><div>SGD 6.2462</div><div>as of ${formatManagerDate(day)}</div>`;
+  const lion = `<funds totalpage="1"><fund><f_code><![CDATA[LSSD]]></f_code><eng_lgi><![CDATA[LionGlobal Singapore Dividend Equity Fund Class SGD (Dec)]]></eng_lgi><currency><![CDATA[SGD]]></currency><nav>1.5930</nav><dealdate>${day.toISOString().slice(0, 10)}</dealdate></fund></funds>`;
+  const facts =
+    '<facts><item><isin><![CDATA[SGXZ58947870]]></isin><currency><![CDATA[SGD]]></currency><valuation_frequency><![CDATA[Daily]]></valuation_frequency></item></facts>';
+  const urls = [
+    FUND_MANAGER_SOURCES[0].url,
+    'https://api.lionglobalinvestors.com/fundlist?fcode=LSSD',
+    'https://api.lionglobalinvestors.com/ffacts?fcode=LSSD',
+  ];
+  const validBodies = [amova, lion, facts];
+  let bodies = [...validBodies];
+  let requested: string[] = [];
+  const originalFetch = globalThis.fetch;
+  const replay = createServer((request, response) => {
+    const index = Number(request.url?.slice(1));
+    response.writeHead(200, { 'Content-Type': index === 0 ? 'text/html' : 'application/xml' });
+    response.end(bodies[index] ?? 'Unexpected source');
+  });
+  await new Promise<void>((resolve, reject) => {
+    replay.once('error', reject);
+    replay.listen(0, '127.0.0.1', resolve);
+  });
+  const address = replay.address();
+  assert.ok(address && typeof address !== 'string');
+  globalThis.fetch = (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    const index = urls.indexOf(url);
+    assert.ok(index >= 0, 'Source replay must never send an external request');
+    assert.equal(init?.redirect, 'error');
+    assert.ok(init?.signal);
+    requested.push(url);
+    return originalFetch(`http://127.0.0.1:${address.port}/${index}`, init);
+  };
+  const retainedState = async (assetId: string) => ({
+    quote: await prisma.asset.findUniqueOrThrow({
+      where: { id: assetId },
+      select: {
+        currentPriceUsd: true,
+        currentPriceNative: true,
+        priceAsOf: true,
+        priceUpdatedAt: true,
+        priceSource: true,
+        priceFxRateToUsd: true,
+        priceProvider: true,
+        providerAssetId: true,
+        nativeCurrency: true,
+        isin: true,
+      },
+    }),
+    positions: await prisma.position.findMany({ where: { assetId }, orderBy: { id: 'asc' } }),
+    history: await prisma.priceHistory.findMany({ where: { assetId }, orderBy: { id: 'asc' } }),
+  });
+  try {
+    await prisma.position.create({
+      data: {
+        id: 'nav-lion-source-replay',
+        userId,
+        assetId: lionId,
+        quantity: 100,
+        avgCostUsd: 1,
+        storageType: 'BROKERAGE',
+        storageLocation: 'UOB KH',
+      },
+    });
+    for (const scenario of [
+      {
+        assetId: amovaId,
+        expectedNav: 6.2462,
+        expectedUrls: [urls[0]],
+        faults: [
+          ['wrong class', 0, amova.replace('Fund - SGD Class', 'Fund - SGD Class A')],
+          ['wrong ISIN', 0, amova.replace('SG9999004360', 'SG9999004361')],
+          ['wrong currency', 0, amova.replace('SGD 6.2462', 'USD 6.2462')],
+          ['non-numeric NAV', 0, amova.replace('6.2462', '6.24junk')],
+          ['non-finite NAV', 0, amova.replace('6.2462', '9'.repeat(400))],
+          ['future date', 0, amova.replace(formatManagerDate(day), formatManagerDate(future))],
+          ['missing NAV markup', 0, amova.replace('<div>NAV</div>', '<div>Return</div>')],
+        ] as const,
+      },
+      {
+        assetId: lionId,
+        expectedNav: 1.593,
+        expectedUrls: urls.slice(1),
+        faults: [
+          ['wrong class', 1, lion.replace('LSSD', 'LSDS')],
+          ['wrong facts ISIN', 2, facts.replace('SGXZ58947870', 'SGXZ00000000')],
+          ['wrong currency', 1, lion.replace('<![CDATA[SGD]]>', '<![CDATA[USD]]>')],
+          ['non-numeric NAV', 1, lion.replace('1.5930', 'not-a-number')],
+          ['zero NAV', 1, lion.replace('1.5930', '0')],
+          [
+            'future date',
+            1,
+            lion.replace(day.toISOString().slice(0, 10), future.toISOString().slice(0, 10)),
+          ],
+          ['malformed XML', 1, lion.replace('</fund>', '')],
+          ['ambiguous NAV', 1, lion.replace('</nav>', '</nav><nav>2</nav>')],
+        ] as const,
+      },
+    ]) {
+      // A successful control prevents unrelated setup/transport failures from
+      // making every negative case look like a valid rejection.
+      bodies = [...validBodies];
+      requested = [];
+      await priceService.refreshUnitTrust(scenario.assetId);
+      assert.deepEqual(requested.sort(), [...scenario.expectedUrls].sort());
+      const before = await retainedState(scenario.assetId);
+      assert.equal(before.quote.currentPriceNative, scenario.expectedNav);
+      for (const position of before.positions)
+        near(position.marketValueUsd, (position.quantity * scenario.expectedNav) / 1.4);
+      for (const [name, index, body] of scenario.faults) {
+        bodies = [...validBodies];
+        bodies[index] = body;
+        requested = [];
+        const started = new Date();
+        await assert.rejects(() => priceService.refreshUnitTrust(scenario.assetId));
+        assert.deepEqual(requested.sort(), [...scenario.expectedUrls].sort(), name);
+        assert.deepEqual(await retainedState(scenario.assetId), before, name);
+        const checked = await prisma.asset.findUniqueOrThrow({ where: { id: scenario.assetId } });
+        assert.equal(checked.priceCheckStatus, 'error', name);
+        assert.ok(checked.priceCheckedAt && checked.priceCheckedAt >= started, name);
+      }
+      bodies = [...validBodies];
+      await priceService.refreshUnitTrust(scenario.assetId);
+      assert.equal(
+        (await prisma.asset.findUniqueOrThrow({ where: { id: scenario.assetId } }))
+          .priceCheckStatus,
+        'ok'
+      );
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    replay.closeAllConnections();
+    await new Promise<void>((resolve, reject) =>
+      replay.close((error) => (error ? reject(error) : resolve()))
+    );
+  }
+  process.stdout.write(
+    'Source replay passed: 15 malformed/wrong-class/currency/price/date responses rejected through HTTP, real providers and Postgres; quotes, history and broker values retained; valid-response recovery.\n'
+  );
+}
 
 try {
   await prisma.user.deleteMany({ where: { id: userId } });
@@ -341,6 +491,7 @@ try {
     near(position.marketValueUsd, (position.quantity * 6.2462) / 1.4);
     near(position.asset.currentPriceUsd, 6.2462 / 1.4);
   }
+  await verifySourceFailures();
   assert.deepEqual(await prisma.snapshot.findUnique({ where: { id: snapshot.id } }), snapshot);
   process.stdout.write(
     'NAV integration passed: mapping/idempotency, concurrency, same-day FX, both brokers, totals, history, invalid/stale quotes, rollback, manual truthfulness, unchanged snapshot.\n'
