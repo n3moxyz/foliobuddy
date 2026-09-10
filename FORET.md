@@ -2308,7 +2308,6 @@ Your portfolio dashboard doesn't need to be perfect. It needs to be _yours_.
 
 _Built with TypeScript, Tailwind, and too much coffee. [FolioBuddy](https://github.com/n3moxyz/foliobuddy)._
 
-
 ## September 2026: Daily fund NAVs need their own clock
 
 The Amova SGD Class price was an April statement NAV, while refreshes made it look current. LionGlobal's correct Yahoo ticker lagged the manager by a day. We now check the exact manager share classes hourly and preserve the published native NAV, valuation date, and separate check result. The table and details expose four-decimal NAVs and failures honestly.

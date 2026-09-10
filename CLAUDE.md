@@ -75,7 +75,7 @@ npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none # op
 
 ## Architecture
 
-Static frontend (React + Vite) → HTTP + Clerk JWT → Express backend → Prisma → Postgres 17 (private network). Background jobs (node-cron): price refresh (every min), snapshots (daily 5am SGT / weekly Sun / monthly 1st), FX rates (hourly).
+Static frontend (React + Vite) → HTTP + Clerk JWT → Express backend → Prisma → Postgres 17 (private network). Background jobs (node-cron): price refresh (every min), manager NAVs (startup + hourly :05), snapshots (daily 5am SGT / weekly Sun / monthly 1st), FX rates (hourly).
 
 ## Key Patterns
 
@@ -93,11 +93,11 @@ Yahoo search IP-filters by region; `YahooFinanceProvider.search()` falls back to
 
 ### Unit Trust Statement Parsers (PDF Import)
 
-`POST /assets/parse-unit-trust-statement`: `pdf-parse` text → first successful broker parser in `src/services/statementParsers/` (deterministic ISIN/value anchors). Brokers: **UOB Kay Hian**, **FSMOne/iFAST**. `statementMatching.ts`: ISIN → provider symbol → exact symbol → exact name; broker storage breaks ties. New broker: add parser + append to `routes/assets.ts` `parsers`; update error string + broker→`storageLocation` map; keep `statementMatching.test.ts` coverage.
+`POST /assets/parse-unit-trust-statement`: `pdf-parse` text → first successful broker parser in `src/services/statementParsers/` (deterministic ISIN/value anchors). Brokers: **UOB Kay Hian**, **FSMOne/iFAST**. `statementMatching.ts` (ISIN/currency must agree): ISIN → provider symbol → exact symbol → exact name; broker storage breaks ties. New broker: add parser + append to `routes/assets.ts` `parsers`; update error string + broker→`storageLocation` map; keep `statementMatching.test.ts` coverage.
 
 ### Daily Unit-Trust NAVs
 
-Manager NAVs: startup + hourly minute 5. Native NAV is authoritative; valuation and check dates differ. NAV/history/positions and FX revaluations are atomic. Imports preserve automatic ownership. Details: [NAV runbook](docs/solutions/2026-09-10-daily-unit-trust-nav.md).
+Unit trusts: `currentPriceNative`/`priceAsOf` (4 decimals) are authoritative, separate from check status; every NAV/FX valuation write is atomic; imports never seize automatic ownership. Details: [NAV runbook](docs/solutions/2026-09-10-daily-unit-trust-nav.md).
 
 ### CoinGecko Rate Limiting
 
@@ -185,7 +185,7 @@ iOS HIG, all pages:
 
 ### Smart Price Formatting
 
-`formatPrice()` (`lib/utils.ts`): per-unit entry/exit/current prices, not `formatCurrency(..., 0)`; decimals <$0.01→5, <$0.10→4, <$10→3, <$1,000→2, ≥$1,000→0. Totals/sizes/P&L → `formatCurrency`; cost/total amounts → `currencyDecimals(currency)` (0 JPY/KRW, else 2), not magnitude-based `priceDecimals`. Portfolio Price/Avg Cost: app currency + differing `asset.nativeCurrency` on a muted second line via `localPriceLabel()` + `/fx/rates` USD→native map. Full-opacity `text-muted-foreground` (opacity variants fail contrast at 11px). For daily unit trusts use authoritative `currentPriceNative` (4 decimals); other assets derive USD × FX.
+`formatPrice()` (`lib/utils.ts`): per-unit entry/exit/current prices, not `formatCurrency(..., 0)`; decimals <$0.01→5, <$0.10→4, <$10→3, <$1,000→2, ≥$1,000→0. Totals/sizes/P&L → `formatCurrency`; cost/total amounts → `currencyDecimals(currency)` (0 JPY/KRW, else 2), not magnitude-based `priceDecimals`. Portfolio Price/Avg Cost: app currency + differing `asset.nativeCurrency` on a muted second line via `localPriceLabel()` + `/fx/rates` USD→native map. Full-opacity `text-muted-foreground` (opacity variants fail contrast at 11px). Unit trusts: see Daily Unit-Trust NAVs.
 
 ### Smart Quantity Formatting
 
@@ -242,9 +242,9 @@ Former Stables category is now **Cash**. `PositionForm.tsx` Cash shows a **Type*
 Create-only sub-type toggle (edit infers category; enums unchanged); `equityMode`/`category`/`priceProvider`: **Stock/ETF** `single`/`EQUITY`/`yahoo` (ETFs here, not UT), **Unit Trust** `fund`/`UNIT_TRUST`/`manual`|`yahoo`.
 
 - **Form:** creatable broker, `storageType='BROKERAGE'`; cost currency = `asset.nativeCurrency` (SGD/JPY/TWD/KRW/NOK inputs, stored USD). Non-USD cost basis MUST await real `/fx/rates` (or SGD summary rate); fallback FX display-only. Edit USD→local via `costInitialized`.
-- **Display:** default `groupBy='broker'`; header toggles `equityType`, persisted `foliobuddy-equity-group-by`. UT: `Unit Trust` badge; UT/manual-priced non-cash: `priceAgeClass` NAV age (muted <7d, amber 7–30d, red ≥30d/null); live tickers + fiat cash skip NAV age.
-- **Upload:** dashed `<label>` wraps PDF input (click/drag-drop); matched UTs update, never duplicate: `statementMatching.ts` → `PUT /positions/:id` (parsed units/cost, `mode='reset'`); manual-priced assets → parsed NAV via `PATCH /assets/:id/nav`. No cash funding for matched statements (reconciliation).
-- **Copy/Paste:** non-coingecko clipboard keeps `priceProvider`/`providerAssetId`/`nativeCurrency`/`exchange`. Bulk import honors these only for new Assets (defaults `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`); existing symbols match by symbol first.
+- **Display:** default `groupBy='broker'`; header toggles `equityType`, persisted `foliobuddy-equity-group-by`. UT: `Unit Trust` badge + `NavStatus` (`priceAsOf` age, failed-check line); manual-priced non-UT non-cash: `priceAgeClass` age (muted <7d, amber 7–30d, red ≥30d/null).
+- **Upload:** dashed `<label>` wraps PDF input (click/drag-drop); matched UTs update, never duplicate: `statementMatching.ts` → `PUT /positions/:id` (parsed units/cost, `mode='reset'`) + parsed NAV via `PATCH /assets/:id/nav` (statement history only). No cash funding for matched statements (reconciliation).
+- **Copy/Paste:** non-coingecko clipboard keeps `priceProvider`/`providerAssetId`/`nativeCurrency`/`exchange`/`isin`. Bulk import honors these only for new Assets (defaults `EQUITY→yahoo`, `UNIT_TRUST→manual`, else `coingecko`); existing assets match verified fund identity before symbol.
 
 ### Position Edit Modes
 
@@ -345,7 +345,7 @@ See `PRODUCT.md` — source of truth for users, brand, aesthetic, design princip
 - Wrong ports/"DB Down": check `.env.local` first; it overrides Vite `.env`.
 - Always Prisma `onDelete: Cascade` (avoids FK errors); snapshots need unique constraint + check-before-create.
 - Position P&L displays as %; bulk import `skipPriceFetch: true`, scheduler fetches in 1 min.
-- Push/PR CI: typecheck, full tests, Postgres 17 NAV verify script (NAV runbook), frontend build, `npm run format:check`.
+- Push/PR CI: typecheck, tests, NAV Postgres verify, frontend build, `npm run format:check`.
 - npm 10.8.2/`uuid` override/ExcelJS rules: `docs/DEPENDENCIES.md`.
 - Sentry: unexpected 500s only, skip Zod 400s + AppErrors <500. Node `console.error` crashes on ZodError: integration tests MUST mock logger.
 - vitest `exclude: ['dist/**']` prevents duplicate runs after `npm run build`.
