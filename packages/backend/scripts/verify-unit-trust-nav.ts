@@ -6,12 +6,26 @@ assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname));
 assert.equal(database.pathname, '/foliobuddy_nav_test');
 
 const { prisma } = await import('../src/lib/prisma.js');
-const { configureKnownUnitTrusts, saveAutomaticNav, saveManualNav, recordNavFailure } =
-  await import('../src/services/unitTrustNavService.js');
+const {
+  configureKnownUnitTrusts,
+  saveAutomaticNav,
+  saveManualNav,
+  recordNavFailure,
+  navTransaction,
+} = await import('../src/services/unitTrustNavService.js');
 const { upsertUsdRates } = await import('../src/services/fxRateService.js');
 const { priceService } = await import('../src/services/priceService.js');
 const { portfolioService } = await import('../src/services/portfolioService.js');
 const { FUND_MANAGER_SOURCES } = await import('../src/services/providers/fundManagerSources.js');
+const { calculatePositionValue } = await import('../src/lib/domain.js');
+
+function signal() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
 
 const now = new Date();
 const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
@@ -213,6 +227,115 @@ try {
     (await prisma.asset.findUniqueOrThrow({ where: { id: amovaId } })).priceProvider,
     'fund-manager'
   );
+
+  // NAV commits first while a new-position transaction holds the old pricing
+  // snapshot. PostgreSQL must abort/retry the insertion rather than store it stale.
+  const oldPriceRead = signal();
+  const allowInsert = signal();
+  let insertionAttempts = 0;
+  const insertion = navTransaction(async (tx) => {
+    insertionAttempts++;
+    const asset = await tx.asset.findUniqueOrThrow({ where: { id: amovaId } });
+    if (insertionAttempts === 1) {
+      oldPriceRead.resolve();
+      await allowInsert.promise;
+    }
+    return tx.position.create({
+      data: {
+        id: 'nav-overlap-refresh-first',
+        userId,
+        assetId: amovaId,
+        quantity: 100,
+        avgCostUsd: 3,
+        ...calculatePositionValue({
+          quantity: 100,
+          avgCostUsd: 3,
+          currentPriceUsd: asset.currentPriceUsd,
+        }),
+      },
+    });
+  });
+  await oldPriceRead.promise;
+  try {
+    await saveAutomaticNav(
+      amovaId,
+      { ...quote, nativePrice: 6.1462 },
+      'fund-manager',
+      new Date(now.getTime() + 6)
+    );
+  } finally {
+    allowInsert.resolve();
+  }
+  const refreshedInsertion = await insertion;
+  assert.ok(insertionAttempts > 1, 'Overlapping insertion must retry its old pricing snapshot');
+  near(refreshedInsertion.marketValueUsd, (100 * 6.1462) / 1.4);
+
+  // Position commits first after the NAV transaction has read its snapshot.
+  // Hold only history writes to make that ordering deterministic, then let the
+  // actual NAV service continue; its Serializable retry must include the new row.
+  const lockedHistory = signal();
+  const releaseHistory = signal();
+  const lock = prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe('LOCK TABLE "PriceHistory" IN ACCESS EXCLUSIVE MODE');
+      lockedHistory.resolve();
+      await releaseHistory.promise;
+    },
+    { timeout: 10000 }
+  );
+  await lockedHistory.promise;
+  const overlappingNav = saveAutomaticNav(
+    amovaId,
+    { ...quote, nativePrice: 6.2462 },
+    'fund-manager',
+    new Date(now.getTime() + 7)
+  );
+  void overlappingNav.catch(() => {}); // Observed below; avoid an early unhandled rejection.
+  try {
+    const deadline = Date.now() + 2000;
+    let blocked = false;
+    while (Date.now() < deadline) {
+      const rows = await prisma.$queryRawUnsafe<Array<{ blocked: bigint }>>(
+        `SELECT COUNT(*) AS blocked FROM pg_locks WHERE relation = '"PriceHistory"'::regclass AND NOT granted`
+      );
+      if (Number(rows[0].blocked) > 0) {
+        blocked = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.ok(blocked, 'NAV must hold a snapshot before the position commits');
+    await navTransaction(async (tx) => {
+      const asset = await tx.asset.findUniqueOrThrow({ where: { id: amovaId } });
+      await tx.position.create({
+        data: {
+          id: 'nav-overlap-position-first',
+          userId,
+          assetId: amovaId,
+          quantity: 200,
+          avgCostUsd: 3,
+          ...calculatePositionValue({
+            quantity: 200,
+            avgCostUsd: 3,
+            currentPriceUsd: asset.currentPriceUsd,
+          }),
+        },
+      });
+    });
+  } finally {
+    releaseHistory.resolve();
+    await lock;
+  }
+  await overlappingNav;
+  const finalPositions = await prisma.position.findMany({
+    where: { assetId: amovaId },
+    include: { asset: true },
+  });
+  assert.equal(finalPositions.length, 4);
+  for (const position of finalPositions) {
+    near(position.marketValueUsd, (position.quantity * 6.2462) / 1.4);
+    near(position.asset.currentPriceUsd, 6.2462 / 1.4);
+  }
   assert.deepEqual(await prisma.snapshot.findUnique({ where: { id: snapshot.id } }), snapshot);
   process.stdout.write(
     'NAV integration passed: mapping/idempotency, concurrency, same-day FX, both brokers, totals, history, invalid/stale quotes, rollback, manual truthfulness, unchanged snapshot.\n'
