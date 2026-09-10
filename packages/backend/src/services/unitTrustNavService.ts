@@ -162,7 +162,8 @@ export async function saveAutomaticNav(
       throw new Error('NAV share class mismatch');
     }
     if (asset.priceCheckedAt && asset.priceCheckedAt > checkedAt) return asset;
-    if (isLaterNavDay(asset.priceAsOf, timestamp))
+    const automaticOwned = asset.priceSource != null && asset.priceSource !== 'manual';
+    if (automaticOwned && isLaterNavDay(asset.priceAsOf, timestamp))
       throw new Error('Source NAV predates the last good valuation');
     const converted = await navToUsd(quote.nativePrice ?? NaN, asset.nativeCurrency, tx);
     const history = {

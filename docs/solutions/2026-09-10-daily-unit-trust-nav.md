@@ -36,14 +36,18 @@ NAV, history and every linked position valuation change in a Serializable
 transaction. All FX write paths revalue native NAVs in the same transaction as the
 rates. No fallback FX is used for NAV writes; a valid rate within 48 hours is
 required. Same-day rechecks use the same observation key; the date never advances
-just because FX changes. Automatic quotes older than the last good NAV or more
-than seven days old are rejected. Failures retain all last-good valuation fields.
+just because FX changes. Automatic quotes older than the last accepted automatic
+NAV or more than seven days old are rejected. Failures retain all last-good
+valuation fields.
 
 `PriceHistory` uniqueness includes source, preserving both a statement observation
 and the manager NAV on the same day. Imports never change an automatic provider
 or overwrite its verified current quote. Manual entries can initialize a dated
 fallback before an automatic quote has succeeded. They remain history thereafter.
-Manual-only older imports also cannot regress current valuation.
+The first valid manager quote takes ownership from that fallback even when the
+fallback carries a later date (a today-dated form default against a T-1 dealing
+NAV); the manual record stays in source-separated history. Manual-only older
+imports also cannot regress current valuation.
 
 ## Operations and verification
 

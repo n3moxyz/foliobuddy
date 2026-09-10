@@ -122,6 +122,43 @@ describe('unit-trust NAV persistence', () => {
       expect(mocks.history).not.toHaveBeenCalled();
     }
   );
+  it('lets the first valid T-1 manager quote take ownership from a today-dated manual fallback', async () => {
+    const today = new Date('2026-09-10T00:00:00Z');
+    mocks.findAsset.mockResolvedValue({
+      ...asset,
+      priceSource: 'manual',
+      priceAsOf: today,
+      currentPriceNative: 6.5,
+      currentPriceUsd: 6.5 / 1.25,
+    });
+    const result = await saveAutomaticNav('amova', quote, 'fund-manager', now);
+    expect(result.priceSource).toBe('fund-manager');
+    expect(result.priceAsOf).toEqual(day);
+    expect(result.currentPriceNative).toBe(6.0462);
+    expect(result.currentPriceUsd).toBe(6.0462 / 1.25);
+    expect(result.priceCheckStatus).toBe('ok');
+    expect(mocks.history).toHaveBeenCalledTimes(1);
+    expect(mocks.history.mock.calls[0][0].where.assetId_timestamp_source).toEqual({
+      assetId: 'amova',
+      timestamp: day,
+      source: 'fund-manager',
+    });
+    expect(mocks.updatePosition).toHaveBeenCalledTimes(2);
+    mocks.updatePosition.mock.calls.forEach(([arg], index) =>
+      expect(arg.data.marketValueUsd).toBeCloseTo(([12.345, 23.456][index] * 6.0462) / 1.25, 10)
+    );
+  });
+  it.each(['fund-manager', 'yahoo'])(
+    'never regresses an accepted %s NAV to an older manager valuation day',
+    async (priceSource) => {
+      mocks.findAsset.mockResolvedValue({ ...asset, priceSource, priceAsOf: now });
+      await expect(saveAutomaticNav('amova', quote, 'fund-manager', now)).rejects.toThrow(
+        'predates'
+      );
+      expect(mocks.updateAsset).not.toHaveBeenCalled();
+      expect(mocks.history).not.toHaveBeenCalled();
+    }
+  );
   it('does not use a missing/stale FX fallback to certify a NAV', async () => {
     for (const fx of [
       null,

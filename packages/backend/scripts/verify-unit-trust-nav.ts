@@ -100,7 +100,7 @@ try {
   const snapshot = await prisma.snapshot.create({
     data: { userId, totalValueUsd: 12345, timestamp: oldDay },
   });
-  await saveManualNav(amovaId, 5.3036, oldDay.toISOString(), userId);
+  await saveManualNav(amovaId, 5.3036, now.toISOString(), userId);
   assert.equal((await configureKnownUnitTrusts()).length, 2);
   assert.equal(
     (await prisma.asset.findUniqueOrThrow({ where: { id: amovaId } })).priceProvider,
@@ -117,6 +117,11 @@ try {
   near(stored.currentPriceUsd, 6.0462 / 1.25); // Never trust a provider's unrelated/fallback USD rate.
   assert.equal(stored.priceAsOf?.getTime(), day.getTime());
   assert.equal(stored.currentPriceNative, 6.0462);
+  assert.equal(stored.priceSource, 'fund-manager');
+  assert.equal(
+    await prisma.priceHistory.count({ where: { assetId: amovaId, source: 'manual' } }),
+    1
+  );
   const positionsBeforeFx = await prisma.position.findMany({ where: { assetId: amovaId } });
   for (const position of positionsBeforeFx)
     near(position.marketValueUsd, (position.quantity * 6.0462) / 1.25);
