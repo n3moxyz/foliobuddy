@@ -55,10 +55,12 @@ import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboa
 import {
   localAmountLabel,
   localPriceLabel,
+  displayedAssetPrice,
   type UsdFxRatesByCurrency,
 } from '@/components/portfolio/positionPriceDisplay';
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { NavStatus } from './NavStatus';
 
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
@@ -150,7 +152,11 @@ export function PositionTable({
   showMobileColumnToggle = true,
 }: PositionTableProps) {
   const { formatCurrency, formatSignedCurrency, valuesHidden } = useMoneyFormatter();
-  const [viewPosition, setViewPosition] = useState<Position | null>(null);
+  const [viewPositionId, setViewPositionId] = useState<string | null>(null);
+  const viewPosition = positions.find((position) => position.id === viewPositionId) ?? null;
+  const setViewPosition = useCallback((position: Position | null) => {
+    setViewPositionId(position?.id ?? null);
+  }, []);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [deletePosition, setDeletePosition] = useState<Position | null>(null);
   const [cancelHistoryEntry, setCancelHistoryEntry] = useState<PositionHistoryEntry | null>(null);
@@ -525,7 +531,7 @@ export function PositionTable({
     position: Position,
     options: { showUnitTrustBadge?: boolean } = {}
   ) => {
-    const priceValue = convert(position.asset.currentPriceUsd);
+    const priceValue = displayedAssetPrice(position.asset, currency, fxRate);
     const avgCostValue = convert(position.avgCostUsd);
     const marketValue = convert(position.marketValueUsd);
     const pnlValue = convert(position.unrealizedPnL);
@@ -579,6 +585,7 @@ export function PositionTable({
                 <p className="mt-0.5 truncate text-xs leading-snug text-muted-foreground">
                   {position.asset.name}
                 </p>
+                <NavStatus asset={position.asset} />
               </div>
 
               <p className="shrink-0 text-right font-mono text-sm font-semibold leading-tight tabular-nums">
@@ -642,6 +649,7 @@ export function PositionTable({
                   {position.asset.name}
                 </p>
               </div>
+              <NavStatus asset={position.asset} />
             </div>
 
             <div className="shrink-0 text-right">
@@ -671,7 +679,11 @@ export function PositionTable({
             <span className="inline-flex shrink-0 gap-1">
               Price
               <span className="font-mono text-foreground">
-                {formatCurrency(priceValue, currency, getSmartDecimals(priceValue))}
+                {formatCurrency(
+                  priceValue,
+                  currency,
+                  isUnitTrust ? 4 : getSmartDecimals(priceValue)
+                )}
               </span>
             </span>
             <span aria-hidden="true" className="shrink-0">
@@ -701,6 +713,8 @@ export function PositionTable({
 
   const renderCurrentPrice = (position: Position) => {
     const localCurrentPrice = localPriceLabel({
+      nativePrice:
+        position.asset.category === 'UNIT_TRUST' ? position.asset.currentPriceNative : null,
       usdPrice: position.asset.currentPriceUsd,
       nativeCurrency: position.asset.nativeCurrency,
       displayCurrency: currency,
@@ -712,9 +726,11 @@ export function PositionTable({
       <>
         <p className="font-mono font-medium text-muted-foreground">
           {formatCurrency(
-            convert(position.asset.currentPriceUsd),
+            displayedAssetPrice(position.asset, currency, fxRate),
             currency,
-            getSmartDecimals(convert(position.asset.currentPriceUsd))
+            position.asset.category === 'UNIT_TRUST'
+              ? 4
+              : getSmartDecimals(convert(position.asset.currentPriceUsd))
           )}
         </p>
         {localCurrentPrice && (
@@ -1465,6 +1481,7 @@ export function PositionTable({
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Current Price</p>
                   {renderCurrentPrice(viewPosition)}
+                  <NavStatus asset={viewPosition.asset} detailed />
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Average Cost</p>

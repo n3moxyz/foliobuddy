@@ -11,6 +11,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+      work({
+        fxRate: { upsert: mocks.fxRateUpsert },
+        asset: { findMany: async () => [] },
+      }),
     fxRate: {
       findMany: mocks.fxRateFindMany,
       findUnique: mocks.fxRateFindUnique,

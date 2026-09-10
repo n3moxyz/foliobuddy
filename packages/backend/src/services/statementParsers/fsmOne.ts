@@ -121,7 +121,11 @@ export function parseFsmOneStatement(text: string): ParsedStatement {
     holdings.push({
       symbol: symbolFromName(name),
       name,
-      isin: '',
+      // Verified exact broker label, not a fuzzy match across SGD Class A/B.
+      isin:
+        name === 'Amova Singapore Equity SGD (formerly Nikko AM)' && productCcy === 'SGD'
+          ? 'SG9999004360'
+          : '',
       nativeCurrency: productCcy,
       units,
       avgCostNative,

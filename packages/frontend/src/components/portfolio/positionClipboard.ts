@@ -16,6 +16,7 @@ function formatPositionsForClipboard(positions: Position | Position[]) {
             providerAssetId: p.asset.providerAssetId,
             nativeCurrency: p.asset.nativeCurrency,
             exchange: p.asset.exchange,
+            ...(p.asset.isin ? { isin: p.asset.isin } : {}),
           }
         : {}),
     },

@@ -119,6 +119,14 @@ function demoManualAsset(
     name,
     category,
     currentPriceUsd,
+    ...(category === 'UNIT_TRUST'
+      ? {
+          currentPriceNative: currentPriceUsd * (nativeCurrency === 'SGD' ? 1.35 : 1),
+          priceAsOf: NOW,
+          priceSource: 'manual',
+          priceCheckedAt: null,
+        }
+      : {}),
   };
 }
 
@@ -2184,6 +2192,19 @@ function bulkImportDemoSnapshots(imports: BulkImportSnapshot[]) {
 function updateDemoAssetNav(id: string, data: { navPrice: number; asOfDate?: string }) {
   const asset = demoAssets.find((item) => item.id === id);
   if (!asset) throw new Error('Asset not found');
+  const asOf = data.asOfDate ? new Date(data.asOfDate).toISOString() : new Date().toISOString();
+  if (
+    !Number.isFinite(data.navPrice) ||
+    data.navPrice <= 0 ||
+    asOf.slice(0, 10) > new Date().toISOString().slice(0, 10)
+  ) {
+    throw new Error('Invalid or future NAV');
+  }
+  if (
+    (asset.priceProvider !== 'manual' && asset.priceSource !== 'manual' && asset.priceAsOf) ||
+    (asset.priceAsOf && asset.priceAsOf > asOf)
+  )
+    return asset;
   const nativeCurrency = asset.nativeCurrency.toUpperCase();
   const fxRate =
     nativeCurrency === 'USD' ? 1 : fxRates.find((rate) => rate.toCcy === nativeCurrency)?.rate;
@@ -2191,6 +2212,9 @@ function updateDemoAssetNav(id: string, data: { navPrice: number; asOfDate?: str
   const updated: Asset = {
     ...asset,
     currentPriceUsd,
+    currentPriceNative: data.navPrice,
+    priceAsOf: asOf,
+    priceSource: 'manual',
     priceUpdatedAt: data.asOfDate
       ? new Date(data.asOfDate).toISOString()
       : new Date().toISOString(),
@@ -2720,12 +2744,20 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
     const id = path.split('/')[3];
     const asset = demoAssets.find((item) => item.id === id);
     if (!asset) return json({ error: 'Asset not found' }, 404);
+    if (asset.priceProvider === 'manual')
+      return json({ error: 'Manual NAVs update from statements or manual entries' }, 400);
     const updated: Asset = {
       ...asset,
       currentPriceUsd: asset.currentPriceUsd ?? seedDemoPrice(asset.coingeckoId, asset.category),
-      priceUpdatedAt: new Date().toISOString(),
+      priceUpdatedAt:
+        asset.category === 'UNIT_TRUST' ? asset.priceUpdatedAt : new Date().toISOString(),
+      priceCheckedAt: new Date().toISOString(),
+      priceCheckStatus: 'ok',
     };
     demoAssets = demoAssets.map((item) => (item.id === id ? updated : item));
+    demoPositions = demoPositions.map((position) =>
+      position.assetId === id ? { ...position, asset: updated } : position
+    );
     return json(updated);
   }
   if (path.startsWith('/api/assets/') && path.endsWith('/nav') && method === 'PATCH') {
@@ -2751,26 +2783,39 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
       navAsOfDate?: string;
     };
     const ccy = (body.nativeCurrency ?? 'SGD').toUpperCase();
-    const navUsd =
-      body.initialNav === undefined
-        ? null
-        : ccy === 'USD'
-          ? body.initialNav
-          : body.initialNav * 0.741;
+    const existingFund = demoAssets.find(
+      (item) => (body.isin && item.isin === body.isin) || item.symbol === body.symbol.toUpperCase()
+    );
+    if (existingFund) return json(existingFund);
+    const managerNav =
+      ccy === 'SGD'
+        ? ({ SG9999004360: 6.0462, SGXZ58947870: 1.593 } as Record<string, number>)[body.isin ?? '']
+        : undefined;
+    const nativeNav = managerNav ?? body.initialNav;
+    const usdSgd = fxRates.find((rate) => rate.toCcy === 'SGD')?.rate ?? 1.35;
+    const navUsd = nativeNav === undefined ? null : ccy === 'USD' ? nativeNav : nativeNav / usdSgd;
     const asset = createDemoAsset({
       coingeckoId: `ut-${body.symbol.toLowerCase()}`,
       symbol: body.symbol,
       name: body.name,
       category: 'UNIT_TRUST',
     });
-    const priceUpdatedAt = body.navAsOfDate ?? new Date().toISOString();
+    const priceUpdatedAt = managerNav
+      ? new Date(Date.now() - 86400000).toISOString().slice(0, 10) + 'T00:00:00.000Z'
+      : (body.navAsOfDate ?? new Date().toISOString());
     const merged: Asset = {
       ...asset,
-      priceProvider: 'manual',
+      priceProvider: managerNav ? 'fund-manager' : 'manual',
+      providerAssetId: managerNav ? body.isin! : asset.providerAssetId,
       nativeCurrency: ccy,
       isin: body.isin ?? null,
       currentPriceUsd: navUsd,
       priceUpdatedAt,
+      priceAsOf: priceUpdatedAt,
+      currentPriceNative: nativeNav ?? null,
+      priceSource: managerNav ? 'fund-manager' : 'manual',
+      priceCheckedAt: managerNav ? new Date().toISOString() : null,
+      priceCheckStatus: managerNav ? 'ok' : null,
     };
     demoAssets = demoAssets.map((a) => (a.id === merged.id ? merged : a));
     return json(merged, 201);

@@ -1406,7 +1406,8 @@ export function PositionForm({
 
       const saveFundPosition = async () => {
         if (utStatementMatchedPosition) {
-          if (utStatementMatchedPosition.asset.priceProvider === 'manual') {
+          {
+            // Save dated statement history; the backend preserves automatic NAV ownership.
             await updateAssetNav.mutateAsync({
               id: utStatementMatchedPosition.assetId,
               data: {

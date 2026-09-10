@@ -95,6 +95,10 @@ Yahoo search IP-filters by region; `YahooFinanceProvider.search()` falls back to
 
 `POST /assets/parse-unit-trust-statement`: `pdf-parse` text → first successful broker parser in `src/services/statementParsers/` (deterministic ISIN/value anchors). Brokers: **UOB Kay Hian**, **FSMOne/iFAST**. `statementMatching.ts`: ISIN → provider symbol → exact symbol → exact name; broker storage breaks ties. New broker: add parser + append to `routes/assets.ts` `parsers`; update error string + broker→`storageLocation` map; keep `statementMatching.test.ts` coverage.
 
+### Daily Unit-Trust NAVs
+
+Manager NAVs: startup + hourly minute 5. Native NAV is authoritative; valuation and check dates differ. NAV/history/positions and FX revaluations are atomic. Imports preserve automatic ownership. Details: [NAV runbook](docs/solutions/2026-09-10-daily-unit-trust-nav.md).
+
 ### CoinGecko Rate Limiting
 
 Queue-based: 2.1s between calls, 30s in-memory cache, batch up to 50 coins.
@@ -181,7 +185,7 @@ iOS HIG, all pages:
 
 ### Smart Price Formatting
 
-`formatPrice()` (`lib/utils.ts`): per-unit entry/exit/current prices, not `formatCurrency(..., 0)`; decimals <$0.01→5, <$0.10→4, <$10→3, <$1,000→2, ≥$1,000→0. Totals/sizes/P&L → `formatCurrency`; cost/total amounts → `currencyDecimals(currency)` (0 JPY/KRW, else 2), not magnitude-based `priceDecimals`. Portfolio Price/Avg Cost: app currency + differing `asset.nativeCurrency` on a muted second line via `localPriceLabel()` + `/fx/rates` USD→native map. Full-opacity `text-muted-foreground` (opacity variants fail contrast at 11px). Never store native price on `Asset`; derive USD × FX.
+`formatPrice()` (`lib/utils.ts`): per-unit entry/exit/current prices, not `formatCurrency(..., 0)`; decimals <$0.01→5, <$0.10→4, <$10→3, <$1,000→2, ≥$1,000→0. Totals/sizes/P&L → `formatCurrency`; cost/total amounts → `currencyDecimals(currency)` (0 JPY/KRW, else 2), not magnitude-based `priceDecimals`. Portfolio Price/Avg Cost: app currency + differing `asset.nativeCurrency` on a muted second line via `localPriceLabel()` + `/fx/rates` USD→native map. Full-opacity `text-muted-foreground` (opacity variants fail contrast at 11px). For daily unit trusts use authoritative `currentPriceNative` (4 decimals); other assets derive USD × FX.
 
 ### Smart Quantity Formatting
 

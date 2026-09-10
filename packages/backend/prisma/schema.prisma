@@ -46,6 +46,13 @@ model Asset {
   category        String            @default("LIQUID_CRYPTO")
   currentPriceUsd Float?
   priceUpdatedAt  DateTime?
+  // Unit-trust quote currency is authoritative; USD is revalued when FX changes.
+  currentPriceNative Float?
+  priceAsOf       DateTime?
+  priceSource     String?
+  priceCheckedAt  DateTime?
+  priceCheckStatus String?
+  priceFxRateToUsd Float?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   positions       Position[]
@@ -71,7 +78,7 @@ model PriceHistory {
   updatedBy      String?
   timestamp      DateTime @default(now())
 
-  @@unique([assetId, timestamp])
+  @@unique([assetId, timestamp, source])
   @@index([assetId, timestamp])
 }
 

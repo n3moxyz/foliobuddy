@@ -5,6 +5,7 @@ import { createTestApp } from '../helpers/createTestApp.js';
 const mockPrisma = {
   asset: {
     findUnique: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
     findFirst: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
@@ -12,7 +13,8 @@ const mockPrisma = {
     delete: vi.fn(),
   },
   fxRate: { findUnique: vi.fn() },
-  position: { findFirst: vi.fn(), findMany: vi.fn() },
+  position: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
+  $transaction: vi.fn(async (work) => work(mockPrisma)),
   priceHistory: {
     create: vi.fn(),
     upsert: vi.fn(),
@@ -44,6 +46,33 @@ vi.mock('../../lib/logger.js', () => ({
 const { default: assetsRouter } = await import('../../routes/assets.js');
 const app = createTestApp(assetsRouter, '/api/assets');
 
+it('rejects import-time changes to currency or provider identity after a native NAV is established', async () => {
+  mockPrisma.asset.findFirst.mockResolvedValue(
+    mockManualAsset({ nativeCurrency: 'SGD', currentPriceNative: 1.2345 })
+  );
+  const response = await request(app).post('/api/assets/from-provider').send({
+    provider: 'manual',
+    providerAssetId: 'ut-test',
+    symbol: 'UTTEST',
+    name: 'Unit Trust Test',
+    category: 'UNIT_TRUST',
+    nativeCurrency: 'EUR',
+  });
+  expect(response.status).toBe(409);
+  expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+});
+
+it('rejects future manual NAV dates with a useful validation response', async () => {
+  mockPrisma.asset.findUnique.mockResolvedValue(mockManualAsset());
+  mockPrisma.position.findFirst.mockResolvedValue({ id: 'position-1' });
+  const response = await request(app)
+    .patch('/api/assets/asset-1/nav')
+    .send({ navPrice: 1.2, asOfDate: '2099-01-01T00:00:00Z' });
+  expect(response.status).toBe(400);
+  expect(response.body.error).toContain('NAV date');
+  expect(mockPrisma.priceHistory.upsert).not.toHaveBeenCalled();
+});
+
 function mockManualAsset(overrides: Record<string, unknown> = {}) {
   return {
     id: 'asset-1',
@@ -69,6 +98,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.ADMIN_USER_IDS;
   mockPriceService.updatePositionValues.mockResolvedValue(undefined);
+  mockPrisma.asset.findUniqueOrThrow.mockImplementation((args) =>
+    mockPrisma.asset.findUnique(args)
+  );
+  mockPrisma.position.findMany.mockResolvedValue([
+    { id: 'position-1', quantity: 10, avgCostUsd: 1 },
+  ]);
 });
 
 describe('POST /api/assets', () => {
@@ -268,7 +303,7 @@ describe('PATCH /api/assets/:id/nav', () => {
 
     expect(res.status).toBe(200);
     expect(mockPrisma.priceHistory.upsert).toHaveBeenCalledWith({
-      where: { assetId_timestamp: { assetId: 'asset-1', timestamp } },
+      where: { assetId_timestamp_source: { assetId: 'asset-1', timestamp, source: 'manual' } },
       update: expect.objectContaining({
         priceUsd: 1.25,
         nativePrice: 1.25,
@@ -284,9 +319,17 @@ describe('PATCH /api/assets/:id/nav', () => {
     });
     expect(mockPrisma.asset.update).toHaveBeenCalledWith({
       where: { id: 'asset-1' },
-      data: { currentPriceUsd: 1.25, priceUpdatedAt: timestamp },
+      data: expect.objectContaining({
+        currentPriceUsd: 1.25,
+        priceUpdatedAt: timestamp,
+        priceAsOf: timestamp,
+        currentPriceNative: 1.25,
+      }),
     });
-    expect(mockPriceService.updatePositionValues).toHaveBeenCalledWith(['asset-1']);
+    expect(mockPrisma.position.update).toHaveBeenCalledWith({
+      where: { id: 'position-1' },
+      data: { marketValueUsd: 12.5, unrealizedPnL: 2.5, unrealizedPnLPct: 25 },
+    });
   });
 
   it('does not regress the current asset price when backfilling an older NAV', async () => {
@@ -305,7 +348,11 @@ describe('PATCH /api/assets/:id/nav', () => {
     };
 
     mockPrisma.asset.findUnique.mockResolvedValue(
-      mockManualAsset({ currentPriceUsd: 1.4, priceUpdatedAt: latestTimestamp })
+      mockManualAsset({
+        currentPriceUsd: 1.4,
+        priceUpdatedAt: latestTimestamp,
+        priceAsOf: latestTimestamp,
+      })
     );
     mockPrisma.position.findFirst.mockResolvedValue({ id: 'position-1' });
     mockPrisma.priceHistory.upsert.mockResolvedValue({
@@ -325,9 +372,7 @@ describe('PATCH /api/assets/:id/nav', () => {
       .send({ navPrice: 1.1, asOfDate: olderTimestamp.toISOString() });
 
     expect(res.status).toBe(200);
-    expect(mockPrisma.asset.update).toHaveBeenCalledWith({
-      where: { id: 'asset-1' },
-      data: { currentPriceUsd: 1.4, priceUpdatedAt: latestTimestamp },
-    });
+    expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+    expect(res.body.currentPriceUsd).toBe(1.4);
   });
 });

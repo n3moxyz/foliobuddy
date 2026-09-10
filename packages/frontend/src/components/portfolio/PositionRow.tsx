@@ -13,7 +13,12 @@ import {
 } from '@/lib/utils';
 import { Pencil, Trash2, Copy, Check, RefreshCw, Eye } from 'lucide-react';
 import type { Position } from '@/lib/types';
-import { localPriceLabel, type UsdFxRatesByCurrency } from './positionPriceDisplay';
+import {
+  localPriceLabel,
+  displayedAssetPrice,
+  type UsdFxRatesByCurrency,
+} from './positionPriceDisplay';
+import { NavStatus } from './NavStatus';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
@@ -97,13 +102,14 @@ export const PositionRow = React.memo(function PositionRow({
   const isStable = isStablecoinCategory(position.asset.category);
   const isManual = position.asset.priceProvider === 'manual';
   const isUnitTrust = position.asset.category === 'UNIT_TRUST';
-  const shouldShowNavAge = isUnitTrust || (isManual && !isStable);
+  const shouldShowNavAge = !isUnitTrust && isManual && !isStable;
   const ageInfo = shouldShowNavAge ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
   const assetNameLabel = isStable ? 'Cash' : position.asset.name;
   const priceUpdatedTitle = position.asset.priceUpdatedAt
     ? `NAV updated ${formatDateTime(position.asset.priceUpdatedAt)}`
     : 'NAV never set';
   const localCurrentPrice = localPriceLabel({
+    nativePrice: isUnitTrust ? position.asset.currentPriceNative : null,
     usdPrice: position.asset.currentPriceUsd,
     nativeCurrency: position.asset.nativeCurrency,
     displayCurrency: currency,
@@ -144,6 +150,7 @@ export const PositionRow = React.memo(function PositionRow({
             {showUnitTrustBadge && isUnitTrust && <UnitTrustBadge />}
           </div>
           <p className="text-xs text-muted-foreground truncate">{assetNameLabel}</p>
+          <NavStatus asset={position.asset} />
           {ageInfo && (
             <p
               className={`text-xs ${priceAgeClass(ageInfo.severity)} truncate`}
@@ -175,9 +182,9 @@ export const PositionRow = React.memo(function PositionRow({
       <TableCell className={`text-right font-mono text-sm text-muted-foreground ${HIDDEN_MOBILE}`}>
         <p>
           {formatCurrency(
-            convert(position.asset.currentPriceUsd),
+            displayedAssetPrice(position.asset, currency, fxRate),
             currency,
-            getSmartDecimals(convert(position.asset.currentPriceUsd))
+            isUnitTrust ? 4 : getSmartDecimals(convert(position.asset.currentPriceUsd))
           )}
         </p>
         {localCurrentPrice && (

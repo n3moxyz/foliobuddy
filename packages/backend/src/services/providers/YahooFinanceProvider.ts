@@ -151,6 +151,7 @@ type YahooQuoteLike = {
   symbol?: string;
   quoteType?: string;
   regularMarketPrice?: number;
+  regularMarketTime?: Date | string | number;
   currency?: string;
   longName?: string;
   shortName?: string;
@@ -308,6 +309,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
         if (!symbol || item.regularMarketPrice === undefined) continue;
         const currency = item.currency?.toUpperCase() ?? 'USD';
         const nativePrice = item.regularMarketPrice;
+        if (!Number.isFinite(nativePrice) || nativePrice <= 0) continue;
         const priceUsd = this.toUsd(nativePrice, currency, usdRates);
         if (priceUsd === null) {
           logger.warn(`[Yahoo] Skipping ${symbol}: unsupported currency ${currency}`);
@@ -319,6 +321,11 @@ export class YahooFinanceProvider implements AssetPriceProvider {
           nativePrice,
           nativeCurrency: currency,
           fxRateToUsd,
+          asOf: (() => {
+            const iso = newsTimestampToIso(item.regularMarketTime);
+            const date = iso ? new Date(iso) : null;
+            return date && date.getTime() <= Date.now() ? date : null;
+          })(),
         };
         prices.set(symbol, entry);
         this.priceCache.set(symbol, entry);

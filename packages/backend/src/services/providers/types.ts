@@ -1,10 +1,12 @@
-export type ProviderName = 'coingecko' | 'yahoo' | 'manual';
+export type ProviderName = 'coingecko' | 'yahoo' | 'manual' | 'fund-manager';
 
 export interface ProviderPrice {
   priceUsd: number;
   nativePrice?: number | null;
   nativeCurrency?: string | null;
   fxRateToUsd?: number | null;
+  asOf?: Date | null;
+  isin?: string;
 }
 
 export interface ProviderSearchResult {

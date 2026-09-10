@@ -263,7 +263,7 @@ describe('demo mode API mock', () => {
     const updatedAsset = await readJson<{ id: string; currentPriceUsd: number }>(
       await demoRequest(`/assets/${unitTrustPosition!.assetId}/nav`, 'PATCH', {
         navPrice: 2,
-        asOfDate: '2026-06-10',
+        asOfDate: new Date().toISOString(),
       })
     );
     expect(updatedAsset.currentPriceUsd).toBeGreaterThan(0);
@@ -276,6 +276,39 @@ describe('demo mode API mock', () => {
     );
 
     expect(updatedPosition?.marketValueUsd).not.toBe(unitTrustPosition!.marketValueUsd);
+  });
+
+  it('retains automatic NAV ownership and date across statement re-import and same-day checks', async () => {
+    const input = {
+      symbol: 'AMOVASIN',
+      name: 'Amova Singapore Equity SGD',
+      isin: 'SG9999004360',
+      nativeCurrency: 'SGD',
+      initialNav: 5.3036,
+      navAsOfDate: '2026-04-30T00:00:00Z',
+    };
+    const asset = await readJson<Position['asset']>(
+      await demoRequest('/assets/unit-trust', 'POST', input)
+    );
+    expect(asset.currentPriceNative).toBe(6.0462);
+    expect(asset.priceProvider).toBe('fund-manager');
+    const imported = await readJson<Position['asset']>(
+      await demoRequest(`/assets/${asset.id}/nav`, 'PATCH', {
+        navPrice: 4,
+        asOfDate: input.navAsOfDate,
+      })
+    );
+    expect(imported.currentPriceNative).toBe(asset.currentPriceNative);
+    const reimport = await readJson<Position['asset']>(
+      await demoRequest('/assets/unit-trust', 'POST', input)
+    );
+    expect(reimport.priceProvider).toBe('fund-manager');
+    const refreshed = await readJson<Position['asset']>(
+      await demoRequest(`/assets/${asset.id}/refresh-price`, 'POST')
+    );
+    expect(refreshed.priceAsOf).toBe(asset.priceAsOf);
+    expect(refreshed.currentPriceNative).toBe(asset.currentPriceNative);
+    expect(refreshed.priceCheckedAt).toBeTruthy();
   });
 
   it('reduces a position with proceeds into a linked cash pile, then restores both sides on cancel', async () => {

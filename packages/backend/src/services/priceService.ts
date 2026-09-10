@@ -3,6 +3,8 @@ import { logger } from '../lib/logger.js';
 import { CoinGeckoProvider, type ExchangeRates } from './providers/CoinGeckoProvider.js';
 import { YahooFinanceProvider } from './providers/YahooFinanceProvider.js';
 import { ManualProvider } from './providers/ManualProvider.js';
+import { FundManagerProvider } from './providers/FundManagerProvider.js';
+import { saveAutomaticNav, recordNavFailure } from './unitTrustNavService.js';
 import type {
   AssetPriceProvider,
   ProviderHistoricalPoint,
@@ -27,6 +29,7 @@ class PriceService {
     coingecko: this.coingecko,
     yahoo: this.yahoo,
     manual: this.manual,
+    'fund-manager': new FundManagerProvider(),
   };
 
   getProvider(name: ProviderName): AssetPriceProvider {
@@ -154,12 +157,17 @@ class PriceService {
         timestamp: true,
         priceUsd: true,
         nativePrice: true,
+        source: true,
       },
     });
 
     const latestRowByDay = new Map<string, (typeof rows)[number]>();
     for (const row of rows) {
-      latestRowByDay.set(row.timestamp.toISOString().slice(0, 10), row);
+      const day = row.timestamp.toISOString().slice(0, 10);
+      const previous = latestRowByDay.get(day);
+      if (!previous || row.source === providerName || previous.source !== providerName) {
+        latestRowByDay.set(day, row);
+      }
     }
 
     return Array.from(latestRowByDay.values()).map((row) => ({
@@ -174,6 +182,7 @@ class PriceService {
     const assets = await prisma.asset.findMany({
       where: {
         ...whereClause,
+        ...(providerFilter ? {} : { priceProvider: { not: 'manual' } }),
         providerAssetId: { not: null },
       },
       select: {
@@ -181,6 +190,7 @@ class PriceService {
         priceProvider: true,
         providerAssetId: true,
         currentPriceUsd: true,
+        category: true,
       },
     });
 
@@ -192,6 +202,8 @@ class PriceService {
     for (const asset of assets) {
       const name = asset.priceProvider as ProviderName;
       if (!this.providers[name]) continue;
+      // Reading a stored manual NAV is not a successful external price check.
+      if (name === 'manual') continue;
       if (!byProvider.has(name)) byProvider.set(name, []);
       byProvider.get(name)!.push(asset);
     }
@@ -214,6 +226,9 @@ class PriceService {
       } catch (error) {
         logger.error(`[Price Refresh] ${providerName} batch failed:`, error);
         errors += providerAssets.length;
+        for (const asset of providerAssets.filter((asset) => asset.category === 'UNIT_TRUST')) {
+          await recordNavFailure(asset.id, now, error);
+        }
         continue;
       }
 
@@ -232,6 +247,23 @@ class PriceService {
         const price = priceMap.get(asset.providerAssetId);
         if (!price) {
           errors++;
+          if (asset.category === 'UNIT_TRUST')
+            await recordNavFailure(asset.id, now, 'No valid quote returned');
+          continue;
+        }
+        if (asset.category === 'UNIT_TRUST') {
+          try {
+            await saveAutomaticNav(asset.id, price, providerName, now);
+            updated++;
+            changedAssetIds.push(asset.id); // Includes changed check status/date.
+          } catch (error) {
+            errors++;
+            await recordNavFailure(asset.id, now, error);
+          }
+          continue;
+        }
+        if (!Number.isFinite(price.priceUsd) || price.priceUsd <= 0) {
+          errors++;
           continue;
         }
         assetUpdates.push(
@@ -240,6 +272,9 @@ class PriceService {
             data: {
               currentPriceUsd: price.priceUsd,
               priceUpdatedAt: now,
+              priceAsOf: price.asOf ?? null,
+              priceCheckedAt: now,
+              priceCheckStatus: 'ok',
               ...(price.nativeCurrency ? { nativeCurrency: price.nativeCurrency } : {}),
             },
           })
@@ -285,7 +320,12 @@ class PriceService {
   async updatePositionValues(changedAssetIds?: string[]): Promise<void> {
     if (changedAssetIds && changedAssetIds.length === 0) return;
     const positions = await prisma.position.findMany({
-      ...(changedAssetIds ? { where: { assetId: { in: changedAssetIds } } } : {}),
+      // NAV transactions already update every broker row. Rewriting them here
+      // could race a newer FX transaction and put old USD values back.
+      where: {
+        ...(changedAssetIds ? { assetId: { in: changedAssetIds } } : {}),
+        asset: { category: { not: 'UNIT_TRUST' } },
+      },
       select: {
         id: true,
         quantity: true,
@@ -307,6 +347,27 @@ class PriceService {
       });
     if (updates.length === 0) return;
     await prisma.$transaction(updates);
+  }
+
+  async refreshUnitTrust(assetId: string) {
+    const asset = await prisma.asset.findUniqueOrThrow({ where: { id: assetId } });
+    if (
+      asset.category !== 'UNIT_TRUST' ||
+      asset.priceProvider === 'manual' ||
+      !asset.providerAssetId
+    ) {
+      throw new Error('Unit trust has no automatic NAV source');
+    }
+    const checkedAt = new Date();
+    try {
+      const provider = this.getProvider(asset.priceProvider as ProviderName);
+      const quote = (await provider.getPrices([asset.providerAssetId])).get(asset.providerAssetId);
+      if (!quote) throw new Error('No valid manager NAV returned');
+      return await saveAutomaticNav(assetId, quote, asset.priceProvider, checkedAt);
+    } catch (error) {
+      await recordNavFailure(assetId, checkedAt, error);
+      throw error;
+    }
   }
 
   clearCache(): void {

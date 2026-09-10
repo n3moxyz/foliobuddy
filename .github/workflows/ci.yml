@@ -10,6 +10,19 @@ jobs:
   check:
     name: Type Check & Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: foliobuddy_nav_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - uses: actions/checkout@v7
@@ -39,6 +52,14 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Verify NAV migration and transactional valuations
+        working-directory: packages/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/foliobuddy_nav_test
+        run: |
+          npx prisma migrate deploy
+          npx tsx scripts/verify-unit-trust-nav.ts
 
       - name: Build frontend
         run: npm run build

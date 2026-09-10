@@ -113,6 +113,7 @@ export const CATEGORIES_IN_GROUP: Record<CategoryGroup, AssetCategory[]> = {
 };
 
 export const PriceProvider = {
+  FUND_MANAGER: 'fund-manager',
   COINGECKO: 'coingecko',
   YAHOO: 'yahoo',
   MANUAL: 'manual',
@@ -120,6 +121,7 @@ export const PriceProvider = {
 export type PriceProvider = (typeof PriceProvider)[keyof typeof PriceProvider];
 
 export const PriceSource = {
+  FUND_MANAGER: 'fund-manager',
   COINGECKO: 'coingecko',
   YAHOO: 'yahoo',
   MANUAL: 'manual',
@@ -279,6 +281,12 @@ export interface Asset {
   category: AssetCategory;
   currentPriceUsd: number | null;
   priceUpdatedAt: string | null;
+  currentPriceNative?: number | null;
+  priceAsOf?: string | null;
+  priceSource?: string | null;
+  priceCheckedAt?: string | null;
+  priceCheckStatus?: 'pending' | 'ok' | 'error' | null;
+  priceFxRateToUsd?: number | null;
 }
 
 export interface Position {

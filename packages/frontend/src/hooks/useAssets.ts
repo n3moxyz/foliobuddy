@@ -95,7 +95,7 @@ export function useRefreshAssetPrice() {
 
   return useMutation({
     mutationFn: (id: string) => api.refreshAssetPrice(id),
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['positions'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });

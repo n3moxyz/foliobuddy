@@ -63,6 +63,8 @@ export function useWebSocket(): UseWebSocketReturn {
         queryClient.invalidateQueries({ queryKey: ['portfolio'] });
         queryClient.invalidateQueries({ queryKey: ['positions'] });
         queryClient.invalidateQueries({ queryKey: ['prices'] });
+        queryClient.invalidateQueries({ queryKey: ['fx'] });
+        queryClient.invalidateQueries({ queryKey: ['assets'] });
       });
 
       socket.on('portfolio:updated', (data: PortfolioUpdate) => {

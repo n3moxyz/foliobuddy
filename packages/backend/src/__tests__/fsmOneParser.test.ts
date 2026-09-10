@@ -70,7 +70,7 @@ describe('parseFsmOneStatement', () => {
     const h = result.holdings[0];
     expect(h.name).toBe('Amova Singapore Equity SGD (formerly Nikko AM)');
     expect(h.symbol).toBe('AMOVASIN');
-    expect(h.isin).toBe('');
+    expect(h.isin).toBe('SG9999004360');
     expect(h.nativeCurrency).toBe('SGD');
     expect(h.units).toBeCloseTo(18988.66, 2);
     expect(h.avgCostNative).toBeCloseTo(5.2663, 4);
@@ -81,5 +81,10 @@ describe('parseFsmOneStatement', () => {
     expect(h.currentValueNative).toBeCloseTo(100708.27, 0);
     // P&L SGD-equivalent matches because the fund is SGD-denominated
     expect(h.gainLossNative).toBeCloseTo(708.26, 2);
+  });
+
+  it('does not map a different Amova share class by a similar name', () => {
+    const result = parseFsmOneStatement(SAMPLE.replace('Equity SGD', 'Equity SGD Class A'));
+    expect(result.holdings[0].isin).toBe('');
   });
 });
