@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Position } from '@/lib/types';
 import Portfolio from '../Portfolio';
@@ -7,6 +7,12 @@ import Portfolio from '../Portfolio';
 const perpMocks = vi.hoisted(() => ({
   exposure: 0,
   save: vi.fn(() => true),
+}));
+
+const navMocks = vi.hoisted(() => ({
+  positions: undefined as Position[] | undefined,
+  refresh: vi.fn(),
+  update: vi.fn(),
 }));
 
 const positions = [
@@ -67,7 +73,7 @@ const positions = [
 ] as Position[];
 
 vi.mock('@/hooks/usePortfolio', () => ({
-  usePositions: () => ({ data: positions, isLoading: false }),
+  usePositions: () => ({ data: navMocks.positions ?? positions, isLoading: false }),
   usePortfolioSummary: () => ({ data: undefined }),
   useFxRates: () => ({ data: [] }),
   useDrawdownStats: () => ({
@@ -95,12 +101,14 @@ vi.mock('@/components/portfolio/PositionTable', () => ({
     groupBy,
     mobileVariant,
     showMobileColumnToggle,
+    onUpdateNav,
   }: {
     positions: Position[];
     sectionPrefix: string;
     groupBy: string;
     mobileVariant?: string;
     showMobileColumnToggle?: boolean;
+    onUpdateNav?: (position: Position) => void;
   }) => (
     <div
       data-testid={`position-table-${sectionPrefix}`}
@@ -109,6 +117,12 @@ vi.mock('@/components/portfolio/PositionTable', () => ({
       data-mobile-column-toggle={String(showMobileColumnToggle)}
     >
       {tablePositions.map((position) => position.asset.symbol).join(',')}
+      {onUpdateNav &&
+        tablePositions.map((position) => (
+          <button key={position.id} onClick={() => onUpdateNav(position)}>
+            Update NAV {position.asset.symbol}
+          </button>
+        ))}
     </div>
   ),
 }));
@@ -135,14 +149,49 @@ vi.mock('@/components/portfolio/PositionForm', () => ({
   PositionForm: () => null,
 }));
 
-vi.mock('@/components/portfolio/UpdateNavModal', () => ({
-  UpdateNavModal: () => null,
+vi.mock('@/hooks/useAssets', () => ({
+  useUpdateAssetNav: () => ({ mutateAsync: navMocks.update, isPending: false }),
+  useRefreshAssetPrice: () => ({ mutateAsync: navMocks.refresh, isPending: false }),
 }));
+
+function navPosition(id: string, provider: 'fund-manager' | 'manual'): Position {
+  return {
+    ...positions[1],
+    id: `${id}-position`,
+    assetId: id,
+    asset: {
+      ...positions[1].asset,
+      id,
+      symbol: id,
+      name: id,
+      category: 'UNIT_TRUST',
+      priceProvider: provider,
+      nativeCurrency: 'SGD',
+      currentPriceNative: 6.0462,
+      currentPriceUsd: 4.8,
+      priceAsOf: '2026-09-09T00:00:00Z',
+      priceCheckedAt: '2026-09-10T12:00:00Z',
+      priceCheckStatus: 'ok',
+    },
+  };
+}
+
+function openNav(symbol = 'AMOVA') {
+  fireEvent.click(
+    within(screen.getByTestId('position-table-mobile-equities')).getByRole('button', {
+      name: `Update NAV ${symbol}`,
+    })
+  );
+  return screen.getByRole('dialog');
+}
 
 describe('Portfolio responsive grouping', () => {
   beforeEach(() => {
     perpMocks.exposure = 0;
     perpMocks.save.mockClear();
+    navMocks.positions = undefined;
+    navMocks.refresh.mockReset();
+    navMocks.update.mockReset();
   });
 
   it('keeps desktop asset categories on mobile while using compact rows', () => {
@@ -196,5 +245,75 @@ describe('Portfolio responsive grouping', () => {
 
     expect(perpMocks.save).toHaveBeenCalledTimes(1);
     expect(perpMocks.save).toHaveBeenCalledWith(350_000);
+  });
+
+  it('updates the open NAV dialog from refreshed positions without losing statement input', async () => {
+    navMocks.positions = [navPosition('AMOVA', 'fund-manager')];
+    navMocks.refresh.mockRejectedValue(new Error('NAV refresh failed; last value retained'));
+    const view = render(<Portfolio />);
+    const dialog = openNav();
+    const checkedBefore = within(dialog).getByText(/Last checked/).textContent;
+    fireEvent.change(within(dialog).getByLabelText('NAV (SGD)'), { target: { value: '5.5' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check latest NAV' }));
+    await within(dialog).findByText('NAV refresh failed; last value retained');
+
+    navMocks.positions = navMocks.positions.map((position) => ({
+      ...position,
+      asset: {
+        ...position.asset,
+        priceCheckStatus: 'error',
+        priceCheckedAt: '2026-09-10T14:00:00Z',
+      },
+    }));
+    view.rerender(<Portfolio />);
+
+    expect(within(dialog).getByText('Refresh failed · last known NAV')).toBeInTheDocument();
+    expect(within(dialog).getByText(/Last checked/).textContent).not.toBe(checkedBefore);
+    expect(within(dialog).getByText('Published NAV: S$6.0462')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('NAV (SGD)')).toHaveValue('5.5');
+  });
+
+  it('clears old errors and statement input when reopening or selecting another fund', async () => {
+    navMocks.positions = [navPosition('AMOVA', 'fund-manager'), navPosition('MANUAL', 'manual')];
+    navMocks.refresh.mockRejectedValue(new Error('AMOVA refresh failed'));
+    render(<Portfolio />);
+    let dialog = openNav();
+    fireEvent.change(within(dialog).getByLabelText('NAV (SGD)'), { target: { value: '5.5' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check latest NAV' }));
+    await within(dialog).findByText('AMOVA refresh failed');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    dialog = openNav();
+    expect(within(dialog).queryByText('AMOVA refresh failed')).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText('NAV (SGD)')).toHaveValue('');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    dialog = openNav('MANUAL');
+    expect(within(dialog).queryByText('AMOVA refresh failed')).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText('NAV (SGD)')).toHaveValue('');
+    expect(
+      within(dialog).queryByRole('button', { name: 'Check latest NAV' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('clears the prior local error when a NAV check is retried', async () => {
+    navMocks.positions = [navPosition('AMOVA', 'fund-manager')];
+    navMocks.refresh.mockRejectedValueOnce(new Error('AMOVA refresh failed'));
+    render(<Portfolio />);
+    const dialog = openNav();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check latest NAV' }));
+    await within(dialog).findByText('AMOVA refresh failed');
+
+    let finishCheck!: () => void;
+    navMocks.refresh.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishCheck = resolve;
+        })
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check latest NAV' }));
+    expect(within(dialog).queryByText('AMOVA refresh failed')).not.toBeInTheDocument();
+    await act(async () => finishCheck());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

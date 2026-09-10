@@ -76,6 +76,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
           <Button
             disabled={refreshPrice.isPending}
             onClick={async () => {
+              setError(null);
               try {
                 await refreshPrice.mutateAsync(asset.id);
                 toast.success('Latest published NAV checked');

@@ -104,7 +104,11 @@ gives runtime failure evidence without changing or relying on broken public
 manager endpoints.
 
 Review regressions cover legacy intraday timestamps, same-day source precedence,
-failed-check cache invalidation, initial-save atomicity and open-detail updates.
+failed-check cache invalidation, initial-save atomicity and open-dialog updates.
+The NAV dialog resolves its selected asset ID from current positions, so a failed
+check updates its status and timestamp while preserving unsaved statement input.
+Closing the dialog resets its local inputs and errors; another fund cannot inherit
+the previous fund's failed-check message.
 FX invalidation is published after every successful FX transaction. Generic
 position recalculation excludes unit trusts, whose valuation is owned by the
 NAV transaction, so it cannot overwrite a concurrent FX revaluation.
