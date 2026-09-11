@@ -239,7 +239,7 @@ Former Stables category is now **Cash**. `PositionForm.tsx` Cash shows a **Type*
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
-Create-only sub-type toggle (edit infers category; enums unchanged); `equityMode`/`category`/`priceProvider`: **Stock/ETF** `single`/`EQUITY`/`yahoo` (ETFs here, not UT), **Unit Trust** `fund`/`UNIT_TRUST`/`manual`|`yahoo`.
+Create-only sub-type toggle (edit infers category). Provider contract: **Stock/ETF** = `single`/`EQUITY`/`yahoo`; **Unit Trust** = `fund`/`UNIT_TRUST`/`manual`|`yahoo`|`fund-manager` (configured automatic NAV).
 
 - **Form:** creatable broker, `storageType='BROKERAGE'`; cost currency = `asset.nativeCurrency` (SGD/JPY/TWD/KRW/NOK inputs, stored USD). Non-USD cost basis MUST await real `/fx/rates` (or SGD summary rate); fallback FX display-only. Edit USD→local via `costInitialized`.
 - **Display:** default `groupBy='broker'`; header toggles `equityType`, persisted `foliobuddy-equity-group-by`. UT: `Unit Trust` badge + `NavStatus` (`priceAsOf` age, failed-check line); manual-priced non-UT non-cash: `priceAgeClass` age (muted <7d, amber 7–30d, red ≥30d/null).
