@@ -242,6 +242,12 @@ export function PositionDeltaEditor({
               {preview.nextTotalCost.toFixed(0)}
             </div>
           </div>
+          {preview.nextQuantity === 0 && (
+            <p className="mt-2 text-xs text-warning">
+              Reducing to zero closes the position: it is removed from your portfolio along with its
+              history.
+            </p>
+          )}
         </div>
       )}
 

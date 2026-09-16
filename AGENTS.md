@@ -250,13 +250,13 @@ Create-only sub-type toggle (edit infers category). Provider contract: **Stock/E
 
 `PositionForm.tsx`: `Edit Totals` (corrections) + `Add/Reduce Position` tabs.
 
-- `Add`: extra quantity + required total/avg cost → weighted avg. `Reduce`: quantity + same pair as optional sale proceeds (`Total Proceeds`/`Avg Price`); basis removed at current avg, avg unchanged unless zero quantity; proceeds never alter avg/basis.
-- Optional `Fund From` (Add: debit pile, balance ≥ cost) / `Fund To` (Reduce: credit proceeds >0, empty piles allowed). Switching Add/Reduce clears amounts + pile; direction-aware confirmation.
-- Persist custody changes from either tab. Old/New preview: quantity, avg cost, total cost. Preview + submit share `applyPositionDelta()`; never hand-roll basis math. UI `PositionDeltaEditor.tsx`, math `positionFormMath.ts`, submit `PositionForm.tsx`.
+- `Add`: extra quantity + required total/avg cost → weighted avg. `Reduce`: quantity + same pair as optional sale proceeds (`Total Proceeds`/`Avg Price`); basis removed at current avg; proceeds never alter avg/basis. Quantity 0 deletes the position (history cascades, cash row stays; preview warns).
+- Optional `Fund From` (Add: debit pile, balance ≥ cost) / `Fund To` (Reduce: credit proceeds >0, empty piles allowed). Tab switch clears amounts + pile; direction-aware confirmation.
+- Persist custody changes from either tab. Old/New preview (qty, avg, total cost). Preview + submit share `applyPositionDelta()`; never hand-roll basis math. UI `PositionDeltaEditor.tsx`, math `positionFormMath.ts`, submit `PositionForm.tsx`.
 
 ### Position Add/Reduce History
 
-`PUT /positions/:id` + `positionDelta` writes `PositionHistory`; validate next quantity/basis against delta, update position + history in one `Serializable` transaction (read pile inside; P2034 → 409 retry). `fundingCashPositionId` needs `positionDelta`, never custody rows (hide picker). Funded add ↔ cash `reduce`; reduce-only `positionDelta.proceedsUsd` → `PositionHistory.proceedsUsd` (>0 with pile) ↔ cash `add` (quantity = proceeds ÷ pile USD price, basis = proceeds). Shared `operationId`: cancel restores both. Proceeds ledger: `Sold for … · Realized …`. `Edit Totals`: `mode='reset'`, collapse old rows, never delete history. `DELETE .../history/:historyId`: only newest add/reduce, totals must match. Demo `/dev/demo/portfolio` mirrors; story: FORET.md.
+`PUT /positions/:id` + `positionDelta` writes `PositionHistory`; validate next quantity/basis against delta, update position + history in one `Serializable` transaction (pile read inside; P2034 → 409). `fundingCashPositionId` needs `positionDelta`, never custody rows (hide picker). Funded add ↔ cash `reduce`; reduce-only `positionDelta.proceedsUsd` → `PositionHistory.proceedsUsd` (>0 with pile) ↔ cash `add` (quantity = proceeds ÷ pile USD price, basis = proceeds). Shared `operationId`: cancel restores both. Proceeds ledger: `Sold for … · Realized …`. `Edit Totals`: `mode='reset'`, collapse old rows, never delete history. `DELETE .../history/:historyId`: only newest add/reduce, totals must match. Demo mirrors; story: FORET.md.
 
 ### Global Value Privacy
 
