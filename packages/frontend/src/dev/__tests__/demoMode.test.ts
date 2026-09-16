@@ -371,6 +371,32 @@ describe('demo mode API mock', () => {
     expect(cashHistoryAfterCancel).toHaveLength(cashHistoryAfterReduce.length - 1);
   });
 
+  it('removes a position (and its history) when a reduce lands on zero, keeping the cash deposit', async () => {
+    const { target, cashPile } = await findSeedPositions();
+    const proceedsUsd = 12_345;
+    const cashPriceUsd = cashPile.asset.currentPriceUsd ?? cashPile.avgCostUsd;
+
+    const closed = await readJson<Position>(
+      await demoRequest(`/positions/${target.id}`, 'PUT', {
+        quantity: 0,
+        avgCostUsd: 0,
+        fundingCashPositionId: cashPile.id,
+        positionDelta: { mode: 'reduce', quantity: target.quantity, proceedsUsd },
+      })
+    );
+    expect(closed.quantity).toBe(0);
+
+    const positionsAfter = await seedPositions();
+    expect(positionsAfter.some((position) => position.id === target.id)).toBe(false);
+    const cashAfter = positionsAfter.find((position) => position.id === cashPile.id);
+    expect(cashAfter?.quantity).toBe(cashPile.quantity + proceedsUsd / cashPriceUsd);
+
+    expect(await positionHistoryFor(target.id)).toHaveLength(0);
+    const cashHistory = await positionHistoryFor(cashPile.id);
+    expect(cashHistory[0].mode).toBe('add');
+    expect(cashHistory[0].costBasisUsd).toBe(proceedsUsd);
+  });
+
   it('records sale proceeds on the history row without touching cash when no pile is linked', async () => {
     const { target, cashPile } = await findSeedPositions();
     const reduceQuantity = 0.3;

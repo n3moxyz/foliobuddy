@@ -1040,6 +1040,13 @@ router.put('/:id', async (req, res, next) => {
           });
         }
 
+        // An explicit quantity of 0 (a full reduce) closes the position: the row
+        // goes away instead of lingering at $0, and its history cascades with it.
+        // The linked cash side above is already written and stays.
+        if (positionData.quantity !== undefined && numbersClose(updatedPosition.quantity, 0)) {
+          await tx.position.deleteMany({ where: { id: existing.id, userId: req.userId! } });
+        }
+
         return updatedPosition;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }

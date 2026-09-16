@@ -1666,6 +1666,13 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
     }
   }
 
+  // Mirrors the backend: an explicit quantity of 0 closes the position and its
+  // history goes with it (Prisma cascade), while the linked cash side stays.
+  if (data.quantity !== undefined && updated.quantity === 0) {
+    demoPositions = demoPositions.filter((position) => position.id !== id);
+    demoPositionHistory = demoPositionHistory.filter((entry) => entry.positionId !== id);
+  }
+
   return updated;
 }
 

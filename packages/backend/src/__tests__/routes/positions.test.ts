@@ -884,6 +884,36 @@ describe('PUT /api/positions/:id', () => {
         nextTotalCostUsd: 0,
       }),
     });
+    // Landing on zero closes the position: the row is deleted (history cascades).
+    expect(mockPrisma.position.deleteMany).toHaveBeenCalledWith({
+      where: { id: 'position-1', userId: 'test-user-id' },
+    });
+  });
+
+  it('keeps the position when a reduce leaves quantity above zero', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        id: 'position-1',
+        quantity: 10,
+        avgCostUsd: 100,
+        asset: mockAsset({ id: 'asset-1', currentPriceUsd: 150 }),
+      })
+    );
+    mockPrisma.position.update.mockImplementation(async ({ data }) =>
+      mockPosition({ id: 'position-1', quantity: data.quantity, avgCostUsd: data.avgCostUsd })
+    );
+    mockPrisma.positionHistory.create.mockResolvedValue({});
+
+    const res = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 4,
+        avgCostUsd: 100,
+        positionDelta: { mode: 'reduce', quantity: 6, proceedsUsd: 900 },
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.position.deleteMany).not.toHaveBeenCalled();
   });
 
   it('reduces the target and deposits sale proceeds into a linked cash pile', async () => {
