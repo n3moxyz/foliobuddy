@@ -58,6 +58,11 @@ describe('NetWorthCard', () => {
     ]);
     const rail = screen.getByRole('region', { name: 'Net worth statistics' });
     expect(rail).toHaveClass('overflow-x-auto', 'xl:overflow-visible');
+    // scroll-snap-type only takes effect on the element that scrolls, never on the grid inside it.
+    expect(rail).toHaveClass('snap-x', 'snap-proximity', 'xl:snap-none');
+    expect(rail.firstElementChild).not.toHaveClass('snap-x');
+    // Scroll padding mirrors `px-4 sm:px-0`, or the first cell snaps under the mobile gutter.
+    expect(rail).toHaveClass('px-4', 'scroll-px-4', 'sm:px-0', 'sm:scroll-px-0');
     expect(rail.firstElementChild).toHaveClass('grid-flow-col', 'xl:grid-cols-9');
     expect(within(statCells[0]).getByText('-3.14%')).toHaveClass('block', '2xl:inline');
     expect(screen.getByText('$4,656,848')).toBeInTheDocument();
