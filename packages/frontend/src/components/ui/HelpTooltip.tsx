@@ -30,13 +30,7 @@ export function HelpTooltip({ content, label }: HelpTooltipProps) {
             <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/80" />
           </button>
         </TooltipTrigger>
-        {/* TooltipContent isn't portaled, so it inherits ancestor text styles. Reset
-            white-space: under a `whitespace-nowrap` label row the text won't wrap and
-            gets clipped at max-w. */}
-        <TooltipContent
-          side="top"
-          className="max-w-[240px] whitespace-normal text-xs leading-relaxed"
-        >
+        <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">
           {content}
         </TooltipContent>
       </Tooltip>
