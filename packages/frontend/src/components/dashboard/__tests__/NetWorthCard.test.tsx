@@ -9,6 +9,9 @@ vi.mock('@/hooks/useAnimatedNumber', () => ({
     targets.map((target) => target ?? 0),
 }));
 
+// Tailwind utilities that make an element the containing block of absolutely positioned children.
+const POSITIONED_ANCESTOR = '.relative, .absolute, .fixed, .sticky';
+
 const summary: PortfolioSummary = {
   totalValueUsd: 3_936_941,
   totalValueSgd: 5_040_643,
@@ -60,6 +63,40 @@ describe('NetWorthCard', () => {
     expect(screen.getByText('$4,656,848')).toBeInTheDocument();
     expect(screen.getByText('-19.82%')).toBeInTheDocument();
     expect(screen.getByText('-15.46%')).toBeInTheDocument();
+  });
+
+  it('keeps screen-reader-only link text contained by the scroll rail', () => {
+    render(
+      <MemoryRouter>
+        <NetWorthCard
+          summary={summary}
+          currency="USD"
+          exposurePct={66.9}
+          positionCount={26}
+          closedTrades={21}
+        />
+      </MemoryRouter>
+    );
+
+    const rail = screen.getByRole('region', { name: 'Net worth statistics' });
+    const linkTexts = within(rail)
+      .getAllByRole('link')
+      .map((link) => link.textContent);
+    expect(linkTexts).toEqual([
+      '66.9% — view portfolio',
+      '26 positions — view portfolio',
+      '21 trades — view trade journal',
+    ]);
+
+    // `sr-only` is position:absolute. When its nearest positioned ancestor sits outside the rail,
+    // the rail neither clips nor scrolls it, so the whole Dashboard scrolls sideways below `xl`.
+    const hiddenTexts = Array.from(rail.querySelectorAll('.sr-only'));
+    expect(hiddenTexts).toHaveLength(3);
+    for (const hiddenText of hiddenTexts) {
+      const containingBlock =
+        hiddenText.parentElement?.closest<HTMLElement>(POSITIONED_ANCESTOR) ?? null;
+      expect(rail).toContainElement(containingBlock);
+    }
   });
 
   it('renders the alternate-currency footer', () => {

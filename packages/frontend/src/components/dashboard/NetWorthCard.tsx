@@ -71,7 +71,9 @@ function NetWorthStatCell({
         <HelpTooltip label={label} content={help} />
       </div>
       {to ? (
-        <Link to={to} className="block transition-colors hover:text-primary">
+        // `relative` keeps the absolutely positioned sr-only text inside the scroll rail; without
+        // a positioned ancestor in the rail it escapes and the whole page scrolls sideways.
+        <Link to={to} className="relative block transition-colors hover:text-primary">
           {valueContent}
           <span className="sr-only"> {linkDescription}</span>
         </Link>
