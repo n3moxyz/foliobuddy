@@ -612,6 +612,14 @@ Shell refinement: the left sidebar now has a Codex-style collapsible desktop rai
 
 ## Lessons Learned the Hard Way
 
+### The Tooltip That Inherited Its Parent's Bad Habit
+
+**The bug:** Hovering a `?` in the Dashboard's Net Worth rail showed a popup sliced mid-sentence: "Largest peak-to-trough decline in your p". Measured in the browser, the popup was 238px wide but its text wanted 379px — 141px cut off, all on one line. The popup never asked for one line. It _inherited_ it: our `TooltipContent` renders Radix's content without a `Portal`, so the popup lives in the DOM right beside its `?` button — inside the rail's label row, which is `whitespace-nowrap` so labels like "DD from ATH" never wrap in their 9rem cells. `white-space` is an inherited CSS property (like `color` or `font-size`), so it flowed down into the popup; the text refused to wrap, hit `max-w-[240px]`, and `overflow-hidden` trimmed the rest. The same `?` on the Portfolio hero always worked, because that label row has no `nowrap`. The tempting suspect, the rail's `overflow-x-auto`, was innocent: Radix positions the popup with `position: fixed`, which escapes ancestor overflow clipping.
+
+**The fix:** One class — `whitespace-normal` on `HelpTooltip`'s content, right next to the `max-w-[240px]` that depends on it. A component that declares a max width is promising to wrap, so it should say so itself rather than hope its ancestors agree. A regression test renders the tooltip under a `whitespace-nowrap` parent; it fails on the old code.
+
+**The lesson:** An un-portaled popup is a child of wherever you drop it, and children inherit: `white-space`, `font-variant-numeric`, `text-transform`, `color`. Think of a portal as moving the popup out of its parents' house — without one, it lives by the house rules. When a floating element looks wrong in only one spot, compare the _ancestors_ of the working and broken spots before touching the popup. And measure before theorizing: one DevTools snippet (`scrollWidth` vs `clientWidth`, computed `white-space`) convicted `nowrap` and cleared `overflow`. Wrapping the shared `tooltip.tsx` content in `TooltipPrimitive.Portal` (what upstream shadcn/ui does now) would close this whole class of bug, but it moves eight consumers' DOM at once, so it is a deliberate follow-up rather than a drive-by.
+
 ### Keeping Agent Guides Small Without Losing Rules
 
 The agent guides grew to 39,947 characters as features accumulated. The trim keeps commands, security rules, defaults, and gotchas in `CLAUDE.md` and its `AGENTS.md` mirror, while the full backend/frontend file map lives in [docs/CODEBASE.md](docs/CODEBASE.md). Both guides link to it and must stay under 35,000 characters. When shortening them, compare the old rules and identifiers with the new guides and linked references; a shorter paragraph is only useful if it still leads to the same action. Keep bug explanations here and operational detail in the existing runbooks.
