@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { createTestApp } from '../helpers/createTestApp.js';
+import { ETHENA_USDE, STABLECOINX, findFirstIn } from '../helpers/catalog.js';
 
 const mockPrisma = {
   asset: {
@@ -248,6 +249,184 @@ describe('asset name and symbol caps', () => {
         name: 'HarryPotterObamaSonic10Inu',
         category: 'LIQUID_CRYPTO',
       }),
+    });
+  });
+});
+
+describe('same-ticker assets across classes', () => {
+  function useCatalog(catalog: Array<Record<string, unknown>>) {
+    mockPrisma.asset.findFirst.mockImplementation(findFirstIn(catalog));
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'created', ...data }));
+    mockPrisma.asset.update.mockImplementation(async ({ where, data }) => ({
+      ...catalog.find((row) => row.id === where.id),
+      ...data,
+    }));
+  }
+
+  const addStablecoinX = () =>
+    request(app).post('/api/assets/from-provider').send({
+      provider: 'yahoo',
+      providerAssetId: 'USDE',
+      symbol: 'USDE',
+      name: 'StablecoinX Inc.',
+      category: 'EQUITY',
+      nativeCurrency: 'USD',
+      exchange: 'NasdaqCM',
+      skipPriceFetch: true,
+    });
+
+  const addEthenaUsdeCash = () =>
+    request(app).post('/api/assets/from-coingecko').send({
+      coingeckoId: 'ethena-usde',
+      symbol: 'USDe',
+      name: 'Ethena USDe',
+      category: 'STABLECOIN',
+      skipPriceFetch: true,
+    });
+
+  it('creates the StablecoinX equity instead of returning the Ethena USDe stablecoin', async () => {
+    useCatalog([ETHENA_USDE]);
+
+    const res = await addStablecoinX();
+
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ id: 'created', category: 'EQUITY', priceProvider: 'yahoo' });
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        priceProvider: 'yahoo',
+        providerAssetId: 'USDE',
+        symbol: 'USDE',
+        category: 'EQUITY',
+      }),
+    });
+  });
+
+  it('returns each USDE asset by identity once both exist, whatever the lookup order', async () => {
+    for (const catalog of [
+      [ETHENA_USDE, STABLECOINX],
+      [STABLECOINX, ETHENA_USDE],
+    ]) {
+      useCatalog(catalog);
+
+      expect((await addStablecoinX()).body.id).toBe(STABLECOINX.id);
+      expect((await addEthenaUsdeCash()).body.id).toBe(ETHENA_USDE.id);
+    }
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('creates the Ethena USDe stablecoin instead of returning the StablecoinX equity', async () => {
+    useCatalog([STABLECOINX]);
+
+    const res = await addEthenaUsdeCash();
+
+    expect(res.status).toBe(201);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        coingeckoId: 'ethena-usde',
+        symbol: 'USDE',
+        category: 'STABLECOIN',
+      }),
+    });
+  });
+
+  it('finds a CoinGecko row by providerAssetId when its coingeckoId is empty', async () => {
+    // Bulk import can write this shape; a different class, so only identity matches it.
+    const idOnlyRow = { ...ETHENA_USDE, id: 'id-only', coingeckoId: null, category: 'CASH' };
+    useCatalog([idOnlyRow]);
+
+    const res = await request(app).post('/api/assets/from-coingecko').send({
+      coingeckoId: 'ethena-usde',
+      symbol: 'USDe',
+      name: 'Ethena USDe',
+      category: 'LIQUID_CRYPTO',
+      skipPriceFetch: true,
+    });
+
+    expect(res.body.id).toBe('id-only');
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('prefers the row holding the provider pair over a legacy coingeckoId-only duplicate', async () => {
+    // Two rows for one coin: an old coingeckoId-only row (unpriceable) and the
+    // row holding (coingecko, id). Picking the old one would backfill its
+    // providerAssetId straight into the unique index.
+    const legacy = {
+      ...ETHENA_USDE,
+      id: 'legacy',
+      providerAssetId: null,
+      symbol: 'USDE-OLD',
+    };
+    const pair = { ...ETHENA_USDE, id: 'pair', coingeckoId: null };
+    useCatalog([legacy, pair]);
+
+    const viaProvider = await request(app).post('/api/assets/from-provider').send({
+      provider: 'coingecko',
+      providerAssetId: 'ethena-usde',
+      symbol: 'USDE',
+      name: 'Ethena USDe',
+      category: 'STABLECOIN',
+      skipPriceFetch: true,
+    });
+    const viaCoinGecko = await request(app).post('/api/assets/from-coingecko').send({
+      coingeckoId: 'ethena-usde',
+      symbol: 'USDe',
+      name: 'Ethena USDe',
+      category: 'STABLECOIN',
+      skipPriceFetch: true,
+    });
+
+    expect([viaProvider.status, viaProvider.body.id]).toEqual([200, 'pair']);
+    expect(viaCoinGecko.body.id).toBe('pair');
+    expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('still reuses a same-class legacy asset matched only by symbol', async () => {
+    const legacyEquity = mockManualAsset({
+      id: 'legacy-usde',
+      priceProvider: 'manual',
+      providerAssetId: null,
+      symbol: 'USDE',
+      category: 'EQUITY',
+    });
+    useCatalog([ETHENA_USDE, legacyEquity]);
+
+    const res = await addStablecoinX();
+
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe('legacy-usde');
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('matches a CoinGecko provider request to an older row that only has coingeckoId', async () => {
+    const legacyTether = {
+      ...ETHENA_USDE,
+      id: 'legacy-tether',
+      coingeckoId: 'tether',
+      providerAssetId: null,
+      symbol: 'USDT',
+      name: 'Tether',
+    };
+    useCatalog([legacyTether]);
+
+    // A different category group, so only the coingeckoId identity can match it;
+    // creating instead would violate the unique coingeckoId constraint.
+    const res = await request(app).post('/api/assets/from-provider').send({
+      provider: 'coingecko',
+      providerAssetId: 'tether',
+      symbol: 'USDT',
+      name: 'Tether',
+      category: 'LIQUID_CRYPTO',
+      skipPriceFetch: true,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe('legacy-tether');
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    // Same provider, so the existing metadata repair backfills its provider id.
+    expect(mockPrisma.asset.update).toHaveBeenCalledWith({
+      where: { id: 'legacy-tether' },
+      data: { providerAssetId: 'tether' },
     });
   });
 });

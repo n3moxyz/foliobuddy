@@ -1,5 +1,6 @@
 import {
   AssetCategory,
+  CATEGORIES_IN_GROUP,
   CategoryGroup,
   PriceProvider,
   categoryGroup,
@@ -152,4 +153,33 @@ export function externalProviderCategoryError(
     return `Unsupported asset category ${category}`;
   }
   return null;
+}
+
+const NON_CRYPTO_CATEGORIES = Object.entries(CATEGORIES_IN_GROUP)
+  .filter(([group]) => group !== CategoryGroup.CRYPTO)
+  .flatMap(([, categories]) => categories);
+
+/**
+ * Prisma filter for reusing a catalog asset by ticker when no provider identity
+ * matched. Tickers are not unique across asset classes — StablecoinX (a Nasdaq
+ * equity) and the Ethena USDe stablecoin are both USDE, and BTC is a coin and a
+ * spot ETF — so a symbol match may only reuse an asset in the same category
+ * group. Anything looser binds an equity position to a stablecoin row.
+ */
+export function sameClassSymbolWhere(symbol: string, category: string) {
+  const group = categoryGroup(category);
+  return {
+    symbol: symbol.toUpperCase(),
+    // categoryGroup() files unrecognised categories under crypto, so the crypto
+    // group is "every category outside the other groups", not its listed three.
+    category:
+      group === CategoryGroup.CRYPTO
+        ? { notIn: NON_CRYPTO_CATEGORIES }
+        : { in: [...CATEGORIES_IN_GROUP[group]] },
+  };
+}
+
+/** In-memory key with the same same-class rule as sameClassSymbolWhere. */
+export function sameClassSymbolKey(symbol: string, category: string): string {
+  return `${categoryGroup(category)}:${symbol.toUpperCase()}`;
 }
