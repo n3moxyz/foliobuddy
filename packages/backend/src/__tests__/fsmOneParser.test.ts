@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { parseFsmOneStatement } from '../services/statementParsers/fsmOne.js';
+import {
+  findHoldingsHeaderEnd,
+  findStatementPeriodDate,
+  parseFsmOneStatement,
+} from '../services/statementParsers/fsmOne.js';
 
 // Mirrors the text that pdf-parse yields from a real FSMOne consolidated
 // monthly statement (one Amova Singapore Equity SGD holding).
@@ -86,5 +90,96 @@ describe('parseFsmOneStatement', () => {
   it('does not map a different Amova share class by a similar name', () => {
     const result = parseFsmOneStatement(SAMPLE.replace('Equity SGD', 'Equity SGD Class A'));
     expect(result.holdings[0].isin).toBe('');
+  });
+
+  it('falls back to the statement period when the holdings header has no date', () => {
+    const result = parseFsmOneStatement(
+      SAMPLE.replace('UNIT TRUST HOLDINGS AS AT 30 APRIL 2026', 'UNIT TRUST HOLDINGS AS AT')
+    );
+    expect(result.periodEnd).toBe('2026-04-30T00:00:00.000Z');
+    expect(result.holdings).toHaveLength(1);
+  });
+
+  it('searches 30k repeated statement period labels without stalling', () => {
+    // The old regex rescanned the document from every label: quadratic, ~1.2 s.
+    const hostile = `FSMOne\n${'Statement Period:'.repeat(30_000)}`;
+
+    const started = performance.now();
+    expect(() => parseFsmOneStatement(hostile)).toThrow('holdings table header not found');
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+
+  it('searches 2k repeated holdings header fragments without stalling', () => {
+    // The old regex nested two lazy scans: cubic, ~3.5 s.
+    const hostile = `FSMOne\n${'UNIT TRUST HOLDINGS AS AT Current Market '.repeat(2_000)}`;
+
+    const started = performance.now();
+    expect(() => parseFsmOneStatement(hostile)).toThrow('holdings table header not found');
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+});
+
+// The patterns the searches below replaced; kept only to prove the rewrites are equivalent.
+const LEGACY_STATEMENT_PERIOD = /Statement Period:[\s\S]*?to\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i;
+const LEGACY_HOLDINGS_HEADER =
+  /UNIT TRUST HOLDINGS AS AT[\s\S]*?Current\s+Market[\s\S]*?Value\s*\(B\)/i;
+
+// Every sequence of up to 5 pieces.
+function sequencesOf(pieces: string[]): string[] {
+  let layer = [''];
+  const corpus = [''];
+  for (let length = 1; length <= 5; length++) {
+    layer = layer.flatMap((sequence) => pieces.map((piece) => sequence + piece));
+    corpus.push(...layer);
+  }
+  return corpus;
+}
+
+describe('findStatementPeriodDate', () => {
+  it('captures the same date as the old regex', () => {
+    // Both label casings, a date, a date spread over lines, a "to" with no
+    // date, filler (so "to" can also end a word), a line break and a space.
+    const corpus = sequencesOf([
+      'Statement Period:',
+      'STATEMENT period:',
+      'to 1 May 2026',
+      'TO\n12  June\n2026',
+      'to x',
+      'x',
+      '\n',
+      ' ',
+    ]);
+
+    const mismatches = corpus.filter(
+      (text) => findStatementPeriodDate(text) !== (LEGACY_STATEMENT_PERIOD.exec(text)?.[1] ?? null)
+    );
+
+    expect(corpus).toHaveLength(37_449);
+    expect(mismatches).toEqual([]);
+  });
+});
+
+describe('findHoldingsHeaderEnd', () => {
+  it('ends where the old header regex ended', () => {
+    // Each header part in both casings, whitespace variants, and the first
+    // word of the later parts alone, in every order and repetition.
+    const corpus = sequencesOf([
+      'UNIT TRUST HOLDINGS AS AT',
+      'unit trust holdings as at',
+      'Current Market',
+      'CURRENT\n  market',
+      'Value (B)',
+      'value\n(b)',
+      'Current',
+      'Value',
+    ]);
+
+    const mismatches = corpus.filter((text) => {
+      const legacy = LEGACY_HOLDINGS_HEADER.exec(text);
+      return findHoldingsHeaderEnd(text) !== (legacy ? legacy.index + legacy[0].length : -1);
+    });
+
+    expect(corpus).toHaveLength(37_449);
+    expect(mismatches).toEqual([]);
   });
 });
