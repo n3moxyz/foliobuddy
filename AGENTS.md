@@ -93,7 +93,7 @@ Yahoo search IP-filters by region; `YahooFinanceProvider.search()` falls back to
 
 ### Unit Trust Statement Parsers (PDF Import)
 
-`POST /assets/parse-unit-trust-statement`: `pdf-parse` text → first successful broker parser in `src/services/statementParsers/` (deterministic ISIN/value anchors). Brokers: **UOB Kay Hian**, **FSMOne/iFAST**. `statementMatching.ts` (ISIN/currency must agree): ISIN → provider symbol → exact symbol → exact name; broker storage breaks ties. New broker: add parser + append to `routes/assets.ts` `parsers`; update error string + broker→`storageLocation` map; keep `statementMatching.test.ts` coverage.
+`POST /assets/parse-unit-trust-statement`: `pdf-parse` text (>1M chars → 422) → first successful broker parser in `src/services/statementParsers/` (deterministic ISIN/value anchors). Brokers: **UOB Kay Hian**, **FSMOne/iFAST**. `statementMatching.ts` (ISIN/currency must agree): ISIN → provider symbol → exact symbol → exact name; broker storage breaks ties. New broker: add parser + append to `routes/assets.ts` `parsers`; update error string + broker→`storageLocation` map; keep `statementMatching.test.ts` coverage. Keep parser regexes linear (no lazy `.+?`/`[\s\S]*?` after a repeatable label; test equivalence + hostile input).
 
 ### Daily Unit-Trust NAVs
 
