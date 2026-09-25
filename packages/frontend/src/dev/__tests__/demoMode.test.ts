@@ -126,6 +126,54 @@ describe('demo mode API mock', () => {
     ).toBe(true);
   });
 
+  it('lists every news holding with story counts, including quiet and not-loaded ones', async () => {
+    type DemoGroup = { assetId: string; items: unknown[]; storyCount?: number };
+    const news = await readJson<{
+      crypto: DemoGroup[];
+      equities: DemoGroup[];
+      holdings: Array<{ assetId: string; storyCount: number; loaded: boolean }>;
+    }>(await demoRequest('/news'));
+
+    const groups = [...news.crypto, ...news.equities];
+    const holdingIds = news.holdings.map((holding) => holding.assetId);
+    expect(groups.every((group) => holdingIds.includes(group.assetId))).toBe(true);
+    expect(groups.every((group) => (group.storyCount ?? 0) >= group.items.length)).toBe(true);
+    expect(groups.some((group) => (group.storyCount ?? 0) > 1)).toBe(true);
+    expect(news.holdings.some((holding) => holding.loaded && holding.storyCount === 0)).toBe(true);
+    expect(news.holdings.some((holding) => !holding.loaded)).toBe(true);
+  });
+
+  it('serves a holding dossier newest first and 404s unknown holdings', async () => {
+    type DemoDossier = {
+      holding: { assetId: string; symbol: string };
+      items: Array<{ id: string; publishedAt: string | null }>;
+      windowDays: number;
+    };
+    const btc = await readJson<DemoDossier>(await demoRequest('/news/asset/btc'));
+
+    expect(btc.holding).toMatchObject({ assetId: 'btc', symbol: 'BTC' });
+    expect(btc.windowDays).toBe(60);
+    // The feed group's stories plus older coverage, newest first.
+    expect(btc.items.map((item) => item.id)).toEqual(
+      expect.arrayContaining(['btc-1', 'btc-2', 'btc-3'])
+    );
+    expect(btc.items.length).toBeGreaterThan(3);
+    const times = btc.items.map((item) => new Date(item.publishedAt ?? 0).getTime());
+    expect(times).toEqual([...times].sort((a, b) => b - a));
+
+    // A story filed under a bigger holding still belongs to every holding it touches.
+    const eth = await readJson<DemoDossier>(await demoRequest('/news/asset/eth'));
+    expect(eth.items.some((item) => item.id === 'btc-3')).toBe(true);
+
+    // A holding past the feed's fetch cap still loads its own news.
+    const aapl = await readJson<DemoDossier>(await demoRequest('/news/asset/aapl'));
+    expect(aapl.items.length).toBeGreaterThan(0);
+
+    const missing = await demoRequest('/news/asset/not-a-holding');
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual({ error: 'No news feed for this holding' });
+  });
+
   it('bulk-imports trades and recomputes analytics from demo state', async () => {
     const beforeTrades = await readJson<Array<{ id: string }>>(await demoRequest('/trades'));
     const beforeAnalytics = await readJson<{ totalTrades: number; totalPnL: number }>(

@@ -1,5 +1,6 @@
 import type {
   Asset,
+  AssetNewsResponse,
   AssetPrice,
   BenchmarkHistoricalData,
   BulkImportPosition,
@@ -98,6 +99,8 @@ export const api = {
   // News
   getNews: () => request<PortfolioNewsResponse>('/news'),
   getNewsEnrichment: () => request<NewsEnrichmentResponse>('/news/enrichment'),
+  getAssetNews: (assetId: string) =>
+    request<AssetNewsResponse>(`/news/asset/${encodeURIComponent(assetId)}`),
   sendNewsFeedback: (data: NewsFeedbackPayload) =>
     request<void>('/news/feedback', { method: 'POST', body: JSON.stringify(data) }),
 

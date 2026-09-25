@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import { enrichmentPollInterval } from '../useNews';
-import type { NewsEnrichmentResponse } from '@/lib/types';
+import { renderHook, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { enrichmentPollInterval, useAssetNews } from '../useNews';
+import { api } from '@/lib/api';
+import { createQueryClientWrapper, createTestQueryClient } from '@/test/utils';
+import type { AssetNewsResponse, NewsEnrichmentResponse } from '@/lib/types';
+
+vi.mock('@/lib/api', () => ({ api: { getAssetNews: vi.fn() } }));
 
 function enrichmentFor(ids: string[]): NewsEnrichmentResponse {
   return {
@@ -45,5 +50,39 @@ describe('enrichmentPollInterval', () => {
     // even though no data ever arrived.
     expect(enrichmentPollInterval(['a'], { data: undefined, attempts: 5 })).toBe(false);
     expect(enrichmentPollInterval(['a'], { data: undefined, attempts: 4 })).toBe(6000);
+  });
+});
+
+describe('useAssetNews', () => {
+  const dossier: AssetNewsResponse = {
+    holding: {
+      assetId: 'asset-btc',
+      symbol: 'BTC',
+      name: 'Bitcoin',
+      category: 'LIQUID_CRYPTO',
+      bucket: 'crypto',
+      openTradeOnly: false,
+    },
+    items: [],
+    windowDays: 60,
+    fetchedAt: '2026-08-24T11:00:00.000Z',
+  };
+
+  it('stays idle without an asset id, then fetches and caches the dossier by asset id', async () => {
+    vi.mocked(api.getAssetNews).mockResolvedValue(dossier);
+    const client = createTestQueryClient();
+    const { result, rerender } = renderHook(({ assetId }) => useAssetNews(assetId), {
+      wrapper: createQueryClientWrapper(client),
+      initialProps: { assetId: null as string | null },
+    });
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(api.getAssetNews).not.toHaveBeenCalled();
+
+    rerender({ assetId: 'asset-btc' });
+
+    await waitFor(() => expect(result.current.data).toEqual(dossier));
+    expect(api.getAssetNews).toHaveBeenCalledWith('asset-btc');
+    expect(client.getQueryData(['news', 'asset', 'asset-btc'])).toEqual(dossier);
   });
 });

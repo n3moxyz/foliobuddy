@@ -75,6 +75,25 @@ export interface AssetNewsGroup {
   /** True when the asset is only present via an open trade, not a held position */
   openTradeOnly: boolean;
   items: NewsItem[];
+  /** Feed stories touching this holding, incl. ones filed under a bigger holding.
+   *  Optional only for a pre-search backend during the deploy window. */
+  storyCount?: number;
+}
+
+export type NewsBucket = 'crypto' | 'equities';
+
+/** Every holding with a news feed — powers holding search and the quiet list. */
+export interface NewsHolding {
+  assetId: string;
+  symbol: string;
+  name: string;
+  category: string;
+  bucket: NewsBucket;
+  openTradeOnly: boolean;
+  /** Feed stories touching this holding; 0 when quiet or not loaded */
+  storyCount: number;
+  /** False when the holding was past the feed's fetch cap — its own page still loads its news */
+  loaded: boolean;
 }
 
 export interface PortfolioNewsResponse {
@@ -83,6 +102,17 @@ export interface PortfolioNewsResponse {
   crypto: AssetNewsGroup[];
   equities: AssetNewsGroup[];
   macro: NewsItem[];
+  /** Largest holding first. Optional only for a pre-search backend during the deploy window. */
+  holdings?: NewsHolding[];
+  fetchedAt: string;
+}
+
+/** GET /news/asset/:assetId — every story touching one holding */
+export interface AssetNewsResponse {
+  holding: Omit<NewsHolding, 'storyCount' | 'loaded'>;
+  /** Newest first; undated stories last */
+  items: NewsItem[];
+  windowDays: number;
   fetchedAt: string;
 }
 
