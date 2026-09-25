@@ -40,11 +40,14 @@ import {
 import { api } from '@/lib/api';
 import type {
   Asset,
+  AssetCategory,
   BulkImportPosition,
   CoinSearchResult,
   Position,
   ProviderSearchResult,
 } from '@/lib/types';
+import { toast } from 'sonner';
+import { mismatchedPickToast, resolvedAssetMatchesPick } from '@/lib/assetPickGuard';
 import { useQueryClient } from '@tanstack/react-query';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
 import { isListedEquityCandidate } from './assetSearchMatching';
@@ -839,7 +842,8 @@ export function PositionForm({
 
     void repairExistingProviderAsset(asset, localAsset.nativeCurrency as CostCurrency)
       .then((updatedAsset) => {
-        if (updatedAsset) {
+        // A metadata repair must return the same catalog row, never another asset.
+        if (updatedAsset?.id === asset.id) {
           const localizedUpdatedAsset = withInferredListedEquityCurrency(updatedAsset);
           setAssetId(localizedUpdatedAsset.id);
           setSelectedAsset(localizedUpdatedAsset);
@@ -888,23 +892,32 @@ export function PositionForm({
 
   const handleSelectCoin = async (candidate: CoinSearchResult | ProviderSearchResult) => {
     let asset: Asset;
+    let requestedCategory: AssetCategory;
     if ('provider' in candidate) {
+      requestedCategory = 'EQUITY';
       asset = await createAssetFromProvider.mutateAsync({
         provider: candidate.provider,
         providerAssetId: candidate.providerAssetId,
         symbol: candidate.symbol,
         name: candidate.name,
-        category: 'EQUITY',
+        category: requestedCategory,
         nativeCurrency: candidate.nativeCurrency ?? undefined,
         exchange: candidate.exchange ?? null,
       });
     } else {
+      requestedCategory = category === 'cash' ? 'STABLECOIN' : 'LIQUID_CRYPTO';
       asset = await createAssetFromCoinGecko.mutateAsync({
         coingeckoId: candidate.id,
         symbol: candidate.symbol,
         name: candidate.name,
-        category: category === 'cash' ? 'STABLECOIN' : 'LIQUID_CRYPTO',
+        category: requestedCategory,
       });
+    }
+
+    if (!resolvedAssetMatchesPick(asset, requestedCategory)) {
+      const { title, description } = mismatchedPickToast(candidate.name, asset);
+      toast.error(title, { description });
+      return;
     }
 
     const localAsset = withInferredListedEquityCurrency(asset);
@@ -984,6 +997,12 @@ export function PositionForm({
         name: stablecoin.name,
         category: 'STABLECOIN',
       });
+      if (!resolvedAssetMatchesPick(asset, 'STABLECOIN')) {
+        const { title, description } = mismatchedPickToast(stablecoin.name, asset);
+        toast.error(title, { description });
+        setSelectedCashTypeId('');
+        return;
+      }
 
       setAssetId(asset.id);
       setSelectedAsset(asset);
