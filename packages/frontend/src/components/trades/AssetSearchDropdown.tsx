@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
 import { isStablecoinCategory } from '@/lib/utils';
 import type { Asset, CoinSearchResult } from '@/lib/types';
+import { toast } from 'sonner';
+import { mismatchedPickToast, resolvedAssetMatchesPick } from '@/lib/assetPickGuard';
 
 interface AssetSearchDropdownProps {
   selectedAsset: Asset | null;
@@ -89,6 +91,11 @@ export function AssetSearchDropdown({
       name: coin.name,
       category: 'LIQUID_CRYPTO',
     });
+    if (!resolvedAssetMatchesPick(asset, 'LIQUID_CRYPTO')) {
+      const { title, description } = mismatchedPickToast(coin.name, asset);
+      toast.error(title, { description });
+      return;
+    }
 
     onSelectAsset(asset.id, asset);
     setSearchQuery('');
