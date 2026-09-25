@@ -40,6 +40,11 @@ const ASIA_DIRECT_QUOTE_SUFFIXES = ['.T', '.TW', '.TWO', '.KS', '.KQ'];
 const NAME_DIRECT_QUOTE_CANDIDATES: Record<string, string[]> = {
   kioxia: ['285A.T'],
 };
+// yahoo-finance2's strict search schema rejects the whole response when Yahoo
+// changes a cosmetic field (it expects typeDisp "equity"; Yahoo sends "Equity"),
+// which silently emptied every name search. We read only a few fields and
+// check them ourselves in searchQuotesOf, so skip the library's validation.
+const UNVALIDATED_SEARCH = { validateResult: false } as const;
 
 // Lower rank = higher in results. Exact match first, then primary listings
 // (no exchange suffix), then cross-listings like EWY.SN or AAPL.BA.
@@ -134,6 +139,19 @@ type YahooSearchNewsItem = {
   providerPublishTime?: Date | string | number;
   relatedTickers?: unknown;
 };
+
+// Unvalidated search payloads can hold non-quote entries with no symbol.
+function searchQuotesOf(result: unknown): YahooSearchItem[] {
+  const quotes = (result as { quotes?: unknown } | null | undefined)?.quotes;
+  if (!Array.isArray(quotes)) return [];
+  return quotes.filter(
+    (quote): quote is YahooSearchItem =>
+      typeof quote === 'object' &&
+      quote !== null &&
+      typeof (quote as { symbol?: unknown }).symbol === 'string' &&
+      (quote as { symbol: string }).symbol !== ''
+  );
+}
 
 function relatedTickersOf(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
@@ -351,13 +369,17 @@ export class YahooFinanceProvider implements AssetPriceProvider {
 
     let quotes: YahooSearchItem[];
     try {
-      const res = await yahooFinance.search(trimmed, {
-        quotesCount: 5,
-        newsCount: 0,
-        lang: 'en-US',
-        region: 'US',
-      });
-      quotes = (res.quotes ?? []) as YahooSearchItem[];
+      const res = await yahooFinance.search(
+        trimmed,
+        {
+          quotesCount: 5,
+          newsCount: 0,
+          lang: 'en-US',
+          region: 'US',
+        },
+        UNVALIDATED_SEARCH
+      );
+      quotes = searchQuotesOf(res);
     } catch (err) {
       logger.warn('[Yahoo] searchByIsin error:', err instanceof Error ? err.message : err);
       return null;
@@ -400,13 +422,17 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     const regionsToSearch = query.trim().length >= 2 ? SEARCH_REGIONS : ['US'];
     for (const region of regionsToSearch) {
       try {
-        const res = await yahooFinance.search(query, {
-          quotesCount: 20,
-          newsCount: 0,
-          lang: 'en-US',
-          region,
-        });
-        quotes = this.mergeQuotes(quotes, (res.quotes ?? []) as YahooSearchItem[]);
+        const res = await yahooFinance.search(
+          query,
+          {
+            quotesCount: 20,
+            newsCount: 0,
+            lang: 'en-US',
+            region,
+          },
+          UNVALIDATED_SEARCH
+        );
+        quotes = this.mergeQuotes(quotes, searchQuotesOf(res));
       } catch (err) {
         logger.warn(
           `[Yahoo] search lib error (${region}):`,
