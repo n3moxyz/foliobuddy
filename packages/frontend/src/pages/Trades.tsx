@@ -67,7 +67,9 @@ export default function Trades() {
 
   const { currency } = useCurrencyStore();
   const { data: summary } = usePortfolioSummary();
-  const { data: trades, isLoading } = useTrades();
+  // isPending, not isLoading: a first load paused offline or in a hidden tab has
+  // no data yet, so it must show the skeleton rather than an empty state.
+  const { data: trades, isPending: tradesPending } = useTrades();
   const { data: analytics } = useTradeAnalytics();
   const deleteAllMutation = useDeleteAllTrades();
   const deleteTradeMutation = useDeleteTrade();
@@ -295,7 +297,7 @@ export default function Trades() {
 
           <TradeTapeSection
             trades={visibleTrades}
-            isLoading={isLoading}
+            isLoading={tradesPending}
             filter={filter}
             onFilterChange={setFilter}
             filteredCount={filteredTrades.length}
@@ -323,7 +325,7 @@ export default function Trades() {
             title={tickerFilter ? `${tickerFilter} Trades` : 'Ticker Trades'}
             subtitle={`${visibleTrades.length} shown`}
             trades={visibleTrades}
-            isLoading={isLoading}
+            isLoading={tradesPending}
             filter={filter}
             onFilterChange={setFilter}
             filteredCount={filteredTrades.length}

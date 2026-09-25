@@ -29,7 +29,7 @@ import { usePerpExposure } from '@/hooks/usePerpExposure';
 export default function Dashboard() {
   usePageTitle('Dashboard');
   const { currency } = useCurrencyStore();
-  const { data: summary, isLoading: summaryLoading } = usePortfolioSummary();
+  const { data: summary, isPending: summaryPending } = usePortfolioSummary();
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: tradeAnalytics } = useTradeAnalytics();
   const { data: topPerformers } = useTopPerformers(5);
@@ -105,7 +105,9 @@ export default function Dashboard() {
     return `${selectedInvestors.length} investors`;
   };
 
-  if (summaryLoading) {
+  // isPending, not isLoading: a first load paused offline or in a hidden tab has
+  // no data yet, and the Net Worth hero would otherwise silently disappear.
+  if (summaryPending) {
     return (
       <div className="space-y-6" role="status" aria-live="polite">
         <span className="sr-only">Loading dashboard…</span>
