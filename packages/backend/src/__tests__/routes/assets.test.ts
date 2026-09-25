@@ -44,6 +44,7 @@ vi.mock('../../lib/logger.js', () => ({
 }));
 
 const { default: assetsRouter } = await import('../../routes/assets.js');
+const { MAX_ASSET_NAME_LENGTH, MAX_ASSET_SYMBOL_LENGTH } = await import('../../lib/constants.js');
 const app = createTestApp(assetsRouter, '/api/assets');
 
 it('rejects import-time changes to currency or provider identity after a native NAV is established', async () => {
@@ -147,6 +148,100 @@ describe('POST /api/assets', () => {
         nativeCurrency: 'SGD',
         currentPriceUsd: 0.742,
         priceUpdatedAt: expect.any(Date),
+      }),
+    });
+  });
+});
+
+describe('asset name and symbol caps', () => {
+  const tooLongName = 'N'.repeat(MAX_ASSET_NAME_LENGTH + 1);
+
+  function echoCreatedAsset() {
+    mockPrisma.asset.findFirst.mockResolvedValue(null);
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'asset-new', ...data }));
+  }
+
+  it.each([
+    ['/api/assets', { symbol: 'LONG', category: 'EQUITY', priceProvider: 'manual' }],
+    [
+      '/api/assets/from-provider',
+      { provider: 'yahoo', providerAssetId: 'LONG', symbol: 'LONG', category: 'EQUITY' },
+    ],
+    ['/api/assets/unit-trust', { symbol: 'LONGUT' }],
+    ['/api/assets/from-coingecko', { coingeckoId: 'long-coin', symbol: 'LONG' }],
+  ])('rejects over-long and blank names on %s before touching the catalog', async (path, body) => {
+    const tooLong = await request(app)
+      .post(path)
+      .send({ ...body, name: tooLongName });
+    const blank = await request(app)
+      .post(path)
+      .send({ ...body, name: '   ' });
+
+    expect(tooLong.status).toBe(400);
+    expect(blank.status).toBe(400);
+    expect(mockPrisma.asset.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('trims names and accepts exactly the cap', async () => {
+    echoCreatedAsset();
+    const name = 'N'.repeat(MAX_ASSET_NAME_LENGTH);
+
+    const res = await request(app)
+      .post('/api/assets')
+      .send({
+        symbol: 'CAP',
+        name: `  ${name}  `,
+        category: 'EQUITY',
+        priceProvider: 'manual',
+        currentPriceUsd: 1,
+      });
+
+    expect(res.status).toBe(201);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ name }),
+    });
+  });
+
+  it('validates from-coingecko input, which previously had no schema', async () => {
+    const valid = { coingeckoId: 'long-coin', symbol: 'LONG', name: 'Long Coin' };
+    const missingName = await request(app)
+      .post('/api/assets/from-coingecko')
+      .send({ ...valid, name: undefined });
+    const badCategory = await request(app)
+      .post('/api/assets/from-coingecko')
+      .send({ ...valid, category: 'NOT_A_CATEGORY' });
+    const tooLongSymbol = await request(app)
+      .post('/api/assets/from-coingecko')
+      .send({ ...valid, symbol: 'S'.repeat(MAX_ASSET_SYMBOL_LENGTH + 1) });
+    const nonStringSymbol = await request(app)
+      .post('/api/assets/from-coingecko')
+      .send({ ...valid, symbol: { toUpperCase: 'x' } });
+
+    expect([missingName, badCategory, tooLongSymbol, nonStringSymbol].map((r) => r.status)).toEqual(
+      [400, 400, 400, 400]
+    );
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts CoinGecko tickers longer than the manual-entry limit and defaults the category', async () => {
+    echoCreatedAsset();
+    const symbol = 'harrypotterobamasonic10inu';
+
+    const res = await request(app).post('/api/assets/from-coingecko').send({
+      coingeckoId: 'hpos10i',
+      symbol,
+      name: '  HarryPotterObamaSonic10Inu  ',
+      skipPriceFetch: true,
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockPriceService.getDirectPrice).not.toHaveBeenCalled();
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        symbol: symbol.toUpperCase(),
+        name: 'HarryPotterObamaSonic10Inu',
+        category: 'LIQUID_CRYPTO',
       }),
     });
   });

@@ -4,7 +4,13 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { priceService } from '../services/priceService.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { ASSET_CATEGORIES, AssetCategory, PriceProvider } from '../lib/constants.js';
+import {
+  ASSET_CATEGORIES,
+  AssetCategory,
+  MAX_ASSET_NAME_LENGTH,
+  MAX_ASSET_SYMBOL_LENGTH,
+  PriceProvider,
+} from '../lib/constants.js';
 import { externalProviderCategoryError } from '../lib/domain.js';
 import { requireAdminUser, requireUserHoldsAsset } from '../lib/authorization.js';
 import type { ProviderName } from '../services/providers/types.js';
@@ -33,7 +39,7 @@ const router = Router();
 const createAssetSchema = z.object({
   coingeckoId: z.string().optional(),
   symbol: z.string().min(1).max(20),
-  name: z.string().min(1),
+  name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
   category: z.enum(ASSET_CATEGORIES).default(AssetCategory.LIQUID_CRYPTO),
   priceProvider: z.enum(['coingecko', 'yahoo', 'manual']).optional(),
   providerAssetId: z.string().nullable().optional(),
@@ -196,13 +202,23 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+// CoinGecko ids are slugs ("wrapped-bitcoin"); generous but bounded.
+const MAX_COINGECKO_ID_LENGTH = 128;
+
+const fromCoinGeckoSchema = z.object({
+  coingeckoId: z.string().min(1).max(MAX_COINGECKO_ID_LENGTH),
+  // Some CoinGecko tickers are longer than the 20-char manual-entry limit.
+  symbol: z.string().min(1).max(MAX_ASSET_SYMBOL_LENGTH),
+  name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
+  category: z.enum(ASSET_CATEGORIES).default(AssetCategory.LIQUID_CRYPTO),
+  skipPriceFetch: z.boolean().optional(),
+});
+
 router.post('/from-coingecko', async (req, res, next) => {
   try {
-    const { coingeckoId, symbol, name, category, skipPriceFetch } = req.body;
-
-    if (!coingeckoId || !symbol || !name) {
-      throw new AppError('coingeckoId, symbol, and name are required', 400);
-    }
+    const { coingeckoId, symbol, name, category, skipPriceFetch } = fromCoinGeckoSchema.parse(
+      req.body
+    );
 
     const existing = await prisma.asset.findFirst({
       where: {
@@ -227,7 +243,7 @@ router.post('/from-coingecko', async (req, res, next) => {
         nativeCurrency: 'USD',
         symbol: symbol.toUpperCase(),
         name,
-        category: category || AssetCategory.LIQUID_CRYPTO,
+        category,
         currentPriceUsd,
         priceUpdatedAt: currentPriceUsd ? new Date() : null,
       },
@@ -243,7 +259,7 @@ const fromProviderSchema = z.object({
   provider: z.enum(['coingecko', 'yahoo', 'manual']),
   providerAssetId: z.string().min(1),
   symbol: z.string().min(1).max(20),
-  name: z.string().min(1),
+  name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
   category: z.enum(ASSET_CATEGORIES),
   nativeCurrency: z.string().optional(),
   exchange: z.string().nullable().optional(),
@@ -500,8 +516,8 @@ router.post('/:id/refresh-price', async (req, res, next) => {
 });
 
 const createUnitTrustSchema = z.object({
-  symbol: z.string().min(1).max(40),
-  name: z.string().min(1),
+  symbol: z.string().min(1).max(MAX_ASSET_SYMBOL_LENGTH),
+  name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
   nativeCurrency: z.string().min(1).max(8).default('SGD'),
   factsheetUrl: z.string().url().optional().nullable(),
   isin: z.string().min(1).max(20).optional().nullable(),

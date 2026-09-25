@@ -8,6 +8,8 @@ import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../lib/logger.js';
 import {
   MAX_POSITIONS_PER_CATEGORY,
+  MAX_ASSET_NAME_LENGTH,
+  MAX_ASSET_SYMBOL_LENGTH,
   ASSET_CATEGORIES,
   STORAGE_TYPES,
   StorageType,
@@ -287,8 +289,9 @@ router.get('/performers/worst', async (req, res, next) => {
 const bulkImportPositionSchema = z.object({
   asset: z.object({
     coingeckoId: z.string().nullable().optional(),
-    symbol: z.string().min(1),
-    name: z.string().min(1),
+    // Same caps as single-asset creation, so bulk import can't bypass them.
+    symbol: z.string().min(1).max(MAX_ASSET_SYMBOL_LENGTH),
+    name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
     category: z.enum(ASSET_CATEGORIES).default('LIQUID_CRYPTO'),
     // Optional provider wiring — honored only when creating a new Asset row.
     // Lets a copy/paste round-trip of equities and unit trusts preserve the

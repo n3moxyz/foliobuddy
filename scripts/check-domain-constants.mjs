@@ -7,6 +7,8 @@ const BACKEND_FILE = 'packages/backend/src/lib/constants.ts';
 const EXPORTED_VALUES = [
   'USD_SGD_FALLBACK_RATE',
   'MAX_POSITIONS_PER_CATEGORY',
+  'MAX_ASSET_NAME_LENGTH',
+  'MAX_ASSET_SYMBOL_LENGTH',
   'AssetCategory',
   'ASSET_CATEGORIES',
   'StorageType',
