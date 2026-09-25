@@ -60,9 +60,23 @@ function stripThousands(s: string): number {
   return parseFloat(s.replace(/,/g, ''));
 }
 
+// Finds what /For the period from .+? to (<date>)/i found, in linear time. That
+// regex rescanned the rest of the line after every repeated prefix, so one
+// crafted line could stall the event loop. `.+?` never crosses a line break,
+// so later prefixes on a line can only search what the first one already did.
 function extractPeriodEnd(text: string): string | null {
-  const match = text.match(/For the period from .+? to (\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
-  return match ? parseEnglishDate(match[1]) : null;
+  const prefix = /For the period from /gi;
+  const periodTo = /.+? to (\d{1,2}\s+[A-Za-z]+\s+\d{4})/iy;
+  const lineBreak = /[\n\r\u2028\u2029]/g;
+  while (prefix.exec(text) !== null) {
+    periodTo.lastIndex = prefix.lastIndex;
+    const match = periodTo.exec(text);
+    if (match) return parseEnglishDate(match[1]);
+    lineBreak.lastIndex = prefix.lastIndex;
+    if (lineBreak.exec(text) === null) return null;
+    prefix.lastIndex = lineBreak.lastIndex;
+  }
+  return null;
 }
 
 function parseHoldingBlock(

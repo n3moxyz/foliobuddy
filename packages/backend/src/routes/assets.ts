@@ -13,10 +13,11 @@ import {
 } from '../lib/constants.js';
 import { externalProviderCategoryError } from '../lib/domain.js';
 import { requireAdminUser, requireUserHoldsAsset } from '../lib/authorization.js';
-import type { ProviderName } from '../services/providers/types.js';
+import type { AssetPriceProvider, ProviderName } from '../services/providers/types.js';
 import { normalizeOfficialDomain } from '../services/news/sourceQuality.js';
 import { parseUobKhStatement } from '../services/statementParsers/uobKayHian.js';
 import { parseFsmOneStatement } from '../services/statementParsers/fsmOne.js';
+import { extractPdfText, type PdfTextResult } from '../services/statementParsers/pdfText.js';
 import { logger } from '../lib/logger.js';
 import {
   navToUsd,
@@ -617,6 +618,69 @@ router.patch('/:id/nav', async (req, res, next) => {
   }
 });
 
+// Real statements extract to a few KB to tens of KB of text, but PDF content
+// streams are compressed, so a 5 MB upload can inflate far past that. Cap the
+// text before the statement parsers' regexes run over it.
+const MAX_STATEMENT_TEXT_CHARS = 1_000_000;
+// Monthly statements are a few pages and read in well under a second; these
+// bound what one crafted PDF can make pdf.js do.
+const MAX_STATEMENT_PAGES = 30;
+const STATEMENT_READ_TIMEOUT_MS = 5_000;
+// Each holding costs an FX read and a Yahoo search; real statements list a handful.
+const MAX_STATEMENT_HOLDINGS = 50;
+
+// The statement text from a bounded PDF read, or the error the upload dialog shows.
+function statementTextOrThrow(read: PdfTextResult): string {
+  switch (read.status) {
+    case 'ok':
+      return read.text;
+    case 'busy':
+      logger.warn('[parse-ut-stmt] rejected: another statement is being read');
+      throw new AppError(
+        'Another statement is being read right now. Try again in a few seconds.',
+        503
+      );
+    case 'too-many-pages':
+      logger.warn(`[parse-ut-stmt] rejected: PDF has ${read.pages} pages`);
+      throw new AppError(
+        `This PDF has ${read.pages} pages; a statement import reads at most ${MAX_STATEMENT_PAGES}. Upload a single UOB Kay Hian or FSMOne monthly statement PDF.`,
+        422
+      );
+    case 'too-much-text':
+      logger.warn(`[parse-ut-stmt] extracted text too long: ${read.chars} chars`);
+      throw new AppError(
+        'This PDF has too much text to be a monthly statement. Upload a single UOB Kay Hian or FSMOne monthly statement PDF.',
+        422
+      );
+    case 'too-costly':
+      logger.warn('[parse-ut-stmt] rejected: PDF read ran out of time or memory');
+      throw new AppError(
+        'This PDF is too large or complex to read. Upload a single UOB Kay Hian or FSMOne monthly statement PDF.',
+        422
+      );
+  }
+}
+
+async function searchYahooSymbol(
+  provider: AssetPriceProvider,
+  isin: string
+): Promise<string | null> {
+  try {
+    const match =
+      'searchByIsin' in provider
+        ? await (
+            provider as {
+              searchByIsin(isin: string): Promise<{ symbol: string } | null>;
+            }
+          ).searchByIsin(isin)
+        : null;
+    return match?.symbol ?? null;
+  } catch (err) {
+    logger.warn(`[parse-ut-stmt] ISIN lookup failed for ${isin}:`, err);
+    return null;
+  }
+}
+
 router.post(
   '/parse-unit-trust-statement',
   express.raw({ type: () => true, limit: '5mb' }),
@@ -633,16 +697,18 @@ router.post(
 
       const pdfBuffer = body;
 
-      const { PDFParse } = await import('pdf-parse');
-      let extractedText: string;
+      let read: PdfTextResult;
       try {
-        const pdfParser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
-        const extracted = await pdfParser.getText();
-        extractedText = extracted?.text ?? '';
+        read = await extractPdfText(new Uint8Array(pdfBuffer), {
+          maxPages: MAX_STATEMENT_PAGES,
+          maxTextChars: MAX_STATEMENT_TEXT_CHARS,
+          timeoutMs: STATEMENT_READ_TIMEOUT_MS,
+        });
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'PDF read failed';
         throw new AppError(`Failed to read PDF: ${msg}`, 422);
       }
+      const extractedText = statementTextOrThrow(read);
 
       if (!extractedText.trim()) {
         throw new AppError(
@@ -680,30 +746,31 @@ router.post(
           422
         );
       }
+      if (parsed.holdings.length > MAX_STATEMENT_HOLDINGS) {
+        logger.warn(`[parse-ut-stmt] rejected: statement lists ${parsed.holdings.length} holdings`);
+        throw new AppError(
+          `This statement lists ${parsed.holdings.length} holdings; one import takes at most ${MAX_STATEMENT_HOLDINGS}. Add these holdings manually instead.`,
+          422
+        );
+      }
 
       const yahooProvider = priceService.getProvider('yahoo');
+      // One Yahoo search per distinct ISIN: a fund held two ways (Cash and SRS) repeats.
+      const symbolLookups = new Map<string, Promise<string | null>>();
+      const lookUpYahooSymbol = (isin: string) => {
+        let lookup = symbolLookups.get(isin);
+        if (!lookup) {
+          lookup = searchYahooSymbol(yahooProvider, isin);
+          symbolLookups.set(isin, lookup);
+        }
+        return lookup;
+      };
       const enriched = await Promise.all(
         parsed.holdings.map(async (h) => {
           const { priceUsd, fxRateToUsd } = await navToUsd(h.navNative, h.nativeCurrency);
           const usdPerNative = fxRateToUsd ?? 1;
           const totalCostUsd = h.totalCostNative * usdPerNative;
-
-          let yahooSymbol: string | null = null;
-          if (h.isin) {
-            try {
-              const match =
-                'searchByIsin' in yahooProvider
-                  ? await (
-                      yahooProvider as {
-                        searchByIsin(isin: string): Promise<{ symbol: string } | null>;
-                      }
-                    ).searchByIsin(h.isin)
-                  : null;
-              yahooSymbol = match?.symbol ?? null;
-            } catch (err) {
-              logger.warn(`[parse-ut-stmt] ISIN lookup failed for ${h.isin}:`, err);
-            }
-          }
+          const yahooSymbol = h.isin ? await lookUpYahooSymbol(h.isin) : null;
 
           return {
             symbol: h.symbol,

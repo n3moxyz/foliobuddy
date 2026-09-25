@@ -50,6 +50,57 @@ describe('parseUobKhStatement', () => {
     expect(parseUobKhStatement(statement('31 February 2026')).periodEnd).toBeNull();
   });
 
+  it('finds the period end past a line of 20k repeated prefixes without stalling', () => {
+    // The old regex rescanned the line from every prefix: quadratic, ~1.8 s.
+    const hostile = statement('28 February 2026').replace(
+      'For the',
+      `${'For the period from '.repeat(20_000)}\nFor the`
+    );
+
+    const started = performance.now();
+    const parsed = parseUobKhStatement(hostile);
+
+    expect(performance.now() - started).toBeLessThan(200);
+    expect(parsed.periodEnd).toBe('2026-02-28T00:00:00.000Z');
+  });
+
+  it('finds the same period end as the old regex', () => {
+    // The pattern extractPeriodEnd replaced; kept only to prove the rewrite is equivalent.
+    const legacyPeriod = /For the period from .+? to (\d{1,2}\s+[A-Za-z]+\s+\d{4})/i;
+    const periodEnds: Record<string, string> = {
+      '1 May 2026': '2026-05-01T00:00:00.000Z',
+      '12\nJune  2026': '2026-06-12T00:00:00.000Z',
+    };
+    // Every sequence of up to 5 pieces: both prefix casings, a date, a date
+    // wrapped onto the next line, filler, and each line break `.` stops at.
+    const pieces = [
+      'For the period from ',
+      'FOR THE period from ',
+      ' to 1 May 2026',
+      ' TO 12\nJune  2026',
+      'x',
+      '\n',
+      '\r',
+      '\u2028',
+      '\u2029',
+    ];
+    let layer = [''];
+    const corpus = [''];
+    for (let length = 1; length <= 5; length++) {
+      layer = layer.flatMap((sequence) => pieces.map((piece) => sequence + piece));
+      corpus.push(...layer);
+    }
+
+    const mismatches = corpus.filter((text) => {
+      const legacy = legacyPeriod.exec(text)?.[1];
+      const expected = legacy === undefined ? null : periodEnds[legacy];
+      return parseUobKhStatement(`UOB Kay Hian\n${text}`).periodEnd !== expected;
+    });
+
+    expect(corpus).toHaveLength(66_430);
+    expect(mismatches).toEqual([]);
+  });
+
   it.each(['0', '-10', 'Infinity'])('rejects corrupted holding quantity %s', (quantity) =>
     expect(parseUobKhStatement(statement('28 February 2026', quantity)).holdings).toEqual([])
   );

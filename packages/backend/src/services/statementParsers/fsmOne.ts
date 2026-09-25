@@ -42,12 +42,43 @@ function stripThousands(s: string): number {
   return parseFloat(s.replace(/,/g, ''));
 }
 
-function extractPeriodEnd(text: string): string | null {
-  let m = text.match(/UNIT TRUST HOLDINGS AS AT\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
-  if (!m) {
-    m = text.match(/Statement Period:[\s\S]*?to\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
+// Finds each pattern from the end of the previous pattern's match and returns
+// the last pattern's match: the same end and captures as the patterns joined
+// by lazy `[\s\S]*?` gaps. That joined regex also retried from every later
+// occurrence of an earlier pattern (cubic on crafted text), but for these
+// patterns the retries only rescan text already searched. Patterns need the
+// `g` flag so `lastIndex` sets where each search starts.
+function matchInOrder(text: string, patterns: RegExp[]): RegExpExecArray | null {
+  let match: RegExpExecArray | null = null;
+  for (const pattern of patterns) {
+    pattern.lastIndex = match ? match.index + match[0].length : 0;
+    match = pattern.exec(text);
+    if (!match) return null;
   }
-  return m ? parseEnglishDate(m[1]) : null;
+  return match;
+}
+
+// The date /Statement Period:[\s\S]*?to\s+(<date>)/i captured. Exported for tests.
+export function findStatementPeriodDate(text: string): string | null {
+  const match = matchInOrder(text, [/Statement Period:/gi, /to\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})/gi]);
+  return match ? match[1] : null;
+}
+
+// Index just past the holdings table header, which ends in its last column,
+// "Current Market Value (B)"; -1 when missing. Exported for tests.
+export function findHoldingsHeaderEnd(text: string): number {
+  const match = matchInOrder(text, [
+    /UNIT TRUST HOLDINGS AS AT/gi,
+    /Current\s+Market/gi,
+    /Value\s*\(B\)/gi,
+  ]);
+  return match ? match.index + match[0].length : -1;
+}
+
+function extractPeriodEnd(text: string): string | null {
+  const m = text.match(/UNIT TRUST HOLDINGS AS AT\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
+  const date = m ? m[1] : findStatementPeriodDate(text);
+  return date ? parseEnglishDate(date) : null;
 }
 
 // One holding's value block in iFAST/FSMOne unit trust holdings table:
@@ -86,13 +117,10 @@ export function parseFsmOneStatement(text: string): ParsedStatement {
 
   const periodEnd = extractPeriodEnd(text);
 
-  const headerMatch = text.match(
-    /UNIT TRUST HOLDINGS AS AT[\s\S]*?Current\s+Market[\s\S]*?Value\s*\(B\)/i
-  );
-  if (!headerMatch || headerMatch.index === undefined) {
+  const sectionStart = findHoldingsHeaderEnd(text);
+  if (sectionStart === -1) {
     throw new Error('FSMOne: unit trust holdings table header not found');
   }
-  const sectionStart = headerMatch.index + headerMatch[0].length;
   const trailerOffset = text.slice(sectionStart).search(/TOTAL UNIT TRUST HOLDINGS/i);
   if (trailerOffset === -1) {
     throw new Error('FSMOne: unit trust holdings totals row not found');
