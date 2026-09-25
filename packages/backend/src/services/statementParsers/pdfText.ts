@@ -27,10 +27,11 @@ const PDF_PARSE_URL = import.meta.resolve('pdf-parse');
 // one crafted PDF (thousands of pages, or a small stream that inflates to
 // gigabytes) froze every request, and no timer could fire to stop it, so the
 // reader runs in a worker that is terminated at the deadline. It is inline
-// JavaScript so dev (tsx), tests (vitest) and the build run the same code.
+// JavaScript so dev (tsx), tests (vitest) and the build run the same code,
+// using only import() so it runs whether Node evaluates it as CJS or ESM.
 const READER_SOURCE = `
-const { parentPort, workerData } = require('node:worker_threads');
 (async () => {
+  const { parentPort, workerData } = await import('node:worker_threads');
   const { PDFParse } = await import(workerData.pdfParseUrl);
   const parser = new PDFParse({ data: workerData.pdf });
   try {
