@@ -89,7 +89,7 @@ Portfolio snapshots: daily/weekly/monthly/YTD returns + BTC/ETH outperformance. 
 
 ### Yahoo Search & Local-Currency Equities
 
-Yahoo search IP-filters by region; `YahooFinanceProvider.search()` falls back to IP-neutral `/v7/finance/quote` for ticker-shaped queries without an exact match. Suffix→currency: `.SI`→SGD, `.T`→JPY, `.TW`/`.TWO`→TWD, `.KS`/`.KQ`→KRW, `.OL`→NOK; prefer primary local exchanges over OTC/EU listings. Keep Kioxia (`285A.T`) + Oslo tests in `YahooFinanceProvider.test.ts`; story: FORET.md.
+Yahoo search IP-filters by region; `YahooFinanceProvider.search()` falls back to IP-neutral `/v7/finance/quote` for ticker-shaped queries without an exact match. Asset/ISIN searches skip yahoo-finance2 validation (`validateResult: false` + `searchQuotesOf`): its strict schema once emptied all name searches. Suffix→currency: `.SI`→SGD, `.T`→JPY, `.TW`/`.TWO`→TWD, `.KS`/`.KQ`→KRW, `.OL`→NOK; prefer primary exchanges over OTC/EU. Keep Kioxia/Oslo/StablecoinX tests in `YahooFinanceProvider*.test.ts`; story: FORET.md.
 
 ### Unit Trust Statement Parsers (PDF Import)
 
@@ -159,7 +159,9 @@ Advisory frontend audit — see pinned command in Commands. Triage input, not a 
 
 Protected update/delete routes must filter by both `id` + `req.userId!`, never `id` alone (blocks cross-user mutation).
 
-Global Asset catalog rows are shared, so follow split rules (`src/lib/authorization.ts`): `PUT`/`DELETE /assets/:id` need an admin from `ADMIN_USER_IDS`; per-user flows (`POST /assets/:id/refresh-price`, `PATCH /assets/:id/nav`) 403 unless user holds asset. `GET /assets/:id` has only user's positions.
+Global catalog rows are shared (`src/lib/authorization.ts`): `PUT`/`DELETE /assets/:id` need an `ADMIN_USER_IDS` admin; per-user flows (`POST /assets/:id/refresh-price`, `PATCH /assets/:id/nav`) 403 unless user holds asset; `GET /assets/:id` has only user's positions.
+
+Tickers repeat across classes (USDE: StablecoinX equity, Ethena stablecoin): reuse catalog rows by identity, then same-group symbol (`sameClassSymbolWhere`/`Key`, `lib/domain.ts`); add no `{ symbol }`-only lookups.
 
 ### WebSocket CORS
 
