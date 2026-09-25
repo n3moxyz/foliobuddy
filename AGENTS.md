@@ -203,13 +203,13 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### News Tab
 
-`/news` (shortcut `N`): owned (`custodyOf: null`) + open-trade holdings. Top stories → Crypto/Equities (one card per holding: top story + "N stories"; quiet and past-cap holdings listed below) → Macro. Holding search → `?asset=<assetId>` page (60 days, newest first). Sources, endpoints, ranking detail: [docs/NEWS.md](docs/NEWS.md).
+`/news` (shortcut `N`): owned (`custodyOf: null`) + open-trade holdings; per-holding page at `?asset=<assetId>`. How it works (queries, sources, endpoints, ranking, UI): [docs/NEWS.md](docs/NEWS.md). Binding rules:
 
-- Queries (`services/news/newsQuery.ts`): US tickers by ticker; suffixed listings by cleaned company name; coins by name (Yahoo returns nothing for `D05.SI`/`SOL-USD`). Keep Yahoo results only when `relatedTickers` has the ticker or the headline names the company; fail open when no tags; still bound `Asset.name` before any regex (old rows predate the cap). `.SI` also queries Google News RSS (`googleNews.ts`): never fails the page, pauses on 403/429/503/non-RSS; linear CDATA-safe parse, `news.google.com` links only; classify by `sourceUrl`, never enrich its redirects.
-- `GET /news` fetches the 40 largest targets; `holdings` lists all (`loaded`). Uncached failures reject; partial refresh keeps successes; all-Yahoo-failed rejects so React Query keeps last-good headlines. `GET /news/asset/:assetId`: 404 unless an owned/open-trade news target.
-- Ranking: tiers 1–4, unknown = tier 4/null label, never "verified"; tier 1/primary ONLY from official domains (gov/allowlist or `Asset.officialDomain`), never publisher strings. One story, one place (a holding with only shared coverage shows it too). `topStories`: high materiality + (tier ≤2 or tier 3 with ≥2 distinct publishers), cap 4, empty on quiet days. API: labels only, never scores/weights/position values/provider tags (test-enforced).
-- UI: `News.tsx` + `components/news/`; `useNews`/`useAssetNews` 5-min staleTime; no money → no privacy wiring. Flag feedback logs story metadata only; demo mocks all news routes.
+- Bound `Asset.name` before any regex (old rows predate the cap). Google News RSS (`.SI`) never fails the page: linear CDATA-safe parse, `news.google.com` links only; classify by `sourceUrl`, never enrich its redirects.
+- Uncached failures reject; partial refresh keeps successes; all-Yahoo-failed rejects so React Query keeps last-good headlines. `GET /news/asset/:assetId`: 404 unless an owned/open-trade news target.
+- Tiers: unknown = tier 4/null label, never "verified"; tier 1/primary ONLY from official domains (gov/allowlist or `Asset.officialDomain`), never publisher strings. API: labels only, never scores/weights/position values/provider tags (test-enforced); flag feedback logs story metadata only.
 - Stage 2 enrichment (optional `ANTHROPIC_API_KEY`): Top stories only, from the FETCHED article body (no text = no enrichment), pinned public-DNS fetches; success cache keyed by story id + sorted `affectedSymbols` (never cross holding contexts); low confidence never served.
+- No money → no privacy wiring; demo mocks every news route.
 
 ### Portfolio Hero Summary
 
