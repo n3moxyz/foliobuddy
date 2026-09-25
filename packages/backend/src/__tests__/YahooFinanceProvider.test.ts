@@ -132,11 +132,21 @@ describe('YahooFinanceProvider', () => {
     // Fans out across all configured regions, not just JP — guards against a region
     // being dropped from SEARCH_REGIONS (which would silently lose listings).
     expect(searchMock).toHaveBeenCalledTimes(5);
-    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'US' }));
-    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'JP' }));
-    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'TW' }));
-    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'KR' }));
-    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'NO' }));
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'US' }), {
+      validateResult: false,
+    });
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'JP' }), {
+      validateResult: false,
+    });
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'TW' }), {
+      validateResult: false,
+    });
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'KR' }), {
+      validateResult: false,
+    });
+    expect(searchMock).toHaveBeenCalledWith('kioxia', expect.objectContaining({ region: 'NO' }), {
+      validateResult: false,
+    });
     expect(results[0]).toMatchObject({
       providerAssetId: '285A.T',
       symbol: '285A.T',
@@ -145,6 +155,62 @@ describe('YahooFinanceProvider', () => {
     });
     expect(results.findIndex((result) => result.symbol === '285A.T')).toBeLessThan(
       results.findIndex((result) => result.symbol === 'KXHICF')
+    );
+  });
+
+  it('skips yahoo-finance2 result validation and drops entries without a symbol', async () => {
+    searchMock.mockResolvedValue({
+      quotes: [
+        { symbol: 'USDE', longname: 'StablecoinX Inc.', quoteType: 'EQUITY', exchDisp: 'NASDAQ' },
+        { quoteType: 'EQUITY', longname: 'No symbol' },
+        { symbol: '', quoteType: 'EQUITY' },
+        null,
+        'USDE',
+      ],
+    });
+    quoteMock.mockResolvedValue(null);
+
+    const results = await new YahooFinanceProvider().search('StablecoinX');
+
+    for (const call of searchMock.mock.calls) {
+      expect(call[2]).toEqual({ validateResult: false });
+    }
+    expect(results).toEqual([
+      {
+        providerAssetId: 'USDE',
+        symbol: 'USDE',
+        name: 'StablecoinX Inc.',
+        exchange: 'NASDAQ',
+        nativeCurrency: 'USD',
+        rank: null,
+      },
+    ]);
+  });
+
+  it('skips validation for ISIN lookups and tolerates a payload with no quotes array', async () => {
+    // Keyed by ISIN rather than queued with mockResolvedValueOnce, so a failure
+    // here can't leave an unconsumed response for the next test.
+    searchMock.mockImplementation(async (isin: string) =>
+      isin === 'SG0000000001'
+        ? { quotes: 'not-an-array' }
+        : {
+            quotes: [
+              { quoteType: 'MUTUALFUND' },
+              { symbol: '0P0001OPAN.SI', longname: 'Amova Fund', quoteType: 'MUTUALFUND' },
+            ],
+          }
+    );
+    const provider = new YahooFinanceProvider();
+
+    await expect(provider.searchByIsin('SG0000000001')).resolves.toBeNull();
+    await expect(provider.searchByIsin('SG9999004360')).resolves.toMatchObject({
+      symbol: '0P0001OPAN.SI',
+      nativeCurrency: 'SGD',
+    });
+    expect(searchMock).toHaveBeenCalledWith(
+      'SG9999004360',
+      expect.objectContaining({ quotesCount: 5 }),
+      { validateResult: false }
     );
   });
 

@@ -47,6 +47,7 @@ import type {
 } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
+import { isListedEquityCandidate } from './assetSearchMatching';
 import { PositionImportTab } from './PositionImportTab';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 import { CustodyCheckbox } from './CustodyCheckbox';
@@ -757,12 +758,7 @@ export function PositionForm({
 
     if (category === 'equity' && equitySearchResults && searchQuery.length >= 1) {
       equitySearchResults.forEach((candidate) => {
-        const existsInPortfolio = assets?.some(
-          (a) =>
-            (a.priceProvider === 'yahoo' && a.providerAssetId === candidate.providerAssetId) ||
-            a.symbol.toLowerCase() === candidate.symbol.toLowerCase()
-        );
-        if (!existsInPortfolio) {
+        if (!isListedEquityCandidate(assets, candidate)) {
           results.push({ type: 'search', coin: candidate });
         }
       });

@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { parsePagination, paginatedResponse } from '../lib/pagination.js';
 import { calculateTradePnL } from '../lib/tradePnL.js';
+import { sameClassSymbolWhere } from '../lib/domain.js';
 import {
   TRADE_DIRECTIONS,
   TRADE_STATUSES,
@@ -521,7 +522,8 @@ router.post('/bulk-import', async (req, res, next) => {
         let asset = await prisma.asset.findFirst({
           where: tradeData.asset.coingeckoId
             ? { coingeckoId: tradeData.asset.coingeckoId }
-            : { symbol: tradeData.asset.symbol.toUpperCase() },
+            : // Same-class only: an equity trade must not bind to a same-ticker coin.
+              sameClassSymbolWhere(tradeData.asset.symbol, tradeData.asset.category),
         });
 
         if (!asset) {

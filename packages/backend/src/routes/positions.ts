@@ -11,13 +11,15 @@ import {
   MAX_ASSET_NAME_LENGTH,
   MAX_ASSET_SYMBOL_LENGTH,
   ASSET_CATEGORIES,
+  AssetCategory,
   STORAGE_TYPES,
   StorageType,
   categoryGroup,
   CATEGORIES_IN_GROUP,
   CategoryGroup,
+  PriceProvider,
 } from '../lib/constants.js';
-import { applyPositionDelta, calculatePositionValue } from '../lib/domain.js';
+import { applyPositionDelta, calculatePositionValue, sameClassSymbolKey } from '../lib/domain.js';
 import { parseBoundedIntegerQuery } from '../lib/queryParams.js';
 import { navTransaction } from '../services/unitTrustNavService.js';
 import {
@@ -292,7 +294,7 @@ const bulkImportPositionSchema = z.object({
     // Same caps as single-asset creation, so bulk import can't bypass them.
     symbol: z.string().min(1).max(MAX_ASSET_SYMBOL_LENGTH),
     name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
-    category: z.enum(ASSET_CATEGORIES).default('LIQUID_CRYPTO'),
+    category: z.enum(ASSET_CATEGORIES).optional(),
     // Optional provider wiring — honored only when creating a new Asset row.
     // Lets a copy/paste round-trip of equities and unit trusts preserve the
     // price feed (Yahoo / manual NAV) for tickers not yet in the DB.
@@ -310,8 +312,53 @@ const bulkImportPositionSchema = z.object({
   custodyOf: z.string().nullable().optional(),
 });
 
+interface BulkSymbolRow {
+  asset: {
+    symbol: string;
+    category: string;
+    priceProvider?: string | null;
+    coingeckoId?: string | null;
+  };
+  categoryProvided: boolean;
+}
+
+// A row that names its category may reuse only an asset in the same category
+// group with its ticker. A row without one (hand-written JSON) may reuse a
+// same-ticker asset only when a single group holds that ticker and the row's
+// price feed agrees: with StablecoinX's USDE equity and the Ethena USDe
+// stablecoin both catalogued, picking either would be a guess.
+function findBulkSymbolMatch<T extends { symbol: string; category: string; priceProvider: string }>(
+  assetMap: Map<string, T>,
+  row: BulkSymbolRow
+): T | undefined {
+  const { symbol, category } = row.asset;
+  if (row.categoryProvided) return assetMap.get(sameClassSymbolKey(symbol, category));
+  const upper = symbol.toUpperCase();
+  const matches = [...assetMap.values()].filter((asset) => asset.symbol.toUpperCase() === upper);
+  if (matches.length > 1) {
+    throw new AppError(
+      `${upper} matches more than one asset type (${matches
+        .map((asset) => asset.category)
+        .join(', ')}); add "category" to this row`,
+      400
+    );
+  }
+  const [match] = matches;
+  const rowProvider =
+    row.asset.priceProvider ?? (row.asset.coingeckoId ? PriceProvider.COINGECKO : undefined);
+  return match && (!rowProvider || match.priceProvider === rowProvider) ? match : undefined;
+}
+
 const bulkImportSchema = z.object({
-  positions: z.array(bulkImportPositionSchema),
+  positions: z.array(
+    bulkImportPositionSchema.transform((pos) => ({
+      ...pos,
+      // A missing category still defaults to crypto for new rows, but the symbol
+      // lookup has to know it was missing (see findBulkSymbolMatch).
+      categoryProvided: pos.asset.category !== undefined,
+      asset: { ...pos.asset, category: pos.asset.category ?? AssetCategory.LIQUID_CRYPTO },
+    }))
+  ),
 });
 
 router.post('/bulk', async (req, res, next) => {
@@ -326,7 +373,11 @@ router.post('/bulk', async (req, res, next) => {
     const results: Array<{ success: boolean; symbol: string; error?: string }> = [];
 
     const existingAssets = await prisma.asset.findMany();
-    const assetMap = new Map(existingAssets.map((a) => [a.symbol.toUpperCase(), a]));
+    // Keyed per category group: tickers collide across classes (USDE is both a
+    // stablecoin and StablecoinX's equity), and a symbol match must not cross them.
+    const assetMap = new Map(
+      existingAssets.map((a) => [sameClassSymbolKey(a.symbol, a.category), a])
+    );
     const coingeckoMap = new Map(
       existingAssets.filter((a) => a.coingeckoId).map((a) => [a.coingeckoId!, a])
     );
@@ -378,7 +429,7 @@ router.post('/bulk', async (req, res, next) => {
           canonical ||
           identityMatches[0] ||
           (pos.asset.coingeckoId && coingeckoMap.get(pos.asset.coingeckoId)) ||
-          assetMap.get(pos.asset.symbol.toUpperCase());
+          findBulkSymbolMatch(assetMap, pos);
 
         if (
           asset &&
@@ -424,7 +475,7 @@ router.post('/bulk', async (req, res, next) => {
               })
             : await prisma.asset.create({ data });
           existingAssets.push(asset);
-          assetMap.set(asset.symbol.toUpperCase(), asset);
+          assetMap.set(sameClassSymbolKey(asset.symbol, asset.category), asset);
           if (asset.coingeckoId) {
             coingeckoMap.set(asset.coingeckoId, asset);
           }

@@ -11,7 +11,7 @@ import {
   MAX_ASSET_SYMBOL_LENGTH,
   PriceProvider,
 } from '../lib/constants.js';
-import { externalProviderCategoryError } from '../lib/domain.js';
+import { externalProviderCategoryError, sameClassSymbolWhere } from '../lib/domain.js';
 import { requireAdminUser, requireUserHoldsAsset } from '../lib/authorization.js';
 import type { AssetPriceProvider, ProviderName } from '../services/providers/types.js';
 import { normalizeOfficialDomain } from '../services/news/sourceQuality.js';
@@ -221,11 +221,15 @@ router.post('/from-coingecko', async (req, res, next) => {
       req.body
     );
 
-    const existing = await prisma.asset.findFirst({
-      where: {
-        OR: [{ coingeckoId }, { symbol: symbol.toUpperCase() }],
-      },
-    });
+    // Identity first, in from-provider's order: the provider pair (the row price
+    // refresh reads), then the legacy coingeckoId column; the symbol fallback
+    // may reuse only a same-class asset.
+    const existing =
+      (await prisma.asset.findFirst({
+        where: { priceProvider: PriceProvider.COINGECKO, providerAssetId: coingeckoId },
+      })) ??
+      (await prisma.asset.findFirst({ where: { coingeckoId } })) ??
+      (await prisma.asset.findFirst({ where: sameClassSymbolWhere(symbol, category) }));
 
     if (existing) {
       return res.json(existing);
@@ -318,14 +322,18 @@ router.post('/from-provider', async (req, res, next) => {
       throw new AppError(providerCategoryError, 400);
     }
 
-    const existing = await prisma.asset.findFirst({
-      where: {
-        OR: [
-          { priceProvider: data.provider, providerAssetId: data.providerAssetId },
-          { symbol: data.symbol.toUpperCase() },
-        ],
-      },
-    });
+    // Identity first, exact provider pair before the legacy coingeckoId column
+    // (so a backfill never collides with the row that already holds the pair);
+    // the symbol fallback may reuse only a same-class asset, so StablecoinX's
+    // USDE equity never resolves to the Ethena USDe stablecoin.
+    const existing =
+      (await prisma.asset.findFirst({
+        where: { priceProvider: data.provider, providerAssetId: data.providerAssetId },
+      })) ??
+      (data.provider === PriceProvider.COINGECKO
+        ? await prisma.asset.findFirst({ where: { coingeckoId: data.providerAssetId } })
+        : null) ??
+      (await prisma.asset.findFirst({ where: sameClassSymbolWhere(data.symbol, data.category) }));
 
     if (existing) {
       const updates = providerMetadataUpdates(existing, data);

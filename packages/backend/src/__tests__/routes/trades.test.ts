@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { mockAsset, mockTrade } from '../helpers/fixtures.js';
 import { createTestApp } from '../helpers/createTestApp.js';
+import { ETHENA_USDE, STABLECOINX, findFirstIn } from '../helpers/catalog.js';
 
 // Mock Prisma
 const mockPrisma = {
-  asset: { findUnique: vi.fn() },
+  asset: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
   trade: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
@@ -354,5 +355,41 @@ describe('adversarial trade boundaries', () => {
 
     expect(res.status).toBe(400);
     expect(mockPrisma.trade.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/trades/bulk-import with same-ticker assets across classes', () => {
+  const stablecoinXTrade = {
+    asset: { coingeckoId: null, symbol: 'USDE', name: 'StablecoinX Inc.', category: 'EQUITY' },
+    direction: 'LONG',
+    entryPrice: 15,
+    quantity: 100,
+    entryDate: '2026-09-01',
+  };
+
+  it('creates the StablecoinX equity instead of binding the trade to Ethena USDe', async () => {
+    mockPrisma.asset.findFirst.mockImplementation(findFirstIn([ETHENA_USDE]));
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'created', ...data }));
+
+    const res = await request(app).post('/api/trades/bulk-import').send([stablecoinXTrade]);
+
+    expect(res.body.results).toEqual([{ success: true, symbol: 'USDE' }]);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ symbol: 'USDE', category: 'EQUITY' }),
+    });
+    expect(mockPrisma.trade.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ assetId: 'created' }),
+    });
+  });
+
+  it('binds the trade to the existing equity when both USDE assets exist', async () => {
+    mockPrisma.asset.findFirst.mockImplementation(findFirstIn([ETHENA_USDE, STABLECOINX]));
+
+    await request(app).post('/api/trades/bulk-import').send([stablecoinXTrade]);
+
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    expect(mockPrisma.trade.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ assetId: STABLECOINX.id }),
+    });
   });
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { mockAsset, mockPosition } from '../helpers/fixtures.js';
 import { createTestApp } from '../helpers/createTestApp.js';
+import { ETHENA_USDE, STABLECOINX } from '../helpers/catalog.js';
 
 // Mock Prisma
 const mockPrisma = {
@@ -100,6 +101,161 @@ describe('bulk import text caps', () => {
     expect(res.body.successCount).toBe(1);
     expect(mockPrisma.asset.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ symbol, name }),
+    });
+  });
+});
+
+describe('bulk import with same-ticker assets across classes', () => {
+  const stablecoinXImport = {
+    symbol: 'USDE',
+    name: 'StablecoinX Inc.',
+    category: 'EQUITY',
+    priceProvider: 'yahoo',
+    providerAssetId: 'USDE',
+  };
+  // A pasted Cash row without coingeckoId, so only the symbol can match it.
+  const ethenaImport = { symbol: 'USDe', name: 'Ethena USDe', category: 'STABLECOIN' };
+
+  function importPositions(...assets: Array<Record<string, unknown>>) {
+    return request(app)
+      .post('/api/positions/bulk')
+      .send({ positions: assets.map((asset) => ({ asset, quantity: 10, avgCostUsd: 1 })) });
+  }
+
+  it('creates the StablecoinX equity instead of binding it to the Ethena USDe stablecoin', async () => {
+    mockPrisma.asset.findMany.mockResolvedValue([ETHENA_USDE]);
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'created', ...data }));
+
+    const res = await importPositions(stablecoinXImport);
+
+    expect(res.body.successCount).toBe(1);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ symbol: 'USDE', category: 'EQUITY', priceProvider: 'yahoo' }),
+    });
+    expect(mockPrisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ assetId: 'created' }),
+    });
+  });
+
+  it('binds each import to its own class whatever order the catalog returns', async () => {
+    for (const catalog of [
+      [ETHENA_USDE, STABLECOINX],
+      [STABLECOINX, ETHENA_USDE],
+    ]) {
+      vi.clearAllMocks();
+      mockPrisma.asset.findMany.mockResolvedValue(catalog);
+
+      const res = await importPositions(stablecoinXImport, ethenaImport);
+
+      expect(res.body.successCount).toBe(2);
+      expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+      const assetIds = mockPrisma.position.create.mock.calls.map(([args]) => args.data.assetId);
+      expect(assetIds).toEqual([STABLECOINX.id, ETHENA_USDE.id]);
+    }
+  });
+});
+
+describe('bulk import rows without a category', () => {
+  const nvidiaEquity = {
+    ...STABLECOINX,
+    id: 'nvda-row',
+    providerAssetId: 'NVDA',
+    symbol: 'NVDA',
+    name: 'NVIDIA Corporation',
+  };
+
+  function importWithoutCategory(symbol: string) {
+    return request(app)
+      .post('/api/positions/bulk')
+      .send({ positions: [{ asset: { symbol, name: symbol }, quantity: 10, avgCostUsd: 1 }] });
+  }
+
+  it('reuses the one existing asset with that ticker, whatever its class', async () => {
+    mockPrisma.asset.findMany.mockResolvedValue([nvidiaEquity, ETHENA_USDE]);
+
+    const res = await importWithoutCategory('nvda');
+
+    expect(res.body.successCount).toBe(1);
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    expect(mockPrisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ assetId: 'nvda-row' }),
+    });
+  });
+
+  it('asks for a category instead of guessing when the ticker exists in two classes', async () => {
+    mockPrisma.asset.findMany.mockResolvedValue([ETHENA_USDE, STABLECOINX]);
+
+    const res = await importWithoutCategory('USDE');
+
+    expect(res.body.successCount).toBe(0);
+    expect(res.body.results[0].error).toBe(
+      'USDE matches more than one asset type (STABLECOIN, EQUITY); add "category" to this row'
+    );
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    expect(mockPrisma.position.create).not.toHaveBeenCalled();
+  });
+
+  it('never moves a row onto an asset with a different price feed', async () => {
+    mockPrisma.asset.findMany.mockResolvedValue([ETHENA_USDE]);
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'created', ...data }));
+
+    // A Yahoo-priced USDE row must not become the CoinGecko-priced stablecoin.
+    const res = await request(app)
+      .post('/api/positions/bulk')
+      .send({
+        positions: [
+          {
+            asset: {
+              symbol: 'USDE',
+              name: 'StablecoinX',
+              priceProvider: 'yahoo',
+              providerAssetId: 'USDE',
+            },
+            quantity: 10,
+            avgCostUsd: 15,
+          },
+        ],
+      });
+
+    expect(res.body.successCount).toBe(1);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ priceProvider: 'yahoo', providerAssetId: 'USDE' }),
+    });
+    expect(mockPrisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ assetId: 'created' }),
+    });
+  });
+
+  it('never binds a CoinGecko row to a Yahoo equity with the same ticker', async () => {
+    mockPrisma.asset.findMany.mockResolvedValue([STABLECOINX]);
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'created', ...data }));
+
+    const res = await request(app)
+      .post('/api/positions/bulk')
+      .send({
+        positions: [
+          {
+            asset: { symbol: 'USDe', name: 'Ethena USDe', coingeckoId: 'ethena-usde' },
+            quantity: 1,
+          },
+        ],
+      });
+
+    expect(res.body.successCount).toBe(1);
+    expect(mockPrisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ assetId: 'created' }),
+    });
+  });
+
+  it('still creates a new ticker as crypto, as before', async () => {
+    mockPrisma.asset.findMany.mockResolvedValue([ETHENA_USDE]);
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'created', ...data }));
+
+    const res = await importWithoutCategory('NEWCOIN');
+
+    expect(res.body.successCount).toBe(1);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ symbol: 'NEWCOIN', category: 'LIQUID_CRYPTO' }),
     });
   });
 });
