@@ -109,7 +109,7 @@ Queue-based: 2.1s between calls, 30s in-memory cache, batch up to 50 coins.
 
 ### React Query + Zustand Split
 
-- React Query: server state. No global `refetchInterval`; global `refetchOnWindowFocus` stays `false`. Money-sensitive `usePortfolio.ts` queries opt into `refetchOnWindowFocus` + `refetchOnReconnect`.
+- React Query: server state. No global `refetchInterval`; global `refetchOnWindowFocus` stays `false`. Money-sensitive `usePortfolio.ts` queries opt into `refetchOnWindowFocus` + `refetchOnReconnect`. First-load skeletons gate on `isPending`, not `isLoading` (a paused offline/hidden-tab load isn't fetching); never on `enabled: false` queries.
 - Zustand: client state (currency + global monetary-privacy preferences)
 
 ### Structured Logging
@@ -119,6 +119,8 @@ All backend code uses `logger` (`src/lib/logger.ts`) — no `console.log` in pro
 ### Rate & Payload Limits
 
 Global express-rate-limit on `/api`: 200 req/15 min, override `RATE_LIMIT_MAX` (local dev 10000); constants in `src/lib/constants.ts`. Express JSON cap **1mb** (`MAX_PAYLOAD_SIZE`), deliberately tight — if bulk import 413s, bump constant, don't widen globally.
+
+Catalog caps: every asset-writing route MUST Zod-validate trimmed `name` ≤ `MAX_ASSET_NAME_LENGTH` (200), `symbol` ≤ 20 (manual/provider) or `MAX_ASSET_SYMBOL_LENGTH` (40: unit trust/CoinGecko/bulk); names feed regex. Shared + backend constants (`domain:check`).
 
 ### Pagination (Backend)
 
@@ -201,12 +203,13 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### News Tab
 
-`/news` between Trades/History, shortcut `N`: Yahoo headlines for owned (`custodyOf: null`) + open-trade assets; Top stories → Crypto → Equities → Macro, per-asset sub-groups.
+`/news` (shortcut `N`): owned (`custodyOf: null`) + open-trade holdings. Top stories → Crypto/Equities (one card per holding: top story + "N stories"; quiet and past-cap holdings listed below) → Macro. Holding search → `?asset=<assetId>` page (60 days, newest first). Sources, endpoints, ranking detail: [docs/NEWS.md](docs/NEWS.md).
 
-- `GET /news` → `newsService` → `YahooFinanceProvider.getNews()` (only `newsCount > 0` call site): coingecko crypto `SYMBOL-USD`, yahoo-priced `providerAssetId`; skip manual/stables/cash/NFT/angel. 15-min TTLCache/ticker, max 25 portfolio targets/request. Uncached failures reject; partial refresh keeps successes; all-failed rejects so React Query preserves last-good headlines.
-- Ranking in `services/news/`: `sourceQuality` publisher tiers 1–4 + small denylist; unknown = tier 4/null label, never "verified". `Asset.officialDomain` (admin `PUT /assets/:id`, public-suffix-aware registrable domain) grants tier-1 "Company announcement" on matching article domains portfolio-wide. Tier 1/primary ONLY from official domains (end-anchored two-letter government ccTLD suffixes + allowlist), never publisher strings. `materiality`: headline patterns → importance + eventType; clickbait forces low. `ranking`: materiality + tier + relevance (held > open-trade) + 24h-half-life recency; age ≤14d (30d if high); future timestamps → undated. Cluster id → identity-preserving URL (strip tracking params) → title signature; best publisher represents, union `affectedSymbols`: one story, one place. `topStories`: high materiality + (tier ≤2 or tier 3 with ≥2 normalized distinct publishers), cap 4, empty on quiet days. API: labels only, never scores/weights/position values (test-enforced).
-- `News.tsx` + `useNews` (5-min staleTime), `--accent-macro`, restrained Important/Primary source badges + event label in meta, `formatRelativeTime()`; no money → no privacy wiring. `POST /news/feedback`: per-row Flag dropdown outside link, "Not relevant"/"Poor source"; log story metadata for classifier tuning, never portfolio values. Section repeats of Top stories: "in Top stories" meta marker. Demo `/api/news`, `/api/news/enrichment`, `/api/news/feedback` deterministic.
-- Optional Stage 2 `services/news/enrichmentService.ts`: Top stories only; 2 workers, 32-job pending cap. Claude `messages.parse` + `zodOutputFormat` (`zod/v4` import) over FETCHED body via `articleRetrieval.ts`; no text = no enrichment, never headline-only. Every hop uses Undici dispatcher pinned to validated public DNS address. Success cache 24h keyed by story id + sorted `affectedSymbols` (never serve an explanation written for one holding context to another portfolio); failure cache 30 min by story id; per-user tracked ids. Low-confidence cached, never served. Off without `ANTHROPIC_API_KEY`; `GET /news/enrichment` read-only cache view; `useNewsEnrichment` polls ≤5×; label "AI summary from the article · N confidence".
+- Queries (`services/news/newsQuery.ts`): US tickers by ticker; suffixed listings by cleaned company name; coins by name (Yahoo returns nothing for `D05.SI`/`SOL-USD`). Keep Yahoo results only when `relatedTickers` has the ticker or the headline names the company; fail open when no tags; still bound `Asset.name` before any regex (rows can predate the ingestion cap). `.SI` also queries Google News RSS (`googleNews.ts`): never fails the page, pauses on 403/429/503/non-RSS; linear CDATA-safe parse, `news.google.com` links only; classify by `sourceUrl`, never enrich its redirects.
+- `GET /news` fetches the 40 largest targets; `holdings` lists all (`loaded`). Uncached failures reject; partial refresh keeps successes; all-Yahoo-failed rejects so React Query keeps last-good headlines. `GET /news/asset/:assetId`: 404 unless an owned/open-trade news target.
+- Ranking: tiers 1–4, unknown = tier 4/null label, never "verified"; tier 1/primary ONLY from official domains (gov/allowlist or `Asset.officialDomain`), never publisher strings. One story, one place (a holding with only shared coverage shows it too). `topStories`: high materiality + (tier ≤2 or tier 3 with ≥2 distinct publishers), cap 4, empty on quiet days. API: labels only, never scores/weights/position values/provider tags (test-enforced).
+- UI: `News.tsx` + `components/news/`; `useNews`/`useAssetNews` 5-min staleTime; no money → no privacy wiring. Flag feedback logs story metadata only. Demo mocks every news route.
+- Stage 2 enrichment (optional `ANTHROPIC_API_KEY`): Top stories only, from the FETCHED article body (no text = no enrichment), pinned public-DNS fetches; success cache keyed by story id + sorted `affectedSymbols` (never serve one holding context's explanation to another); low confidence never served.
 
 ### Portfolio Hero Summary
 
@@ -291,7 +294,7 @@ Settings: flat layout, `<h2>` headings + `<Separator>`, no Card wrappers. Invest
 
 ### Consistent Page Headers
 
-All pages use same header pattern: `flex-col gap-3 sm:flex-row ... justify-between` wrapper, `text-2xl font-bold` title + muted subtitle, `size="sm"` buttons, `mr-1` icons. Every page sets `usePageTitle('...')`. High-scroll pages use `PageActionHeader` (sticks below shell at `top-14 sm:top-16`; `stickyOnMobile={false}` on Portfolio; hosts body panes — hero stats, lens tabs, counts). Dashboard intentionally scrolls normally.
+All pages use same header pattern: `flex-col gap-3 sm:flex-row ... justify-between` wrapper, `text-2xl font-bold` title + muted subtitle, `size="sm"` buttons, `mr-1` icons. Every page sets `usePageTitle('...')`. High-scroll pages use `PageActionHeader` (sticks below shell at `top-14 sm:top-16`; `stickyOnMobile={false}` on Portfolio/News; hosts body panes — hero stats, lens tabs, counts). Dashboard intentionally scrolls normally.
 
 ### Destructive Actions in Headers
 
