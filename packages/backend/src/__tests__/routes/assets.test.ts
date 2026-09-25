@@ -28,16 +28,12 @@ const mockPriceService = {
   updatePositionValues: vi.fn(),
 };
 
-const mockPdf = { getText: vi.fn() };
+const mockExtractPdfText = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }));
 vi.mock('../../services/priceService.js', () => ({ priceService: mockPriceService }));
-vi.mock('pdf-parse', () => ({
-  PDFParse: class {
-    getText() {
-      return mockPdf.getText();
-    }
-  },
+vi.mock('../../services/statementParsers/pdfText.js', () => ({
+  extractPdfText: mockExtractPdfText,
 }));
 vi.mock('../../lib/sentry.js', () => ({
   Sentry: { captureException: vi.fn() },
@@ -574,33 +570,143 @@ describe('PATCH /api/assets/:id/nav', () => {
 });
 
 describe('POST /api/assets/parse-unit-trust-statement', () => {
-  // MAX_STATEMENT_TEXT_CHARS in routes/assets.ts.
-  const maxTextChars = 1_000_000;
+  const PDF = Buffer.from('%PDF-1.7');
 
   function uploadPdf() {
     return request(app)
       .post('/api/assets/parse-unit-trust-statement')
       .set('Content-Type', 'application/pdf')
-      .send(Buffer.from('%PDF-1.7'));
+      .send(PDF);
   }
 
-  it('rejects extracted text too long for a statement before parsing it', async () => {
-    mockPdf.getText.mockResolvedValue({ text: 'x'.repeat(maxTextChars + 1) });
+  // A UOB Kay Hian statement listing `count` different funds.
+  function uobStatement(count: number) {
+    const holdings = Array.from({ length: count }, (_, i) =>
+      [
+        `Fund ${i}`,
+        `Growth Fund SG${String(i).padStart(9, '0')}0 SGD UNIT 1,000.000 1.2500`,
+        '0.0000',
+        '1.5000',
+        '$ 1,500.00 $ 250.00',
+      ].join('\n')
+    );
+    return [
+      'UOB Kay Hian Private Limited',
+      'For the period from 1 January 2026 to 28 February 2026',
+      'Portfolio Holdings',
+      ...holdings,
+      'Total $',
+    ].join('\n');
+  }
+
+  // An FSMOne statement holding the same fund twice, bought with Cash and SRS.
+  const FSMONE_SAME_FUND_TWICE = [
+    'FSMOne',
+    'UNIT TRUST HOLDINGS AS AT 30 APRIL 2026',
+    'Current Market',
+    'Value (B)',
+    'Amova Singapore Equity SGD (formerly Nikko AM)',
+    'SGD 5.3036 Cash SGD 5.2663 18,988.66 SGD 100,000.00 SGD 708.26 0.71 SGD 100,708.26',
+    'Amova Singapore Equity SGD (formerly Nikko AM)',
+    'SGD 5.3036 SRS SGD 5.2663 100.00 SGD 526.63 SGD 3.73 0.71 SGD 530.36',
+    'TOTAL UNIT TRUST HOLDINGS (SGD EQUIVALENT) SGD',
+  ].join('\n');
+
+  function mockLookups() {
+    mockPrisma.fxRate.findUnique.mockResolvedValue({ rate: 1.35, timestamp: new Date() });
+    const searchByIsin = vi.fn(async (isin: string) => ({ symbol: `${isin}.SI` }));
+    mockPriceService.getProvider.mockReturnValue({ searchByIsin });
+    return searchByIsin;
+  }
+
+  it('reads the PDF within the statement limits and parses its text', async () => {
+    mockExtractPdfText.mockResolvedValue({ status: 'ok', text: 'x' });
+
+    const res = await uploadPdf();
+
+    expect(mockExtractPdfText).toHaveBeenCalledWith(new Uint8Array(PDF), {
+      maxPages: 30,
+      maxTextChars: 1_000_000,
+      timeoutMs: 5_000,
+    });
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/^Could not recognize this statement format/);
+  });
+
+  it.each([
+    [
+      { status: 'busy' },
+      503,
+      'Another statement is being read right now. Try again in a few seconds.',
+    ],
+    [
+      { status: 'too-many-pages', pages: 120 },
+      422,
+      'This PDF has 120 pages; a statement import reads at most 30. Upload a single UOB Kay Hian or FSMOne monthly statement PDF.',
+    ],
+    [
+      { status: 'too-much-text', chars: 1_000_001 },
+      422,
+      'This PDF has too much text to be a monthly statement. Upload a single UOB Kay Hian or FSMOne monthly statement PDF.',
+    ],
+    [
+      { status: 'too-costly' },
+      422,
+      'This PDF is too large or complex to read. Upload a single UOB Kay Hian or FSMOne monthly statement PDF.',
+    ],
+  ])('answers a %j read with %i', async (read, status, error) => {
+    mockExtractPdfText.mockResolvedValue(read);
+
+    const res = await uploadPdf();
+
+    expect(res.status).toBe(status);
+    expect(res.body.error).toBe(error);
+  });
+
+  it('reports a PDF the reader cannot open', async () => {
+    mockExtractPdfText.mockRejectedValue(new Error('Invalid PDF structure.'));
+
+    const res = await uploadPdf();
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toBe('Failed to read PDF: Invalid PDF structure.');
+  });
+
+  it('imports a statement with 50 holdings', async () => {
+    mockExtractPdfText.mockResolvedValue({ status: 'ok', text: uobStatement(50) });
+    mockLookups();
+
+    const res = await uploadPdf();
+
+    expect(res.status).toBe(200);
+    expect(res.body.holdings).toHaveLength(50);
+  });
+
+  it('rejects a statement with 51 holdings before looking any of them up', async () => {
+    mockExtractPdfText.mockResolvedValue({ status: 'ok', text: uobStatement(51) });
+    const searchByIsin = mockLookups();
 
     const res = await uploadPdf();
 
     expect(res.status).toBe(422);
     expect(res.body.error).toBe(
-      'This PDF has too much text to be a monthly statement. Upload a single UOB Kay Hian or FSMOne monthly statement PDF.'
+      'This statement lists 51 holdings; one import takes at most 50. Add these holdings manually instead.'
     );
+    expect(mockPrisma.fxRate.findUnique).not.toHaveBeenCalled();
+    expect(searchByIsin).not.toHaveBeenCalled();
   });
 
-  it('passes text up to the cap on to the statement parsers', async () => {
-    mockPdf.getText.mockResolvedValue({ text: 'x'.repeat(maxTextChars) });
+  it('searches Yahoo once for a fund held two ways', async () => {
+    mockExtractPdfText.mockResolvedValue({ status: 'ok', text: FSMONE_SAME_FUND_TWICE });
+    const searchByIsin = mockLookups();
 
     const res = await uploadPdf();
 
-    expect(res.status).toBe(422);
-    expect(res.body.error).toMatch(/^Could not recognize this statement format/);
+    expect(res.status).toBe(200);
+    expect(res.body.holdings.map((h: { yahooSymbol: string }) => h.yahooSymbol)).toEqual([
+      'SG9999004360.SI',
+      'SG9999004360.SI',
+    ]);
+    expect(searchByIsin).toHaveBeenCalledTimes(1);
   });
 });
