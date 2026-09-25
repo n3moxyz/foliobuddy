@@ -116,7 +116,8 @@ export function TradeTable({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border">
+      <div className="rounded-md border" role="status" aria-live="polite">
+        <span className="sr-only">Loading trades…</span>
         <div className="p-4 space-y-3">
           <div className="flex gap-4">
             {TRADE_TABLE_HEADER_SKELETON_KEYS.map((key) => (

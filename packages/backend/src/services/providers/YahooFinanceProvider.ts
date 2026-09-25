@@ -132,7 +132,15 @@ type YahooSearchNewsItem = {
   publisher?: string;
   link?: string;
   providerPublishTime?: Date | string | number;
+  relatedTickers?: unknown;
 };
+
+function relatedTickersOf(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter((ticker): ticker is string => typeof ticker === 'string' && ticker.trim() !== '')
+    .map((ticker) => ticker.trim().toUpperCase());
+}
 
 // yahoo-finance2 parses providerPublishTime into a Date, but the raw API
 // returns unix seconds — accept both so a lib change can't corrupt timestamps.
@@ -488,6 +496,7 @@ export class YahooFinanceProvider implements AssetPriceProvider {
           publisher: raw.publisher || 'Yahoo Finance',
           url: raw.link,
           publishedAt: newsTimestampToIso(raw.providerPublishTime),
+          relatedTickers: relatedTickersOf(raw.relatedTickers),
         });
       }
       // Empty-but-successful responses are cached; failures are not, so a

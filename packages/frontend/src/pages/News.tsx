@@ -1,40 +1,24 @@
-import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  Coins,
-  ExternalLink,
-  Flag,
-  Globe,
-  LineChart,
-  Newspaper,
-  RefreshCw,
-  Sparkles,
-} from 'lucide-react';
+import { Coins, Globe, LineChart, Newspaper, RefreshCw, Sparkles } from 'lucide-react';
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
+import { HoldingNewsCard, HoldingShortcutLine } from '@/components/news/HoldingNewsCard';
+import { HoldingNewsDossier } from '@/components/news/HoldingNewsDossier';
+import { NewsHoldingSearch } from '@/components/news/NewsHoldingSearch';
+import { NewsRow, type NewsFeedbackHandler } from '@/components/news/NewsRow';
+import { groupStoryCount, HOLDING_ACCENTS, storyCountLabel } from '@/components/news/newsFormat';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
-import { useNews, useNewsEnrichment } from '@/hooks/useNews';
+import { useAssetNews, useNews, useNewsEnrichment } from '@/hooks/useNews';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { cn, formatRelativeTime } from '@/lib/utils';
-import type {
-  AssetNewsGroup,
-  NewsEnrichment,
-  NewsFeedbackReason,
-  NewsItem,
-  PortfolioNewsResponse,
-} from '@/lib/types';
+import type { AssetNewsGroup, NewsBucket, NewsHolding, PortfolioNewsResponse } from '@/lib/types';
 
-type NewsSectionId = 'crypto' | 'equities' | 'macro';
+type NewsSectionId = NewsBucket | 'macro';
 type ExpandableId = NewsSectionId | 'top';
 
 interface NewsSectionConfig {
@@ -42,9 +26,6 @@ interface NewsSectionConfig {
   label: string;
   icon: ReactNode;
   accentColor: string;
-  groupBorder: string;
-  groupHeaderBg: string;
-  chipClass: string;
   emptyText: string;
 }
 
@@ -54,9 +35,6 @@ const SECTION_CONFIG: NewsSectionConfig[] = [
     label: 'Crypto',
     icon: <Coins className="h-4 w-4 text-crypto" />,
     accentColor: 'border-crypto/40 bg-crypto/5',
-    groupBorder: 'border-crypto/20',
-    groupHeaderBg: 'bg-crypto/5',
-    chipClass: 'bg-crypto/15',
     emptyText: 'No crypto headlines right now',
   },
   {
@@ -64,9 +42,6 @@ const SECTION_CONFIG: NewsSectionConfig[] = [
     label: 'Equities',
     icon: <LineChart className="h-4 w-4 text-equities" />,
     accentColor: 'border-equities/40 bg-equities/5',
-    groupBorder: 'border-equities/20',
-    groupHeaderBg: 'bg-equities/5',
-    chipClass: 'bg-equities/15',
     emptyText: 'No equity headlines right now',
   },
   {
@@ -74,185 +49,21 @@ const SECTION_CONFIG: NewsSectionConfig[] = [
     label: 'Macro',
     icon: <Globe className="h-4 w-4 text-macro" />,
     accentColor: 'border-macro/40 bg-macro/5',
-    groupBorder: 'border-macro/20',
-    groupHeaderBg: 'bg-macro/5',
-    chipClass: 'bg-macro/15',
     emptyText: 'No macro headlines right now',
   },
 ];
 
-// Interpretable event labels; unlabeled types render no tag (restraint over
-// badge soup). Mirrors the backend's EVENT_TYPE_LABELS.
-const EVENT_LABELS: Record<string, string> = {
-  earnings: 'Earnings',
-  regulation: 'Regulation',
-  mna: 'M&A',
-  financing: 'Financing',
-  contract: 'Orders',
-  security: 'Security',
-  leadership: 'Leadership',
-  tokenomics: 'Tokenomics',
-  flows: 'Flows',
-  macro: 'Macro',
-  rating: 'Analyst call',
-  product: 'Product',
-  partnership: 'Partnership',
-  industry: 'Industry data',
-};
+// The feed's per-holding window; the dossier's (longer) window comes from the API.
+const QUIET_HOLDINGS_LABEL = 'No headlines in the last 14 days:';
+const UNLOADED_HOLDINGS_LABEL = 'Also held:';
 
-function storyCountLabel(count: number): string {
-  return count === 1 ? '1 story' : `${count} stories`;
-}
-
+// Same per-holding counts as the section headers, so the subtitle equals their sum.
 function totalStoryCount(news: PortfolioNewsResponse): number {
   const holdingCount = [...news.crypto, ...news.equities].reduce(
-    (sum, group) => sum + group.items.length,
+    (sum, group) => sum + groupStoryCount(group),
     0
   );
   return holdingCount + news.macro.length;
-}
-
-function newsMetaText(item: NewsItem, groupSymbol?: string, featured?: boolean): string {
-  const parts = [`${item.publisher} · ${formatRelativeTime(item.publishedAt)}`];
-  const eventLabel = item.importance !== 'low' ? EVENT_LABELS[item.eventType] : undefined;
-  if (eventLabel) parts.push(eventLabel);
-  // Tolerate a pre-ranking backend response during the deploy window.
-  const affectedSymbols = item.affectedSymbols ?? [];
-  if (groupSymbol) {
-    const also = affectedSymbols.filter((symbol) => symbol !== groupSymbol).slice(0, 3);
-    if (also.length > 0) parts.push(`also affects ${also.join(', ')}`);
-  } else if (affectedSymbols.length > 0) {
-    parts.push(`affects ${affectedSymbols.slice(0, 3).join(', ')}`);
-  }
-  if (featured) parts.push('in Top stories');
-  return parts.join(' · ');
-}
-
-function NewsRow({
-  item,
-  groupSymbol,
-  enrichment,
-  featured,
-  onFeedback,
-}: {
-  item: NewsItem;
-  groupSymbol?: string;
-  enrichment?: NewsEnrichment;
-  featured?: boolean;
-  onFeedback?: (item: NewsItem, reason: NewsFeedbackReason, symbol?: string) => void;
-}) {
-  const showImportant = item.importance === 'high';
-  return (
-    <li>
-      <div className="flex items-stretch">
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noreferrer"
-          className="group flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className="text-sm leading-normal group-hover:underline">
-            {item.title}
-            <ExternalLink
-              className="ml-1.5 inline h-3 w-3 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-          </span>
-          <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {showImportant && (
-              <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
-                Important
-              </span>
-            )}
-            {item.primarySource && (
-              <span className="rounded border px-1.5 py-0.5 font-semibold">Primary source</span>
-            )}
-            <span>{newsMetaText(item, groupSymbol, featured)}</span>
-          </span>
-        </a>
-        {/* Feedback control sits OUTSIDE the link — never nest interactive content. */}
-        {onFeedback && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto min-h-11 w-11 shrink-0 self-stretch rounded-none p-0 text-muted-foreground sm:w-9"
-                aria-label={`Flag story: ${item.title}`}
-              >
-                <Flag className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onFeedback(item, 'not_relevant', groupSymbol)}>
-                Not relevant
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onFeedback(item, 'poor_source', groupSymbol)}>
-                Poor source
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-      {enrichment && (
-        <div className="border-t border-dashed px-3 py-2">
-          <p className="text-sm leading-normal">{enrichment.summary}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Why it matters — {enrichment.whyItMatters}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            AI summary from the article · {enrichment.confidence} confidence
-          </p>
-        </div>
-      )}
-    </li>
-  );
-}
-
-function AssetNewsGroupCard({
-  group,
-  config,
-  featuredIds,
-  onFeedback,
-}: {
-  group: AssetNewsGroup;
-  config: NewsSectionConfig;
-  featuredIds: Set<string>;
-  onFeedback: (item: NewsItem, reason: NewsFeedbackReason, symbol?: string) => void;
-}) {
-  return (
-    <div className={cn('overflow-hidden rounded-lg border', config.groupBorder)}>
-      <div
-        className={cn('flex items-center justify-between gap-2 px-3 py-2', config.groupHeaderBg)}
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <span className={cn('rounded px-1.5 py-0.5 text-xs font-semibold', config.chipClass)}>
-            {group.symbol}
-          </span>
-          <span className="truncate text-xs text-muted-foreground">{group.name}</span>
-          {group.openTradeOnly && (
-            <span className="shrink-0 rounded border border-primary/30 px-1.5 py-0.5 text-xs font-semibold text-primary">
-              Open trade
-            </span>
-          )}
-        </div>
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-          {storyCountLabel(group.items.length)}
-        </span>
-      </div>
-      <ul className="divide-y border-t">
-        {group.items.map((item) => (
-          <NewsRow
-            key={item.id}
-            item={item}
-            groupSymbol={group.symbol}
-            featured={featuredIds.has(item.id)}
-            onFeedback={onFeedback}
-          />
-        ))}
-      </ul>
-    </div>
-  );
 }
 
 function SectionEmpty({ text }: { text: string }) {
@@ -270,9 +81,109 @@ function NewsSkeleton() {
   );
 }
 
+/** One compact card per holding with news, then the quiet and not-loaded holdings as shortcuts. */
+function HoldingSectionBody({
+  bucket,
+  emptyText,
+  groups,
+  holdings,
+  featuredIds,
+  onFeedback,
+  onOpen,
+}: {
+  bucket: NewsBucket;
+  emptyText: string;
+  groups: AssetNewsGroup[];
+  holdings: NewsHolding[];
+  featuredIds: Set<string>;
+  onFeedback: NewsFeedbackHandler;
+  onOpen: (assetId: string) => void;
+}) {
+  const quiet = holdings.filter((holding) => holding.loaded && holding.storyCount === 0);
+  const unloaded = holdings.filter((holding) => !holding.loaded);
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => (
+        <HoldingNewsCard
+          key={group.assetId}
+          group={group}
+          accent={HOLDING_ACCENTS[bucket]}
+          featuredIds={featuredIds}
+          onFeedback={onFeedback}
+          onOpen={onOpen}
+        />
+      ))}
+      {groups.length === 0 && quiet.length === 0 && <SectionEmpty text={emptyText} />}
+      <HoldingShortcutLine label={QUIET_HOLDINGS_LABEL} holdings={quiet} onOpen={onOpen} />
+      <HoldingShortcutLine label={UNLOADED_HOLDINGS_LABEL} holdings={unloaded} onOpen={onOpen} />
+    </div>
+  );
+}
+
+function findHoldingTrigger(assetId: string): HTMLElement | undefined {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-news-holding]')).find(
+    (element) => element.dataset.newsHolding === assetId
+  );
+}
+
+/**
+ * `?asset=<assetId>` shows one holding's dossier (keyed by asset id — symbols
+ * are not unique). Opening pushes a history entry, so browser Back returns to
+ * the feed (mirrors Trades' `?ticker=`). A dossier opens at the top; the feed,
+ * via All news or Back, returns to the reader's place and the control they used.
+ */
+function useHoldingDossierParam() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedAssetId = searchParams.get('asset') || null;
+  const feedScrollY = useRef(0);
+  const returnFocusTo = useRef<HTMLElement | null>(null);
+  const shownAssetId = useRef(selectedAssetId);
+
+  const openHolding = (assetId: string) => {
+    if (assetId === selectedAssetId) return;
+    if (!selectedAssetId) {
+      feedScrollY.current = window.scrollY;
+      const trigger = document.activeElement;
+      returnFocusTo.current = trigger instanceof HTMLElement ? trigger : null;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.set('asset', assetId);
+    setSearchParams(next, { replace: false });
+  };
+  const showFeed = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('asset');
+    setSearchParams(next, { replace: false });
+  };
+
+  useLayoutEffect(() => {
+    if (shownAssetId.current === selectedAssetId) return;
+    shownAssetId.current = selectedAssetId;
+    if (selectedAssetId) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    window.scrollTo(0, feedScrollY.current);
+    // The search input stays mounted across views; feed cards and chips remount,
+    // so find their replacement by asset id.
+    const trigger = returnFocusTo.current;
+    const holdingId = trigger?.dataset.newsHolding;
+    const target = trigger?.isConnected
+      ? trigger
+      : holdingId
+        ? findHoldingTrigger(holdingId)
+        : undefined;
+    target?.focus({ preventScroll: true });
+  }, [selectedAssetId]);
+
+  return { selectedAssetId, openHolding, showFeed };
+}
+
 export default function News() {
   usePageTitle('News');
-  const { data: news, isLoading, isError, error, refetch, isFetching } = useNews();
+  const { selectedAssetId, openHolding, showFeed } = useHoldingDossierParam();
+  const { data: news, isPending, isError, error, refetch, isFetching } = useNews();
+  const assetNews = useAssetNews(selectedAssetId);
   const [expanded, setExpanded] = useState<Record<ExpandableId, boolean>>({
     top: true,
     crypto: true,
@@ -287,7 +198,8 @@ export default function News() {
     : 'Headlines for your holdings';
 
   const hasAnyStories = news ? totalStoryCount(news) > 0 : false;
-  // Tolerate a pre-ranking backend response during the deploy window.
+  // Tolerate a pre-search / pre-ranking backend response during the deploy window.
+  const holdings = news?.holdings ?? [];
   const topStories = news?.topStories ?? [];
   // AI summaries arrive asynchronously; the feed never waits for them.
   const { data: enrichmentData } = useNewsEnrichment(topStories.map((item) => item.id));
@@ -297,7 +209,7 @@ export default function News() {
     mutationFn: api.sendNewsFeedback,
     onSuccess: () => toast.success('Feedback noted'),
   });
-  const handleFeedback = (item: NewsItem, reason: NewsFeedbackReason, symbol?: string) => {
+  const handleFeedback: NewsFeedbackHandler = (item, reason, symbol) => {
     feedbackMutation.mutate({
       storyId: item.id,
       title: item.title,
@@ -309,31 +221,51 @@ export default function News() {
     });
   };
 
+  const activeFetching = selectedAssetId ? assetNews.isFetching : isFetching;
+  const refresh = () => (selectedAssetId ? assetNews.refetch() : refetch());
+
   return (
     <div className="space-y-6">
       <PageActionHeader
         title="News"
         subtitle={subtitle}
+        stickyOnMobile={false}
         actions={
           <>
             <span role="status" aria-live="polite" className="sr-only">
-              {isFetching ? 'Refreshing news' : ''}
+              {activeFetching ? 'Refreshing news' : ''}
             </span>
             <Button
               variant="outline"
               size="sm"
               className="touch-manipulation"
-              onClick={() => refetch()}
-              disabled={isFetching}
+              onClick={() => refresh()}
+              disabled={activeFetching}
             >
-              <RefreshCw className={cn('h-4 w-4 mr-1', isFetching && 'animate-spin')} />
-              {isFetching ? 'Refreshing...' : 'Refresh'}
+              <RefreshCw className={cn('h-4 w-4 mr-1', activeFetching && 'animate-spin')} />
+              {activeFetching ? 'Refreshing...' : 'Refresh'}
             </Button>
           </>
         }
-      />
+      >
+        {/* Disabled until the feed (the holdings source) loads; hidden when there is nothing to search. */}
+        {(!news || holdings.length > 0) && (
+          <NewsHoldingSearch holdings={holdings} onSelect={openHolding} disabled={!news} />
+        )}
+      </PageActionHeader>
 
-      {isLoading ? (
+      {selectedAssetId ? (
+        <HoldingNewsDossier
+          assetId={selectedAssetId}
+          query={assetNews}
+          fallbackHolding={holdings.find((holding) => holding.assetId === selectedAssetId)}
+          featuredIds={featuredIds}
+          onFeedback={handleFeedback}
+          onClose={showFeed}
+        />
+      ) : isPending ? (
+        // isPending, not isLoading: a first load paused offline or in a hidden
+        // tab has no data yet and must not render a blank page.
         <NewsSkeleton />
       ) : isError && !news ? (
         <div className="py-16 text-center">
@@ -346,7 +278,7 @@ export default function News() {
             Try again
           </Button>
         </div>
-      ) : news && !hasAnyStories ? (
+      ) : news && !hasAnyStories && holdings.length === 0 ? (
         <div className="py-16 text-center">
           <Newspaper className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <h2 className="mb-1 text-lg font-semibold">No news yet</h2>
@@ -401,7 +333,7 @@ export default function News() {
             const storyCount =
               section.id === 'macro'
                 ? news.macro.length
-                : groups.reduce((sum, group) => sum + group.items.length, 0);
+                : groups.reduce((sum, group) => sum + groupStoryCount(group), 0);
 
             return (
               <CollapsibleCard
@@ -417,36 +349,30 @@ export default function News() {
                   </span>
                 }
               >
-                {section.id === 'macro' ? (
-                  news.macro.length === 0 ? (
-                    <SectionEmpty text={section.emptyText} />
-                  ) : (
-                    <div className={cn('overflow-hidden rounded-lg border', section.groupBorder)}>
-                      <ul className="divide-y">
-                        {news.macro.map((item) => (
-                          <NewsRow
-                            key={item.id}
-                            item={item}
-                            featured={featuredIds.has(item.id)}
-                            onFeedback={handleFeedback}
-                          />
-                        ))}
-                      </ul>
-                    </div>
-                  )
-                ) : groups.length === 0 ? (
+                {section.id !== 'macro' ? (
+                  <HoldingSectionBody
+                    bucket={section.id}
+                    emptyText={section.emptyText}
+                    groups={groups}
+                    holdings={holdings.filter((holding) => holding.bucket === section.id)}
+                    featuredIds={featuredIds}
+                    onFeedback={handleFeedback}
+                    onOpen={openHolding}
+                  />
+                ) : news.macro.length === 0 ? (
                   <SectionEmpty text={section.emptyText} />
                 ) : (
-                  <div className="space-y-3">
-                    {groups.map((group) => (
-                      <AssetNewsGroupCard
-                        key={group.assetId}
-                        group={group}
-                        config={section}
-                        featuredIds={featuredIds}
-                        onFeedback={handleFeedback}
-                      />
-                    ))}
+                  <div className="overflow-hidden rounded-lg border border-macro/20">
+                    <ul className="divide-y">
+                      {news.macro.map((item) => (
+                        <NewsRow
+                          key={item.id}
+                          item={item}
+                          featured={featuredIds.has(item.id)}
+                          onFeedback={handleFeedback}
+                        />
+                      ))}
+                    </ul>
                   </div>
                 )}
               </CollapsibleCard>

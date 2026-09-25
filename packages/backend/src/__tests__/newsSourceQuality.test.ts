@@ -48,6 +48,17 @@ describe('classifySource', () => {
     expect(coindesk).toMatchObject({ tier: 3, label: 'Specialist', denied: false });
   });
 
+  it('rates the Singapore publishers Google News returns for SGX listings', () => {
+    expect(
+      classifySource('The Edge Singapore', 'https://www.theedgesingapore.com/x')
+    ).toMatchObject({ tier: 3, label: 'Specialist' });
+    expect(classifySource('CNA', 'https://www.channelnewsasia.com/x')).toMatchObject({ tier: 3 });
+    expect(classifySource('The Smart Investor', 'https://thesmartinvestor.com.sg/x')).toMatchObject(
+      { tier: 4, label: 'Low confidence' }
+    );
+    expect(classifySource('simplywall.st', 'https://simplywall.st/x')).toMatchObject({ tier: 4 });
+  });
+
   it('treats official government and regulator domains as primary tier 1', () => {
     const sec = classifySource('SEC Newsroom Feed', 'https://www.sec.gov/news/press-release/1');
     expect(sec).toMatchObject({ tier: 1, primary: true, label: 'Primary source' });

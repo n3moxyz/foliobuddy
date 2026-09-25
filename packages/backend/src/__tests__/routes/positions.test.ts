@@ -60,6 +60,50 @@ vi.mock('../../services/portfolioService.js', () => ({
 const { default: positionsRouter } = await import('../../routes/positions.js');
 const app = createTestApp(positionsRouter, '/api/positions');
 
+describe('bulk import text caps', () => {
+  it('rejects over-long asset names and symbols before touching the catalog', async () => {
+    const { MAX_ASSET_NAME_LENGTH, MAX_ASSET_SYMBOL_LENGTH } =
+      await import('../../lib/constants.js');
+    for (const asset of [
+      { symbol: 'LONG', name: 'N'.repeat(MAX_ASSET_NAME_LENGTH + 1) },
+      { symbol: 'S'.repeat(MAX_ASSET_SYMBOL_LENGTH + 1), name: 'Long symbol' },
+      { symbol: 'BLANK', name: '   ' },
+    ]) {
+      const res = await request(app)
+        .post('/api/positions/bulk')
+        .send({ positions: [{ asset: { ...asset, category: 'EQUITY' }, quantity: 1 }] });
+      expect(res.status).toBe(400);
+    }
+
+    expect(mockPrisma.asset.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    expect(mockPrisma.position.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts names and symbols at the caps, storing the trimmed name', async () => {
+    const { MAX_ASSET_NAME_LENGTH, MAX_ASSET_SYMBOL_LENGTH } =
+      await import('../../lib/constants.js');
+    const name = 'N'.repeat(MAX_ASSET_NAME_LENGTH);
+    const symbol = 'S'.repeat(MAX_ASSET_SYMBOL_LENGTH);
+    mockPrisma.asset.findMany.mockResolvedValue([]);
+    mockPrisma.asset.create.mockImplementation(async ({ data }) =>
+      mockAsset({ id: 'asset-capped', ...data })
+    );
+
+    const res = await request(app)
+      .post('/api/positions/bulk')
+      .send({
+        positions: [{ asset: { symbol, name: ` ${name} `, category: 'EQUITY' }, quantity: 1 }],
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.successCount).toBe(1);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ symbol, name }),
+    });
+  });
+});
+
 describe('bulk unit-trust identity', () => {
   it('reuses the established manager asset even when an import supplies a new symbol and manual provider', async () => {
     const established = mockAsset({

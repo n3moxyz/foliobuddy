@@ -28,6 +28,15 @@ export const USD_NOK_FALLBACK_RATE = 10.5;
 /** Maximum positions allowed per asset category */
 export const MAX_POSITIONS_PER_CATEGORY = 20;
 
+/**
+ * Catalog text caps, enforced at every asset-create path. Names feed
+ * regex-based processing (news query planning), where unbounded input can
+ * stall the event loop for every user. The longest real name is ~60 chars.
+ */
+export const MAX_ASSET_NAME_LENGTH = 200;
+/** Widest symbol any create path accepts (unit-trust codes, long CoinGecko tickers). */
+export const MAX_ASSET_SYMBOL_LENGTH = 40;
+
 // ── Domain enums ────────────────────────────────────────────────────────
 
 export const AssetCategory = {

@@ -48,6 +48,8 @@ export interface RankedStory {
   publishedMs: number | null;
   /** Asset id of the most relevant affected holding; null for macro-only. */
   primaryAssetId: string | null;
+  /** Every affected holding's asset id, most relevant first. */
+  ownerAssetIds: string[];
   /** Distinct publishers in the cluster — independent-ish corroboration. */
   corroboration: number;
 }
@@ -69,6 +71,12 @@ export const NEWS_RANKING_CONFIG = {
   futureSkewToleranceMs: 15 * 60 * 1000,
   clusterWindowMs: 72 * 60 * 60 * 1000,
 } as const;
+
+/** Per-call overrides — a single holding's page looks further back than the feed. */
+export interface RankOptions {
+  maxAgeDays?: number;
+  maxAgeDaysHighImportance?: number;
+}
 
 export const EVENT_TYPE_LABELS: Partial<Record<NewsEventType, string>> = {
   earnings: 'Earnings',
@@ -223,9 +231,16 @@ function mergeClusters(target: Cluster, other: Cluster): void {
 function enrich(
   candidate: NewsCandidate,
   nowMs: number,
-  officialDomains: readonly string[]
+  officialDomains: readonly string[],
+  options: RankOptions
 ): EnrichedArticle | null {
-  const source = classifySource(candidate.item.publisher, candidate.item.url, officialDomains);
+  // Aggregator links (Google News) are opaque redirects: classify by the
+  // publisher's own site, never by the redirect host.
+  const source = classifySource(
+    candidate.item.publisher,
+    candidate.item.sourceUrl ?? candidate.item.url,
+    officialDomains
+  );
   if (source.denied) return null;
 
   const { importance, eventType } = classifyMateriality(candidate.item.title);
@@ -237,8 +252,8 @@ function enrich(
   if (publishedMs !== null) {
     const maxAgeDays =
       importance === 'high'
-        ? NEWS_RANKING_CONFIG.maxAgeDaysHighImportance
-        : NEWS_RANKING_CONFIG.maxAgeDays;
+        ? (options.maxAgeDaysHighImportance ?? NEWS_RANKING_CONFIG.maxAgeDaysHighImportance)
+        : (options.maxAgeDays ?? NEWS_RANKING_CONFIG.maxAgeDays);
     if (nowMs - publishedMs > maxAgeDays * DAY_MS) return null;
   }
 
@@ -249,7 +264,8 @@ function enrich(
 function buildClusters(
   candidates: NewsCandidate[],
   nowMs: number,
-  officialDomains: readonly string[]
+  officialDomains: readonly string[],
+  options: RankOptions
 ): Cluster[] {
   const byId = new Map<string, Cluster>();
   for (const candidate of candidates) {
@@ -258,7 +274,7 @@ function buildClusters(
       addOwner(existing, candidate);
       continue;
     }
-    const enriched = enrich(candidate, nowMs, officialDomains);
+    const enriched = enrich(candidate, nowMs, officialDomains, options);
     if (!enriched) continue;
     const cluster: Cluster = { articles: [enriched], owners: new Map(), macro: false };
     addOwner(cluster, candidate);
@@ -372,7 +388,12 @@ function scoreCluster(cluster: Cluster, nowMs: number): RankedStory {
 
   return {
     ranked: {
-      ...rep.item,
+      // Public fields only: provider tags and aggregator source URLs are
+      // internal relevance/classification inputs, not API surface.
+      id: rep.item.id,
+      title: rep.item.title,
+      publisher: rep.item.publisher,
+      url: rep.item.url,
       // Expose the sanitized cluster event time, never the raw provider string.
       publishedAt: eventPublishedMs === null ? null : new Date(eventPublishedMs).toISOString(),
       sourceTier: rep.source.tier,
@@ -386,6 +407,7 @@ function scoreCluster(cluster: Cluster, nowMs: number): RankedStory {
     score,
     publishedMs: eventPublishedMs,
     primaryAssetId: bestOwner?.assetId ?? null,
+    ownerAssetIds: owners.map((owner) => owner.assetId),
     corroboration: publisherCount,
   };
 }
@@ -403,9 +425,10 @@ export function rankStories(
   candidates: NewsCandidate[],
   nowMs: number,
   /** Portfolio-wide official domains — any match grants Company announcement. */
-  officialDomains: readonly string[] = []
+  officialDomains: readonly string[] = [],
+  options: RankOptions = {}
 ): RankedStory[] {
-  return buildClusters(candidates, nowMs, officialDomains)
+  return buildClusters(candidates, nowMs, officialDomains, options)
     .map((cluster) => scoreCluster(cluster, nowMs))
     .sort(compareStories);
 }

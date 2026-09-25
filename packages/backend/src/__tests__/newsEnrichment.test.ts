@@ -108,6 +108,18 @@ describe('newsEnrichmentService', () => {
     expect(mocks.fetchArticleText).toHaveBeenCalledTimes(1);
   });
 
+  it('skips Google News redirect links, which carry no article body', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    const story = { ...makeStory('g'), url: 'https://news.google.com/rss/articles/CBMi?oc=5' };
+
+    newsEnrichmentService.trackAndQueue('user-1', [story]);
+    await newsEnrichmentService.settleForTests();
+
+    expect(mocks.fetchArticleText).not.toHaveBeenCalled();
+    expect(mocks.parse).not.toHaveBeenCalled();
+    expect(newsEnrichmentService.getResponseFor('user-1').enrichments).toEqual({});
+  });
+
   it('never serves one user an explanation written for another holding context', async () => {
     process.env.ANTHROPIC_API_KEY = 'test-key';
     mocks.parse

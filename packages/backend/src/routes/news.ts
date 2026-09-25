@@ -28,6 +28,24 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// Asset ids are cuids; anything else is rejected before touching the database.
+const assetIdSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Za-z0-9_-]+$/);
+
+// GET /api/news/asset/:assetId - Every story for one of the user's holdings
+// (last 60 days, newest first). 404 unless the user holds it or has an open trade.
+router.get('/asset/:assetId', async (req, res, next) => {
+  try {
+    const assetId = assetIdSchema.parse(req.params.assetId);
+    res.json(await newsService.getAssetNews(req.userId!, assetId));
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/news/enrichment - AI summaries for this user's current Top stories.
 // Read-only view of the background enrichment cache; returns whatever is ready.
 router.get('/enrichment', (req, res, next) => {

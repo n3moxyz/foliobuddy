@@ -137,7 +137,9 @@ export default function Portfolio() {
   usePageTitle('Portfolio');
   const { currency } = useCurrencyStore();
   const { formatCurrency } = useMoneyFormatter();
-  const { data: positions, isLoading: positionsLoading } = usePositions();
+  // isPending, not isLoading: a first load paused offline or in a hidden tab has
+  // no data yet, so it must show the skeleton rather than an empty state.
+  const { data: positions, isPending: positionsPending } = usePositions();
   const { data: summary } = usePortfolioSummary();
   const { data: fxRates } = useFxRates();
   const { currentDrawdownPct } = useDrawdownStats(summary?.totalValueUsd ?? 0);
@@ -599,8 +601,9 @@ export default function Portfolio() {
         )}
       </PageActionHeader>
 
-      {positionsLoading && (
-        <div className="space-y-3">
+      {positionsPending && (
+        <div className="space-y-3" role="status" aria-live="polite">
+          <span className="sr-only">Loading positions…</span>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
             {PORTFOLIO_SUMMARY_SKELETON_KEYS.map((key) => (
               <div key={key} className="py-3 px-4">
@@ -628,7 +631,7 @@ export default function Portfolio() {
         </div>
       )}
 
-      {!positionsLoading && (!positions || positions.length === 0) && (
+      {!positionsPending && (!positions || positions.length === 0) && (
         <div className="py-16 text-center">
           <Wallet className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <h2 className="text-lg font-semibold mb-1">No positions yet</h2>
@@ -642,7 +645,7 @@ export default function Portfolio() {
         </div>
       )}
 
-      {!positionsLoading && ownedPositions.length > 0 && (
+      {!positionsPending && ownedPositions.length > 0 && (
         <div className="space-y-4 sm:hidden">
           {sections.map((section) => (
             <CollapsibleCard
@@ -689,7 +692,7 @@ export default function Portfolio() {
         </div>
       )}
 
-      {!positionsLoading && custodyPositions.length > 0 && (
+      {!positionsPending && custodyPositions.length > 0 && (
         <div className="mt-6 sm:hidden">
           <div className="mb-2 flex items-center gap-2 px-1">
             <Users className={CUSTODY_CONFIG.iconClass} />
@@ -720,7 +723,7 @@ export default function Portfolio() {
       )}
 
       <div className="hidden space-y-6 sm:block">
-        {!positionsLoading &&
+        {!positionsPending &&
           sections.map((section) => (
             <CollapsibleCard
               key={section.id}
@@ -869,7 +872,7 @@ export default function Portfolio() {
             </CollapsibleCard>
           ))}
 
-        {!positionsLoading && custodyPositions.length > 0 && (
+        {!positionsPending && custodyPositions.length > 0 && (
           <CollapsibleCard
             title={`Held for Others (${custodyPositions.length})`}
             titleHelp={

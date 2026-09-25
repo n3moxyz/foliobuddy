@@ -77,10 +77,12 @@ export default function History() {
   const { formatCurrency } = useMoneyFormatter();
   const { data: summary } = usePortfolioSummary();
   // Fetch enough history for source counts and the current local scale dataset.
+  // isPending, not isLoading: a first load paused offline or in a hidden tab has
+  // no data yet, so it must show the skeleton rather than an empty state.
   const {
     data: allSnapshots,
     error: snapshotsError,
-    isLoading,
+    isPending: snapshotsPending,
   } = useSnapshots({ limit: HISTORY_SNAPSHOT_LIMIT });
   const deleteSnapshot = useDeleteSnapshot();
   const deleteAllMutation = useDeleteAllSnapshots();
@@ -217,7 +219,7 @@ export default function History() {
         <div className="mt-4">
           <SnapshotTable
             snapshots={filteredSnapshots}
-            isLoading={isLoading}
+            isLoading={snapshotsPending}
             displayValue={displayValue}
             liveValueUsd={summary?.totalValueUsd}
             onEdit={setEditingSnapshot}

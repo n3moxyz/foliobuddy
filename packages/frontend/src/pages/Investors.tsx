@@ -67,7 +67,9 @@ export default function Investors() {
 
   const queryClient = useQueryClient();
 
-  const { data: investors, isLoading } = useQuery({
+  // isPending, not isLoading: a first load paused offline or in a hidden tab has
+  // no data yet, so it must show the skeleton rather than an empty state.
+  const { data: investors, isPending: investorsPending } = useQuery({
     queryKey: ['investors'],
     queryFn: api.getInvestors,
   });
@@ -173,8 +175,9 @@ export default function Investors() {
           <CardDescription>All investors and their current values</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
+          {investorsPending ? (
+            <div className="space-y-3" role="status" aria-live="polite">
+              <span className="sr-only">Loading investors…</span>
               <div className="flex gap-4">
                 {INVESTOR_TABLE_HEADER_SKELETON_KEYS.map((key) => (
                   <Skeleton key={key} className="h-4 w-20" />

@@ -9,6 +9,8 @@ import {
   TRADE_DIRECTIONS,
   TRADE_STATUSES,
   ASSET_CATEGORIES,
+  MAX_ASSET_NAME_LENGTH,
+  MAX_ASSET_SYMBOL_LENGTH,
   TradeDirection,
   TradeStatus,
 } from '../lib/constants.js';
@@ -468,8 +470,9 @@ const bulkImportTradeSchema = z
   .object({
     asset: z.object({
       coingeckoId: z.string().nullable(),
-      symbol: z.string().min(1),
-      name: z.string().min(1),
+      // Same caps as single-asset creation, so bulk import can't bypass them.
+      symbol: z.string().min(1).max(MAX_ASSET_SYMBOL_LENGTH),
+      name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
       category: z.enum(ASSET_CATEGORIES),
     }),
     direction: z.enum(TRADE_DIRECTIONS),

@@ -4,11 +4,23 @@ import type { NewsEnrichmentResponse } from '@/lib/types';
 
 // Backend caches Yahoo news ~15 min per ticker; a shorter client staleTime
 // keeps the Refresh button meaningful without hammering the provider.
+const NEWS_STALE_MS = 5 * 60 * 1000;
+
 export function useNews() {
   return useQuery({
     queryKey: ['news'],
     queryFn: api.getNews,
-    staleTime: 5 * 60 * 1000,
+    staleTime: NEWS_STALE_MS,
+  });
+}
+
+// One holding's dossier (last 60 days). Keyed by asset id — symbols are not unique.
+export function useAssetNews(assetId: string | null) {
+  return useQuery({
+    queryKey: ['news', 'asset', assetId],
+    queryFn: () => api.getAssetNews(assetId!),
+    enabled: Boolean(assetId),
+    staleTime: NEWS_STALE_MS,
   });
 }
 

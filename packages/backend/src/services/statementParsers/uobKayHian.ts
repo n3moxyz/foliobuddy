@@ -21,6 +21,12 @@ export interface ParsedStatement {
 
 const ISIN_REGEX = /\b(SGX[A-Z0-9]{9}|[A-Z]{2}[A-Z0-9]{9}[0-9])\b/;
 
+// A statement value alone on its line: "1,234.56", "-12", "0.5". The fraction
+// must start with a literal '.', so a digit run can only be matched one way.
+// The old /^[-]?\d[\d,]*\.?\d*$/ let two quantifiers share digits and
+// backtracked quadratically: one crafted PDF line could stall the event loop.
+export const NUMERIC_LINE_REGEX = /^-?\d[\d,]*(?:\.\d*)?$/;
+
 const MONTHS: Record<string, number> = {
   january: 0,
   february: 1,
@@ -102,7 +108,7 @@ function parseHoldingBlock(
   for (const line of nextLines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    if (/^[-]?\d[\d,]*\.?\d*$/.test(trimmed)) {
+    if (NUMERIC_LINE_REGEX.test(trimmed)) {
       candidateValues.push(stripThousands(trimmed));
       if (!isNaN(navNative) && candidateValues.length >= 4) break;
       continue;

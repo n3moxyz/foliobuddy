@@ -21,7 +21,10 @@ import type {
   FxRate,
   Investor,
   AssetNewsGroup,
+  AssetNewsResponse,
+  NewsBucket,
   NewsEnrichmentResponse,
+  NewsHolding,
   NewsItem,
   PerformancePoint,
   PortfolioNewsResponse,
@@ -213,17 +216,57 @@ function demoNewsItem(
   };
 }
 
-function demoNewsGroup(assetId: string, openTradeOnly: boolean, items: NewsItem[]): AssetNewsGroup {
+function demoNewsHolding(
+  assetId: string,
+  bucket: NewsBucket,
+  storyCount: number,
+  options: { loaded?: boolean; openTradeOnly?: boolean } = {}
+): NewsHolding {
   const asset = demoAsset(assetId);
   return {
     assetId: asset.id,
     symbol: asset.symbol,
     name: asset.name,
     category: asset.category,
-    openTradeOnly,
-    items: items.map((item) =>
-      item.affectedSymbols.length > 0 ? item : { ...item, affectedSymbols: [asset.symbol] }
-    ),
+    bucket,
+    openTradeOnly: options.openTradeOnly ?? false,
+    storyCount,
+    loaded: options.loaded ?? true,
+  };
+}
+
+// Largest holding first, as the backend orders them. HYPE is quiet (nothing in
+// the feed's 14-day window) and AAPL sits past the feed's fetch cap, so both
+// surface only as shortcuts — their dossiers still load. ETH's count includes
+// btc-3, which is filed under the bigger BTC holding.
+const demoNewsHoldings: NewsHolding[] = [
+  demoNewsHolding('btc', 'crypto', 3),
+  demoNewsHolding('eth', 'crypto', 3),
+  demoNewsHolding('voo', 'equities', 2),
+  demoNewsHolding('sol', 'crypto', 1),
+  demoNewsHolding('hype', 'crypto', 0),
+  demoNewsHolding('aapl', 'equities', 0, { loaded: false }),
+  demoNewsHolding('d05-si', 'equities', 1),
+  demoNewsHolding('xrp', 'crypto', 1, { openTradeOnly: true }),
+];
+
+function withHoldingSymbol(items: NewsItem[], symbol: string): NewsItem[] {
+  return items.map((item) =>
+    item.affectedSymbols.length > 0 ? item : { ...item, affectedSymbols: [symbol] }
+  );
+}
+
+function demoNewsGroup(assetId: string, items: NewsItem[]): AssetNewsGroup {
+  const holding = demoNewsHoldings.find((item) => item.assetId === assetId);
+  if (!holding) throw new Error(`Missing demo news holding: ${assetId}`);
+  return {
+    assetId: holding.assetId,
+    symbol: holding.symbol,
+    name: holding.name,
+    category: holding.category,
+    openTradeOnly: holding.openTradeOnly,
+    items: withHoldingSymbol(items, holding.symbol),
+    storyCount: holding.storyCount,
   };
 }
 
@@ -267,11 +310,24 @@ const demoFedMinutesStory = demoNewsItem(
     rankingReasons: ['Macro', 'Trusted press', 'Market-wide'],
   }
 );
+// Filed under BTC (the bigger holding) but also touches ETH, so it counts
+// toward ETH's storyCount and appears in the ETH dossier too.
+const demoCustodyStory = demoNewsItem(
+  'btc-3',
+  'Institutional custody demand pushes cold storage premiums higher',
+  'Blockworks',
+  11,
+  {
+    ...DEMO_SPECIALIST,
+    affectedSymbols: ['BTC', 'ETH'],
+    rankingReasons: ['Specialist', 'Held position'],
+  }
+);
 
 const demoNews: PortfolioNewsResponse = {
   topStories: [demoFedMinutesStory, demoBtcEtfStory, demoDbsEarningsStory],
   crypto: [
-    demoNewsGroup('btc', false, [
+    demoNewsGroup('btc', [
       demoBtcEtfStory,
       demoNewsItem(
         'btc-2',
@@ -280,15 +336,9 @@ const demoNews: PortfolioNewsResponse = {
         5,
         { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Held position'] }
       ),
-      demoNewsItem(
-        'btc-3',
-        'Institutional custody demand pushes cold storage premiums higher',
-        'Blockworks',
-        11,
-        { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Held position'] }
-      ),
+      demoCustodyStory,
     ]),
-    demoNewsGroup('eth', false, [
+    demoNewsGroup('eth', [
       demoNewsItem(
         'eth-1',
         'Ethereum core devs set date for next upgrade public testnet',
@@ -309,7 +359,7 @@ const demoNews: PortfolioNewsResponse = {
         { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Held position'] }
       ),
     ]),
-    demoNewsGroup('sol', false, [
+    demoNewsGroup('sol', [
       demoNewsItem(
         'sol-1',
         'Solana validator client update lands on mainnet after staged rollout',
@@ -323,7 +373,7 @@ const demoNews: PortfolioNewsResponse = {
         }
       ),
     ]),
-    demoNewsGroup('xrp', true, [
+    demoNewsGroup('xrp', [
       demoNewsItem(
         'xrp-1',
         'XRP futures open interest climbs as volatility returns',
@@ -334,7 +384,7 @@ const demoNews: PortfolioNewsResponse = {
     ]),
   ],
   equities: [
-    demoNewsGroup('voo', false, [
+    demoNewsGroup('voo', [
       demoNewsItem(
         'voo-1',
         'S&P 500 index funds see steady inflows despite valuation worries',
@@ -350,7 +400,7 @@ const demoNews: PortfolioNewsResponse = {
         { ...DEMO_SPECIALIST, rankingReasons: ['Specialist', 'Held position'] }
       ),
     ]),
-    demoNewsGroup('d05-si', false, [demoDbsEarningsStory]),
+    demoNewsGroup('d05-si', [demoDbsEarningsStory]),
   ],
   macro: [
     demoFedMinutesStory,
@@ -375,8 +425,152 @@ const demoNews: PortfolioNewsResponse = {
       rankingReasons: ['Trusted press', 'Market-wide'],
     }),
   ],
+  holdings: demoNewsHoldings,
   fetchedAt: NOW,
 };
+
+const DEMO_DOSSIER_WINDOW_DAYS = 60;
+const HOURS_PER_DAY = 24;
+
+// Dossier-only stories per holding, keyed by asset id (symbols are not unique):
+// older coverage outside the feed's 14-day window, plus stories filed under a
+// bigger holding. AAPL was past the feed's fetch cap, so all of its news is here.
+const demoDossierExtras: Record<string, NewsItem[]> = {
+  btc: [
+    demoNewsItem(
+      'btc-4',
+      'Bitcoin hashrate sets a record as new-generation rigs come online',
+      'The Block',
+      20 * HOURS_PER_DAY,
+      DEMO_SPECIALIST
+    ),
+    demoNewsItem(
+      'btc-5',
+      'Spot Bitcoin ETFs log their first month of net outflows since launch',
+      'Bloomberg',
+      38 * HOURS_PER_DAY,
+      { ...DEMO_PRESS, importance: 'medium', eventType: 'flows' }
+    ),
+  ],
+  eth: [
+    demoCustodyStory,
+    demoNewsItem(
+      'eth-3',
+      'Ethereum staking queue clears as withdrawals normalize',
+      'The Defiant',
+      22 * HOURS_PER_DAY,
+      DEMO_SPECIALIST
+    ),
+  ],
+  sol: [
+    demoNewsItem(
+      'sol-2',
+      'Solana DEX volumes top Ethereum for a second straight month',
+      'The Block',
+      25 * HOURS_PER_DAY,
+      DEMO_SPECIALIST
+    ),
+  ],
+  xrp: [
+    demoNewsItem(
+      'xrp-2',
+      'Ripple expands payment corridor partnerships in Southeast Asia',
+      'CoinDesk',
+      30 * HOURS_PER_DAY,
+      { ...DEMO_SPECIALIST, importance: 'medium', eventType: 'partnership' }
+    ),
+  ],
+  hype: [
+    demoNewsItem(
+      'hype-1',
+      'Hyperliquid volumes cool after a record perpetuals month',
+      'The Block',
+      18 * HOURS_PER_DAY,
+      DEMO_SPECIALIST
+    ),
+    demoNewsItem(
+      'hype-2',
+      'Hyperliquid governance vote extends the staking rewards program',
+      'The Defiant',
+      41 * HOURS_PER_DAY,
+      { ...DEMO_SPECIALIST, importance: 'medium', eventType: 'tokenomics' }
+    ),
+  ],
+  voo: [
+    demoNewsItem(
+      'voo-3',
+      'Vanguard trims expense ratios across flagship index ETFs',
+      'Morningstar',
+      19 * HOURS_PER_DAY,
+      { ...DEMO_SPECIALIST, importance: 'medium', eventType: 'product' }
+    ),
+  ],
+  aapl: [
+    demoNewsItem(
+      'aapl-1',
+      'Apple schedules its fall product event for next month',
+      'Bloomberg',
+      5,
+      {
+        ...DEMO_PRESS,
+        importance: 'medium',
+        eventType: 'product',
+      }
+    ),
+    demoNewsItem(
+      'aapl-2',
+      'Apple supplier outlook points to steady iPhone orders',
+      'Reuters',
+      2 * HOURS_PER_DAY,
+      DEMO_PRESS
+    ),
+    demoNewsItem(
+      'aapl-3',
+      'App Store policy changes take effect in the EU',
+      'Yahoo Finance',
+      12 * HOURS_PER_DAY,
+      { importance: 'medium', eventType: 'regulation' }
+    ),
+  ],
+  'd05-si': [
+    demoNewsItem(
+      'dbs-2',
+      'DBS raises dividend payout guidance after capital review',
+      'The Business Times',
+      27 * HOURS_PER_DAY,
+      { ...DEMO_SPECIALIST, importance: 'medium', eventType: 'financing' }
+    ),
+  ],
+};
+
+function demoPublishedTime(item: NewsItem): number {
+  // Undated stories sort last.
+  return item.publishedAt ? new Date(item.publishedAt).getTime() : 0;
+}
+
+/** GET /news/asset/:assetId — every story touching one holding, newest first; null = unknown holding. */
+function demoAssetNews(assetId: string): AssetNewsResponse | null {
+  const holding = demoNewsHoldings.find((item) => item.assetId === assetId);
+  if (!holding) return null;
+  const group = [...demoNews.crypto, ...demoNews.equities].find((item) => item.assetId === assetId);
+  const items = withHoldingSymbol(
+    [...(group?.items ?? []), ...(demoDossierExtras[assetId] ?? [])],
+    holding.symbol
+  ).sort((a, b) => demoPublishedTime(b) - demoPublishedTime(a));
+  return {
+    holding: {
+      assetId: holding.assetId,
+      symbol: holding.symbol,
+      name: holding.name,
+      category: holding.category,
+      bucket: holding.bucket,
+      openTradeOnly: holding.openTradeOnly,
+    },
+    items,
+    windowDays: DEMO_DOSSIER_WINDOW_DAYS,
+    fetchedAt: NOW,
+  };
+}
 
 // One story stays un-enriched (dbs-1) to exercise the graceful-absence state.
 const demoNewsEnrichment: NewsEnrichmentResponse = {
@@ -2532,6 +2726,10 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
   if (path === '/api/news/enrichment' && method === 'GET') return json(demoNewsEnrichment);
   if (path === '/api/news/feedback' && method === 'POST')
     return new Response(null, { status: 204 });
+  if (path.startsWith('/api/news/asset/') && method === 'GET') {
+    const dossier = demoAssetNews(decodeURIComponent(path.slice('/api/news/asset/'.length)));
+    return dossier ? json(dossier) : json({ error: 'No news feed for this holding' }, 404);
+  }
   if (path === '/api/fx/refresh' && method === 'POST') return json({ rates: fxRates });
   if (path === '/api/prices/current' && method === 'GET') return json(getCurrentPrices());
   if (path === '/api/prices/refresh' && method === 'POST')

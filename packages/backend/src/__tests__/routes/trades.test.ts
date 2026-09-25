@@ -310,6 +310,28 @@ describe('adversarial trade boundaries', () => {
     expect(mockPrisma.trade.update).not.toHaveBeenCalled();
   });
 
+  it('rejects bulk trades whose asset name or symbol exceeds the catalog caps', async () => {
+    const { MAX_ASSET_NAME_LENGTH, MAX_ASSET_SYMBOL_LENGTH } =
+      await import('../../lib/constants.js');
+    const trade = {
+      direction: 'LONG',
+      entryPrice: 100,
+      quantity: 1,
+      entryDate: '2026-01-01',
+    };
+    for (const asset of [
+      { symbol: 'LONG', name: 'N'.repeat(MAX_ASSET_NAME_LENGTH + 1) },
+      { symbol: 'S'.repeat(MAX_ASSET_SYMBOL_LENGTH + 1), name: 'Long symbol' },
+    ]) {
+      const res = await request(app)
+        .post('/api/trades/bulk-import')
+        .send([{ ...trade, asset: { coingeckoId: null, category: 'LIQUID_CRYPTO', ...asset } }]);
+      expect(res.status).toBe(400);
+    }
+
+    expect(mockPrisma.trade.create).not.toHaveBeenCalled();
+  });
+
   it('rejects internally inconsistent bulk trade state', async () => {
     const res = await request(app)
       .post('/api/trades/bulk-import')

@@ -366,6 +366,7 @@ describe('YahooFinanceProvider', () => {
           publisher: 'CoinDesk',
           link: 'https://example.com/story-1',
           providerPublishTime: new Date('2026-08-24T08:00:00.000Z'),
+          relatedTickers: ['btc-usd', ' ', 'COIN ', 42],
         },
         {
           uuid: 'story-2',
@@ -396,6 +397,8 @@ describe('YahooFinanceProvider', () => {
         publisher: 'CoinDesk',
         url: 'https://example.com/story-1',
         publishedAt: '2026-08-24T08:00:00.000Z',
+        // Upper-cased and cleaned: the relevance gate compares exact tickers.
+        relatedTickers: ['BTC-USD', 'COIN'],
       },
       {
         id: 'story-2',

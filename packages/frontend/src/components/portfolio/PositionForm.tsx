@@ -33,6 +33,8 @@ import {
   USD_TWD_FALLBACK_RATE,
   USD_KRW_FALLBACK_RATE,
   USD_NOK_FALLBACK_RATE,
+  MAX_ASSET_NAME_LENGTH,
+  MAX_ASSET_SYMBOL_LENGTH,
   applyPositionDelta,
 } from '@foliobuddy/shared';
 import { api } from '@/lib/api';
@@ -133,7 +135,12 @@ function parseFundUrl(raw: string): { code: string; name: string } | null {
     if (!match) return null;
     const code = match[1];
     const slug = match[2] ? decodeURIComponent(match[2]) : '';
-    const name = slug.replace(/-+$/g, '').replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+    const name = slug
+      .replace(/-+$/g, '')
+      .replace(/-/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, MAX_ASSET_NAME_LENGTH);
     return { code, name };
   } catch {
     return null;
@@ -1109,8 +1116,10 @@ export function PositionForm({
   const applyParsedHolding = (h: ParsedStatementHolding, broker: string) => {
     const statementMatch = findMatchingUnitTrustPosition(h, positions, broker);
     setUtStatementMatch(statementMatch);
-    setUtSymbol(h.symbol);
-    setUtName(h.name);
+    // Prefills bypass the inputs' maxLength; clip to the API caps so a garbled
+    // statement parse stays editable instead of failing validation on submit.
+    setUtSymbol(h.symbol.slice(0, MAX_ASSET_SYMBOL_LENGTH));
+    setUtName(h.name.slice(0, MAX_ASSET_NAME_LENGTH));
     setUtIsin(h.isin);
     const ccy = h.nativeCurrency === 'USD' ? 'USD' : 'SGD';
     setUtNativeCurrency(ccy);
@@ -2009,6 +2018,7 @@ export function PositionForm({
                         id="ut-symbol"
                         value={utSymbol}
                         onChange={(e) => setUtSymbol(e.target.value)}
+                        maxLength={MAX_ASSET_SYMBOL_LENGTH}
                         placeholder="e.g. AMOVA"
                         required
                       />
@@ -2040,6 +2050,7 @@ export function PositionForm({
                       id="ut-name"
                       value={utName}
                       onChange={(e) => setUtName(e.target.value)}
+                      maxLength={MAX_ASSET_NAME_LENGTH}
                       placeholder="e.g. AMOVA Singapore Equity"
                       required
                     />
