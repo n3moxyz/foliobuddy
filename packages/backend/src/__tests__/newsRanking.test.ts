@@ -174,6 +174,7 @@ describe('rankStories', () => {
 
     expect(stories).toHaveLength(1);
     expect(stories[0].primaryAssetId).toBe('NVDA');
+    expect(stories[0].ownerAssetIds).toEqual(['NVDA', 'TSM']);
     expect(stories[0].ranked.affectedSymbols).toEqual(['NVDA', 'TSM']);
   });
 
@@ -238,6 +239,44 @@ describe('rankStories', () => {
     );
 
     expect(stories.map((s) => s.ranked.id)).toEqual(['stale-material']);
+  });
+
+  it('accepts a longer look-back window per call (a single holding page)', () => {
+    const stories = rankStories(
+      [
+        candidate(makeItem('twenty-days', 'Quiet week for chip stocks', 'Wire A', 20 * 24), 'NVDA'),
+        candidate(makeItem('fifty-days', 'Chip stocks drift lower', 'Wire A', 50 * 24), 'NVDA'),
+        candidate(makeItem('seventy-days', 'Chip stocks drift higher', 'Wire A', 70 * 24), 'NVDA'),
+      ],
+      NOW,
+      [],
+      { maxAgeDays: 60, maxAgeDaysHighImportance: 60 }
+    );
+
+    expect(stories.map((s) => s.ranked.id)).toEqual(['twenty-days', 'fifty-days']);
+  });
+
+  it('classifies aggregator links by the publisher site and keeps internal fields out of output', () => {
+    const item: ProviderNewsItem = {
+      ...makeItem(
+        'gnews:1',
+        'Nvidia announces quarterly results and guidance',
+        'NVIDIA Newsroom',
+        2,
+        'https://news.google.com/rss/articles/CBMi?oc=5'
+      ),
+      sourceUrl: 'https://nvidianews.nvidia.com/',
+      relatedTickers: ['NVDA'],
+    };
+    const [story] = rankStories([candidate(item, 'NVDA')], NOW, ['nvidia.com']);
+
+    expect(story.ranked).toMatchObject({
+      primarySource: true,
+      sourceLabel: 'Company announcement',
+    });
+    expect(story.ranked.url).toBe('https://news.google.com/rss/articles/CBMi?oc=5');
+    expect(Object.keys(story.ranked)).not.toContain('sourceUrl');
+    expect(Object.keys(story.ranked)).not.toContain('relatedTickers');
   });
 
   it('suppresses denylisted publishers entirely', () => {

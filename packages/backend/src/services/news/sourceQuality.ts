@@ -122,6 +122,10 @@ const PUBLISHER_TIERS = new Map<string, PublisherRule>([
     'Forbes',
     'The Business Times',
     'The Straits Times',
+    // Singapore coverage arrives via Google News for SGX listings.
+    'The Edge Singapore',
+    'CNA',
+    'Yahoo Finance Singapore',
     'South China Morning Post',
     'TechCrunch',
     'The Verge',
@@ -177,6 +181,9 @@ const PUBLISHER_TIERS = new Map<string, PublisherRule>([
     'Newsfile',
     'MarketBeat',
     'Stocktwits',
+    'The Smart Investor',
+    'Moomoo',
+    'simplywall.st',
   ]),
 ]);
 

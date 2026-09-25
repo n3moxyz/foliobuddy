@@ -4,11 +4,12 @@ import { createTestApp } from '../helpers/createTestApp.js';
 
 const mocks = vi.hoisted(() => ({
   getPortfolioNews: vi.fn(),
+  getAssetNews: vi.fn(),
   getResponseFor: vi.fn(),
 }));
 
 vi.mock('../../services/newsService.js', () => ({
-  newsService: { getPortfolioNews: mocks.getPortfolioNews },
+  newsService: { getPortfolioNews: mocks.getPortfolioNews, getAssetNews: mocks.getAssetNews },
 }));
 vi.mock('../../services/news/enrichmentService.js', () => ({
   newsEnrichmentService: { getResponseFor: mocks.getResponseFor },
@@ -63,6 +64,48 @@ describe('News routes', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual(payload);
     expect(mocks.getPortfolioNews).toHaveBeenCalledWith('test-user-id');
+  });
+
+  it("returns one holding's news for a well-formed asset id", async () => {
+    const payload = {
+      holding: {
+        assetId: 'clx1asset',
+        symbol: 'D05.SI',
+        name: 'DBS Group Holdings Ltd',
+        category: 'EQUITY',
+        bucket: 'equities',
+        openTradeOnly: false,
+      },
+      items: [],
+      windowDays: 60,
+      fetchedAt: '2026-08-24T12:00:00.000Z',
+    };
+    mocks.getAssetNews.mockResolvedValue(payload);
+
+    const response = await request(app).get('/api/news/asset/clx1asset');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(payload);
+    expect(mocks.getAssetNews).toHaveBeenCalledWith('test-user-id', 'clx1asset');
+  });
+
+  it('rejects malformed asset ids before reaching the service', async () => {
+    const response = await request(app).get(`/api/news/asset/${'a'.repeat(65)}`);
+    const dotted = await request(app).get('/api/news/asset/bad.id');
+
+    expect(response.status).toBe(400);
+    expect(dotted.status).toBe(400);
+    expect(mocks.getAssetNews).not.toHaveBeenCalled();
+  });
+
+  it('passes a not-held 404 through with its message', async () => {
+    const { AppError } = await import('../../middleware/errorHandler.js');
+    mocks.getAssetNews.mockRejectedValue(new AppError('No news feed for this holding', 404));
+
+    const response = await request(app).get('/api/news/asset/clx1other');
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: 'No news feed for this holding' });
   });
 
   it('propagates service failures to the error handler as 500s', async () => {

@@ -17,6 +17,7 @@ import { z } from 'zod/v4';
 import { TTLCache } from '../../lib/TTLCache.js';
 import { logger } from '../../lib/logger.js';
 import { fetchArticleText } from './articleRetrieval.js';
+import { isAggregatorRedirectUrl } from './googleNews.js';
 import type { RankedNewsItem } from './ranking.js';
 
 export interface NewsEnrichment {
@@ -100,6 +101,8 @@ class NewsEnrichmentService {
     if (!this.isEnabled()) return;
 
     for (const story of stories) {
+      // Aggregator redirects carry no article body — "no text = no enrichment".
+      if (isAggregatorRedirectUrl(story.url)) continue;
       const cacheKey = enrichmentCacheKey(story);
       // Failures are keyed by story id (article retrieval is symbol-independent);
       // successes by story id + affected symbols, because whyItMatters is

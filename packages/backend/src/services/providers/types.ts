@@ -30,6 +30,12 @@ export interface ProviderNewsItem {
   publisher: string;
   url: string;
   publishedAt: string | null;
+  /** Tickers the provider tagged on the article (Yahoo `relatedTickers`), upper-cased.
+   *  Internal relevance input — never sent to clients. */
+  relatedTickers?: string[];
+  /** Publisher's own site when `url` is an aggregator redirect (Google News).
+   *  Source classification reads this instead of the redirect host. Internal only. */
+  sourceUrl?: string;
 }
 
 export interface AssetPriceProvider {
