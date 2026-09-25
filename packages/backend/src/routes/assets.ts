@@ -617,6 +617,11 @@ router.patch('/:id/nav', async (req, res, next) => {
   }
 });
 
+// Real statements extract to a few KB to tens of KB of text, but PDF content
+// streams are compressed, so a 5 MB upload can inflate far past that. Cap the
+// text before the statement parsers' regexes run over it.
+const MAX_STATEMENT_TEXT_CHARS = 1_000_000;
+
 router.post(
   '/parse-unit-trust-statement',
   express.raw({ type: () => true, limit: '5mb' }),
@@ -642,6 +647,14 @@ router.post(
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'PDF read failed';
         throw new AppError(`Failed to read PDF: ${msg}`, 422);
+      }
+
+      if (extractedText.length > MAX_STATEMENT_TEXT_CHARS) {
+        logger.warn(`[parse-ut-stmt] extracted text too long: ${extractedText.length} chars`);
+        throw new AppError(
+          'This PDF has too much text to be a monthly statement. Upload a single UOB Kay Hian or FSMOne monthly statement PDF.',
+          422
+        );
       }
 
       if (!extractedText.trim()) {

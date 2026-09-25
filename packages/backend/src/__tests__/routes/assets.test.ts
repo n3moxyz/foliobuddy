@@ -28,8 +28,17 @@ const mockPriceService = {
   updatePositionValues: vi.fn(),
 };
 
+const mockPdf = { getText: vi.fn() };
+
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }));
 vi.mock('../../services/priceService.js', () => ({ priceService: mockPriceService }));
+vi.mock('pdf-parse', () => ({
+  PDFParse: class {
+    getText() {
+      return mockPdf.getText();
+    }
+  },
+}));
 vi.mock('../../lib/sentry.js', () => ({
   Sentry: { captureException: vi.fn() },
   initSentry: vi.fn(),
@@ -561,5 +570,37 @@ describe('PATCH /api/assets/:id/nav', () => {
     expect(res.status).toBe(200);
     expect(mockPrisma.asset.update).not.toHaveBeenCalled();
     expect(res.body.currentPriceUsd).toBe(1.4);
+  });
+});
+
+describe('POST /api/assets/parse-unit-trust-statement', () => {
+  // MAX_STATEMENT_TEXT_CHARS in routes/assets.ts.
+  const maxTextChars = 1_000_000;
+
+  function uploadPdf() {
+    return request(app)
+      .post('/api/assets/parse-unit-trust-statement')
+      .set('Content-Type', 'application/pdf')
+      .send(Buffer.from('%PDF-1.7'));
+  }
+
+  it('rejects extracted text too long for a statement before parsing it', async () => {
+    mockPdf.getText.mockResolvedValue({ text: 'x'.repeat(maxTextChars + 1) });
+
+    const res = await uploadPdf();
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toBe(
+      'This PDF has too much text to be a monthly statement. Upload a single UOB Kay Hian or FSMOne monthly statement PDF.'
+    );
+  });
+
+  it('passes text up to the cap on to the statement parsers', async () => {
+    mockPdf.getText.mockResolvedValue({ text: 'x'.repeat(maxTextChars) });
+
+    const res = await uploadPdf();
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/^Could not recognize this statement format/);
   });
 });
