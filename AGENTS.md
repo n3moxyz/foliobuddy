@@ -85,7 +85,7 @@ First-time Clerk users auto-create via `ensureUser` middleware.
 
 ### Snapshot System
 
-Portfolio snapshots: daily/weekly/monthly/YTD returns + BTC/ETH outperformance. `User.snapshotHour` (int 0–23) + `User.snapshotTimezone` (IANA, must format in `Intl`), default `5`/`Asia/Singapore`; Zod-validated `GET/PATCH /users/me/preferences`. Hourly `0 * * * *` UTC selects users due in that tick (`lib/snapshotSchedule.ts`; skipped DST hours → first valid instant); WEEKLY local Sunday, MONTHLY local 1st. `Snapshot.scheduledLocalDate` + unique `(userId, snapshotType, scheduledLocalDate)` guards cross-instance duplicates; keep local-day pre-check. Returns stored `percent × 100`. YTD anchor = current year's first snapshot (`timestamp >= Jan 1 UTC`, `portfolioService.getSummary()`), never unfiltered `findFirst orderBy:asc`. One-shot backfill: `scripts/backfill-equity-snapshots.ts`.
+Portfolio snapshots: daily/weekly/monthly/YTD returns + BTC/ETH outperformance. `User.snapshotHour` (int 0–23) + `User.snapshotTimezone` (IANA, must format in `Intl`), default `5`/`Asia/Singapore`; Zod-validated `GET/PATCH /users/me/preferences`. Hourly `0 * * * *` UTC selects users due in that tick (`lib/snapshotSchedule.ts`; skipped DST hours → first valid instant); WEEKLY local Sunday, MONTHLY local 1st. `Snapshot.scheduledLocalDate` + unique `(userId, snapshotType, scheduledLocalDate)` guards cross-instance duplicates; keep local-day pre-check. Returns stored `percent × 100`. `SnapshotPosition.assetId` (nullable, no FK) labels rows; older rows: symbol → owned position predating it → `category: null`. YTD anchor = current year's first snapshot (`timestamp >= Jan 1 UTC`, `portfolioService.getSummary()`), never unfiltered `findFirst orderBy:asc`. One-shot backfill: `scripts/backfill-equity-snapshots.ts`.
 
 ### Yahoo Search & Local-Currency Equities
 
@@ -161,7 +161,7 @@ Protected update/delete routes must filter by both `id` + `req.userId!`, never `
 
 Global catalog rows are shared (`src/lib/authorization.ts`): `PUT`/`DELETE /assets/:id` need an `ADMIN_USER_IDS` admin; per-user flows (`POST /assets/:id/refresh-price`, `PATCH /assets/:id/nav`) 403 unless user holds asset; `GET /assets/:id` has only user's positions.
 
-Tickers repeat across classes (USDE: StablecoinX equity, Ethena stablecoin): reuse catalog rows by identity, then same-group symbol (`sameClassSymbolWhere`/`Key`, `lib/domain.ts`); add no `{ symbol }`-only lookups.
+Tickers repeat across classes (USDE, BTC): reuse catalog rows by identity, then same-group symbol (`sameClassSymbolWhere`/`Key`, `lib/domain.ts`); add no `{ symbol }`-only lookups. Imports create rows via `importPriceFeed()` (no provider id = never priced); unpriced symbol matches adopt an identity only via `canAdoptIdentity()`; bare ticker = Yahoo id only if USD (`impliedYahooTicker`). Fix old rows: `scripts/repair-unpriced-equities.ts` (dry run first). UI keys by asset id, never ticker.
 
 ### WebSocket CORS
 
@@ -201,7 +201,7 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### Trades Review Lenses
 
-`Trades.tsx`: 3 lenses above shared Trade Tape: **Review** default (collapsed stats, All/Open/Closed table); **Ticker Dossier** (`?ticker=SOL`, chip clears param); **Monthly Postmortem** (`?view=monthly`, month summaries, edge tags, loss review, open watchlist). `useTrades()` fetches all once; local filters preserve summaries across tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` synced to seeds. `TradeForm` optional `trade` prop = edit; defaults entry 5 days ago, exit today. Tape rows clickable + keyboard-activatable (Clickable Rows). UI: `TradeLensViews.tsx`; aggregation: `tradeLensModels.ts`.
+`Trades.tsx`: 3 lenses above shared Trade Tape: **Review** default (collapsed stats, All/Open/Closed table); **Ticker Dossier** (`?ticker=SOL`, `&asset=` if shared; chip clears); **Monthly Postmortem** (`?view=monthly`, month summaries, edge tags, loss review, open watchlist). `useTrades()` fetches all once; local filters preserve summaries across tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` synced to seeds. `TradeForm` optional `trade` prop = edit; defaults entry 5 days ago, exit today. Tape rows clickable + keyboard-activatable (Clickable Rows). UI: `TradeLensViews.tsx`; aggregation: `tradeLensModels.ts`.
 
 ### News Tab
 
@@ -329,7 +329,7 @@ See **Dev Demo Route** (mocked `/api`, `/dev/demo`); **Local QA Auth Bypass** (s
 
 ### Copy/Paste JSON Import Pattern
 
-Portfolio/Trades/History share 1 pattern: per-row clipboard icon, Copy All header button, Import tab in Add/Log dialog — 1 JSON format for copy + import.
+Portfolio/Trades/History share 1 pattern: per-row clipboard icon, Copy All header button, Import tab in Add/Log dialog — 1 JSON format for copy + import. Bulk row errors: `userSafeErrorMessage()`, never raw Prisma text.
 
 ### Branding
 
@@ -354,7 +354,6 @@ See `PRODUCT.md` — source of truth for users, brand, aesthetic, design princip
 - npm 10.8.2/`uuid` override/ExcelJS rules: `docs/DEPENDENCIES.md`.
 - Sentry: unexpected 500s only, skip Zod 400s + AppErrors <500. Node `console.error` crashes on ZodError: integration tests MUST mock logger.
 - vitest `exclude: ['dist/**']` prevents duplicate runs after `npm run build`.
-- Mutating by `id` alone = security bug (Ownership Checks on Mutations).
 - `@foliobuddy/shared` imports MUST be declared in consumer `package.json`: hoisting masks omissions, Vercel `npm ci` rejects them; CI `npm ls --workspaces` guards.
 - Backend Dockerfile package-isolated: `src/lib/constants.ts`/`domain.ts` duplicate shared enums/helpers; `npm run domain:check` enforces parity.
-- Vercel `VITE_API_URL` needs full `/api/v1`; prod WebSocket needs `VITE_WS_BACKEND_URL`: `DEPLOYMENT.md`.
+- Prod WebSocket needs `VITE_WS_BACKEND_URL`: `DEPLOYMENT.md`.
