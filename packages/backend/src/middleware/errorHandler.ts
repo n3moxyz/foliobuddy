@@ -16,6 +16,35 @@ export class AppError extends Error {
   }
 }
 
+// Client-facing text for known Prisma codes; the raw messages name tables,
+// columns and constraints, so they never reach a response.
+const PRISMA_ERROR_MESSAGES: Record<string, string> = {
+  P2002: 'A record with this value already exists',
+  P2025: 'Record not found',
+  // Serializable transactions (investor + linked cash-pile mutations) abort
+  // instead of silently overwriting a concurrent change. Safe to retry.
+  P2034: 'This change collided with another update. Please retry.',
+};
+
+function isPrismaKnownError(err: unknown): err is Prisma.PrismaClientKnownRequestError {
+  const PrismaClientKnownRequestError = Prisma.PrismaClientKnownRequestError;
+  return (
+    typeof PrismaClientKnownRequestError === 'function' &&
+    err instanceof PrismaClientKnownRequestError
+  );
+}
+
+/**
+ * Per-row error text for bulk responses, which report failures inside a 2xx body
+ * instead of reaching errorHandler: AppError messages pass through; database and
+ * runtime errors become fixed text, never their raw message.
+ */
+export function userSafeErrorMessage(err: unknown): string {
+  if (err instanceof AppError) return err.message;
+  if (isPrismaKnownError(err)) return PRISMA_ERROR_MESSAGES[err.code] ?? 'Database error';
+  return 'Unexpected error';
+}
+
 export function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
   logger.error('Error:', err);
 
@@ -31,26 +60,20 @@ export function errorHandler(err: Error, req: Request, res: Response, next: Next
   }
 
   // Prisma errors
-  const PrismaClientKnownRequestError = Prisma.PrismaClientKnownRequestError;
-  if (
-    typeof PrismaClientKnownRequestError === 'function' &&
-    err instanceof PrismaClientKnownRequestError
-  ) {
+  if (isPrismaKnownError(err)) {
     switch (err.code) {
       case 'P2002':
         return res.status(409).json({
-          error: 'A record with this value already exists',
+          error: PRISMA_ERROR_MESSAGES.P2002,
           field: (err.meta?.target as string[])?.join(', '),
         });
       case 'P2025':
         return res.status(404).json({
-          error: 'Record not found',
+          error: PRISMA_ERROR_MESSAGES.P2025,
         });
       case 'P2034':
-        // Serializable transactions (investor + linked cash-pile mutations) abort
-        // instead of silently overwriting a concurrent change. Safe to retry.
         return res.status(409).json({
-          error: 'This change collided with another update. Please retry.',
+          error: PRISMA_ERROR_MESSAGES.P2034,
         });
       default:
         return res.status(400).json({

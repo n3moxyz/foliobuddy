@@ -84,6 +84,7 @@ class SnapshotService {
           create: positions.map((p) => {
             const valueUsd = p.marketValueUsd ?? p.quantity * (p.asset.currentPriceUsd ?? 0);
             return {
+              assetId: p.assetId,
               assetSymbol: p.asset.symbol,
               quantity: p.quantity,
               priceUsd: p.asset.currentPriceUsd ?? 0,

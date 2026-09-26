@@ -637,6 +637,7 @@ async function seedSnapshots(positions: SeededPosition[]) {
           where: { id: `scale-sp-${snapshotId}-${String(positionIndex + 1).padStart(2, '0')}` },
           update: {
             snapshotId,
+            assetId: position.assetId,
             assetSymbol: position.symbol,
             quantity: position.quantity,
             priceUsd: position.quantity > 0 ? scaledValue / position.quantity : 0,
@@ -646,6 +647,7 @@ async function seedSnapshots(positions: SeededPosition[]) {
           create: {
             id: `scale-sp-${snapshotId}-${String(positionIndex + 1).padStart(2, '0')}`,
             snapshotId,
+            assetId: position.assetId,
             assetSymbol: position.symbol,
             quantity: position.quantity,
             priceUsd: position.quantity > 0 ? scaledValue / position.quantity : 0,

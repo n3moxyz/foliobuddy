@@ -6,6 +6,7 @@ import { ShortcutsHelpModal } from '@/components/layout/ShortcutsHelpModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useThemeEffect } from '@/hooks/useThemeEffect';
 import { setTokenGetter } from '@/lib/api';
+import { impliedYahooTicker } from '@/components/portfolio/assetSearchMatching';
 import type {
   Asset,
   AssetPrice,
@@ -143,6 +144,8 @@ const initialAssets: Asset[] = [
   demoCrypto('ip', 'story-protocol', 'IP', 'Story Protocol', 2.15),
   demoCrypto('usdc', 'usd-coin', 'USDC', 'USD Coin', 1, 'STABLECOIN'),
   demoCrypto('usdt', 'tether', 'USDT', 'Tether', 1, 'STABLECOIN'),
+  // Shares its USDE ticker with StablecoinX (demo equity search): the collision case.
+  demoCrypto('usde', 'ethena-usde', 'USDE', 'Ethena USDe', 1, 'STABLECOIN'),
   {
     ...ASSET_DEFAULTS,
     id: 'cash-sgd',
@@ -1180,6 +1183,7 @@ const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
     {
       id: 'sp-1',
       snapshotId: 'snap-5',
+      assetId: 'btc',
       assetSymbol: 'BTC',
       quantity: 1.42,
       priceUsd: 80400,
@@ -1190,6 +1194,7 @@ const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
     {
       id: 'sp-2',
       snapshotId: 'snap-5',
+      assetId: 'eth',
       assetSymbol: 'ETH',
       quantity: 11.8,
       priceUsd: 4210,
@@ -1200,6 +1205,7 @@ const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
     {
       id: 'sp-3',
       snapshotId: 'snap-5',
+      assetId: 'global-income-ut',
       assetSymbol: 'UT-GI-SGD',
       quantity: 50000,
       priceUsd: 1.16,
@@ -1212,6 +1218,7 @@ const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
     {
       id: 'sp-4',
       snapshotId: 'snap-6',
+      assetId: 'btc',
       assetSymbol: 'BTC',
       quantity: 1.42,
       priceUsd: 81250,
@@ -1222,6 +1229,7 @@ const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
     {
       id: 'sp-5',
       snapshotId: 'snap-6',
+      assetId: 'eth',
       assetSymbol: 'ETH',
       quantity: 11.8,
       priceUsd: 4320,
@@ -1232,6 +1240,7 @@ const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
     {
       id: 'sp-6',
       snapshotId: 'snap-6',
+      assetId: 'sol',
       assetSymbol: 'SOL',
       quantity: 220,
       priceUsd: 178,
@@ -1242,6 +1251,7 @@ const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
     {
       id: 'sp-7',
       snapshotId: 'snap-6',
+      assetId: 'global-income-ut',
       assetSymbol: 'UT-GI-SGD',
       quantity: 50000,
       priceUsd: 1.182,
@@ -1252,6 +1262,7 @@ const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
     {
       id: 'sp-8',
       snapshotId: 'snap-6',
+      assetId: 'angel-safe',
       assetSymbol: 'ANGEL-AI',
       quantity: 1,
       priceUsd: 50000,
@@ -1262,6 +1273,7 @@ const initialSnapshotPositions: Record<string, SnapshotPosition[]> = {
     {
       id: 'sp-9',
       snapshotId: 'snap-6',
+      assetId: 'usdc',
       assetSymbol: 'USDC',
       quantity: 24500,
       priceUsd: 1,
@@ -1555,19 +1567,160 @@ function getCurrentPrices(): AssetPrice[] {
   }));
 }
 
+// Catalog matching mirrors the backend: identity (provider pair, CoinGecko id,
+// ISIN) first, then a ticker only within the same category group, because tickers
+// repeat across classes (USDE is Ethena's stablecoin and StablecoinX's equity).
+function isSameClassSymbol(asset: Asset, symbol: string, category: string) {
+  return (
+    asset.symbol.toUpperCase() === symbol.toUpperCase() &&
+    categoryGroup(asset.category) === categoryGroup(category)
+  );
+}
+
+function hasProviderPair(priceProvider: string, providerAssetId: string | null | undefined) {
+  return (asset: Asset) =>
+    !!providerAssetId &&
+    asset.priceProvider === priceProvider &&
+    asset.providerAssetId === providerAssetId;
+}
+
+/** First asset matching the earliest predicate, like the backend's `??` lookup chains. */
+function findDemoAsset(...predicates: Array<(asset: Asset) => boolean>) {
+  for (const predicate of predicates) {
+    const match = demoAssets.find(predicate);
+    if (match) return match;
+  }
+  return undefined;
+}
+
+/**
+ * Backend isUnpricedAsset: an automatic feed with no provider id (e.g. an older
+ * trade/position import left on the coingecko default) can never be priced by the
+ * refresh job. Manual rows are priced by hand, so they never count.
+ */
+function isUnpricedDemoAsset(asset: Pick<Asset, 'priceProvider' | 'providerAssetId'>) {
+  return !asset.providerAssetId && asset.priceProvider !== 'manual';
+}
+
+/**
+ * Backend canAdoptIdentity: a same-class symbol match may take the requested feed
+ * identity only when it's unpriced AND exactly this category AND carries no
+ * coingeckoId/ISIN/native price of its own — a same-group crypto match (e.g. an
+ * ANGEL/NFT row) or a fund/priced row names a different instrument and must not
+ * be repointed onto an unrelated identity.
+ */
+function canAdoptDemoIdentity(
+  asset: Pick<
+    Asset,
+    'priceProvider' | 'providerAssetId' | 'category' | 'coingeckoId' | 'isin' | 'currentPriceNative'
+  >,
+  category: string
+): boolean {
+  return (
+    isUnpricedDemoAsset(asset) &&
+    asset.category === category &&
+    asset.coingeckoId == null &&
+    asset.isin == null &&
+    asset.currentPriceNative == null
+  );
+}
+
+/**
+ * Backend from-provider/from-coingecko self-heal: a same-class symbol match that
+ * can never be priced adopts the identity this request brought instead of staying
+ * stuck on its old defaults.
+ */
+function healUnpricedAsset(asset: Asset, updates: Partial<Asset>): Asset {
+  const healed: Asset = { ...asset, ...updates };
+  demoAssets = demoAssets.map((item) => (item.id === healed.id ? healed : item));
+  demoPositions = demoPositions.map((position) =>
+    position.assetId === healed.id ? { ...position, asset: healed } : position
+  );
+  return healed;
+}
+
+/** Backend slugifyUtId (assets.ts): a manual fund's provider id when it has no
+ * fund-manager or Yahoo mapping. */
+function slugifyUtId(symbol: string, isin?: string | null): string {
+  if (isin && isin.trim()) return isin.trim().toUpperCase();
+  return `ut-${symbol
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')}`;
+}
+
+// Demo fund-manager NAV table (SGD only), keyed by ISIN — mirrors findFundManagerSource
+// closely enough for the two share classes the demo statement/import fixtures use.
+const DEMO_MANAGER_NAV_BY_ISIN: Record<string, number> = {
+  SG9999004360: 6.0462,
+  SGXZ58947870: 1.593,
+};
+
+/** Backend importPriceFeed: an imported row always gets a feed the refresh job can read. */
+function demoImportFeed(asset: {
+  category: string;
+  symbol: string;
+  coingeckoId?: string | null;
+  nativeCurrency?: string | null;
+  priceProvider?: Asset['priceProvider'] | null;
+  providerAssetId?: string | null;
+}): Pick<Asset, 'priceProvider' | 'providerAssetId'> {
+  const priceProvider: Asset['priceProvider'] =
+    asset.priceProvider ||
+    (asset.category === 'EQUITY'
+      ? 'yahoo'
+      : asset.category === 'UNIT_TRUST'
+        ? 'manual'
+        : 'coingecko');
+  const fallbackId =
+    priceProvider === 'yahoo' && asset.category === 'EQUITY'
+      ? impliedYahooTicker(asset.symbol, asset.nativeCurrency)
+      : priceProvider === 'coingecko'
+        ? asset.coingeckoId || null
+        : null;
+  return { priceProvider, providerAssetId: asset.providerAssetId || fallbackId };
+}
+
+/**
+ * POST /assets/from-coingecko: identity first; an unpriced same-class ticker match
+ * self-heals onto the requested identity (mirrors the backend's from-provider self-
+ * heal); otherwise a new coin.
+ */
 function createDemoAsset(data: {
   coingeckoId: string;
   symbol: string;
   name: string;
   category?: Asset['category'];
-}) {
-  const existing = demoAssets.find(
-    (asset) =>
-      asset.coingeckoId === data.coingeckoId ||
-      asset.symbol.toLowerCase() === data.symbol.toLowerCase()
+}): { asset: Asset; status: number } {
+  const category = data.category ?? 'LIQUID_CRYPTO';
+  const identityMatch = findDemoAsset(
+    hasProviderPair('coingecko', data.coingeckoId),
+    (asset) => asset.coingeckoId === data.coingeckoId
   );
-  if (existing) return existing;
+  if (identityMatch) return { asset: identityMatch, status: 200 };
 
+  const symbolMatch = demoAssets.find((asset) => isSameClassSymbol(asset, data.symbol, category));
+  if (symbolMatch) {
+    if (canAdoptDemoIdentity(symbolMatch, category)) {
+      return {
+        asset: healUnpricedAsset(symbolMatch, {
+          priceProvider: 'coingecko',
+          providerAssetId: data.coingeckoId,
+          coingeckoId: data.coingeckoId,
+        }),
+        status: 200,
+      };
+    }
+    return { asset: symbolMatch, status: 200 };
+  }
+
+  return { asset: insertDemoAsset(data), status: 201 };
+}
+
+function insertDemoAsset(
+  data: { coingeckoId: string; symbol: string; name: string; category?: Asset['category'] },
+  overrides: Partial<Asset> = {}
+) {
   const asset: Asset = {
     ...ASSET_DEFAULTS,
     id: nextDemoId('asset'),
@@ -1578,6 +1731,7 @@ function createDemoAsset(data: {
     category: data.category ?? 'LIQUID_CRYPTO',
     currentPriceUsd: seedDemoPrice(data.coingeckoId, data.category ?? 'LIQUID_CRYPTO'),
     priceUpdatedAt: new Date().toISOString(),
+    ...overrides,
   };
   demoAssets = [...demoAssets, asset];
   return asset;
@@ -1967,20 +2121,72 @@ function cancelDemoPositionHistory(positionId: string, historyId: string) {
   return updatedRequestedPosition;
 }
 
+/**
+ * Backend findBulkSymbolMatch: a row naming its category reuses a same-class
+ * ticker; a row without one reuses a ticker only when a single class holds it.
+ */
+function importedSymbolMatch(asset: BulkImportPosition['asset']) {
+  const category: string | undefined = asset.category;
+  if (category) return demoAssets.find((item) => isSameClassSymbol(item, asset.symbol, category));
+  const symbol = asset.symbol.toUpperCase();
+  const matches = demoAssets.filter((item) => item.symbol.toUpperCase() === symbol);
+  if (matches.length > 1) {
+    throw new Error(
+      `${symbol} matches more than one asset type (${matches
+        .map((item) => item.category)
+        .join(', ')}); add "category" to this row`
+    );
+  }
+  const rowProvider = asset.priceProvider ?? (asset.coingeckoId ? 'coingecko' : undefined);
+  return matches[0] && (!rowProvider || matches[0].priceProvider === rowProvider)
+    ? matches[0]
+    : undefined;
+}
+
 function createImportedPosition(position: BulkImportPosition) {
-  let asset = demoAssets.find(
-    (item) =>
-      item.coingeckoId === position.asset.coingeckoId ||
-      item.symbol.toLowerCase() === position.asset.symbol.toLowerCase()
-  );
+  const { coingeckoId, symbol, name } = position.asset;
+  const category = position.asset.category ?? 'LIQUID_CRYPTO';
+  const nativeCurrency = (position.asset.nativeCurrency ?? 'USD').toUpperCase();
+  const isin = position.asset.isin?.trim().toUpperCase() || undefined;
+  const feed = demoImportFeed({ ...position.asset, category });
+
+  // Unit-trust identity: an ISIN reuses only a same-currency UNIT_TRUST row, ahead
+  // of the provider/symbol fallbacks below (backend's identityMatches step).
+  let asset =
+    (isin &&
+      demoAssets.find(
+        (item) =>
+          item.category === 'UNIT_TRUST' &&
+          item.nativeCurrency === nativeCurrency &&
+          item.isin?.toUpperCase() === isin
+      )) ||
+    findDemoAsset(
+      hasProviderPair(feed.priceProvider, feed.providerAssetId),
+      (item) => !!coingeckoId && item.coingeckoId === coingeckoId
+    );
+  asset ??= importedSymbolMatch(position.asset);
+
+  if (
+    asset &&
+    category === 'UNIT_TRUST' &&
+    (asset.category !== 'UNIT_TRUST' ||
+      asset.nativeCurrency !== nativeCurrency ||
+      (isin && asset.isin && asset.isin?.toUpperCase() !== isin))
+  ) {
+    throw new Error('Existing asset belongs to a different fund or share class');
+  }
 
   if (!asset) {
-    asset = createDemoAsset({
-      coingeckoId: position.asset.coingeckoId ?? position.asset.symbol.toLowerCase(),
-      symbol: position.asset.symbol,
-      name: position.asset.name,
-      category: position.asset.category,
-    });
+    asset = insertDemoAsset(
+      { coingeckoId: coingeckoId ?? symbol.toLowerCase(), symbol, name, category },
+      {
+        ...feed,
+        coingeckoId: coingeckoId ?? null,
+        nativeCurrency,
+        exchange: position.asset.exchange ?? null,
+        ...(category === 'UNIT_TRUST' ? { isin: isin ?? null } : {}),
+      }
+    );
   }
 
   createDemoPosition({
@@ -2014,22 +2220,19 @@ function calculateTradePnL(
 }
 
 function assetFromImportedTrade(assetData: BulkImportTrade['asset']) {
-  let asset = demoAssets.find(
-    (item) =>
-      (assetData.coingeckoId && item.coingeckoId === assetData.coingeckoId) ||
-      item.symbol.toLowerCase() === assetData.symbol.toLowerCase()
+  const { coingeckoId, symbol, name, category } = assetData;
+  const feed = demoImportFeed(assetData);
+  return (
+    findDemoAsset(
+      hasProviderPair(feed.priceProvider, feed.providerAssetId),
+      (item) => !!coingeckoId && item.coingeckoId === coingeckoId,
+      (item) => isSameClassSymbol(item, symbol, category)
+    ) ??
+    insertDemoAsset(
+      { coingeckoId: coingeckoId ?? symbol.toLowerCase(), symbol, name, category },
+      { ...feed, coingeckoId: coingeckoId ?? null }
+    )
   );
-
-  if (!asset) {
-    asset = createDemoAsset({
-      coingeckoId: assetData.coingeckoId ?? assetData.symbol.toLowerCase(),
-      symbol: assetData.symbol,
-      name: assetData.name,
-      category: assetData.category,
-    });
-  }
-
-  return asset;
 }
 
 type DemoTradeInput = {
@@ -2565,11 +2768,22 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
       positions?: BulkImportPosition[];
     };
     const imports = body.positions ?? [];
-    imports.forEach(createImportedPosition);
+    const results = imports.map((position) => {
+      try {
+        createImportedPosition(position);
+        return { success: true, symbol: position.asset.symbol };
+      } catch (error) {
+        return {
+          success: false,
+          symbol: position.asset.symbol,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        };
+      }
+    });
     return json(
       {
-        results: imports.map((position) => ({ success: true, symbol: position.asset.symbol })),
-        successCount: imports.length,
+        results,
+        successCount: results.filter((result) => result.success).length,
         totalCount: imports.length,
       },
       201
@@ -2742,10 +2956,10 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
   if (path === '/api/assets' && method === 'GET') return json(demoAssets);
   if (path === '/api/assets' && method === 'POST') {
     const body = JSON.parse((init?.body as string | undefined) ?? '{}') as CreateAssetData;
-    const existing = demoAssets.find(
-      (asset) => asset.symbol.toLowerCase() === body.symbol.toLowerCase()
-    );
-    if (existing) return json(existing);
+    const category = body.category ?? 'LIQUID_CRYPTO';
+    if (demoAssets.some((asset) => isSameClassSymbol(asset, body.symbol, category))) {
+      return json({ error: `Asset with symbol ${body.symbol} already exists` }, 409);
+    }
 
     const currentPriceUsd =
       body.currentPriceUsd ??
@@ -2760,7 +2974,7 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
       exchange: body.exchange ?? null,
       symbol: body.symbol.toUpperCase(),
       name: body.name,
-      category: body.category ?? 'LIQUID_CRYPTO',
+      category,
       currentPriceUsd,
       priceUpdatedAt: currentPriceUsd !== null ? new Date().toISOString() : null,
     };
@@ -2779,6 +2993,12 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
           symbol: 'SPX',
           name: 'S&P 500 Index',
           exchange: 'Yahoo Finance',
+          nativeCurrency: 'USD',
+        },
+        {
+          symbol: 'USDE',
+          name: 'StablecoinX Inc.',
+          exchange: 'NASDAQ',
           nativeCurrency: 'USD',
         },
         {
@@ -2909,7 +3129,8 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
       name: string;
       category?: Asset['category'];
     };
-    return json(createDemoAsset(body), 201);
+    const { asset, status } = createDemoAsset(body);
+    return json(asset, status);
   }
   if (path === '/api/assets/from-provider' && method === 'POST') {
     const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
@@ -2921,29 +3142,49 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
       nativeCurrency?: string;
       exchange?: string | null;
     };
-    const existing = demoAssets.find(
-      (a) =>
-        (a.priceProvider === body.provider && a.providerAssetId === body.providerAssetId) ||
-        a.symbol.toLowerCase() === body.symbol.toLowerCase()
+    const identityMatch = findDemoAsset(
+      hasProviderPair(body.provider, body.providerAssetId),
+      (a) => body.provider === 'coingecko' && a.coingeckoId === body.providerAssetId
     );
-    if (existing) return json(existing);
+    if (identityMatch) return json(identityMatch);
 
-    const base = createDemoAsset({
-      coingeckoId: body.providerAssetId,
-      symbol: body.symbol,
-      name: body.name,
-      category: body.category,
-    });
-    const merged: Asset = {
-      ...base,
-      priceProvider: body.provider,
-      providerAssetId: body.providerAssetId,
-      coingeckoId: body.provider === 'coingecko' ? body.providerAssetId : null,
-      nativeCurrency: (body.nativeCurrency ?? 'USD').toUpperCase(),
-      exchange: body.exchange ?? null,
-    };
-    demoAssets = demoAssets.map((a) => (a.id === merged.id ? merged : a));
-    return json(merged, 201);
+    // An unpriced same-class ticker match (e.g. an old trade/position-imported row
+    // the refresh job could never price) self-heals onto this request's identity
+    // instead of staying stuck on its defaults.
+    const symbolMatch = demoAssets.find((a) => isSameClassSymbol(a, body.symbol, body.category));
+    if (symbolMatch) {
+      if (canAdoptDemoIdentity(symbolMatch, body.category)) {
+        return json(
+          healUnpricedAsset(symbolMatch, {
+            priceProvider: body.provider,
+            providerAssetId: body.providerAssetId,
+            ...(body.provider === 'coingecko' ? { coingeckoId: body.providerAssetId } : {}),
+            ...(body.nativeCurrency?.trim()
+              ? { nativeCurrency: body.nativeCurrency.trim().toUpperCase() }
+              : {}),
+            ...(body.exchange !== undefined ? { exchange: body.exchange ?? null } : {}),
+          })
+        );
+      }
+      return json(symbolMatch);
+    }
+
+    const asset = insertDemoAsset(
+      {
+        coingeckoId: body.providerAssetId,
+        symbol: body.symbol,
+        name: body.name,
+        category: body.category,
+      },
+      {
+        priceProvider: body.provider,
+        providerAssetId: body.providerAssetId,
+        coingeckoId: body.provider === 'coingecko' ? body.providerAssetId : null,
+        nativeCurrency: (body.nativeCurrency ?? 'USD').toUpperCase(),
+        exchange: body.exchange ?? null,
+      }
+    );
+    return json(asset, 201);
   }
   if (path.startsWith('/api/assets/') && path.endsWith('/refresh-price') && method === 'POST') {
     const id = path.split('/')[3];
@@ -2986,20 +3227,42 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
       isin?: string | null;
       initialNav?: number;
       navAsOfDate?: string;
+      yahooSymbol?: string | null;
     };
     const ccy = (body.nativeCurrency ?? 'SGD').toUpperCase();
-    const existingFund = demoAssets.find(
-      (item) => (body.isin && item.isin === body.isin) || item.symbol === body.symbol.toUpperCase()
+    const isin = body.isin?.toUpperCase();
+    // Provider identity mirrors the backend: a supported fund manager wins, then a
+    // Yahoo-listed share class, else a manual row keyed by ISIN (or a symbol slug).
+    const managerNav = ccy === 'SGD' ? DEMO_MANAGER_NAV_BY_ISIN[isin ?? ''] : undefined;
+    const priceProvider: Asset['priceProvider'] =
+      managerNav !== undefined ? 'fund-manager' : body.yahooSymbol ? 'yahoo' : 'manual';
+    const providerAssetId =
+      managerNav !== undefined
+        ? isin!
+        : body.yahooSymbol
+          ? body.yahooSymbol.toUpperCase()
+          : slugifyUtId(body.symbol, body.isin);
+    // Identity first (provider pair, then ISIN); a fund code may reuse only another
+    // unit trust, never a coin or stock that shares the ticker or Yahoo listing.
+    const existingFund = findDemoAsset(
+      hasProviderPair(priceProvider, providerAssetId),
+      (item) => !!isin && item.category === 'UNIT_TRUST' && item.isin?.toUpperCase() === isin,
+      (item) => isSameClassSymbol(item, body.symbol, 'UNIT_TRUST')
     );
-    if (existingFund) return json(existingFund);
-    const managerNav =
-      ccy === 'SGD'
-        ? ({ SG9999004360: 6.0462, SGXZ58947870: 1.593 } as Record<string, number>)[body.isin ?? '']
-        : undefined;
+    if (existingFund) {
+      if (
+        existingFund.category !== 'UNIT_TRUST' ||
+        existingFund.nativeCurrency !== ccy ||
+        (isin && existingFund.isin && existingFund.isin?.toUpperCase() !== isin)
+      ) {
+        return json({ error: 'Existing symbol belongs to a different fund or share class' }, 409);
+      }
+      return json(existingFund);
+    }
     const nativeNav = managerNav ?? body.initialNav;
     const usdSgd = fxRates.find((rate) => rate.toCcy === 'SGD')?.rate ?? 1.35;
     const navUsd = nativeNav === undefined ? null : ccy === 'USD' ? nativeNav : nativeNav / usdSgd;
-    const asset = createDemoAsset({
+    const asset = insertDemoAsset({
       coingeckoId: `ut-${body.symbol.toLowerCase()}`,
       symbol: body.symbol,
       name: body.name,
@@ -3010,17 +3273,17 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
       : (body.navAsOfDate ?? new Date().toISOString());
     const merged: Asset = {
       ...asset,
-      priceProvider: managerNav ? 'fund-manager' : 'manual',
-      providerAssetId: managerNav ? body.isin! : asset.providerAssetId,
+      priceProvider,
+      providerAssetId,
       nativeCurrency: ccy,
-      isin: body.isin ?? null,
+      isin: isin ?? null,
       currentPriceUsd: navUsd,
       priceUpdatedAt,
       priceAsOf: priceUpdatedAt,
       currentPriceNative: nativeNav ?? null,
-      priceSource: managerNav ? 'fund-manager' : 'manual',
-      priceCheckedAt: managerNav ? new Date().toISOString() : null,
-      priceCheckStatus: managerNav ? 'ok' : null,
+      priceSource: priceProvider,
+      priceCheckedAt: priceProvider !== 'manual' ? new Date().toISOString() : null,
+      priceCheckStatus: priceProvider !== 'manual' ? 'ok' : null,
     };
     demoAssets = demoAssets.map((a) => (a.id === merged.id ? merged : a));
     return json(merged, 201);

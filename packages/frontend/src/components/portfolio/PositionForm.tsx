@@ -50,7 +50,12 @@ import { toast } from 'sonner';
 import { mismatchedPickToast, resolvedAssetMatchesPick } from '@/lib/assetPickGuard';
 import { useQueryClient } from '@tanstack/react-query';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
-import { isListedEquityCandidate } from './assetSearchMatching';
+import {
+  acceptsRepairedAsset,
+  isListedCoinCandidate,
+  isListedEquityCandidate,
+  unpricedEquityRepairRequest,
+} from './assetSearchMatching';
 import { PositionImportTab } from './PositionImportTab';
 import { ImportResultsList, type ImportResultItem } from '@/components/ui/ImportResultsList';
 import { CustodyCheckbox } from './CustodyCheckbox';
@@ -750,10 +755,7 @@ export function PositionForm({
 
     if (category === 'crypto' && searchResults && searchQuery.length >= 1) {
       searchResults.forEach((coin) => {
-        const existsInPortfolio = assets?.some(
-          (a) => a.coingeckoId === coin.id || a.symbol.toLowerCase() === coin.symbol.toLowerCase()
-        );
-        if (!existsInPortfolio) {
+        if (!isListedCoinCandidate(assets, coin)) {
           results.push({ type: 'search', coin });
         }
       });
@@ -819,6 +821,10 @@ export function PositionForm({
   };
 
   const repairExistingProviderAsset = async (asset: Asset, nativeCurrency: CostCurrency) => {
+    // Unpriced equities (no providerAssetId) never get refreshed by the price job —
+    // adopt the Yahoo pair now so picking one doesn't yield a position stuck unpriced.
+    const repair = unpricedEquityRepairRequest(asset, nativeCurrency);
+    if (repair) return createAssetFromProvider.mutateAsync(repair);
     if (asset.priceProvider !== 'yahoo') return null;
     if (asset.nativeCurrency === nativeCurrency) return null;
     return createAssetFromProvider.mutateAsync({
@@ -842,8 +848,9 @@ export function PositionForm({
 
     void repairExistingProviderAsset(asset, localAsset.nativeCurrency as CostCurrency)
       .then((updatedAsset) => {
-        // A metadata repair must return the same catalog row, never another asset.
-        if (updatedAsset?.id === asset.id) {
+        // A repair must return the same catalog row, or the live listing an unpriced
+        // equity asked for; never an unrelated asset.
+        if (updatedAsset && acceptsRepairedAsset(asset, updatedAsset, localAsset.nativeCurrency)) {
           const localizedUpdatedAsset = withInferredListedEquityCurrency(updatedAsset);
           setAssetId(localizedUpdatedAsset.id);
           setSelectedAsset(localizedUpdatedAsset);

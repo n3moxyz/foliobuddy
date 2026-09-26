@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { mockAsset, mockPosition } from '../helpers/fixtures.js';
 import { createTestApp } from '../helpers/createTestApp.js';
+import { Prisma } from '@prisma/client';
 import { ETHENA_USDE, STABLECOINX } from '../helpers/catalog.js';
 
 // Mock Prisma
@@ -257,6 +258,150 @@ describe('bulk import rows without a category', () => {
     expect(mockPrisma.asset.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ symbol: 'NEWCOIN', category: 'LIQUID_CRYPTO' }),
     });
+  });
+
+  // An old frontend loaded during a deploy can copy an old snapshot's unresolvable
+  // asset.category as an explicit null rather than omitting the key; the row must
+  // be treated exactly like "not provided", not rejected outright.
+  it('treats an explicit null category like a missing one and asks for a category on a two-class ticker', async () => {
+    mockPrisma.asset.findMany.mockResolvedValue([ETHENA_USDE, STABLECOINX]);
+
+    const res = await request(app)
+      .post('/api/positions/bulk')
+      .send({
+        positions: [
+          { asset: { symbol: 'USDE', name: 'USDE', category: null }, quantity: 10, avgCostUsd: 1 },
+        ],
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.successCount).toBe(0);
+    expect(res.body.results[0].error).toBe(
+      'USDE matches more than one asset type (STABLECOIN, EQUITY); add "category" to this row'
+    );
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    expect(mockPrisma.position.create).not.toHaveBeenCalled();
+  });
+
+  it('treats an explicit null category like a missing one and reuses a single-class ticker', async () => {
+    mockPrisma.asset.findMany.mockResolvedValue([nvidiaEquity, ETHENA_USDE]);
+
+    const res = await request(app)
+      .post('/api/positions/bulk')
+      .send({
+        positions: [
+          { asset: { symbol: 'nvda', name: 'nvda', category: null }, quantity: 10, avgCostUsd: 1 },
+        ],
+      });
+
+    expect(res.body.successCount).toBe(1);
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    expect(mockPrisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ assetId: 'nvda-row' }),
+    });
+  });
+});
+
+describe('bulk import catalog identity and row errors', () => {
+  function importAsset(asset: Record<string, unknown>) {
+    return request(app)
+      .post('/api/positions/bulk')
+      .send({ positions: [{ asset, quantity: 1, avgCostUsd: 1 }] });
+  }
+
+  function useCatalog(catalog: Array<Record<string, unknown>>) {
+    mockPrisma.asset.findMany.mockResolvedValue(catalog);
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'created', ...data }));
+  }
+
+  const importedAssetId = () => mockPrisma.position.create.mock.calls[0][0].data.assetId;
+
+  it('binds a row to the asset holding its provider pair, even under an old ticker', async () => {
+    useCatalog([{ ...STABLECOINX, id: 'meta-row', providerAssetId: 'META', symbol: 'FB' }]);
+
+    const res = await importAsset({
+      symbol: 'META',
+      name: 'Meta Platforms',
+      category: 'EQUITY',
+      priceProvider: 'yahoo',
+      providerAssetId: 'META',
+    });
+
+    expect(res.body.successCount).toBe(1);
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    expect(importedAssetId()).toBe('meta-row');
+  });
+
+  it('binds a CoinGecko row to the asset holding that coin id in its provider pair', async () => {
+    // A different class and no coingeckoId column: only the provider pair matches.
+    useCatalog([{ ...ETHENA_USDE, id: 'pair-only', coingeckoId: null, category: 'CASH' }]);
+
+    await importAsset({
+      symbol: 'USDe',
+      name: 'Ethena USDe',
+      category: 'LIQUID_CRYPTO',
+      coingeckoId: 'ethena-usde',
+    });
+
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    expect(importedAssetId()).toBe('pair-only');
+  });
+
+  it.each([
+    [
+      { symbol: 'nvda', name: 'NVIDIA Corporation', category: 'EQUITY' },
+      { priceProvider: 'yahoo', providerAssetId: 'NVDA' },
+    ],
+    [
+      { symbol: 'SOL', name: 'Solana', category: 'LIQUID_CRYPTO', coingeckoId: 'solana' },
+      { priceProvider: 'coingecko', providerAssetId: 'solana' },
+    ],
+  ])('creates %o with a provider id the refresh job can read', async (asset, feed) => {
+    useCatalog([]);
+
+    await importAsset(asset);
+
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining(feed),
+    });
+  });
+
+  it('leaves a non-USD equity with a bare ticker unpriced rather than on the US listing', async () => {
+    useCatalog([]);
+
+    await importAsset({ symbol: 'D05', name: 'DBS', category: 'EQUITY', nativeCurrency: 'SGD' });
+
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ priceProvider: 'yahoo', providerAssetId: null }),
+    });
+  });
+
+  it('reports a database failure on a row without leaking the raw Prisma message', async () => {
+    useCatalog([]);
+    mockPrisma.asset.create.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed on the fields: (`priceProvider`,`providerAssetId`)',
+        { code: 'P2002', clientVersion: 'test' }
+      )
+    );
+
+    const res = await importAsset({ symbol: 'NVDA', name: 'NVIDIA', category: 'EQUITY' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.results).toEqual([
+      { success: false, symbol: 'NVDA', error: 'A record with this value already exists' },
+    ]);
+  });
+
+  it('reports an unexpected failure on a row with fixed text', async () => {
+    useCatalog([]);
+    mockPrisma.position.create.mockRejectedValueOnce(
+      new Error('connect ECONNREFUSED 10.0.0.5:5432')
+    );
+
+    const res = await importAsset({ symbol: 'NVDA', name: 'NVIDIA', category: 'EQUITY' });
+
+    expect(res.body.results[0].error).toBe('Unexpected error');
   });
 });
 

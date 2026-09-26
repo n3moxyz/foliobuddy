@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   STABLECOIN_CATEGORIES,
+  type Asset,
   type Position,
   type PositionHistoryEntry,
+  type ProviderSearchResult,
+  type Trade,
 } from '@foliobuddy/shared';
 import { handleDemoApi, resetDemoDataForTests } from '../demoMode';
 
@@ -497,5 +500,443 @@ describe('demo mode API mock', () => {
         positionDelta: { mode: 'reduce', quantity: 0.2 },
       })
     ).rejects.toThrow('Sending proceeds to a cash pile requires a positive sale amount');
+  });
+});
+
+describe('demo catalog matching with tickers shared across classes', () => {
+  beforeEach(() => {
+    resetDemoDataForTests();
+  });
+
+  const stablecoinX = {
+    provider: 'yahoo',
+    providerAssetId: 'USDE',
+    symbol: 'USDE',
+    name: 'StablecoinX Inc.',
+    category: 'EQUITY',
+    nativeCurrency: 'USD',
+    exchange: 'NASDAQ',
+  };
+
+  async function addStablecoinX() {
+    const response = await demoRequest('/assets/from-provider', 'POST', stablecoinX);
+    return { status: response.status, asset: await readJson<Asset>(response) };
+  }
+
+  async function importPositions(...assets: Array<Record<string, unknown>>) {
+    return readJson<{ results: Array<{ success: boolean; error?: string }> }>(
+      await demoRequest('/positions/bulk', 'POST', {
+        positions: assets.map((asset) => ({ asset, quantity: 5, avgCostUsd: 10 })),
+      })
+    );
+  }
+
+  const importedPosition = async (symbol: string, category: string) =>
+    (await seedPositions()).find(
+      (position) => position.asset.symbol === symbol && position.asset.category === category
+    );
+
+  it('seeds the Ethena USDe stablecoin and lists StablecoinX in equity search', async () => {
+    const assets = await readJson<Asset[]>(await demoRequest('/assets'));
+    const hits = await readJson<ProviderSearchResult[]>(
+      await demoRequest('/assets/search?q=usde&category=EQUITY')
+    );
+
+    expect(assets.filter((asset) => asset.symbol === 'USDE').map((a) => a.category)).toEqual([
+      'STABLECOIN',
+    ]);
+    expect(hits.map((hit) => [hit.symbol, hit.name])).toEqual([['USDE', 'StablecoinX Inc.']]);
+  });
+
+  it('creates StablecoinX as an equity instead of returning the stablecoin', async () => {
+    const created = await addStablecoinX();
+    const again = await addStablecoinX();
+
+    expect(created.status).toBe(201);
+    expect(created.asset).toMatchObject({ category: 'EQUITY', priceProvider: 'yahoo' });
+    expect(created.asset.id).not.toBe('usde');
+    expect([again.status, again.asset.id]).toEqual([200, created.asset.id]);
+  });
+
+  it('creates fiat cash whose ticker only an equity uses, and 409s a same-class duplicate', async () => {
+    await demoRequest('/assets/from-provider', 'POST', {
+      ...stablecoinX,
+      providerAssetId: 'GBP',
+      symbol: 'GBP',
+      name: 'Pound ETF',
+    });
+    const cash = (symbol: string) =>
+      demoRequest('/assets', 'POST', {
+        symbol,
+        name: `Cash ${symbol}`,
+        category: 'CASH',
+        priceProvider: 'manual',
+        nativeCurrency: symbol,
+        currentPriceUsd: 1.27,
+      });
+
+    const gbp = await cash('GBP');
+    const usd = await cash('USD');
+
+    expect(gbp.status).toBe(201);
+    expect((await readJson<Asset>(gbp)).category).toBe('CASH');
+    expect(usd.status).toBe(409);
+  });
+
+  it('binds imported positions by class and asks for a category when a ticker is shared', async () => {
+    const { asset: equity } = await addStablecoinX();
+
+    const results = await importPositions({
+      symbol: 'USDE',
+      name: 'StablecoinX Inc.',
+      category: 'EQUITY',
+      coingeckoId: null,
+    });
+    expect((await importedPosition('USDE', 'EQUITY'))?.assetId).toBe(equity.id);
+
+    const ambiguous = await importPositions({ symbol: 'USDE', name: 'USDE' });
+
+    expect(results.results[0].success).toBe(true);
+    expect(ambiguous.results[0]).toEqual({
+      success: false,
+      symbol: 'USDE',
+      error:
+        'USDE matches more than one asset type (STABLECOIN, EQUITY); add "category" to this row',
+    });
+  });
+
+  it('never matches an imported row to another asset because both lack a CoinGecko id', async () => {
+    await importPositions({
+      symbol: 'NVDA',
+      name: 'NVIDIA',
+      category: 'EQUITY',
+      coingeckoId: null,
+    });
+
+    expect((await importedPosition('NVDA', 'EQUITY'))?.asset).toMatchObject({
+      priceProvider: 'yahoo',
+      providerAssetId: 'NVDA',
+    });
+  });
+
+  it('imports a BTC ETF trade as its own equity rather than onto the bitcoin coin', async () => {
+    await demoRequest('/trades/bulk-import', 'POST', [
+      {
+        asset: { coingeckoId: null, symbol: 'BTC', name: 'Bitcoin Mini Trust', category: 'EQUITY' },
+        direction: 'LONG',
+        entryPrice: 45,
+        quantity: 10,
+        entryDate: '2026-04-01',
+      },
+    ]);
+
+    const [imported] = await readJson<Trade[]>(await demoRequest('/trades'));
+    expect(imported.assetId).not.toBe('btc');
+    expect(imported.asset).toMatchObject({
+      symbol: 'BTC',
+      category: 'EQUITY',
+      priceProvider: 'yahoo',
+      providerAssetId: 'BTC',
+    });
+  });
+
+  it('creates a unit trust whose code is a stock ticker, and 409s a different share class', async () => {
+    const fund = await demoRequest('/assets/unit-trust', 'POST', {
+      symbol: 'AAPL',
+      name: 'Apple Income Fund',
+      nativeCurrency: 'USD',
+    });
+    const otherClass = await demoRequest('/assets/unit-trust', 'POST', {
+      symbol: 'UT-GI-SGD',
+      name: 'Global Income Fund USD',
+      nativeCurrency: 'USD',
+    });
+
+    expect(fund.status).toBe(201);
+    expect((await readJson<Asset>(fund)).category).toBe('UNIT_TRUST');
+    expect(otherClass.status).toBe(409);
+  });
+
+  it('reuses a unit trust by its Yahoo pair before falling back to a fund-code slug', async () => {
+    const first = await demoRequest('/assets/unit-trust', 'POST', {
+      symbol: 'GIFUND',
+      name: 'Global Income Fund',
+      nativeCurrency: 'USD',
+      yahooSymbol: '0P0001XYZ.SI',
+    });
+    const firstAsset = await readJson<Asset>(first);
+
+    expect(first.status).toBe(201);
+    expect(firstAsset).toMatchObject({ priceProvider: 'yahoo', providerAssetId: '0P0001XYZ.SI' });
+
+    // A different ticker string but the same Yahoo pair reuses the same row.
+    const again = await demoRequest('/assets/unit-trust', 'POST', {
+      symbol: 'GI-FUND-RENAMED',
+      name: 'Global Income Fund',
+      nativeCurrency: 'USD',
+      yahooSymbol: '0p0001xyz.si',
+    });
+
+    expect(again.status).toBe(200);
+    expect((await readJson<Asset>(again)).id).toBe(firstAsset.id);
+  });
+
+  it('409s a unit-trust Yahoo pair that already belongs to a non-fund catalog row', async () => {
+    // 'AAPL' is already seeded as a Yahoo-priced equity; a fund code that collides
+    // with it must not silently adopt that row.
+    const conflict = await demoRequest('/assets/unit-trust', 'POST', {
+      symbol: 'AAPL-FUND',
+      name: 'Apple Feeder Fund',
+      nativeCurrency: 'USD',
+      yahooSymbol: 'AAPL',
+    });
+
+    expect(conflict.status).toBe(409);
+    expect(await readJson<{ error: string }>(conflict)).toEqual({
+      error: 'Existing symbol belongs to a different fund or share class',
+    });
+  });
+
+  it('binds a unit-trust import to its ISIN, and blocks a symbol clash with a different share class', async () => {
+    const existing = await readJson<Asset>(
+      await demoRequest('/assets/unit-trust', 'POST', {
+        symbol: 'GIFUND2',
+        name: 'Global Income Fund II',
+        nativeCurrency: 'SGD',
+        isin: 'SGXZ00000001',
+      })
+    );
+
+    // Same ISIN and currency, different ticker string: still binds to the existing row.
+    const byIsin = await importPositions({
+      coingeckoId: null,
+      symbol: 'GIFUND2-RENAMED',
+      name: 'Global Income Fund II (renamed)',
+      category: 'UNIT_TRUST',
+      nativeCurrency: 'SGD',
+      isin: 'SGXZ00000001',
+    });
+
+    expect(byIsin.results[0]).toEqual({ success: true, symbol: 'GIFUND2-RENAMED' });
+    expect((await seedPositions()).some((p) => p.assetId === existing.id)).toBe(true);
+    expect(
+      (await readJson<Asset[]>(await demoRequest('/assets'))).some(
+        (a) => a.symbol === 'GIFUND2-RENAMED'
+      )
+    ).toBe(false);
+
+    // Same ticker as an existing fund, but a different ISIN: a different share class.
+    const mismatch = await importPositions({
+      coingeckoId: null,
+      symbol: 'GIFUND2',
+      name: 'Global Income Fund II (wrong class)',
+      category: 'UNIT_TRUST',
+      nativeCurrency: 'SGD',
+      isin: 'SGXZ99999999',
+    });
+
+    expect(mismatch.results[0]).toEqual({
+      success: false,
+      symbol: 'GIFUND2',
+      error: 'Existing asset belongs to a different fund or share class',
+    });
+  });
+
+  it('heals an unpriced imported coin onto the identity a later CoinGecko import brings', async () => {
+    // A crypto row imported without a coingeckoId can never be priced by the
+    // refresh job (demoImportFeed's coingecko fallback needs one); this is the
+    // demo-reachable stand-in for an older trade/position-imported equity row.
+    await importPositions({
+      coingeckoId: null,
+      symbol: 'NEWCOIN',
+      name: 'New Coin',
+      category: 'LIQUID_CRYPTO',
+    });
+    const before = (await readJson<Asset[]>(await demoRequest('/assets'))).find(
+      (a) => a.symbol === 'NEWCOIN'
+    );
+    expect(before).toMatchObject({ priceProvider: 'coingecko', providerAssetId: null });
+
+    const healed = await demoRequest('/assets/from-coingecko', 'POST', {
+      coingeckoId: 'new-coin-token',
+      symbol: 'NEWCOIN',
+      name: 'New Coin',
+      category: 'LIQUID_CRYPTO',
+    });
+    const healedAsset = await readJson<Asset>(healed);
+
+    expect(healed.status).toBe(200);
+    expect(healedAsset.id).toBe(before!.id);
+    expect(healedAsset).toMatchObject({
+      priceProvider: 'coingecko',
+      providerAssetId: 'new-coin-token',
+      coingeckoId: 'new-coin-token',
+    });
+    expect(
+      (await readJson<Asset[]>(await demoRequest('/assets'))).filter((a) => a.symbol === 'NEWCOIN')
+    ).toHaveLength(1);
+  });
+
+  it('never self-heals an unpriced row onto an unrelated same-group category', async () => {
+    // ANGEL and LIQUID_CRYPTO share the crypto category group, so a same-class
+    // symbol match alone would let an unrelated coin import repoint an unpriced
+    // private/ANGEL holding onto its coingeckoId — the backend's canAdoptIdentity
+    // additionally requires an exact category match before healing.
+    await importPositions({
+      coingeckoId: null,
+      symbol: 'SHARED',
+      name: 'Private Angel Holding',
+      category: 'ANGEL',
+    });
+    const before = (await readJson<Asset[]>(await demoRequest('/assets'))).find(
+      (a) => a.symbol === 'SHARED' && a.category === 'ANGEL'
+    );
+    expect(before).toMatchObject({ priceProvider: 'coingecko', providerAssetId: null });
+
+    const response = await demoRequest('/assets/from-coingecko', 'POST', {
+      coingeckoId: 'shared-coin-token',
+      symbol: 'SHARED',
+      name: 'Shared Coin',
+      category: 'LIQUID_CRYPTO',
+    });
+    const returned = await readJson<Asset>(response);
+
+    // Matches the backend: a same-group-but-wrong-category symbol match is
+    // returned as-is (still the ANGEL row, still unpriced) — it is never
+    // rewritten onto the unrelated coin's provider identity.
+    expect(response.status).toBe(200);
+    expect(returned).toMatchObject({
+      id: before!.id,
+      category: 'ANGEL',
+      priceProvider: 'coingecko',
+      providerAssetId: null,
+    });
+  });
+
+  it('never self-heals from-provider onto an unrelated same-group category', async () => {
+    // Same guard as the from-coingecko case above, exercised through
+    // /assets/from-provider: NFT and ANGEL share the crypto category group, so an
+    // unpriced NFT row must not adopt an unrelated ANGEL import's identity.
+    await importPositions({
+      coingeckoId: null,
+      symbol: 'SHAREDTKR',
+      name: 'Private NFT Holding',
+      category: 'NFT',
+    });
+    const before = (await readJson<Asset[]>(await demoRequest('/assets'))).find(
+      (a) => a.symbol === 'SHAREDTKR' && a.category === 'NFT'
+    );
+    expect(before).toMatchObject({ priceProvider: 'coingecko', providerAssetId: null });
+
+    const response = await demoRequest('/assets/from-provider', 'POST', {
+      provider: 'coingecko',
+      providerAssetId: 'shared-token',
+      symbol: 'SHAREDTKR',
+      name: 'Shared Angel Holding',
+      category: 'ANGEL',
+    });
+    const returned = await readJson<Asset>(response);
+
+    // Matches the backend: the same-group-but-wrong-category NFT row is returned
+    // untouched, never rewritten onto the unrelated ANGEL import's identity.
+    expect(response.status).toBe(200);
+    expect(returned).toMatchObject({
+      id: before!.id,
+      category: 'NFT',
+      priceProvider: 'coingecko',
+      providerAssetId: null,
+    });
+  });
+
+  it('uppercases a unit-trust ISIN before storing it', async () => {
+    const created = await readJson<Asset>(
+      await demoRequest('/assets/unit-trust', 'POST', {
+        symbol: 'CASEFUND',
+        name: 'Case Fund',
+        nativeCurrency: 'SGD',
+        isin: 'sg1234567890',
+      })
+    );
+
+    expect(created.isin).toBe('SG1234567890');
+  });
+
+  it('binds a unit-trust import to an ISIN regardless of case, on both sides', async () => {
+    const existing = await readJson<Asset>(
+      await demoRequest('/assets/unit-trust', 'POST', {
+        symbol: 'CASEFUND2',
+        name: 'Case Fund II',
+        nativeCurrency: 'SGD',
+        isin: 'sg9876543210',
+      })
+    );
+    expect(existing.isin).toBe('SG9876543210');
+
+    // A normalized import payload sends the ISIN upper-cased; it must still bind
+    // to the fund created above rather than creating a duplicate catalog row.
+    const bound = await importPositions({
+      coingeckoId: null,
+      symbol: 'CASEFUND2-RENAMED',
+      name: 'Case Fund II (renamed)',
+      category: 'UNIT_TRUST',
+      nativeCurrency: 'SGD',
+      isin: 'SG9876543210',
+    });
+
+    expect(bound.results[0]).toEqual({ success: true, symbol: 'CASEFUND2-RENAMED' });
+    expect((await seedPositions()).some((p) => p.assetId === existing.id)).toBe(true);
+    expect(
+      (await readJson<Asset[]>(await demoRequest('/assets'))).filter(
+        (a) => a.isin === 'SG9876543210'
+      )
+    ).toHaveLength(1);
+  });
+});
+
+describe('demo price feeds for imported and healed rows', () => {
+  beforeEach(() => {
+    resetDemoDataForTests();
+  });
+
+  async function importPosition(asset: Record<string, unknown>) {
+    await demoRequest('/positions/bulk', 'POST', {
+      positions: [{ asset, quantity: 1, avgCostUsd: 1 }],
+    });
+    const assets = await readJson<Asset[]>(await demoRequest('/assets'));
+    return assets.find((item) => item.symbol === String(asset.symbol).toUpperCase())!;
+  }
+
+  it('leaves a non-USD equity with a bare ticker unpriced rather than on the US listing', async () => {
+    const dbs = await importPosition({
+      symbol: 'D05',
+      name: 'DBS',
+      category: 'EQUITY',
+      nativeCurrency: 'SGD',
+    });
+
+    expect([dbs.priceProvider, dbs.providerAssetId]).toEqual(['yahoo', null]);
+  });
+
+  it('gives a healed coin its CoinGecko id when the identity arrives through from-provider', async () => {
+    const dead = await importPosition({ symbol: 'QAX', name: 'QA X', category: 'LIQUID_CRYPTO' });
+    expect(dead.providerAssetId).toBeNull();
+
+    const healed = await readJson<Asset>(
+      await demoRequest('/assets/from-provider', 'POST', {
+        provider: 'coingecko',
+        providerAssetId: 'qa-x',
+        symbol: 'QAX',
+        name: 'QA X',
+        category: 'LIQUID_CRYPTO',
+        nativeCurrency: ' usd ',
+      })
+    );
+
+    expect(healed).toMatchObject({
+      id: dead.id,
+      providerAssetId: 'qa-x',
+      coingeckoId: 'qa-x',
+      nativeCurrency: 'USD',
+    });
   });
 });

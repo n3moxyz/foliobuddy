@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
-import { AppError } from '../middleware/errorHandler.js';
+import { AppError, userSafeErrorMessage } from '../middleware/errorHandler.js';
 import { logger } from '../lib/logger.js';
 import {
   MAX_POSITIONS_PER_CATEGORY,
@@ -19,7 +19,12 @@ import {
   CategoryGroup,
   PriceProvider,
 } from '../lib/constants.js';
-import { applyPositionDelta, calculatePositionValue, sameClassSymbolKey } from '../lib/domain.js';
+import {
+  applyPositionDelta,
+  calculatePositionValue,
+  importPriceFeed,
+  sameClassSymbolKey,
+} from '../lib/domain.js';
 import { parseBoundedIntegerQuery } from '../lib/queryParams.js';
 import { navTransaction } from '../services/unitTrustNavService.js';
 import {
@@ -294,7 +299,10 @@ const bulkImportPositionSchema = z.object({
     // Same caps as single-asset creation, so bulk import can't bypass them.
     symbol: z.string().min(1).max(MAX_ASSET_SYMBOL_LENGTH),
     name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
-    category: z.enum(ASSET_CATEGORIES).optional(),
+    // An old frontend deployed against the new snapshots endpoint can still send
+    // "category": null (an old snapshot row with an unresolvable ticker) — treat
+    // that exactly like a missing category, not a validation failure.
+    category: z.enum(ASSET_CATEGORIES).nullable().optional(),
     // Optional provider wiring — honored only when creating a new Asset row.
     // Lets a copy/paste round-trip of equities and unit trusts preserve the
     // price feed (Yahoo / manual NAV) for tickers not yet in the DB.
@@ -353,9 +361,10 @@ const bulkImportSchema = z.object({
   positions: z.array(
     bulkImportPositionSchema.transform((pos) => ({
       ...pos,
-      // A missing category still defaults to crypto for new rows, but the symbol
-      // lookup has to know it was missing (see findBulkSymbolMatch).
-      categoryProvided: pos.asset.category !== undefined,
+      // A missing (or explicitly null) category still defaults to crypto for new
+      // rows, but the symbol lookup has to know it wasn't provided (see
+      // findBulkSymbolMatch).
+      categoryProvided: pos.asset.category != null,
       asset: { ...pos.asset, category: pos.asset.category ?? AssetCategory.LIQUID_CRYPTO },
     }))
   ),
@@ -380,6 +389,14 @@ router.post('/bulk', async (req, res, next) => {
     );
     const coingeckoMap = new Map(
       existingAssets.filter((a) => a.coingeckoId).map((a) => [a.coingeckoId!, a])
+    );
+    // (priceProvider, providerAssetId) is unique, and it is the row price refresh reads.
+    const providerKey = (priceProvider: string, providerAssetId: string) =>
+      `${priceProvider}:${providerAssetId}`;
+    const providerMap = new Map(
+      existingAssets
+        .filter((a) => a.providerAssetId)
+        .map((a) => [providerKey(a.priceProvider, a.providerAssetId!), a])
     );
 
     for (const pos of positions) {
@@ -425,9 +442,12 @@ router.post('/bulk', async (req, res, next) => {
             409
           );
         }
+        const feed = importPriceFeed(pos.asset);
         let asset =
           canonical ||
           identityMatches[0] ||
+          (feed.providerAssetId &&
+            providerMap.get(providerKey(feed.priceProvider, feed.providerAssetId))) ||
           (pos.asset.coingeckoId && coingeckoMap.get(pos.asset.coingeckoId)) ||
           findBulkSymbolMatch(assetMap, pos);
 
@@ -442,22 +462,14 @@ router.post('/bulk', async (req, res, next) => {
         }
 
         if (!asset) {
-          // Default priceProvider by category when not supplied: equities → yahoo,
-          // unit trusts → manual (NAV-driven), everything else → coingecko.
-          const defaultProvider =
-            pos.asset.category === 'EQUITY'
-              ? 'yahoo'
-              : pos.asset.category === 'UNIT_TRUST'
-                ? 'manual'
-                : 'coingecko';
           const data = {
             coingeckoId: pos.asset.coingeckoId || null,
             symbol: pos.asset.symbol.toUpperCase(),
             name: pos.asset.name,
             category: pos.asset.category,
             currentPriceUsd: null,
-            priceProvider: manager ? 'fund-manager' : pos.asset.priceProvider || defaultProvider,
-            providerAssetId: manager?.isin ?? pos.asset.providerAssetId ?? null,
+            priceProvider: manager ? 'fund-manager' : feed.priceProvider,
+            providerAssetId: manager?.isin ?? feed.providerAssetId,
             nativeCurrency,
             exchange: pos.asset.exchange || null,
             isin: manager?.isin ?? isin ?? null,
@@ -478,6 +490,9 @@ router.post('/bulk', async (req, res, next) => {
           assetMap.set(sameClassSymbolKey(asset.symbol, asset.category), asset);
           if (asset.coingeckoId) {
             coingeckoMap.set(asset.coingeckoId, asset);
+          }
+          if (asset.providerAssetId) {
+            providerMap.set(providerKey(asset.priceProvider, asset.providerAssetId), asset);
           }
         }
 
@@ -510,11 +525,8 @@ router.post('/bulk', async (req, res, next) => {
 
         results.push({ success: true, symbol: pos.asset.symbol });
       } catch (e) {
-        results.push({
-          success: false,
-          symbol: pos.asset.symbol,
-          error: e instanceof Error ? e.message : 'Unknown error',
-        });
+        if (!(e instanceof AppError)) logger.warn('[Bulk Import] Position row failed:', e);
+        results.push({ success: false, symbol: pos.asset.symbol, error: userSafeErrorMessage(e) });
       }
     }
 

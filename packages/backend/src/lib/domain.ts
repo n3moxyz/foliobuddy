@@ -183,3 +183,62 @@ export function sameClassSymbolWhere(symbol: string, category: string) {
 export function sameClassSymbolKey(symbol: string, category: string): string {
   return `${categoryGroup(category)}:${symbol.toUpperCase()}`;
 }
+
+/**
+ * The Yahoo id a listed ticker implies, if any. Yahoo lists non-US shares with an
+ * exchange suffix (D05.SI), so a bare ticker names only the US listing: on a
+ * non-USD row it would price the holding from the wrong instrument.
+ */
+export function impliedYahooTicker(symbol: string, nativeCurrency?: string | null): string | null {
+  const ticker = symbol.trim().toUpperCase();
+  const currency = nativeCurrency?.trim().toUpperCase() || 'USD';
+  return ticker && (currency === 'USD' || ticker.includes('.')) ? ticker : null;
+}
+
+export interface ImportPriceFeed {
+  priceProvider: string;
+  providerAssetId: string | null;
+}
+
+/**
+ * Price feed for a catalog row an import creates, filling what the row left out.
+ * The refresh job skips rows without a provider id, so a missing id falls back to
+ * an equity's ticker (Yahoo, see impliedYahooTicker) or the CoinGecko id; a fund
+ * code is not a Yahoo symbol, so a unit trust gets none. A dead EQUITY row also counts as "listed" in
+ * equity search, hiding the real Yahoo listing for that ticker.
+ */
+export function importPriceFeed(asset: {
+  category: string;
+  symbol: string;
+  coingeckoId?: string | null;
+  nativeCurrency?: string | null;
+  priceProvider?: string | null;
+  providerAssetId?: string | null;
+}): ImportPriceFeed {
+  const priceProvider =
+    asset.priceProvider ||
+    (asset.category === AssetCategory.EQUITY
+      ? PriceProvider.YAHOO
+      : asset.category === AssetCategory.UNIT_TRUST
+        ? PriceProvider.MANUAL
+        : PriceProvider.COINGECKO);
+  const fallbackId =
+    priceProvider === PriceProvider.YAHOO && asset.category === AssetCategory.EQUITY
+      ? impliedYahooTicker(asset.symbol, asset.nativeCurrency)
+      : priceProvider === PriceProvider.COINGECKO
+        ? asset.coingeckoId || null
+        : null;
+  return { priceProvider, providerAssetId: asset.providerAssetId || fallbackId };
+}
+
+/**
+ * A catalog row the price refresh job can never price: an automatic feed with no
+ * provider id (older imports wrote these, e.g. trade-imported equities left on the
+ * `coingecko` default). Manual rows are priced by hand, so they never count.
+ */
+export function isUnpricedAsset(asset: {
+  priceProvider: string;
+  providerAssetId: string | null;
+}): boolean {
+  return !asset.providerAssetId && asset.priceProvider !== PriceProvider.MANUAL;
+}

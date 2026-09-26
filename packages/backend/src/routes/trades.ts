@@ -2,10 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { AppError } from '../middleware/errorHandler.js';
+import { AppError, userSafeErrorMessage } from '../middleware/errorHandler.js';
+import { logger } from '../lib/logger.js';
 import { parsePagination, paginatedResponse } from '../lib/pagination.js';
 import { calculateTradePnL } from '../lib/tradePnL.js';
-import { sameClassSymbolWhere } from '../lib/domain.js';
+import { importPriceFeed, sameClassSymbolWhere } from '../lib/domain.js';
 import {
   TRADE_DIRECTIONS,
   TRADE_STATUSES,
@@ -519,20 +520,28 @@ router.post('/bulk-import', async (req, res, next) => {
 
     for (const tradeData of trades) {
       try {
-        let asset = await prisma.asset.findFirst({
-          where: tradeData.asset.coingeckoId
-            ? { coingeckoId: tradeData.asset.coingeckoId }
-            : // Same-class only: an equity trade must not bind to a same-ticker coin.
-              sameClassSymbolWhere(tradeData.asset.symbol, tradeData.asset.category),
-        });
+        const { coingeckoId, symbol, category } = tradeData.asset;
+        // The row carries no price feed, so derive the one a new asset would get
+        // (EQUITY → Yahoo ticker) and look that identity up first; the symbol
+        // fallback is same-class only, so an equity trade never binds to a coin.
+        const feed = importPriceFeed(tradeData.asset);
+        let asset =
+          (feed.providerAssetId
+            ? await prisma.asset.findFirst({
+                where: { priceProvider: feed.priceProvider, providerAssetId: feed.providerAssetId },
+              })
+            : null) ??
+          (coingeckoId ? await prisma.asset.findFirst({ where: { coingeckoId } }) : null) ??
+          (await prisma.asset.findFirst({ where: sameClassSymbolWhere(symbol, category) }));
 
         if (!asset) {
           asset = await prisma.asset.create({
             data: {
-              coingeckoId: tradeData.asset.coingeckoId,
-              symbol: tradeData.asset.symbol.toUpperCase(),
+              coingeckoId,
+              ...feed,
+              symbol: symbol.toUpperCase(),
               name: tradeData.asset.name,
-              category: tradeData.asset.category,
+              category,
               currentPriceUsd: 0,
             },
           });
@@ -581,10 +590,11 @@ router.post('/bulk-import', async (req, res, next) => {
 
         results.push({ success: true, symbol: tradeData.asset.symbol });
       } catch (err) {
+        if (!(err instanceof AppError)) logger.warn('[Bulk Import] Trade row failed:', err);
         results.push({
           success: false,
           symbol: tradeData.asset.symbol,
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: userSafeErrorMessage(err),
         });
       }
     }

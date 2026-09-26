@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { mockSnapshot } from '../helpers/fixtures.js';
+import { Prisma } from '@prisma/client';
 import { createTestApp } from '../helpers/createTestApp.js';
+import { ETHENA_USDE, STABLECOINX, findManyIn } from '../helpers/catalog.js';
 
 // Mock Prisma
 const mockPrisma = {
@@ -13,6 +15,8 @@ const mockPrisma = {
     count: vi.fn(),
     delete: vi.fn(),
   },
+  asset: { findMany: vi.fn() },
+  position: { findMany: vi.fn() },
 };
 
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }));
@@ -126,6 +130,120 @@ describe('GET /api/snapshots/:id', () => {
   });
 });
 
+describe('GET /api/snapshots/:id/positions', () => {
+  const row = (overrides: Record<string, unknown>) => ({
+    id: 'sp-1',
+    snapshotId: 'snapshot-1',
+    assetId: null,
+    assetSymbol: 'USDE',
+    quantity: 10,
+    priceUsd: 1,
+    valueUsd: 10,
+    allocation: 5,
+    ...overrides,
+  });
+
+  // mockSnapshot is taken on 2024-01-01; positions default to owned and older.
+  const held = (assetId: string, overrides: Record<string, unknown> = {}) => ({
+    userId: 'test-user-id',
+    assetId,
+    custodyOf: null,
+    createdAt: new Date('2023-06-01'),
+    ...overrides,
+  });
+
+  function useSnapshot(
+    positions: Array<Record<string, unknown>>,
+    catalog: Array<Record<string, unknown>>,
+    heldPositions: Array<Record<string, unknown>> = []
+  ) {
+    mockPrisma.snapshot.findUnique.mockResolvedValue(mockSnapshot({ positions }));
+    mockPrisma.asset.findMany.mockImplementation(findManyIn(catalog));
+    mockPrisma.position.findMany.mockImplementation(findManyIn(heldPositions));
+  }
+
+  const categories = async () =>
+    (await request(app).get('/api/snapshots/snapshot-1/positions')).body.map(
+      (pos: { asset: { category: string | null } }) => pos.asset.category
+    );
+
+  it('labels a row by its stored asset id when another class shares the ticker', async () => {
+    for (const catalog of [
+      [ETHENA_USDE, STABLECOINX],
+      [STABLECOINX, ETHENA_USDE],
+    ]) {
+      useSnapshot([row({ assetId: STABLECOINX.id })], catalog);
+
+      const res = await request(app).get('/api/snapshots/snapshot-1/positions');
+
+      expect(res.status).toBe(200);
+      expect(res.body[0].asset).toEqual({
+        coingeckoId: null,
+        symbol: 'USDE',
+        name: 'StablecoinX Inc.',
+        category: 'EQUITY',
+      });
+    }
+  });
+
+  it('resolves an older ticker-only row when one asset has that ticker', async () => {
+    useSnapshot([row({})], [ETHENA_USDE]);
+
+    expect(await categories()).toEqual(['STABLECOIN']);
+  });
+
+  it('resolves a shared ticker on an older row to the asset the user still holds', async () => {
+    for (const catalog of [
+      [ETHENA_USDE, STABLECOINX],
+      [STABLECOINX, ETHENA_USDE],
+    ]) {
+      useSnapshot([row({})], catalog, [held(STABLECOINX.id)]);
+
+      expect(await categories()).toEqual(['EQUITY']);
+    }
+  });
+
+  it('ignores holdings the snapshot could not have included', async () => {
+    // Held for someone else (snapshots record owned rows only), or opened after the snapshot.
+    for (const position of [
+      held(STABLECOINX.id, { custodyOf: 'Mum' }),
+      held(STABLECOINX.id, { createdAt: new Date('2024-06-01') }),
+    ]) {
+      useSnapshot([row({})], [ETHENA_USDE, STABLECOINX], [position]);
+
+      expect(await categories()).toEqual([null]);
+    }
+  });
+
+  it('leaves the class unknown rather than guessing an unresolvable shared ticker', async () => {
+    useSnapshot([row({})], [ETHENA_USDE, STABLECOINX]);
+
+    const res = await request(app).get('/api/snapshots/snapshot-1/positions');
+
+    expect(res.body[0].asset).toEqual({
+      coingeckoId: null,
+      symbol: 'USDE',
+      name: 'USDE',
+      category: null,
+    });
+  });
+
+  it('does not fall back to the ticker when a stored asset id no longer exists', async () => {
+    useSnapshot([row({ assetId: 'deleted-row' })], [ETHENA_USDE]);
+
+    expect(await categories()).toEqual([null]);
+  });
+
+  it('returns 404 for another user’s snapshot without touching the catalog', async () => {
+    mockPrisma.snapshot.findUnique.mockResolvedValue(mockSnapshot({ userId: 'someone-else' }));
+
+    const res = await request(app).get('/api/snapshots/snapshot-1/positions');
+
+    expect(res.status).toBe(404);
+    expect(mockPrisma.asset.findMany).not.toHaveBeenCalled();
+  });
+});
+
 describe('DELETE /api/snapshots/:id', () => {
   it('returns 204 on success with ownership check', async () => {
     mockPrisma.snapshot.findFirst.mockResolvedValue(mockSnapshot());
@@ -147,5 +265,29 @@ describe('DELETE /api/snapshots/:id', () => {
 
     expect(res.status).toBe(404);
     expect(res.body.error).toBe('Snapshot not found');
+  });
+});
+
+describe('POST /api/snapshots/bulk row errors', () => {
+  it('reports a database failure on a row without leaking the raw Prisma message', async () => {
+    mockPrisma.snapshot.findFirst.mockResolvedValue(null);
+    mockPrisma.snapshot.create.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed on the fields: (`userId`,`snapshotType`,`scheduledLocalDate`)',
+        { code: 'P2002', clientVersion: 'test' }
+      )
+    );
+
+    const res = await request(app)
+      .post('/api/snapshots/bulk')
+      .send({ snapshots: [{ timestamp: '2026-01-15T00:00:00.000Z', totalValueUsd: 100 }] });
+
+    expect(res.body.results).toEqual([
+      {
+        success: false,
+        timestamp: '2026-01-15T00:00:00.000Z',
+        error: 'A record with this value already exists',
+      },
+    ]);
   });
 });
