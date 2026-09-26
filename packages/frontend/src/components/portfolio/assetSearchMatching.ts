@@ -98,3 +98,23 @@ export function unpricedEquityRepairRequest(
     category: 'EQUITY',
   };
 }
+
+/**
+ * Whether a repair response may replace the picked row. A metadata repair must
+ * return the same catalog row; an unpriced equity's repair may instead return the
+ * live equity already holding its implied Yahoo ticker, which is the same listing.
+ */
+export function acceptsRepairedAsset(
+  picked: Asset,
+  returned: Asset,
+  nativeCurrency: string
+): boolean {
+  if (returned.id === picked.id) return true;
+  const request = unpricedEquityRepairRequest(picked, nativeCurrency);
+  return (
+    !!request &&
+    returned.category === 'EQUITY' &&
+    returned.priceProvider === request.provider &&
+    returned.providerAssetId === request.providerAssetId
+  );
+}

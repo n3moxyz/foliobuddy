@@ -51,6 +51,7 @@ import { mismatchedPickToast, resolvedAssetMatchesPick } from '@/lib/assetPickGu
 import { useQueryClient } from '@tanstack/react-query';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
 import {
+  acceptsRepairedAsset,
   isListedCoinCandidate,
   isListedEquityCandidate,
   unpricedEquityRepairRequest,
@@ -847,8 +848,9 @@ export function PositionForm({
 
     void repairExistingProviderAsset(asset, localAsset.nativeCurrency as CostCurrency)
       .then((updatedAsset) => {
-        // A metadata repair must return the same catalog row, never another asset.
-        if (updatedAsset?.id === asset.id) {
+        // A repair must return the same catalog row, or the live listing an unpriced
+        // equity asked for; never an unrelated asset.
+        if (updatedAsset && acceptsRepairedAsset(asset, updatedAsset, localAsset.nativeCurrency)) {
           const localizedUpdatedAsset = withInferredListedEquityCurrency(updatedAsset);
           setAssetId(localizedUpdatedAsset.id);
           setSelectedAsset(localizedUpdatedAsset);

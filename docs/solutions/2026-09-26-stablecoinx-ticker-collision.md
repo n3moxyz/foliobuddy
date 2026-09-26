@@ -89,7 +89,9 @@ the refresh job skips such rows forever. Older trade imports left equities like 
 - **Pickers.** Selecting an unpriced equity in Add Position re-posts it to from-provider with its
   implied Yahoo ticker, which heals the row (or returns the live row that holds that ticker). The
   request carries identity only (`unpricedEquityRepairRequest()`): sending the dead row's exchange
-  or currency would overwrite the live row through from-provider's metadata repair. In the crypto
+  or currency would overwrite the live row through from-provider's metadata repair. The form then
+  accepts only the same row or that live listing (`acceptsRepairedAsset()`, extending #47's pick
+  guard, which refuses any other asset the server returns). In the crypto
   pickers an unpriced row never hides the CoinGecko hit (`isListedCoinCandidate()`), because
   picking that hit is what heals the row.
 - **Bare tickers.** `impliedYahooTicker()` (backend `lib/domain.ts`, frontend
