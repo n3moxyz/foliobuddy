@@ -70,9 +70,10 @@ async function seed() {
   console.log('Created USD/SGD rate');
 
   // Create sample positions
-  const btc = await prisma.asset.findFirst({ where: { symbol: 'BTC' } });
-  const eth = await prisma.asset.findFirst({ where: { symbol: 'ETH' } });
-  const sol = await prisma.asset.findFirst({ where: { symbol: 'SOL' } });
+  // By the identity seeded above: a BTC/ETH spot ETF shares the coin's ticker.
+  const btc = await prisma.asset.findUnique({ where: { coingeckoId: 'bitcoin' } });
+  const eth = await prisma.asset.findUnique({ where: { coingeckoId: 'ethereum' } });
+  const sol = await prisma.asset.findUnique({ where: { coingeckoId: 'solana' } });
 
   // Check if sample positions exist to avoid duplicates on re-run
   const existingBtcPosition = btc

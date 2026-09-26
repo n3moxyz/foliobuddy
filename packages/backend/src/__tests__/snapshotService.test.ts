@@ -48,6 +48,7 @@ describe('snapshotService', () => {
     mocks.getExchangeRates.mockResolvedValue({ usdSgd: 1.4 });
     mocks.positionFindMany.mockResolvedValue([
       {
+        assetId: 'abc-row',
         quantity: 2,
         marketValueUsd: null,
         asset: { symbol: 'ABC', currentPriceUsd: 50 },
@@ -88,6 +89,8 @@ describe('snapshotService', () => {
     });
     expect(data.positions.create).toEqual([
       {
+        // Stored so the label never depends on a ticker other assets can share.
+        assetId: 'abc-row',
         assetSymbol: 'ABC',
         quantity: 2,
         priceUsd: 50,

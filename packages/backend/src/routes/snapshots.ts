@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { snapshotService } from '../services/snapshotService.js';
-import { AppError } from '../middleware/errorHandler.js';
+import { AppError, userSafeErrorMessage } from '../middleware/errorHandler.js';
 import { logger } from '../lib/logger.js';
 import {
   DEFAULT_SNAPSHOT_LIMIT,
@@ -195,10 +195,11 @@ router.post('/bulk', async (req, res, next) => {
           results.push({ success: true, timestamp: snap.timestamp });
         }
       } catch (e) {
+        if (!(e instanceof AppError)) logger.warn('[Bulk Import] Snapshot row failed:', e);
         results.push({
           success: false,
           timestamp: snap.timestamp,
-          error: e instanceof Error ? e.message : 'Unknown error',
+          error: userSafeErrorMessage(e),
         });
       }
     }
@@ -229,6 +230,63 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+interface SnapshotAsset {
+  id: string;
+  coingeckoId: string | null;
+  symbol: string;
+  name: string;
+  category: string;
+}
+
+/**
+ * Catalog assets behind snapshot rows. Rows that store assetId resolve exactly;
+ * older rows have only a ticker, which several assets can share (USDE is the
+ * Ethena stablecoin and StablecoinX's equity). A shared ticker resolves to the
+ * one candidate the user still holds in a position that existed when the
+ * snapshot was taken (owned only, as snapshots are), else to nothing rather
+ * than a guess.
+ */
+async function resolveSnapshotAssets(
+  userId: string,
+  takenAt: Date,
+  rows: Array<{ assetId: string | null; assetSymbol: string }>
+) {
+  const ids = [...new Set(rows.flatMap((row) => (row.assetId ? [row.assetId] : [])))];
+  const symbols = [...new Set(rows.filter((row) => !row.assetId).map((row) => row.assetSymbol))];
+  const [idAssets, symbolAssets]: SnapshotAsset[][] = await Promise.all([
+    ids.length > 0 ? prisma.asset.findMany({ where: { id: { in: ids } } }) : [],
+    symbols.length > 0 ? prisma.asset.findMany({ where: { symbol: { in: symbols } } }) : [],
+  ]);
+
+  const candidates = new Map<string, SnapshotAsset[]>();
+  for (const asset of symbolAssets) {
+    candidates.set(asset.symbol, [...(candidates.get(asset.symbol) ?? []), asset]);
+  }
+  const sharedIds = [...candidates.values()].filter((list) => list.length > 1).flat();
+  const heldIds = new Set(
+    sharedIds.length > 0
+      ? (
+          await prisma.position.findMany({
+            where: {
+              userId,
+              custodyOf: null,
+              createdAt: { lte: takenAt },
+              assetId: { in: sharedIds.map((asset) => asset.id) },
+            },
+            select: { assetId: true },
+          })
+        ).map((position) => position.assetId)
+      : []
+  );
+
+  const bySymbol = new Map<string, SnapshotAsset>();
+  for (const [symbol, list] of candidates) {
+    const held = list.length > 1 ? list.filter((asset) => heldIds.has(asset.id)) : list;
+    if (held.length === 1) bySymbol.set(symbol, held[0]);
+  }
+  return { byId: new Map(idAssets.map((asset) => [asset.id, asset])), bySymbol };
+}
+
 router.get('/:id/positions', async (req, res, next) => {
   try {
     const snapshot = await prisma.snapshot.findUnique({
@@ -242,30 +300,31 @@ router.get('/:id/positions', async (req, res, next) => {
       throw new AppError('Snapshot not found', 404);
     }
 
-    const enrichedPositions = await Promise.all(
-      snapshot.positions.map(async (pos) => {
-        const asset = await prisma.asset.findFirst({
-          where: { symbol: pos.assetSymbol },
-        });
-
-        return {
-          ...pos,
-          asset: asset
-            ? {
-                coingeckoId: asset.coingeckoId,
-                symbol: asset.symbol,
-                name: asset.name,
-                category: asset.category,
-              }
-            : {
-                coingeckoId: null,
-                symbol: pos.assetSymbol,
-                name: pos.assetSymbol,
-                category: 'LIQUID_CRYPTO',
-              },
-        };
-      })
+    const { byId, bySymbol } = await resolveSnapshotAssets(
+      req.userId!,
+      snapshot.timestamp,
+      snapshot.positions
     );
+    const enrichedPositions = snapshot.positions.map((pos) => {
+      const asset = pos.assetId ? byId.get(pos.assetId) : bySymbol.get(pos.assetSymbol);
+      return {
+        ...pos,
+        asset: asset
+          ? {
+              coingeckoId: asset.coingeckoId,
+              symbol: asset.symbol,
+              name: asset.name,
+              category: asset.category,
+            }
+          : {
+              coingeckoId: null,
+              symbol: pos.assetSymbol,
+              name: pos.assetSymbol,
+              // Unknown, not guessed: a copied row then has to name its class to import.
+              category: null,
+            },
+      };
+    });
 
     res.json(enrichedPositions);
   } catch (error) {

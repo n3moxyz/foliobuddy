@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { mockAsset, mockTrade } from '../helpers/fixtures.js';
 import { createTestApp } from '../helpers/createTestApp.js';
+import { Prisma } from '@prisma/client';
 import { ETHENA_USDE, STABLECOINX, findFirstIn } from '../helpers/catalog.js';
 
 // Mock Prisma
@@ -391,5 +392,89 @@ describe('POST /api/trades/bulk-import with same-ticker assets across classes', 
     expect(mockPrisma.trade.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ assetId: STABLECOINX.id }),
     });
+  });
+});
+
+describe('POST /api/trades/bulk-import asset price feeds', () => {
+  const tradeFor = (asset: Record<string, unknown>) => ({
+    asset: { coingeckoId: null, ...asset },
+    direction: 'LONG',
+    entryPrice: 15,
+    quantity: 100,
+    entryDate: '2026-09-01',
+  });
+
+  function useCatalog(catalog: Array<Record<string, unknown>>) {
+    mockPrisma.asset.findFirst.mockImplementation(findFirstIn(catalog));
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'created', ...data }));
+  }
+
+  it.each([
+    [
+      { symbol: 'nvda', name: 'NVIDIA Corporation', category: 'EQUITY' },
+      { priceProvider: 'yahoo', providerAssetId: 'NVDA' },
+    ],
+    [
+      { symbol: 'UTX', name: 'Some Fund', category: 'UNIT_TRUST' },
+      { priceProvider: 'manual', providerAssetId: null },
+    ],
+    [
+      { symbol: 'SOL', name: 'Solana', category: 'LIQUID_CRYPTO', coingeckoId: 'solana' },
+      { priceProvider: 'coingecko', providerAssetId: 'solana' },
+    ],
+  ])('creates %o with a price feed the refresh job can read', async (asset, feed) => {
+    useCatalog([]);
+
+    const res = await request(app)
+      .post('/api/trades/bulk-import')
+      .send([tradeFor(asset)]);
+
+    expect(res.body.results[0].success).toBe(true);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining(feed),
+    });
+  });
+
+  it('prefers the live Yahoo listing over an unpriced same-ticker equity row', async () => {
+    // Older trade imports wrote equities with no provider id; they never price.
+    const deadRow = {
+      ...STABLECOINX,
+      id: 'dead-usde',
+      priceProvider: 'coingecko',
+      providerAssetId: null,
+    };
+    for (const catalog of [
+      [deadRow, STABLECOINX],
+      [STABLECOINX, deadRow],
+    ]) {
+      vi.clearAllMocks();
+      useCatalog(catalog);
+
+      await request(app)
+        .post('/api/trades/bulk-import')
+        .send([tradeFor({ symbol: 'USDE', name: 'StablecoinX Inc.', category: 'EQUITY' })]);
+
+      expect(mockPrisma.trade.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ assetId: STABLECOINX.id }),
+      });
+    }
+  });
+
+  it('reports a database failure on a row without leaking the raw Prisma message', async () => {
+    useCatalog([]);
+    mockPrisma.asset.create.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed on the fields: (`priceProvider`,`providerAssetId`)',
+        { code: 'P2002', clientVersion: 'test' }
+      )
+    );
+
+    const res = await request(app)
+      .post('/api/trades/bulk-import')
+      .send([tradeFor({ symbol: 'NVDA', name: 'NVIDIA Corporation', category: 'EQUITY' })]);
+
+    expect(res.body.results).toEqual([
+      { success: false, symbol: 'NVDA', error: 'A record with this value already exists' },
+    ]);
   });
 });
