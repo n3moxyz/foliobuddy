@@ -400,6 +400,8 @@ export interface Snapshot {
 export interface SnapshotPosition {
   id: string;
   snapshotId: string;
+  /** Null on rows recorded before snapshots stored it; those resolve by ticker. */
+  assetId: string | null;
   assetSymbol: string;
   quantity: number;
   priceUsd: number;
@@ -409,7 +411,8 @@ export interface SnapshotPosition {
     coingeckoId: string | null;
     symbol: string;
     name: string;
-    category: string;
+    /** Null when the row's asset cannot be told apart from others sharing its ticker. */
+    category: string | null;
   };
 }
 
@@ -660,6 +663,9 @@ export interface BulkImportPosition {
     providerAssetId?: string | null;
     nativeCurrency?: string | null;
     exchange?: string | null;
+    // Unit-trust identity: reuses a same-currency UNIT_TRUST row by ISIN before
+    // falling back to symbol matching.
+    isin?: string | null;
   };
   quantity: number;
   avgCostUsd: number;
@@ -694,7 +700,7 @@ export interface BulkImportTrade {
     coingeckoId: string | null;
     symbol: string;
     name: string;
-    category: 'LIQUID_CRYPTO' | 'STABLECOIN' | 'NFT' | 'ANGEL' | 'CASH';
+    category: AssetCategory;
   };
   direction: TradeDirection;
   entryPrice: number;

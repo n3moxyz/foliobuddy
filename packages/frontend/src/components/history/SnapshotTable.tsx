@@ -139,7 +139,9 @@ export function SnapshotTable({
           coingeckoId: pos.asset.coingeckoId,
           symbol: pos.asset.symbol,
           name: pos.asset.name,
-          category: pos.asset.category,
+          // Unknown class (a ticker several assets share): omit it so import asks
+          // for one instead of binding the row to the wrong asset.
+          ...(pos.asset.category ? { category: pos.asset.category } : {}),
         },
         quantity: pos.quantity,
         avgCostUsd: pos.priceUsd,

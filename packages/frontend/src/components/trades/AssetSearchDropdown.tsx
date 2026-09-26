@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
 import { isStablecoinCategory } from '@/lib/utils';
+import { isListedCoinCandidate } from '@/components/portfolio/assetSearchMatching';
 import type { Asset, CoinSearchResult } from '@/lib/types';
 
 interface AssetSearchDropdownProps {
@@ -57,10 +58,7 @@ export function AssetSearchDropdown({
     // Add CoinGecko search results that aren't already in portfolio
     if (searchResults && searchQuery.length >= 1) {
       searchResults.forEach((coin) => {
-        const existsInPortfolio = assets?.some(
-          (a) => a.coingeckoId === coin.id || a.symbol.toLowerCase() === coin.symbol.toLowerCase()
-        );
-        if (!existsInPortfolio) {
+        if (!isListedCoinCandidate(assets, coin)) {
           results.push({ type: 'search', coin });
         }
       });
