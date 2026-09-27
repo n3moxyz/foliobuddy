@@ -70,7 +70,7 @@ npm run db:local · npm run db:local:stop · npm run db:sync · npm run db:seed:
 npm run dev · npm run build # both packages
 npm run test · npx prisma migrate dev · npx prisma studio # backend only
 npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none # optional advisory a11y/quality scan
-# Dev-only mocked frontend demo: http://localhost:4000/dev/demo
+npm run sandbox # signed-in real app, no Clerk: http://localhost:4100
 ```
 
 ## Architecture
@@ -144,7 +144,7 @@ Signed-out: `/` → lazy `pages/Landing.tsx` (`components/landing/` sections), e
 
 ### Dev Demo Route
 
-`src/dev/demoMode.tsx` — local-only `/dev/demo`, UI testing without Clerk/backend; never prod write APIs.
+`src/dev/demoMode.tsx` — local-only `/dev/demo`, mocked API; never prod write APIs.
 
 - `App.tsx` lazy-loads only under `import.meta.env.DEV`; never prod, no extra env gates.
 - Mocks `/api/*` + `/api/v1/*`; unmount restores `fetch` + token getter; child routes await mocks (`DemoPages` `useLayoutEffect` + readiness timer), else React Query caches empties.
@@ -316,11 +316,10 @@ All vars + comments: `packages/backend/.env.example` + `packages/frontend/.env.e
 
 - Backend `PORT=4001`, never 3001 (reserved for other projects); local `RATE_LIMIT_MAX=10000`, prod default 200. `VITE_API_URL` needs full `/api/v1`.
 - Empty `ADMIN_USER_IDS` warns at boot; catalog edit/delete then 403s for all users. `AGENT_API_KEY` authenticates agent calls; `AGENT_USER_ID` picks portfolio. After owner Clerk-ID rotation run `sync-backend-env.yml` to align `ADMIN_USER_IDS` + `AGENT_USER_ID`, else agent calls return HTTP 200 + empty portfolio.
-- `ALLOW_LOCAL_AUTH_BYPASS`/`VITE_LOCAL_AUTH_BYPASS`: local scale-QA only; ignored under `NODE_ENV=production`/non-DEV Vite builds.
 
-### Frontend-Only Development / UI Testing
+### Testing Without Sign-In
 
-See **Dev Demo Route** (mocked `/api`, `/dev/demo`); **Local QA Auth Bypass** (sanitized real-API scale QA — flags + CORS gotcha): `docs/qa/local-production-scale-runbook.md`. Never with prod data/builds.
+No owner password, ever: [docs/TESTING.md](docs/TESTING.md). **Any change**: `npm run sandbox` (`preview_start` `sandbox`): real web+API+DB as `sandbox-user`, no auth header, `-- --reset` rebuilds, data `src/scripts/sandbox/fixtures.ts`. **Mocked UI**: Dev Demo Route. **Prod**: `prod-check.yml` after deploys/env syncs + daily: `gh run list -w prod-check.yml`, rerun `gh workflow run prod-check.yml`. Scale QA: `docs/qa/local-production-scale-runbook.md`; never prod data/builds.
 
 ## Deployment
 
