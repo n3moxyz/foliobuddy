@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
+import { newsService } from '../services/newsService.js';
 import { logger } from '../lib/logger.js';
+import { assetIdSchema } from './news.js';
 
 const router = Router();
 
@@ -84,6 +86,35 @@ router.get('/portfolio', async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Agent portfolio endpoint error:', error);
+    next(error);
+  }
+});
+
+/**
+ * GET /api/v1/agent/news
+ *
+ * The News tab's feed for the agent's portfolio owner — the same payload as
+ * the signed-in GET /news, so a deploy can be verified without a Clerk session
+ * (the Production Check workflow reads it).
+ */
+router.get('/news', async (req, res, next) => {
+  try {
+    res.json(await newsService.getPortfolioNews(req.userId!));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/v1/agent/news/asset/:assetId
+ *
+ * One holding's news page, as the signed-in GET /news/asset/:assetId returns it.
+ */
+router.get('/news/asset/:assetId', async (req, res, next) => {
+  try {
+    const assetId = assetIdSchema.parse(req.params.assetId);
+    res.json(await newsService.getAssetNews(req.userId!, assetId));
+  } catch (error) {
     next(error);
   }
 });

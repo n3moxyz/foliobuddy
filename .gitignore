@@ -55,8 +55,9 @@ packages/backend/scripts/audit-*.json
 # Clerk instance migration artifacts (user emails + ids)
 packages/backend/scripts/clerk-*.json
 
-# Claude Code workspace
-.claude/
+# Claude Code workspace (launch.json is shared: every session can start the sandbox)
+.claude/*
+!.claude/launch.json
 _ul*
 nul
 .vercel

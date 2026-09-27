@@ -29,7 +29,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // Asset ids are cuids; anything else is rejected before touching the database.
-const assetIdSchema = z
+export const assetIdSchema = z
   .string()
   .min(1)
   .max(64)

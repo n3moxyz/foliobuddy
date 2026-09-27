@@ -1,5 +1,7 @@
 # Local Production-Scale QA Runbook
 
+> For everyday signed-in testing, use the sandbox instead: `npm run sandbox` runs the real app on its own database with no `.env` edits ([docs/TESTING.md](../TESTING.md)). This runbook is for scale QA on a large sanitized dataset.
+
 Use this for production-like local testing with sanitized data. Do not use production databases,
 real user exports, or `npm run db:sync` for this workflow.
 

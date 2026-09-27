@@ -52,7 +52,7 @@ Backend image builds run on the small API host. If a deployment fails with `exit
 
 ### Backend secrets sync (`sync-backend-env.yml`)
 
-`ADMIN_USER_IDS`, `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` live as GitHub Actions secrets and are pushed into the Coolify app by the manual workflow, which then redeploys and health-checks. `ADMIN_USER_IDS` is required and must contain exactly one owner; the workflow mirrors it into `AGENT_USER_ID`. Either Clerk key may be omitted when rotating only the other value.
+`ADMIN_USER_IDS`, `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` live as GitHub Actions secrets and are pushed into the Coolify app by the manual workflow, which then redeploys, waits for that exact deployment to finish, and health-checks. `ADMIN_USER_IDS` is required and must contain exactly one owner; the workflow mirrors it into `AGENT_USER_ID`. Either Clerk key may be omitted when rotating only the other value.
 
 ```bash
 gh secret set CLERK_SECRET_KEY            # interactive paste — never in shell history
@@ -146,6 +146,7 @@ On the backend host: `./scripts/backup-db.sh daily|weekly|monthly` and `./script
 - **Vercel build failures**: Project → Settings → Git → enable "deployment failure" notifications to Slack/email. Without this, failed frontend builds silently keep the old bundle live.
 - **Uptime**: external monitor (UptimeRobot / BetterStack free tier) hitting `https://foliobuddy.xyz/api/v1/health/db` every 5 min. Hitting that URL (not `api.foliobuddy.xyz` direct) tests the full chain: Vercel edge → rewrite → backend → DB.
 - **Uptime (workflow)**: `.github/workflows/uptime.yml` hits `/api/v1/health/db` every 10 min; non-200 emails the owner.
+- **Production check (workflow)**: `.github/workflows/prod-check.yml` checks the signed-in paths without a Clerk session (agent portfolio, X-post freshness and collector log, News feed and a holding page via `/api/v1/agent/news*`) after every successful backend deploy or env sync and daily at 09:17 SGT; a failed scheduled run emails the owner. It reads its credentials from Coolify at run time and prints counts only. See [docs/TESTING.md](docs/TESTING.md).
 - **Sentry**: configured via `SENTRY_DSN`. Backend captures unexpected 500s only; Zod 400s and `AppError`s < 500 are skipped on purpose.
 
 ## Incident postmortems

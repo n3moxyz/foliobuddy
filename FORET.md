@@ -2434,3 +2434,16 @@ The Amova SGD Class price was an April statement NAV, while refreshes made it lo
 This required a small model change: a fund's native NAV is authoritative, and USD plus all broker position values are revalued atomically when FX changes. Rechecking an unchanged NAV never invents a new valuation day. Statement observations have their own history key and cannot overwrite verified automatic quotes. Both Amova broker rows reference the same asset. Unknown funds stay manual. See the daily NAV solution runbook for source identities, migration behavior, rollback limitations and the PostgreSQL integration checks.
 
 Browser failure testing caught a second state problem: the open NAV dialog held an old asset object, and its local error survived closing and opening a different fund. Selecting an asset ID from the current query keeps the dialog's check result fresh. Unmounting it on close resets errors and inputs, while same-fund query updates preserve unsaved statement input. Test the open dialog as well as the row behind it.
+
+## September 2026: Testing without the owner's password
+
+Right after X posts shipped, "is the News tab working?" had no good answer. Every real page sits behind Clerk, an agent must never type the owner's password into the live site, and the dev demo only proves the UI can draw its own mocks: a server or database change never reaches it.
+
+The fix was three doors, none of which needs a sign-in (details in [docs/TESTING.md](docs/TESTING.md)). `npm run sandbox` runs the real app (web, API, and Postgres built by the real migrations) signed in through the existing local bypass, on a sample portfolio of real tickers with invented amounts, from any fresh worktree in one command. The production check (`prod-check.yml`) walks the live site after every deploy and every morning. It gets in the way the repair workflow already did: credentials read from Coolify inside CI and masked, plus read-only agent routes that take the agent key instead of a Clerk session. The demo stays for quick looks.
+
+What we learned:
+
+- **Test data has to be real enough to exercise the feature.** The scale seed's `QA-BTC` tickers can't fetch a price or a headline, so the News tab was untestable locally however the app ran. Real public tickers with invented amounts fix that without putting anyone's holdings in a public repo.
+- **A fresh worktree has nothing**: no `.env`, sometimes no `node_modules`. A launcher that installs, finds a database, migrates and seeds is what turns "test it" into a one-liner in every session. Its first run also found that this Mac uses Homebrew Postgres rather than Docker, so it now uses whichever is there.
+- **Give agents a pre-approved road to production.** Reading production directly needs a human's OK each time. A checked-in workflow that runs by itself after deploys moves that approval into one code review; the agent then only reads a public, counts-only result.
+- **A realistic sandbox pays for itself on day one.** Its first run showed SOL's holding page with X posts but no articles, while BTC, ETH and NVDA each had about thirty. The demo's mocks could never have shown that; it is logged as a follow-up.

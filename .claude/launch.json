@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sandbox",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "sandbox"],
+      "port": 4100
+    },
+    {
+      "name": "frontend-demo",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd packages/frontend && VITE_LOCAL_AUTH_BYPASS=true npx vite --port 4000 --strictPort"
+      ],
+      "port": 4000
+    }
+  ]
+}

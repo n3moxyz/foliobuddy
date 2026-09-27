@@ -1,0 +1,252 @@
+name: Production Check
+
+# Verifies the signed-in parts of production without a Clerk session: the
+# agent portfolio, X-post collection, and the News feed. It runs by itself
+# after every backend deploy or env sync and once a day, so nobody has to sign
+# in or trigger it; an agent reads the result (`gh run list -w prod-check.yml`)
+# or starts one on demand (`gh workflow run prod-check.yml`).
+# Credentials are read from Coolify at run time (as the repair workflow does)
+# and masked. This repo is public, so every step prints counts and ages only:
+# never handles, post text, holdings, values, or secret values.
+# No pull_request trigger, ever: it would run a PR's edited copy of this file
+# with production credentials before review. To try a change, review the
+# branch, then run it by hand: `gh workflow run prod-check.yml --ref <branch>`.
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Deploy Backend', 'Sync Backend Env to Coolify']
+    types: [completed]
+  schedule:
+    # Daily at 09:17 Singapore time. A failed scheduled run emails the owner,
+    # which is how a stalled X collector (say, out of credits) surfaces.
+    - cron: '17 1 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Portfolio, X collection, news
+    # A failed deploy or env sync has nothing new to check.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_URL: https://foliobuddy.xyz
+
+    steps:
+      - name: Resolve production credentials from Coolify
+        id: creds
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          env_json=$(curl --fail-with-body -sS \
+            "${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
+          for key in DATABASE_URL AGENT_API_KEY; do
+            value=$(jq -r --arg key "$key" \
+              '[.. | objects | select(.key? == $key and (.is_preview? != true)) | .value][0] // empty' \
+              <<<"$env_json")
+            if [ -z "$value" ]; then
+              echo "::error::$key is not set in Coolify"
+              exit 1
+            fi
+            # printf, never echo, for env values: nothing in the value is reinterpreted.
+            printf '::add-mask::%s\n' "$value"
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
+          done
+
+      # Each check runs even when an earlier one failed, so one run shows every problem.
+      - name: Portfolio loads (agent API)
+        if: ${{ !cancelled() && steps.creds.outcome == 'success' }}
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o portfolio.json -w '%{http_code}' --max-time 60 \
+            "$APP_URL/api/v1/agent/portfolio" -H "x-api-key: $AGENT_API_KEY")
+          if [ "$code" != 200 ]; then
+            echo "::error::Agent portfolio returned HTTP $code"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json, sys
+          positions = json.load(open('portfolio.json')).get('positions') or []
+          print(f'Portfolio: {len(positions)} positions')
+          if not positions:
+              print('::error::Agent portfolio is empty (AGENT_USER_ID may not match the owner)')
+              sys.exit(1)
+          PY
+
+      - name: X posts are being collected (database)
+        if: ${{ !cancelled() && steps.creds.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet 'psycopg[binary]>=3.2,<4'
+          python3 - <<'PY'
+          import os, sys
+          import psycopg
+
+          # The roster posts ~120 times a day and the longest quiet spell seen
+          # was 1.5 h, so 6 h with nothing new means the collector has stalled.
+          STALE_MINUTES = 6 * 60
+
+          def fail(message):
+              print(f'::error::{message}')
+              sys.exit(1)
+
+          with psycopg.connect(os.environ['DATABASE_URL']) as conn:
+              conn.read_only = True
+              migrated = conn.execute(
+                  'SELECT COUNT(*) FROM _prisma_migrations '
+                  'WHERE migration_name = %s AND finished_at IS NOT NULL',
+                  ('20260927000000_add_x_posts',),
+              ).fetchone()[0]
+              if not migrated:
+                  fail('The XPost migration has not been applied')
+              total, last_hour, last_day, accounts, collected_min, posted_min = conn.execute(
+                  '''
+                  SELECT COUNT(*)::int,
+                         COUNT(*) FILTER (WHERE "collectedAt" > now() - interval '1 hour')::int,
+                         COUNT(*) FILTER (WHERE "collectedAt" > now() - interval '24 hours')::int,
+                         COUNT(DISTINCT "authorKey")::int,
+                         (EXTRACT(EPOCH FROM now() - MAX("collectedAt")) / 60)::int,
+                         (EXTRACT(EPOCH FROM now() - MAX("postedAt")) / 60)::int
+                  FROM "XPost"
+                  '''
+              ).fetchone()
+
+          print(f'Stored X posts: {total} from {accounts} accounts '
+                f'({last_hour} collected in the last hour, {last_day} in the last 24 h)')
+          if total == 0:
+              fail('No X posts stored: the collector has never stored anything')
+          print(f'Newest collected {collected_min} min ago; newest posted {posted_min} min ago')
+          if collected_min > STALE_MINUTES:
+              fail(f'Nothing collected for {collected_min} min: the collector has stalled (see its log)')
+          PY
+
+      - name: X collector log (Coolify)
+        # Informational: the database and feed checks decide pass or fail.
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          curl --fail -sS --max-time 60 \
+            "${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/logs?lines=5000" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" | jq -r '.logs // empty' > app.log
+          python3 - <<'PY'
+          import re
+
+          # Fixed-format lines only, and only the matched text: free-text errors
+          # can carry database or request details, so they are counted, not shown.
+          SAFE = [re.compile(pattern) for pattern in (
+              r'📰 Starting X news collector \(\d+ handles, 15min\)',
+              r'📰 X news collector off \([^)]*\)',
+              r'\[XPosts\] \d+ new posts, \d+ calls, \d+ failed batches',
+              r'\[XPosts\] Collection paused for \d+ min: (?:API key rejected|out of credits|rate limited)',
+              r'\[XPosts\] Daily call budget \(\d+\) reached; collection paused until 00:00 UTC',
+              r'\[XPosts\] Batch hit the \d+-page cap; older posts in its window were skipped',
+              r'\[XPosts\] Pruned \d+ posts past retention',
+              r'\[XPosts\] Read cap of \d+ posts reached: the \d+-day window is shorter than it says',
+              r'\[XSources\] X_NEWS_SOURCES is over \d+ characters; X posts are off',
+              r'\[XSources\] Ignored X_NEWS_SOURCES entries \(#\d+ \w+(?:, #\d+ \w+)*\)',
+          )]
+          STAMP = re.compile(r'\[(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)')
+          shown, withheld = [], 0
+          with open('app.log', encoding='utf-8', errors='replace') as log:
+              for line in log:
+                  if not any(tag in line for tag in ('[XPosts]', '[XSources]', 'X news collector')):
+                      continue
+                  match = next((m for m in (p.search(line) for p in SAFE) if m), None)
+                  if match is None:
+                      withheld += 1
+                      continue
+                  stamp = STAMP.search(line)
+                  shown.append(f"{stamp.group(1) + 'Z' if stamp else '(no time)'}  {match.group(0)}")
+          print('\n'.join(shown[-40:]) or 'No X collector lines in the last 5000 log lines')
+          if withheld:
+              print(f'{withheld} other collector line(s) withheld (free-text errors): read them in Coolify')
+          PY
+
+      - name: News feed serves X posts (agent API)
+        id: feed
+        if: ${{ !cancelled() && steps.creds.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o news.json -w '%{http_code}' --max-time 120 \
+            "$APP_URL/api/v1/agent/news" -H "x-api-key: $AGENT_API_KEY")
+          if [ "$code" != 200 ]; then
+            echo "::error::Agent news feed returned HTTP $code"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json, sys
+          from datetime import datetime, timezone
+
+          def fail(message):
+              print(f'::error::{message}')
+              sys.exit(1)
+
+          def is_post(item):
+              return item.get('sourceKind') == 'x_post'
+
+          feed = json.load(open('news.json'))
+          groups = (feed.get('crypto') or []) + (feed.get('equities') or [])
+          items = [item for group in groups for item in group.get('items') or []]
+          top, macro = feed.get('topStories') or [], feed.get('macro') or []
+          stories = {item['id'] for item in items + top + macro}
+          print(f"Feed: {len(feed.get('holdings') or [])} holdings, {len(stories)} stories "
+                f'({len(top)} top, {len(macro)} macro)')
+          if not stories:
+              fail('The news feed is empty')
+
+          posts = [item for item in items if is_post(item)]
+          with_posts = [g for g in groups if any(is_post(item) for item in g.get('items') or [])]
+          dated = [post['publishedAt'] for post in posts if post.get('publishedAt')]
+          newest = ''
+          if dated:
+              published = datetime.fromisoformat(max(dated).replace('Z', '+00:00'))
+              age = round((datetime.now(timezone.utc) - published).total_seconds() / 60)
+              newest = f', newest {age} min old'
+          print(f'X posts in the feed: {len(posts)} across {len(with_posts)} holdings{newest}')
+          if not posts:
+              fail('No X posts in the feed')
+
+          # The busiest holding's page is opened next; its id is never printed.
+          busiest = max(with_posts, key=lambda g: sum(is_post(item) for item in g['items']))
+          with open('holding-id', 'w') as out:
+              out.write(busiest['assetId'])
+          PY
+
+      - name: Holding page serves X posts (agent API)
+        if: ${{ !cancelled() && steps.feed.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          if [ ! -s holding-id ]; then
+            echo "Skipped: the feed check did not pick a holding"
+            exit 0
+          fi
+          code=$(curl -sS -o holding.json -w '%{http_code}' --max-time 120 \
+            "$APP_URL/api/v1/agent/news/asset/$(cat holding-id)" -H "x-api-key: $AGENT_API_KEY")
+          if [ "$code" != 200 ]; then
+            echo "::error::Agent holding page returned HTTP $code"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json, sys
+          page = json.load(open('holding.json'))
+          items = page.get('items') or []
+          posts = sum(item.get('sourceKind') == 'x_post' for item in items)
+          print(f"Busiest holding's page: {len(items)} stories over {page.get('windowDays')} days, "
+                f'{posts} X posts')
+          if not posts:
+              print('::error::The holding page shows no X posts although its feed card does')
+              sys.exit(1)
+          PY
