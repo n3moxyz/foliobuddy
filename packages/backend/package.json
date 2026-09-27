@@ -15,6 +15,8 @@
     "db:seed:scale": "tsx src/scripts/seed-scale.ts",
     "db:studio": "prisma studio",
     "import:excel": "tsx src/scripts/importExcel.ts",
+    "news:collect-x": "tsx scripts/collect-x-posts.ts",
+    "news:x-sources": "tsx scripts/x-news-sources.ts",
     "test": "vitest run"
   },
   "dependencies": {

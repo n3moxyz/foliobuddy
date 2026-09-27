@@ -388,6 +388,41 @@ describe('News page', () => {
     });
   });
 
+  it('marks an X post with a badge and its @handle, never a roster role', () => {
+    const post = fixtureItem({
+      id: 'x:1',
+      title: 'Blob fees on the largest rollups have stayed near zero since the capacity increase',
+      publisher: '@fixture-desk',
+      url: 'https://x.com/fixture_desk/status/1',
+      sourceKind: 'x_post',
+      importance: 'medium',
+      eventType: 'industry',
+      affectedSymbols: ['ETH'],
+    });
+    mocks.useNews.mockReturnValue(
+      newsQueryState({
+        data: fixtureResponse({
+          crypto: [
+            fixtureGroup({ assetId: 'asset-eth', symbol: 'ETH', name: 'Ethereum', items: [post] }),
+          ],
+        }),
+      })
+    );
+
+    renderNews();
+
+    const link = screen.getByRole('link', { name: /Blob fees on the largest rollups/ });
+    expect(link).toHaveAttribute('href', 'https://x.com/fixture_desk/status/1');
+    expect(within(link).getByText('X post')).toBeInTheDocument();
+    expect(within(link).getByText(/^@fixture-desk · [^·]+ · Industry data$/)).toBeInTheDocument();
+    // One author can have many rows, so the flag names the post's opening too.
+    expect(
+      screen.getByRole('button', {
+        name: 'Flag post by @fixture-desk: Blob fees on the largest rollups have stayed near zero since…',
+      })
+    ).toBeInTheDocument();
+  });
+
   it('renders AI enrichment on top stories and degrades gracefully without it', () => {
     const material = fixtureItem({
       id: 'material',
@@ -785,6 +820,29 @@ describe('News page', () => {
       expect(screen.getAllByText(/in Top stories/)).toHaveLength(1);
       expect(screen.getAllByRole('button', { name: /^Flag story:/ })).toHaveLength(4);
       expect(screen.getByText('4 stories · last 60 days · newest first')).toBeInTheDocument();
+    });
+
+    it('lists X posts beside headlines, labeling only the posts', () => {
+      const post = fixtureItem({
+        id: 'x:9',
+        title: 'Hearing the event may slip a week. Unconfirmed, waiting on a second source',
+        publisher: '@fixture-radar',
+        sourceKind: 'x_post',
+      });
+      const press = fixtureItem({
+        id: 'press',
+        title: 'Wire story about Bitcoin custody demand',
+        publisher: 'Reuters',
+        sourceTier: 2,
+        sourceLabel: 'Trusted press',
+      });
+      renderDossier({ data: { ...btcDossier, items: [post, press, ...btcDossier.items] } });
+
+      expect(screen.getAllByText('X post')).toHaveLength(1);
+      expect(screen.getByText(/^@fixture-radar · [^·]+$/)).toBeInTheDocument();
+      // Articles keep their quiet meta line: the press tier is never spelled out.
+      expect(screen.getByText(/^Reuters · /)).not.toHaveTextContent('Trusted press');
+      expect(screen.getByText('6 stories · last 60 days · newest first')).toBeInTheDocument();
     });
 
     it('refreshes the dossier, not the feed, while a holding is open', () => {

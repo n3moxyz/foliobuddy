@@ -219,6 +219,26 @@ function demoNewsItem(
   };
 }
 
+// Production posts come from the owner's private X roster. Demo handles use
+// hyphens, which X rejects, so no real account is ever quoted or implied. Like
+// the API, a post never reveals its author's roster role: tier 4, no label.
+function demoXPost(
+  id: string,
+  text: string,
+  handle: string,
+  hoursAgo: number,
+  extra: DemoNewsExtra = {}
+): NewsItem {
+  return {
+    ...demoNewsItem(id, text, `@${handle}`, hoursAgo, {
+      rankingReasons: ['Held position'],
+      ...extra,
+    }),
+    url: `https://example.com/x/${handle}/status/${id}`,
+    sourceKind: 'x_post',
+  };
+}
+
 function demoNewsHolding(
   assetId: string,
   bucket: NewsBucket,
@@ -241,10 +261,10 @@ function demoNewsHolding(
 // Largest holding first, as the backend orders them. HYPE is quiet (nothing in
 // the feed's 14-day window) and AAPL sits past the feed's fetch cap, so both
 // surface only as shortcuts — their dossiers still load. ETH's count includes
-// btc-3, which is filed under the bigger BTC holding.
+// btc-3, which is filed under the bigger BTC holding, and its X post.
 const demoNewsHoldings: NewsHolding[] = [
   demoNewsHolding('btc', 'crypto', 3),
-  demoNewsHolding('eth', 'crypto', 3),
+  demoNewsHolding('eth', 'crypto', 4),
   demoNewsHolding('voo', 'equities', 2),
   demoNewsHolding('sol', 'crypto', 1),
   demoNewsHolding('hype', 'crypto', 0),
@@ -342,6 +362,18 @@ const demoNews: PortfolioNewsResponse = {
       demoCustodyStory,
     ]),
     demoNewsGroup('eth', [
+      // An X post leads this card: posts rank alongside headlines.
+      demoXPost(
+        'x-eth-1',
+        'Blob fees on the largest rollups have stayed near zero since the capacity increase, and batch posting costs are down sharply month over month',
+        'demo-l2-desk',
+        3,
+        {
+          importance: 'medium',
+          eventType: 'industry',
+          rankingReasons: ['Industry data', 'Held position'],
+        }
+      ),
       demoNewsItem(
         'eth-1',
         'Ethereum core devs set date for next upgrade public testnet',
@@ -454,6 +486,13 @@ const demoDossierExtras: Record<string, NewsItem[]> = {
       38 * HOURS_PER_DAY,
       { ...DEMO_PRESS, importance: 'medium', eventType: 'flows' }
     ),
+    demoXPost(
+      'x-btc-1',
+      'Exchange-held BTC keeps sliding: another large outflow day across the major venues',
+      'demo-chain-watch',
+      26,
+      { importance: 'medium', eventType: 'flows' }
+    ),
   ],
   eth: [
     demoCustodyStory,
@@ -533,6 +572,20 @@ const demoDossierExtras: Record<string, NewsItem[]> = {
       'Yahoo Finance',
       12 * HOURS_PER_DAY,
       { importance: 'medium', eventType: 'regulation' }
+    ),
+    demoXPost(
+      'x-aapl-1',
+      'Supply chain checks point to a larger first build for the fall iPhone lineup than last year',
+      'demo-supply-desk',
+      8,
+      { importance: 'medium', eventType: 'industry' }
+    ),
+    // Radar posts surface leads on a holding's own page, never the main feed.
+    demoXPost(
+      'x-aapl-2',
+      'Hearing the fall event may slip a week. Unconfirmed, waiting on a second source',
+      'demo-radar-feed',
+      30
     ),
   ],
   'd05-si': [

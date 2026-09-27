@@ -13,6 +13,7 @@
 // A tier is a prior about the source, never a claim that an article is verified.
 
 import { getDomain } from 'tldts';
+import type { XSourceRole } from './xSources.js';
 
 export type SourceTier = 1 | 2 | 3 | 4;
 
@@ -236,4 +237,18 @@ export function classifySource(
   // Unknown publisher: neutral/low default — scored like tier 4, but with a
   // null label so the UI never mislabels an unrated source.
   return { tier: 4, label: null, primary: false, denied: false };
+}
+
+// X posts from the owner's validated roster. An anchor ranks like specialist
+// press (tier 3); corroboration and radar names score as tier 4. Roles shape
+// ranking only and are never shown (the owner's call), so they carry no label.
+// A post is never primary: the account is not the issuer.
+const X_ROLE_CLASSIFICATION: Record<XSourceRole, SourceClassification> = {
+  anchor: { tier: 3, label: null, primary: false, denied: false },
+  corroboration: { tier: 4, label: null, primary: false, denied: false },
+  radar: { tier: 4, label: null, primary: false, denied: false },
+};
+
+export function classifyXSource(role: XSourceRole): SourceClassification {
+  return X_ROLE_CLASSIFICATION[role];
 }

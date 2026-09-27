@@ -173,7 +173,7 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 
 ### Async Feedback (Toasts + Status)
 
-- sonner `AppToaster` (`components/layout/AppToaster.tsx`): raw `theme` (Sonner resolves `system` + tracks OS); Radix `DismissableLayerBranch` prevents toast clicks/focus closing any Radix layer. Pin `@radix-ui/react-dismissable-layer` to one Radix-wide version (`npm ls` after any Radix bump; `docs/DEPENDENCIES.md`).
+- sonner `AppToaster` (`components/layout/AppToaster.tsx`): raw `theme` (Sonner resolves `system` + tracks OS); Radix `DismissableLayerBranch` prevents toast clicks/focus closing any Radix layer. Keep its Radix pin: `docs/DEPENDENCIES.md`.
 - Toaster `className="pointer-events-auto"` counters modal body pointer lock; `top-center` below `sm`, `offset`/`mobileOffset` top 64px clears `h-14`. Modal FocusScope traps Tab: toasts unreachable by keyboard while modal open (pre-existing).
 - `MutationCache.onError` toasts every failed mutation; handlers must never fail silently (`console.error`-only catch = bug); copy/refresh/snapshot toast success + failure. Story: FORET.md.
 - Skeletons `role="status"` + sr-only text; inline errors `role="alert"` + `aria-invalid`/`aria-describedby`.
@@ -205,12 +205,13 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### News Tab
 
-`/news` (shortcut `N`): owned (`custodyOf: null`) + open-trade holdings; per-holding page at `?asset=<assetId>`. How it works (queries, sources, endpoints, ranking, UI): [docs/NEWS.md](docs/NEWS.md). Binding rules:
+`/news` (`N`): owned (`custodyOf: null`) + open-trade holdings; holding page `?asset=<assetId>`. Details: [docs/NEWS.md](docs/NEWS.md). Binding rules:
 
-- Bound `Asset.name` before any regex (old rows predate the cap). Google News RSS (`.SI`) never fails the page: linear CDATA-safe parse, `news.google.com` links only; classify by `sourceUrl`, never enrich its redirects.
-- Uncached failures reject; partial refresh keeps successes; all-Yahoo-failed rejects so React Query keeps last-good headlines. `GET /news/asset/:assetId`: 404 unless an owned/open-trade news target.
+- Bound `Asset.name` before any regex. Google News RSS (`.SI`) never fails the page: linear CDATA-safe parse, `news.google.com` links only; tier by `sourceUrl`, never enrich its redirects.
+- Uncached failures reject; partial refresh keeps successes; all-Yahoo-failed rejects (React Query keeps last-good). `GET /news/asset/:assetId`: 404 unless an owned/open-trade news target.
 - Tiers: unknown = tier 4/null label, never "verified"; tier 1/primary ONLY from official domains (gov/allowlist or `Asset.officialDomain`), never publisher strings. API: labels only, never scores/weights/position values/provider tags (test-enforced); flag feedback logs story metadata only.
-- Stage 2 enrichment (optional `ANTHROPIC_API_KEY`): Top stories only, from the FETCHED article body (no text = no enrichment), pinned public-DNS fetches; success cache keyed by story id + sorted `affectedSymbols` (never cross holding contexts); low confidence never served.
+- Enrichment (optional `ANTHROPIC_API_KEY`): Top stories only, from the FETCHED article body, pinned public-DNS fetches; success cache keyed by story id + sorted `affectedSymbols`; low confidence never served.
+- X posts (optional `TWITTERAPI_IO_KEY` + `X_NEWS_SOURCES`): the roster is a secret; never name its accounts or quote their posts in this public repo.
 - No money → no privacy wiring; demo mocks every news route.
 
 ### Portfolio Hero Summary
@@ -325,7 +326,7 @@ See **Dev Demo Route** (mocked `/api`, `/dev/demo`); **Local QA Auth Bypass** (s
 
 - Backend Node: `https://api.foliobuddy.xyz`; static frontend: `https://foliobuddy.xyz` (rewrites API calls); Postgres private network. Backend auto-deploy: GitHub Actions, main pushes touching backend; frontend: Vercel. DB backups daily/weekly/monthly → private object storage.
 - `DEPLOYMENT.md`: public shape, checks, monitoring, smoke tests, backups; secrets in private ops notes. API-path changes: backend before frontend. Env-var workflow: `printf`, never `echo`.
-- Clerk Development `pk_test_`/`sk_test_` are the only keys that work on localhost; Production `pk_live_`/`sk_live_`, Frontend API `clerk.foliobuddy.xyz`. Users never transfer instances; `User.id` IS Clerk id. Switching needs `packages/backend/scripts/` mirror + remap; runbook/rollback: DEPLOYMENT.md "Auth (Clerk)" + `docs/solutions/2026-08-17-clerk-dev-to-prod-user-id-remap.md`. Backend GitHub secrets `CLERK_SECRET_KEY`/`CLERK_PUBLISHABLE_KEY`/`ADMIN_USER_IDS` → Coolify via `sync-backend-env.yml`; frontend key in Vercel.
+- Clerk: only Development `pk_test_`/`sk_test_` keys work on localhost; `User.id` IS the Clerk id, so users never transfer instances. Keys, secret sync (`sync-backend-env.yml`) + switching runbook: DEPLOYMENT.md "Auth (Clerk)" + `docs/solutions/2026-08-17-clerk-dev-to-prod-user-id-remap.md`.
 
 ### Copy/Paste JSON Import Pattern
 

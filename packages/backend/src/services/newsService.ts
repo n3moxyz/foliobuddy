@@ -8,6 +8,7 @@ import {
   isTopStoryCandidate,
   rankStories,
   type NewsCandidate,
+  type NewsSourceItem,
   type RankedNewsItem,
   type RankedStory,
 } from './news/ranking.js';
@@ -15,7 +16,12 @@ import { newsEnrichmentService } from './news/enrichmentService.js';
 import { normalizeOfficialDomain } from './news/sourceQuality.js';
 import { filterRelevantNews, newsQueryPlan, type NewsQueryPlan } from './news/newsQuery.js';
 import { googleNewsClient } from './news/googleNews.js';
-import type { ProviderNewsItem } from './providers/types.js';
+import {
+  loadRecentXPosts,
+  matchXPosts,
+  xMatchPlan,
+  type XMatchTarget,
+} from './news/xPostMatching.js';
 
 export interface AssetNewsGroup {
   assetId: string;
@@ -78,6 +84,10 @@ const ASSET_NEWS_WINDOW_DAYS = 60;
 const ASSET_NEWS_YAHOO_FETCH = 30;
 const ASSET_NEWS_GOOGLE_FETCH = 40;
 const ASSET_NEWS_LIMIT = 60;
+// X posts kept per holding, best-ranked first: a few in the feed so roster
+// chatter can't bury press coverage, more on the holding's own page.
+const FEED_X_POSTS_PER_HOLDING = 3;
+const ASSET_NEWS_X_LIMIT = 20;
 
 // Macro feed sources: broad-market tickers plus recurring policy topics.
 // Yahoo's search endpoint returns general market coverage for all of these;
@@ -195,7 +205,7 @@ async function fetchYahooHoldingNews(target: NewsTarget, count: number) {
 
 function holdingCandidates(
   target: NewsTarget,
-  items: ProviderNewsItem[],
+  items: NewsSourceItem[],
   weight: number
 ): NewsCandidate[] {
   return items.map((item) => ({
@@ -205,6 +215,35 @@ function holdingCandidates(
     held: !target.openTradeOnly,
     weight,
   }));
+}
+
+function xMatchTargets(targets: NewsTarget[]): XMatchTarget[] {
+  return targets.flatMap((target) => {
+    const plan = xMatchPlan(target.asset);
+    return plan ? [{ assetId: target.asset.id, plan }] : [];
+  });
+}
+
+/**
+ * The main feed takes an X post only when it can stand beside press: an
+ * anchor's post, or a corroboration post that reports an event (medium or high
+ * importance). A holding's own page shows the rest.
+ */
+function isFeedWorthy(story: RankedStory): boolean {
+  if (story.xRole === null || story.xRole === 'anchor') return true;
+  return story.xRole === 'corroboration' && story.ranked.importance !== 'low';
+}
+
+/** Keeps each holding's best `limit` X-post stories; `stories` arrive rank-ordered. */
+function capXStories(stories: RankedStory[], limit: number): RankedStory[] {
+  const kept = new Map<string | null, number>();
+  return stories.filter((story) => {
+    if (story.ranked.sourceKind !== 'x_post') return true;
+    const count = kept.get(story.primaryAssetId) ?? 0;
+    if (count >= limit) return false;
+    kept.set(story.primaryAssetId, count + 1);
+    return true;
+  });
 }
 
 function officialDomainsOf(targets: NewsTarget[]): string[] {
@@ -294,7 +333,7 @@ class NewsService {
     const googleTargets = targets.filter((target) => target.plan.googleQuery !== null);
     const yahoo = priceService.getYahooProvider();
 
-    const [holdingResults, googleResults, macroResults] = await Promise.all([
+    const [holdingResults, googleResults, macroResults, xPosts] = await Promise.all([
       mapWithConcurrency(targets, NEWS_FETCH_CONCURRENCY, (target) =>
         fetchYahooHoldingNews(target, NEWS_PER_ASSET_FETCH)
       ),
@@ -305,6 +344,8 @@ class NewsService {
       mapWithConcurrency(MACRO_NEWS_QUERIES, NEWS_FETCH_CONCURRENCY, (query) =>
         yahoo.getNews(query, MACRO_NEWS_PER_QUERY)
       ),
+      // Stored roster posts (collected in the background): never rejects either.
+      loadRecentXPosts(FEED_WINDOW_DAYS),
     ]);
 
     // Yahoo is the primary source: if every Yahoo request failed, reject so
@@ -323,12 +364,16 @@ class NewsService {
     const totalValueUsd = targets.reduce((sum, target) => sum + target.valueUsd, 0);
     const weightOf = (target: NewsTarget) =>
       totalValueUsd > 0 ? target.valueUsd / totalValueUsd : 0;
+    const xNews = matchXPosts(xMatchTargets(targets), xPosts, { includeRadar: false });
     const candidates: NewsCandidate[] = [
       ...targets.flatMap((target, index) =>
         holdingCandidates(target, holdingNews[index] ?? [], weightOf(target))
       ),
       ...googleTargets.flatMap((target, index) =>
         holdingCandidates(target, googleNews[index] ?? [], weightOf(target))
+      ),
+      ...targets.flatMap((target) =>
+        holdingCandidates(target, xNews.get(target.asset.id) ?? [], weightOf(target))
       ),
     ];
     for (const item of macroBatches.flat()) {
@@ -339,7 +384,10 @@ class NewsService {
     // holding query and a macro query (or from both Yahoo and Google) appears
     // exactly once, in the most relevant place, tagged with every affected symbol.
     const now = Date.now();
-    const stories = rankStories(candidates, now, officialDomainsOf(targets));
+    const stories = capXStories(
+      rankStories(candidates, now, officialDomainsOf(targets)).filter(isFeedWorthy),
+      FEED_X_POSTS_PER_HOLDING
+    );
 
     const { sections, storyCounts } = buildHoldingGroups(targets, stories);
     const macro = stories
@@ -378,7 +426,7 @@ class NewsService {
     const target = targets.find((candidate) => candidate.asset.id === assetId);
     if (!target) throw new AppError('No news feed for this holding', 404);
 
-    const [yahooResult, googleItems] = await Promise.all([
+    const [yahooResult, googleItems, xPosts] = await Promise.all([
       fetchYahooHoldingNews(target, ASSET_NEWS_YAHOO_FETCH).then(
         (items) => ({ ok: true as const, items }),
         (error: unknown) => ({ ok: false as const, error })
@@ -390,20 +438,26 @@ class NewsService {
             ASSET_NEWS_GOOGLE_FETCH
           )
         : Promise.resolve([]),
+      loadRecentXPosts(ASSET_NEWS_WINDOW_DAYS),
     ]);
-    // Uncached total failure rejects so the client can offer a retry.
+    // Uncached total failure rejects so the client can offer a retry. X posts
+    // don't count: they supplement headlines, never stand in for them.
     if (!yahooResult.ok && googleItems.length === 0) throw yahooResult.error;
 
-    const items = [...(yahooResult.ok ? yahooResult.items : []), ...googleItems];
+    // A holding's own page also shows radar-role posts: leads worth a look there.
+    const xNews = matchXPosts(xMatchTargets([target]), xPosts, { includeRadar: true });
+    const items = [
+      ...(yahooResult.ok ? yahooResult.items : []),
+      ...googleItems,
+      ...(xNews.get(target.asset.id) ?? []),
+    ];
     const now = Date.now();
-    const stories = rankStories(
-      holdingCandidates(target, items, 0),
-      now,
-      officialDomainsOf(targets),
-      {
+    const stories = capXStories(
+      rankStories(holdingCandidates(target, items, 0), now, officialDomainsOf(targets), {
         maxAgeDays: ASSET_NEWS_WINDOW_DAYS,
         maxAgeDaysHighImportance: ASSET_NEWS_WINDOW_DAYS,
-      }
+      }),
+      ASSET_NEWS_X_LIMIT
     );
 
     return {

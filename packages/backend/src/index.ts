@@ -28,6 +28,7 @@ import {
   startSnapshotJob,
   startFxRateJob,
   startPriceHistoryCleanupJob,
+  startXPostJobs,
   createMissingSnapshots,
 } from './services/scheduler.js';
 import { socketService } from './services/socketService.js';
@@ -159,6 +160,7 @@ async function startServer() {
       startSnapshotJob();
       startFxRateJob();
       startPriceHistoryCleanupJob();
+      startXPostJobs();
 
       // Delay slightly to ensure DB connection is settled before catch-up runs
       setTimeout(() => {

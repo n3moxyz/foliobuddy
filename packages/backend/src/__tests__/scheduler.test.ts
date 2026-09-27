@@ -44,6 +44,9 @@ const mocks = vi.hoisted(() => {
       priceHistory: {
         deleteMany: vi.fn(),
       },
+      xPost: {
+        deleteMany: vi.fn(),
+      },
     },
     logger: {
       debug: vi.fn(),
@@ -77,6 +80,7 @@ const {
   createMissingSnapshots,
   runSnapshotTick,
   refreshFundManagerNavs,
+  startXPostJobs,
 } = await import('../services/scheduler.js');
 
 const SNAPSHOT_USER_SELECT = { id: true, snapshotHour: true, snapshotTimezone: true };
@@ -168,6 +172,36 @@ describe('scheduler', () => {
       '0 2 * * *',
     ]);
     expect(mocks.cronSchedule).toHaveBeenNthCalledWith(1, '0 * * * *', expect.any(Function));
+  });
+
+  describe('X post jobs', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('keeps pruning stored posts after collection is switched off', async () => {
+      vi.stubEnv('TWITTERAPI_IO_KEY', '');
+      vi.stubEnv('X_NEWS_SOURCES', '');
+      mocks.prisma.xPost.deleteMany.mockResolvedValue({ count: 3 });
+
+      startXPostJobs();
+
+      expect(mocks.scheduledJobs.map((job) => job.expression)).toEqual(['20 3 * * *']);
+      await mocks.scheduledJobs[0].callback();
+      expect(mocks.prisma.xPost.deleteMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('adds quarter-hour collection only when the key and roster are both set', () => {
+      vi.stubEnv('TWITTERAPI_IO_KEY', 'test-key');
+      vi.stubEnv('X_NEWS_SOURCES', 'fx_anchor:anchor_source');
+
+      startXPostJobs();
+
+      expect(mocks.scheduledJobs.map((job) => job.expression)).toEqual([
+        '20 3 * * *',
+        '7,22,37,52 * * * *',
+      ]);
+    });
   });
 
   describe('hourly snapshot tick', () => {

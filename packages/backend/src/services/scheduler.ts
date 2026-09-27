@@ -6,6 +6,8 @@ import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
 import { upsertUsdRates } from './fxRateService.js';
 import { configureKnownUnitTrusts } from './unitTrustNavService.js';
+import { pruneXPosts, xPostCollector } from './news/xCollector.js';
+import { getXNewsSources, isXCollectionConfigured } from './news/xSources.js';
 import type { ProviderName } from './providers/types.js';
 import {
   getLocalParts,
@@ -248,6 +250,44 @@ export function startFxRateJob(): void {
       logger.error('[FX Rates] Error:', error);
     }
   });
+}
+
+async function runXPostCollection(): Promise<void> {
+  try {
+    const result = await xPostCollector.collect();
+    const summary = `${result.stored} new posts, ${result.calls} calls, ${result.failedBatches} failed batches`;
+    if (result.stored > 0 || result.failedBatches > 0) logger.info(`[XPosts] ${summary}`);
+    else logger.debug(`[XPosts] ${summary} (${result.status})`);
+  } catch (error) {
+    logger.error('[XPosts] Collection error:', error);
+  }
+}
+
+/**
+ * Start the daily X-post prune, always, and the X news collector (every 15
+ * minutes, offset from the equities refresh). The collector is off unless
+ * TWITTERAPI_IO_KEY and X_NEWS_SOURCES are both set — /news works unchanged
+ * without them.
+ */
+export function startXPostJobs(): void {
+  // The prune runs even with collection off: posts stored while it was on
+  // must still age out on the 60-day schedule after the key or roster goes.
+  cron.schedule('20 3 * * *', async () => {
+    try {
+      logger.info(`[XPosts] Pruned ${await pruneXPosts()} posts past retention`);
+    } catch (error) {
+      logger.error('[XPosts] Prune error:', error);
+    }
+  });
+  if (!isXCollectionConfigured()) {
+    logger.info('📰 X news collector off (TWITTERAPI_IO_KEY or X_NEWS_SOURCES not set)');
+    return;
+  }
+  logger.info(`📰 Starting X news collector (${getXNewsSources().sources.length} handles, 15min)`);
+  // No run at boot: the call budget and pauses live in memory, so a crash loop
+  // or overlapping deploy containers must not each get a free extra pass. The
+  // next quarter-hour tick catches up (each batch resumes from its newest post).
+  cron.schedule('7,22,37,52 * * * *', () => runXPostCollection());
 }
 
 /**

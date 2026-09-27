@@ -49,6 +49,7 @@ const GENERIC_NAME_WORDS = new Set([
   'japan',
   'hong',
   'korea',
+  'taiwan',
   'first',
   'national',
   'great',
@@ -64,6 +65,14 @@ const GENERIC_NAME_WORDS = new Set([
   'royal',
   'eastern',
   'western',
+]);
+
+// Headline names for listings whose first word is generic and whose Yahoo
+// coverage never carries the local ticker (probed 2026-09: 0 of 30 "Taiwan
+// Semiconductor Manufacturing" results were tagged 2330.TW). Accepting the TSM
+// ADR tag instead would admit every multi-stock listicle Yahoo tags TSM.
+const NEWS_NAME_ALIASES: ReadonlyMap<string, readonly string[]> = new Map([
+  ['2330.TW', ['TSMC', 'Taiwan Semiconductor']],
 ]);
 
 const MAX_QUERY_LENGTH = 80;
@@ -108,7 +117,7 @@ function isUsableName(name: string, ticker: string): boolean {
   return name.length >= 3 && /\p{L}/u.test(name) && name.toUpperCase() !== ticker;
 }
 
-function distinctiveTerm(name: string): string | null {
+export function distinctiveTerm(name: string): string | null {
   const first = name.split(' ')[0]?.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '') ?? '';
   if (first.length < 3 || GENERIC_NAME_WORDS.has(first.toLowerCase())) return null;
   return first;
@@ -158,7 +167,10 @@ export function newsQueryPlan(asset: NewsQueryAsset): NewsQueryPlan | null {
   const term = distinctiveTerm(name);
   return {
     yahooQuery: name,
-    relevance: { tickers: [ticker], titleTerms: term ? [term] : [] },
+    relevance: {
+      tickers: [ticker],
+      titleTerms: [...(NEWS_NAME_ALIASES.get(ticker) ?? []), ...(term ? [term] : [])],
+    },
     googleQuery: GOOGLE_NEWS_SUFFIXES.has(suffix) ? `"${name}"` : null,
   };
 }

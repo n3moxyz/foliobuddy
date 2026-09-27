@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatRelativeTime } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import type { NewsEnrichment, NewsFeedbackReason, NewsItem } from '@/lib/types';
 
 export type NewsFeedbackHandler = (
@@ -33,6 +33,18 @@ const EVENT_LABELS: Record<string, string> = {
   partnership: 'Partnership',
   industry: 'Industry data',
 };
+
+const FLAG_LABEL_POST_CHARS = 60;
+
+/** Posts have no headline, and one author can have many rows: name both. */
+function flagLabel(item: NewsItem, isXPost: boolean): string {
+  if (!isXPost) return `Flag story: ${item.title}`;
+  const opening =
+    item.title.length > FLAG_LABEL_POST_CHARS
+      ? `${item.title.slice(0, FLAG_LABEL_POST_CHARS).trimEnd()}…`
+      : item.title;
+  return `Flag post by ${item.publisher}: ${opening}`;
+}
 
 function newsMetaText(item: NewsItem, groupSymbol?: string, featured?: boolean): string {
   const parts = [`${item.publisher} · ${formatRelativeTime(item.publishedAt)}`];
@@ -64,6 +76,7 @@ export function NewsRow({
   onFeedback?: NewsFeedbackHandler;
 }) {
   const showImportant = item.importance === 'high';
+  const isXPost = item.sourceKind === 'x_post';
   return (
     <li>
       <div className="flex items-stretch">
@@ -73,7 +86,14 @@ export function NewsRow({
           rel="noreferrer"
           className="group flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="text-sm leading-normal group-hover:underline">
+          {/* A post has no headline: its text is the title, clamped so a long
+              post can't dwarf the rows around it (the link opens the full post). */}
+          <span
+            className={cn(
+              'text-sm leading-normal group-hover:underline',
+              isXPost && 'line-clamp-3'
+            )}
+          >
             {item.title}
             <ExternalLink
               className="ml-1.5 inline h-3 w-3 shrink-0 text-muted-foreground"
@@ -89,6 +109,7 @@ export function NewsRow({
             {item.primarySource && (
               <span className="rounded border px-1.5 py-0.5 font-semibold">Primary source</span>
             )}
+            {isXPost && <span className="rounded border px-1.5 py-0.5 font-semibold">X post</span>}
             <span>{newsMetaText(item, groupSymbol, featured)}</span>
           </span>
         </a>
@@ -100,7 +121,7 @@ export function NewsRow({
                 variant="ghost"
                 size="sm"
                 className="h-auto min-h-11 w-11 shrink-0 self-stretch rounded-none p-0 text-muted-foreground sm:w-9"
-                aria-label={`Flag story: ${item.title}`}
+                aria-label={flagLabel(item, isXPost)}
               >
                 <Flag className="h-3.5 w-3.5" />
               </Button>
