@@ -1,9 +1,17 @@
-import type { Trade } from '@/lib/types';
+import type { Asset, Trade } from '@/lib/types';
+import { CategoryGroup, categoryGroup } from '@/lib/utils';
 
 export type TradeLens = 'review' | 'ticker' | 'monthly';
 
-export interface TickerDossier {
+/** One traded asset as the ticker views address it. */
+export interface TickerRef {
+  assetId: string;
   symbol: string;
+}
+
+export interface TickerDossier extends TickerRef {
+  /** The ticker, plus its asset class when another traded asset shares it. */
+  label: string;
   name: string;
   trades: Trade[];
   closedTrades: Trade[];
@@ -106,15 +114,98 @@ function worstTradeByPnL(trades: Trade[]) {
   }, null);
 }
 
-export function buildTickerDossiers(trades: Trade[]): TickerDossier[] {
-  const grouped = new Map<string, Trade[]>();
-  for (const trade of trades) {
-    const key = trade.asset.symbol;
-    grouped.set(key, [...(grouped.get(key) ?? []), trade]);
+const CLASS_LABELS: Record<CategoryGroup, string> = {
+  [CategoryGroup.CRYPTO]: 'Crypto',
+  [CategoryGroup.STABLES]: 'Cash',
+  [CategoryGroup.EQUITIES]: 'Equity',
+  [CategoryGroup.UNIT_TRUSTS]: 'Unit trust',
+};
+
+type LabelledAsset = Pick<Asset, 'id' | 'symbol' | 'name' | 'category'>;
+
+/**
+ * What tells each asset apart from the others sharing its ticker: its class when
+ * no other shares that, else its name, else its name numbered by id. The last
+ * case is duplicate catalog rows for one instrument (an old unpriced import
+ * beside the live listing).
+ */
+function distinctSuffixes(group: LabelledAsset[]): string[] {
+  const classOf = (asset: LabelledAsset) => CLASS_LABELS[categoryGroup(asset.category)];
+  return group.map((asset) => {
+    if (group.filter((other) => classOf(other) === classOf(asset)).length === 1) {
+      return classOf(asset);
+    }
+    const sameName = group.filter((other) => other.name === asset.name);
+    if (sameName.length === 1) return asset.name;
+    const ids = sameName.map((other) => other.id).sort();
+    return `${asset.name} (${ids.indexOf(asset.id) + 1})`;
+  });
+}
+
+/**
+ * Display label per asset id, unique among the given assets. Tickers repeat
+ * across asset classes (BTC is a coin and a spot ETF; USDE is a stablecoin and
+ * StablecoinX's equity), so a shared ticker gets a suffix.
+ */
+export function tickerLabels(assets: LabelledAsset[]): Map<string, string> {
+  const bySymbol = new Map<string, LabelledAsset[]>();
+  for (const asset of assets) {
+    bySymbol.set(asset.symbol, [...(bySymbol.get(asset.symbol) ?? []), asset]);
   }
 
+  const labels = new Map<string, string>();
+  for (const [symbol, group] of bySymbol) {
+    const suffixes = group.length > 1 ? distinctSuffixes(group) : [];
+    group.forEach((asset, index) => {
+      labels.set(asset.id, suffixes[index] ? `${symbol} · ${suffixes[index]}` : symbol);
+    });
+  }
+  return labels;
+}
+
+/** The dossier a `?ticker=` (and, for a shared ticker, `&asset=`) URL names. */
+export function findTickerDossier(
+  dossiers: TickerDossier[],
+  ticker: string | null,
+  assetId: string | null
+): TickerDossier | null {
+  if (!ticker) return null;
+  const matches = dossiers.filter((dossier) => dossier.symbol === ticker);
+  return matches.find((dossier) => dossier.assetId === assetId) ?? matches[0] ?? null;
+}
+
+/** Point URL params at one asset: a readable ticker, plus its id only when shared. */
+export function setTickerParams(
+  params: URLSearchParams,
+  ticker: TickerRef,
+  dossiers: TickerDossier[]
+) {
+  params.set('ticker', ticker.symbol);
+  if (dossiers.filter((dossier) => dossier.symbol === ticker.symbol).length > 1) {
+    params.set('asset', ticker.assetId);
+  } else {
+    params.delete('asset');
+  }
+}
+
+export function clearTickerParams(params: URLSearchParams) {
+  params.delete('ticker');
+  params.delete('asset');
+}
+
+export function buildTickerDossiers(trades: Trade[]): TickerDossier[] {
+  // Keyed by asset, not ticker: a BTC coin trade and a BTC ETF trade are different assets.
+  const grouped = new Map<string, Trade[]>();
+  for (const trade of trades) {
+    grouped.set(trade.assetId, [...(grouped.get(trade.assetId) ?? []), trade]);
+  }
+  const labels = tickerLabels(
+    Array.from(grouped, ([assetId, [{ asset }]]) => ({ ...asset, id: assetId }))
+  );
+
   return Array.from(grouped.entries())
-    .map(([symbol, tickerTrades]) => {
+    .map(([assetId, tickerTrades]) => {
+      const { symbol, name } = tickerTrades[0].asset;
       const closedTrades = getClosedTrades(tickerTrades);
       const wins = closedTrades.filter((trade) => (trade.realizedPnL ?? 0) > 0).length;
       const losses = closedTrades.filter((trade) => (trade.realizedPnL ?? 0) < 0).length;
@@ -128,8 +219,10 @@ export function buildTickerDossiers(trades: Trade[]): TickerDossier[] {
           : null;
 
       return {
+        assetId,
         symbol,
-        name: tickerTrades[0]?.asset.name ?? symbol,
+        label: labels.get(assetId) ?? symbol,
+        name,
         trades: tickerTrades,
         closedTrades,
         openCount: tickerTrades.filter((trade) => trade.status === 'OPEN').length,
@@ -149,9 +242,7 @@ export function buildTickerDossiers(trades: Trade[]): TickerDossier[] {
         topTags: topTagsForTrades(tickerTrades),
       };
     })
-    .sort(
-      (a, b) => Math.abs(b.totalPnL) - Math.abs(a.totalPnL) || a.symbol.localeCompare(b.symbol)
-    );
+    .sort((a, b) => Math.abs(b.totalPnL) - Math.abs(a.totalPnL) || a.label.localeCompare(b.label));
 }
 
 export function buildMonthlyReviews(trades: Trade[]): MonthlyReview[] {

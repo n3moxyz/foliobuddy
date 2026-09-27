@@ -244,6 +244,10 @@ model SnapshotPosition {
   id          String   @id @default(cuid())
   snapshotId  String
   snapshot    Snapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  // Tickers repeat across asset classes (USDE: Ethena stablecoin + StablecoinX
+  // equity), so the label lookup needs the asset id. Null on rows written before
+  // it existed. No relation on purpose: snapshot history outlives catalog deletes.
+  assetId     String?
   assetSymbol String
   quantity    Float
   priceUsd    Float

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   applyPositionDelta,
   calculatePositionValue,
+  impliedYahooTicker,
+  importPriceFeed,
   isExternalProviderCategoryCompatible,
 } from '../lib/domain.js';
 
@@ -113,5 +115,73 @@ describe('domain helpers', () => {
     expect(isExternalProviderCategoryCompatible('yahoo', 'LIQUID_CRYPTO')).toBe(false);
     expect(isExternalProviderCategoryCompatible('manual', 'UNIT_TRUST')).toBe(true);
     expect(isExternalProviderCategoryCompatible('manual', 'CASH')).toBe(false);
+  });
+});
+
+describe('importPriceFeed', () => {
+  it.each([
+    [
+      { category: 'EQUITY', symbol: 'nvda' },
+      { priceProvider: 'yahoo', providerAssetId: 'NVDA' },
+    ],
+    [
+      { category: 'UNIT_TRUST', symbol: 'UTX' },
+      { priceProvider: 'manual', providerAssetId: null },
+    ],
+    [
+      { category: 'LIQUID_CRYPTO', symbol: 'SOL', coingeckoId: 'solana' },
+      { priceProvider: 'coingecko', providerAssetId: 'solana' },
+    ],
+    [
+      { category: 'NFT', symbol: 'PUNK' },
+      { priceProvider: 'coingecko', providerAssetId: null },
+    ],
+  ])('defaults %o to a feed the refresh job can read', (asset, feed) => {
+    expect(importPriceFeed(asset)).toEqual(feed);
+  });
+
+  it('keeps an explicit feed and fills only a missing provider id', () => {
+    expect(
+      importPriceFeed({
+        category: 'UNIT_TRUST',
+        symbol: 'FUND',
+        priceProvider: 'yahoo',
+        providerAssetId: '0P0000XYZ.SI',
+      })
+    ).toEqual({ priceProvider: 'yahoo', providerAssetId: '0P0000XYZ.SI' });
+    expect(importPriceFeed({ category: 'EQUITY', symbol: 'usde', priceProvider: 'yahoo' })).toEqual(
+      { priceProvider: 'yahoo', providerAssetId: 'USDE' }
+    );
+  });
+
+  it('never points a non-USD equity at a bare ticker, which Yahoo reads as the US listing', () => {
+    expect(importPriceFeed({ category: 'EQUITY', symbol: 'D05', nativeCurrency: 'sgd' })).toEqual({
+      priceProvider: 'yahoo',
+      providerAssetId: null,
+    });
+    expect(
+      importPriceFeed({ category: 'EQUITY', symbol: 'd05.si', nativeCurrency: 'SGD' })
+    ).toEqual({ priceProvider: 'yahoo', providerAssetId: 'D05.SI' });
+  });
+
+  it('never treats a fund code as a Yahoo symbol', () => {
+    // It could name an unrelated Yahoo instrument and price the fund from it.
+    expect(
+      importPriceFeed({ category: 'UNIT_TRUST', symbol: 'LIONGLOB', priceProvider: 'yahoo' })
+    ).toEqual({ priceProvider: 'yahoo', providerAssetId: null });
+  });
+});
+
+describe('impliedYahooTicker', () => {
+  it.each([
+    ['nvda', undefined, 'NVDA'],
+    ['NVDA', 'USD', 'NVDA'],
+    ['D05.SI', 'SGD', 'D05.SI'],
+    // Imports default currency to USD, so a suffixed ticker stays trusted either way.
+    ['D05.SI', 'USD', 'D05.SI'],
+    ['D05', 'SGD', null],
+    ['  ', 'USD', null],
+  ])('%s in %s implies %s', (symbol, currency, expected) => {
+    expect(impliedYahooTicker(symbol, currency)).toBe(expected);
   });
 });

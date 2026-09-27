@@ -7,6 +7,7 @@ import {
   topTagsForTrades,
   type MonthlyReview,
   type TickerDossier,
+  type TickerRef,
 } from '@/components/trades/tradeLensModels';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
@@ -27,7 +28,7 @@ export function TickerDossierLens({
   tickerDossiers: TickerDossier[];
   currency: 'USD' | 'SGD';
   fxRate: number;
-  onTickerClick: (symbol: string) => void;
+  onTickerClick: (ticker: TickerRef) => void;
   onClear: () => void;
   onTradeClick: (tradeId: string) => void;
 }) {
@@ -46,17 +47,17 @@ export function TickerDossierLens({
       <div className="flex gap-2 overflow-x-auto pb-1">
         {tickerDossiers.map((ticker) => (
           <button
-            key={ticker.symbol}
+            key={ticker.assetId}
             type="button"
-            aria-pressed={ticker.symbol === selectedTicker.symbol}
-            onClick={() => onTickerClick(ticker.symbol)}
+            aria-pressed={ticker.assetId === selectedTicker.assetId}
+            onClick={() => onTickerClick(ticker)}
             className={`min-h-11 shrink-0 rounded-md border px-3 py-2 text-left transition-colors ${
-              ticker.symbol === selectedTicker.symbol
+              ticker.assetId === selectedTicker.assetId
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'bg-card/50 hover:bg-muted/50'
             }`}
           >
-            <span className="block text-sm font-semibold">{ticker.symbol}</span>
+            <span className="block text-sm font-semibold">{ticker.label}</span>
             <span className={`block text-xs tabular-nums ${getPnLColorClass(ticker.totalPnL)}`}>
               {formatSignedCurrency(convertCurrency(ticker.totalPnL, currency, fxRate), currency)}
             </span>

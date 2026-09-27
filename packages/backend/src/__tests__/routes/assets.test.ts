@@ -398,6 +398,61 @@ describe('same-ticker assets across classes', () => {
     expect(mockPrisma.asset.create).not.toHaveBeenCalled();
   });
 
+  it('returns the live row untouched when a picked dead duplicate asks for its ticker', async () => {
+    // The picker sends identity only; the live row's exchange and currency stay as they are.
+    const live = { ...STABLECOINX, id: 'live-nbis', providerAssetId: 'NBIS', symbol: 'NBIS' };
+    const dead = { ...live, id: 'dead-nbis', priceProvider: 'coingecko', providerAssetId: null };
+    for (const catalog of [
+      [dead, live],
+      [live, dead],
+    ]) {
+      useCatalog(catalog);
+
+      const res = await request(app).post('/api/assets/from-provider').send({
+        provider: 'yahoo',
+        providerAssetId: 'NBIS',
+        symbol: 'NBIS',
+        name: 'Nebius Group',
+        category: 'EQUITY',
+      });
+
+      expect([res.status, res.body.id, res.body.exchange]).toEqual([200, 'live-nbis', 'NasdaqCM']);
+    }
+    expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('backfills the provider id of an older coingeckoId-only row picked from coin search', async () => {
+    const legacyTether = {
+      ...ETHENA_USDE,
+      id: 'legacy-tether',
+      coingeckoId: 'tether',
+      providerAssetId: null,
+      symbol: 'USDT',
+      name: 'Tether',
+    };
+    useCatalog([legacyTether]);
+
+    const res = await request(app).post('/api/assets/from-coingecko').send({
+      coingeckoId: 'tether',
+      symbol: 'usdt',
+      name: 'Tether',
+      category: 'STABLECOIN',
+      skipPriceFetch: true,
+    });
+
+    expect([res.status, res.body.id, res.body.providerAssetId]).toEqual([
+      200,
+      'legacy-tether',
+      'tether',
+    ]);
+    expect(mockPrisma.asset.update).toHaveBeenCalledWith({
+      where: { id: 'legacy-tether' },
+      data: { providerAssetId: 'tether' },
+    });
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
   it('matches a CoinGecko provider request to an older row that only has coingeckoId', async () => {
     const legacyTether = {
       ...ETHENA_USDE,
@@ -428,6 +483,346 @@ describe('same-ticker assets across classes', () => {
       where: { id: 'legacy-tether' },
       data: { providerAssetId: 'tether' },
     });
+  });
+
+  describe('unpriced rows matched only by symbol', () => {
+    // An older trade import left this equity on the coingecko default with no
+    // feed id, so the price refresh job skipped it forever.
+    const deadEquity = {
+      ...STABLECOINX,
+      id: 'dead-usde',
+      priceProvider: 'coingecko',
+      providerAssetId: null,
+      nativeCurrency: 'usd',
+      exchange: null,
+      currentPriceUsd: null,
+    };
+
+    it('gives a dead same-class row the requested provider identity', async () => {
+      useCatalog([ETHENA_USDE, deadEquity]);
+
+      const res = await addStablecoinX();
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        id: 'dead-usde',
+        priceProvider: 'yahoo',
+        providerAssetId: 'USDE',
+      });
+      expect(mockPrisma.asset.update).toHaveBeenCalledWith({
+        where: { id: 'dead-usde' },
+        data: {
+          priceProvider: 'yahoo',
+          providerAssetId: 'USDE',
+          nativeCurrency: 'USD',
+          exchange: 'NasdaqCM',
+        },
+      });
+      expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    });
+
+    it('returns the live identity match and leaves the dead row alone, whatever the order', async () => {
+      for (const catalog of [
+        [deadEquity, STABLECOINX],
+        [STABLECOINX, deadEquity],
+      ]) {
+        useCatalog(catalog);
+
+        const res = await addStablecoinX();
+
+        expect([res.status, res.body.id]).toEqual([200, STABLECOINX.id]);
+      }
+      expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+      expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    });
+
+    it('gives a dead crypto row the CoinGecko pair and coingeckoId', async () => {
+      const deadCoin = {
+        ...ETHENA_USDE,
+        id: 'dead-coin',
+        coingeckoId: null,
+        providerAssetId: null,
+        category: 'LIQUID_CRYPTO',
+        currentPriceUsd: null,
+      };
+      useCatalog([STABLECOINX, deadCoin]);
+
+      const res = await request(app).post('/api/assets/from-coingecko').send({
+        coingeckoId: 'ethena-usde',
+        symbol: 'USDe',
+        name: 'Ethena USDe',
+        category: 'LIQUID_CRYPTO',
+        skipPriceFetch: true,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        id: 'dead-coin',
+        priceProvider: 'coingecko',
+        providerAssetId: 'ethena-usde',
+        coingeckoId: 'ethena-usde',
+      });
+      expect(mockPrisma.asset.update).toHaveBeenCalledWith({
+        where: { id: 'dead-coin' },
+        data: {
+          priceProvider: 'coingecko',
+          providerAssetId: 'ethena-usde',
+          coingeckoId: 'ethena-usde',
+        },
+      });
+      expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    });
+
+    it('never adopts an identity onto a manually priced row', async () => {
+      const manualCoin = {
+        ...ETHENA_USDE,
+        id: 'manual-coin',
+        coingeckoId: null,
+        priceProvider: 'manual',
+        providerAssetId: null,
+        category: 'LIQUID_CRYPTO',
+      };
+      useCatalog([manualCoin]);
+
+      const res = await request(app).post('/api/assets/from-coingecko').send({
+        coingeckoId: 'ethena-usde',
+        symbol: 'USDe',
+        name: 'Ethena USDe',
+        category: 'LIQUID_CRYPTO',
+        skipPriceFetch: true,
+      });
+
+      expect([res.status, res.body.id]).toEqual([200, 'manual-coin']);
+      expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+      expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+    });
+
+    it('never adopts an identity onto a manually priced row through from-provider', async () => {
+      const manualEquity = { ...deadEquity, id: 'manual-usde', priceProvider: 'manual' };
+      useCatalog([manualEquity]);
+
+      const res = await addStablecoinX();
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ id: 'manual-usde', priceProvider: 'manual' });
+      expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+    });
+
+    it('also sets coingeckoId when from-provider adopts a CoinGecko pair', async () => {
+      const deadStable = {
+        ...ETHENA_USDE,
+        id: 'dead-stable',
+        coingeckoId: null,
+        providerAssetId: null,
+      };
+      useCatalog([deadStable]);
+
+      const res = await request(app).post('/api/assets/from-provider').send({
+        provider: 'coingecko',
+        providerAssetId: 'ethena-usde',
+        symbol: 'USDE',
+        name: 'Ethena USDe',
+        category: 'STABLECOIN',
+        skipPriceFetch: true,
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.asset.update).toHaveBeenCalledWith({
+        where: { id: 'dead-stable' },
+        data: {
+          priceProvider: 'coingecko',
+          providerAssetId: 'ethena-usde',
+          coingeckoId: 'ethena-usde',
+        },
+      });
+    });
+
+    it('never repoints a legacy coin that holds its own coingeckoId to a same-ticker coin', async () => {
+      // Unpriced (no provider id), but its coingeckoId says which coin it is.
+      const legacyUniswap = {
+        ...ETHENA_USDE,
+        id: 'uniswap-row',
+        coingeckoId: 'uniswap',
+        providerAssetId: null,
+        symbol: 'UNI',
+        name: 'Uniswap',
+        category: 'LIQUID_CRYPTO',
+      };
+      useCatalog([legacyUniswap]);
+      const universeToken = { symbol: 'UNI', name: 'Universe Token', category: 'LIQUID_CRYPTO' };
+
+      const viaCoinGecko = await request(app)
+        .post('/api/assets/from-coingecko')
+        .send({ ...universeToken, coingeckoId: 'universe-token', skipPriceFetch: true });
+      const viaProvider = await request(app)
+        .post('/api/assets/from-provider')
+        .send({
+          ...universeToken,
+          provider: 'coingecko',
+          providerAssetId: 'universe-token',
+          skipPriceFetch: true,
+        });
+
+      for (const res of [viaCoinGecko, viaProvider]) {
+        expect(res.body).toMatchObject({ id: 'uniswap-row', providerAssetId: null });
+      }
+      expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['an angel investment sharing the crypto group', { category: 'ANGEL' }],
+      ['a row with an ISIN of its own', { category: 'LIQUID_CRYPTO', isin: 'SG9999000001' }],
+    ])('never adopts a coin feed onto %s', async (_label, overrides) => {
+      const privateRow = {
+        ...ETHENA_USDE,
+        id: 'private-row',
+        coingeckoId: null,
+        providerAssetId: null,
+        symbol: 'ACME',
+        ...overrides,
+      };
+      useCatalog([privateRow]);
+
+      const res = await request(app).post('/api/assets/from-coingecko').send({
+        coingeckoId: 'acme-coin',
+        symbol: 'ACME',
+        name: 'Acme Coin',
+        category: 'LIQUID_CRYPTO',
+        skipPriceFetch: true,
+      });
+
+      expect([res.status, res.body.id]).toEqual([200, 'private-row']);
+      expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+    });
+
+    it('keeps the priced-fund guard for an unpriced unit trust holding a native NAV', async () => {
+      const navFund = mockManualAsset({
+        id: 'nav-fund',
+        priceProvider: 'yahoo',
+        providerAssetId: null,
+        nativeCurrency: 'SGD',
+        currentPriceNative: 1.2345,
+      });
+      useCatalog([navFund]);
+
+      const res = await request(app).post('/api/assets/from-provider').send({
+        provider: 'yahoo',
+        providerAssetId: '0P0000XYZ.SI',
+        symbol: 'UTTEST',
+        name: 'Unit Trust Test',
+        category: 'UNIT_TRUST',
+        nativeCurrency: 'USD',
+        skipPriceFetch: true,
+      });
+
+      expect(res.status).toBe(409);
+      expect(mockPrisma.asset.update).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('manual and unit-trust creation with same-ticker assets', () => {
+  // ProShares lists an ETF as USD, the ticker fiat cash USD is stored under.
+  const usdEquity = { ...STABLECOINX, id: 'usd-etf', providerAssetId: 'USD', symbol: 'USD' };
+  const usdeFund = {
+    ...mockManualAsset(),
+    id: 'ut-usde-row',
+    providerAssetId: 'ut-usde',
+    symbol: 'USDE',
+    name: 'USDE Income Fund',
+  };
+
+  function useCatalog(catalog: Array<Record<string, unknown>>) {
+    mockPrisma.asset.findFirst.mockImplementation(findFirstIn(catalog));
+    mockPrisma.asset.create.mockImplementation(async ({ data }) => ({ id: 'created', ...data }));
+  }
+
+  const addFiatCash = (symbol: string) =>
+    request(app)
+      .post('/api/assets')
+      .send({
+        symbol,
+        name: `Cash ${symbol}`,
+        category: 'CASH',
+        priceProvider: 'manual',
+        nativeCurrency: symbol,
+        currentPriceUsd: 1,
+      });
+
+  const addUsdeFund = (nativeCurrency = 'USD') =>
+    request(app)
+      .post('/api/assets/unit-trust')
+      .send({ symbol: 'USDE', name: 'USDE Income Fund', nativeCurrency });
+
+  it('creates fiat cash USD although an equity already trades as USD', async () => {
+    useCatalog([usdEquity]);
+
+    const res = await addFiatCash('USD');
+
+    expect(res.status).toBe(201);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ symbol: 'USD', category: 'CASH' }),
+    });
+  });
+
+  it('still refuses a second asset with the same ticker in the same class', async () => {
+    useCatalog([usdEquity, { ...usdEquity, id: 'cash-usd', category: 'CASH' }]);
+
+    const res = await addFiatCash('USD');
+
+    expect(res.status).toBe(409);
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a unit trust whose code is also a stock ticker', async () => {
+    useCatalog([STABLECOINX]);
+
+    const res = await addUsdeFund();
+
+    expect(res.status).toBe(201);
+    expect(mockPrisma.asset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ symbol: 'USDE', category: 'UNIT_TRUST' }),
+    });
+  });
+
+  it('returns the existing fund, not a same-ticker stock, whatever the lookup order', async () => {
+    for (const catalog of [
+      [STABLECOINX, usdeFund],
+      [usdeFund, STABLECOINX],
+    ]) {
+      useCatalog(catalog);
+
+      const res = await addUsdeFund();
+
+      expect([res.status, res.body.id]).toEqual([200, 'ut-usde-row']);
+    }
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('reuses a fund found only by its code, never the same-ticker stock', async () => {
+    // Keyed by ISIN, so a request without one misses every identity lookup.
+    const isinFund = { ...usdeFund, id: 'isin-fund', providerAssetId: 'SG9999000001' };
+    for (const catalog of [
+      [STABLECOINX, isinFund],
+      [isinFund, STABLECOINX],
+    ]) {
+      useCatalog(catalog);
+
+      const res = await addUsdeFund();
+
+      expect([res.status, res.body.id]).toEqual([200, 'isin-fund']);
+    }
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('still refuses a fund code held by a different share class', async () => {
+    useCatalog([STABLECOINX, usdeFund]);
+
+    const res = await addUsdeFund('SGD');
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Existing symbol belongs to a different fund or share class');
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
   });
 });
 

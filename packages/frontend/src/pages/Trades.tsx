@@ -29,6 +29,10 @@ import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import {
   buildMonthlyReviews,
   buildTickerDossiers,
+  clearTickerParams,
+  findTickerDossier,
+  setTickerParams,
+  type TickerRef,
   type TradeLens,
 } from '@/components/trades/tradeLensModels';
 import {
@@ -82,14 +86,16 @@ export default function Trades() {
   const allTrades = useMemo(() => trades ?? [], [trades]);
   const tickerDossiers = useMemo(() => buildTickerDossiers(allTrades), [allTrades]);
   const monthlyReviews = useMemo(() => buildMonthlyReviews(allTrades), [allTrades]);
+  // `?ticker=` stays readable; `&asset=` picks one asset when two share the ticker.
   const tickerFilter = searchParams.get('ticker');
+  const tickerMatch = findTickerDossier(tickerDossiers, tickerFilter, searchParams.get('asset'));
   const activeLens: TradeLens =
     searchParams.get('view') === 'monthly' ? 'monthly' : tickerFilter ? 'ticker' : 'review';
-  const selectedTicker =
-    tickerDossiers.find((ticker) => ticker.symbol === tickerFilter) ?? tickerDossiers[0] ?? null;
+  const selectedTicker = tickerMatch ?? tickerDossiers[0] ?? null;
+  const tickerFilterLabel = tickerMatch?.label ?? tickerFilter;
   const { filteredTrades, openTrades, closedTrades, visibleTrades } = useMemo(() => {
     const filtered = tickerFilter
-      ? allTrades.filter((trade) => trade.asset.symbol === tickerFilter)
+      ? allTrades.filter((trade) => trade.assetId === tickerMatch?.assetId)
       : allTrades;
     const open = filtered.filter((trade) => trade.status === 'OPEN');
     const closed = filtered.filter((trade) => trade.status === 'CLOSED');
@@ -100,22 +106,22 @@ export default function Trades() {
       closedTrades: closed,
       visibleTrades: visible,
     };
-  }, [allTrades, tickerFilter, filter]);
+  }, [allTrades, tickerFilter, tickerMatch, filter]);
 
   const setLens = useCallback(
     (lens: TradeLens) => {
       const next = new URLSearchParams(searchParams);
       if (lens === 'monthly') {
         next.set('view', 'monthly');
-        next.delete('ticker');
+        clearTickerParams(next);
       } else if (lens === 'ticker') {
         next.delete('view');
         if (!next.get('ticker') && tickerDossiers[0]) {
-          next.set('ticker', tickerDossiers[0].symbol);
+          setTickerParams(next, tickerDossiers[0], tickerDossiers);
         }
       } else {
         next.delete('view');
-        next.delete('ticker');
+        clearTickerParams(next);
       }
       setSearchParams(next, { replace: false });
     },
@@ -123,19 +129,19 @@ export default function Trades() {
   );
 
   const setTickerLens = useCallback(
-    (symbol: string) => {
+    (ticker: TickerRef) => {
       const next = new URLSearchParams(searchParams);
       next.delete('view');
-      next.set('ticker', symbol);
+      setTickerParams(next, ticker, tickerDossiers);
       setSearchParams(next, { replace: false });
       setFilter('all');
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams, tickerDossiers]
   );
 
   const clearTickerLens = useCallback(() => {
     const next = new URLSearchParams(searchParams);
-    next.delete('ticker');
+    clearTickerParams(next);
     setSearchParams(next, { replace: false });
   }, [searchParams, setSearchParams]);
 
@@ -143,7 +149,7 @@ export default function Trades() {
     (tradeId: string) => {
       const next = new URLSearchParams(searchParams);
       next.delete('view');
-      next.delete('ticker');
+      clearTickerParams(next);
       setSearchParams(next, { replace: false });
       setFilter('all');
       setHighlightTradeId(tradeId);
@@ -322,7 +328,7 @@ export default function Trades() {
           />
 
           <TradeTapeSection
-            title={tickerFilter ? `${tickerFilter} Trades` : 'Ticker Trades'}
+            title={tickerFilterLabel ? `${tickerFilterLabel} Trades` : 'Ticker Trades'}
             subtitle={`${visibleTrades.length} shown`}
             trades={visibleTrades}
             isLoading={tradesPending}
@@ -331,7 +337,7 @@ export default function Trades() {
             filteredCount={filteredTrades.length}
             openCount={openTrades.length}
             closedCount={closedTrades.length}
-            tickerFilter={tickerFilter}
+            tickerFilter={tickerFilterLabel}
             onClearTicker={clearTickerLens}
             onEdit={setEditingTrade}
             onDelete={setDeletingTrade}

@@ -11,7 +11,11 @@ import {
   MAX_ASSET_SYMBOL_LENGTH,
   PriceProvider,
 } from '../lib/constants.js';
-import { externalProviderCategoryError, sameClassSymbolWhere } from '../lib/domain.js';
+import {
+  externalProviderCategoryError,
+  isUnpricedAsset,
+  sameClassSymbolWhere,
+} from '../lib/domain.js';
 import { requireAdminUser, requireUserHoldsAsset } from '../lib/authorization.js';
 import type { AssetPriceProvider, ProviderName } from '../services/providers/types.js';
 import { normalizeOfficialDomain } from '../services/news/sourceQuality.js';
@@ -169,8 +173,10 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createAssetSchema.parse(req.body);
 
+    // Same-class only: fiat cash USD must not be refused because an equity or
+    // coin already trades as USD. Provider identity is guarded by unique indexes.
     const existing = await prisma.asset.findFirst({
-      where: { symbol: data.symbol.toUpperCase() },
+      where: sameClassSymbolWhere(data.symbol, data.category),
     });
 
     if (existing) {
@@ -224,14 +230,41 @@ router.post('/from-coingecko', async (req, res, next) => {
     // Identity first, in from-provider's order: the provider pair (the row price
     // refresh reads), then the legacy coingeckoId column; the symbol fallback
     // may reuse only a same-class asset.
-    const existing =
+    const identityMatch =
       (await prisma.asset.findFirst({
         where: { priceProvider: PriceProvider.COINGECKO, providerAssetId: coingeckoId },
-      })) ??
-      (await prisma.asset.findFirst({ where: { coingeckoId } })) ??
+      })) ?? (await prisma.asset.findFirst({ where: { coingeckoId } }));
+    const existing =
+      identityMatch ??
       (await prisma.asset.findFirst({ where: sameClassSymbolWhere(symbol, category) }));
 
     if (existing) {
+      // A legacy row found by its coingeckoId column but holding no provider id is
+      // never priced; backfill the pair, as from-provider's metadata repair does.
+      // The pair lookup ran first and missed, so the pair is free.
+      if (
+        identityMatch?.priceProvider === PriceProvider.COINGECKO &&
+        !identityMatch.providerAssetId
+      ) {
+        const backfilled = await prisma.asset.update({
+          where: { id: identityMatch.id },
+          data: { providerAssetId: coingeckoId },
+        });
+        return res.json(backfilled);
+      }
+      // A symbol-matched row with no feed id is never priced; it takes this coin's
+      // identity instead. The identity lookups just missed, so the pair is free.
+      if (!identityMatch && canAdoptIdentity(existing, category)) {
+        const adopted = await prisma.asset.update({
+          where: { id: existing.id },
+          data: {
+            priceProvider: PriceProvider.COINGECKO,
+            providerAssetId: coingeckoId,
+            coingeckoId,
+          },
+        });
+        return res.json(adopted);
+      }
       return res.json(existing);
     }
 
@@ -310,6 +343,47 @@ function providerMetadataUpdates(
   return Object.keys(updates).length > 0 ? updates : null;
 }
 
+/**
+ * Whether a row found only by symbol may take the requested feed identity. It
+ * must be unpriced and of the requested category (an ANGEL or NFT row shares the
+ * crypto group with coins, but a coin feed would misvalue it), and must carry no
+ * identity or native price of its own: a coingeckoId or ISIN the identity lookups
+ * missed names a different instrument, and a native NAV pins the fund's currency.
+ */
+function canAdoptIdentity(
+  existing: {
+    priceProvider: string;
+    providerAssetId: string | null;
+    category: string;
+    coingeckoId: string | null;
+    isin?: string | null;
+    currentPriceNative?: number | null;
+  },
+  category: string
+): boolean {
+  return (
+    isUnpricedAsset(existing) &&
+    existing.category === category &&
+    existing.coingeckoId == null &&
+    existing.isin == null &&
+    existing.currentPriceNative == null
+  );
+}
+
+/** The fields a from-provider create would write for this identity, for an unpriced row. */
+function adoptedProviderIdentity(
+  data: z.infer<typeof fromProviderSchema>
+): Prisma.AssetUpdateInput {
+  const nativeCurrency = data.nativeCurrency?.trim().toUpperCase();
+  return {
+    priceProvider: data.provider,
+    providerAssetId: data.providerAssetId,
+    ...(data.provider === PriceProvider.COINGECKO && { coingeckoId: data.providerAssetId }),
+    ...(nativeCurrency && { nativeCurrency }),
+    ...(data.exchange !== undefined && { exchange: data.exchange ?? null }),
+  };
+}
+
 router.post('/from-provider', async (req, res, next) => {
   try {
     const data = fromProviderSchema.parse(req.body);
@@ -326,16 +400,31 @@ router.post('/from-provider', async (req, res, next) => {
     // (so a backfill never collides with the row that already holds the pair);
     // the symbol fallback may reuse only a same-class asset, so StablecoinX's
     // USDE equity never resolves to the Ethena USDe stablecoin.
-    const existing =
+    const identityMatch =
       (await prisma.asset.findFirst({
         where: { priceProvider: data.provider, providerAssetId: data.providerAssetId },
       })) ??
       (data.provider === PriceProvider.COINGECKO
         ? await prisma.asset.findFirst({ where: { coingeckoId: data.providerAssetId } })
-        : null) ??
+        : null);
+    const existing =
+      identityMatch ??
       (await prisma.asset.findFirst({ where: sameClassSymbolWhere(data.symbol, data.category) }));
 
     if (existing) {
+      // A symbol-matched row with no feed id (e.g. an equity an older trade import
+      // left on the coingecko default) is never priced; it takes the requested
+      // identity instead. The identity lookups just missed, so the pair is free.
+      if (!identityMatch && canAdoptIdentity(existing, data.category)) {
+        const adopted = await prisma.asset.update({
+          where: { id: existing.id },
+          data: adoptedProviderIdentity(data),
+        });
+        return res.json(adopted);
+      }
+      // A symbol match holding another coin's coingeckoId is a different
+      // instrument: repointing its feed would reprice every holder of that coin.
+      if (!identityMatch && existing.coingeckoId !== null) return res.json(existing);
       const updates = providerMetadataUpdates(existing, data);
       if (updates) {
         const updated = await prisma.asset.update({
@@ -548,15 +637,18 @@ router.post('/unit-trust', async (req, res, next) => {
     const provider: ProviderName = manager ? 'fund-manager' : data.yahooSymbol ? 'yahoo' : 'manual';
     const providerAssetId =
       manager?.isin ?? data.yahooSymbol?.toUpperCase() ?? slugifyUtId(data.symbol, data.isin);
-    const existing = await prisma.asset.findFirst({
-      where: {
-        OR: [
-          { priceProvider: provider, providerAssetId },
-          ...(data.isin ? [{ category: 'UNIT_TRUST', isin: data.isin.toUpperCase() }] : []),
-          { symbol: data.symbol.toUpperCase() },
-        ],
-      },
-    });
+    // Identity first (provider pair, then ISIN); a fund code may reuse only
+    // another unit trust, never a coin or stock that shares the ticker.
+    const existing =
+      (await prisma.asset.findFirst({ where: { priceProvider: provider, providerAssetId } })) ??
+      (data.isin
+        ? await prisma.asset.findFirst({
+            where: { category: AssetCategory.UNIT_TRUST, isin: data.isin.toUpperCase() },
+          })
+        : null) ??
+      (await prisma.asset.findFirst({
+        where: sameClassSymbolWhere(data.symbol, AssetCategory.UNIT_TRUST),
+      }));
     if (existing) {
       if (
         existing.category !== 'UNIT_TRUST' ||

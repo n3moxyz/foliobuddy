@@ -182,3 +182,58 @@ describe('PositionForm: server returns a different asset than was picked', () =>
     expect(toast.error).not.toHaveBeenCalled();
   });
 });
+
+describe('PositionForm: picking an unpriced equity', () => {
+  const deadNbis = catalogAsset({
+    id: 'dead-nbis',
+    symbol: 'NBIS',
+    name: 'Nebius Group',
+    category: 'EQUITY',
+    exchange: 'NASDAQ',
+  });
+  const liveNbis = catalogAsset({
+    id: 'live-nbis',
+    symbol: 'NBIS',
+    name: 'Nebius Group N.V.',
+    category: 'EQUITY',
+    priceProvider: 'yahoo',
+    providerAssetId: 'NBIS',
+  });
+
+  async function pickDeadNbis() {
+    catalog = [deadNbis];
+    renderForm();
+    await chooseSelectOption('Category', 'Equities');
+    const search = screen.getByRole('combobox', { name: /Asset/ });
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'NBIS' } });
+    fireEvent.click(await screen.findByRole('option', { name: /Nebius Group/ }));
+    await waitFor(() => expect(providerMutate).toHaveBeenCalled());
+  }
+
+  it('asks for the Yahoo identity only and moves to the live listing that holds it', async () => {
+    providerMutate.mockResolvedValue(liveNbis);
+
+    await pickDeadNbis();
+
+    // No stale exchange or currency: they would overwrite the shared live row.
+    expect(providerMutate).toHaveBeenCalledWith({
+      provider: 'yahoo',
+      providerAssetId: 'NBIS',
+      symbol: 'NBIS',
+      name: 'Nebius Group',
+      category: 'EQUITY',
+    });
+    expect(await screen.findByDisplayValue('NBIS - Nebius Group N.V.')).toBeInTheDocument();
+  });
+
+  it('keeps the picked row when the repair returns an unrelated asset', async () => {
+    providerMutate.mockResolvedValue(ethenaRow);
+
+    await pickDeadNbis();
+
+    await waitFor(() => expect(providerMutate).toHaveBeenCalledTimes(1));
+    expect(screen.getByDisplayValue('NBIS - Nebius Group')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(/Ethena/)).not.toBeInTheDocument();
+  });
+});

@@ -85,7 +85,7 @@ First-time Clerk users auto-create via `ensureUser` middleware.
 
 ### Snapshot System
 
-Portfolio snapshots: daily/weekly/monthly/YTD returns + BTC/ETH outperformance. `User.snapshotHour` (int 0–23) + `User.snapshotTimezone` (IANA, must format in `Intl`), default `5`/`Asia/Singapore`; Zod-validated `GET/PATCH /users/me/preferences`. Hourly `0 * * * *` UTC selects users due in that tick (`lib/snapshotSchedule.ts`; skipped DST hours → first valid instant); WEEKLY local Sunday, MONTHLY local 1st. `Snapshot.scheduledLocalDate` + unique `(userId, snapshotType, scheduledLocalDate)` guards cross-instance duplicates; keep local-day pre-check. Returns stored `percent × 100`. YTD anchor = current year's first snapshot (`timestamp >= Jan 1 UTC`, `portfolioService.getSummary()`), never unfiltered `findFirst orderBy:asc`. One-shot backfill: `scripts/backfill-equity-snapshots.ts`.
+Portfolio snapshots: daily/weekly/monthly/YTD returns + BTC/ETH outperformance. `User.snapshotHour` (int 0–23) + `User.snapshotTimezone` (IANA, must format in `Intl`), default `5`/`Asia/Singapore`; Zod-validated `GET/PATCH /users/me/preferences`. Hourly `0 * * * *` UTC selects users due in that tick (`lib/snapshotSchedule.ts`; skipped DST hours → first valid instant); WEEKLY local Sunday, MONTHLY local 1st. `Snapshot.scheduledLocalDate` + unique `(userId, snapshotType, scheduledLocalDate)` guards cross-instance duplicates; keep local-day pre-check. Returns stored `percent × 100`. `SnapshotPosition.assetId` (nullable, no FK) labels rows; older rows: symbol → owned position predating it → `category: null`. YTD anchor = current year's first snapshot (`timestamp >= Jan 1 UTC`, `portfolioService.getSummary()`), never unfiltered `findFirst orderBy:asc`. One-shot backfill: `scripts/backfill-equity-snapshots.ts`.
 
 ### Yahoo Search & Local-Currency Equities
 
@@ -161,7 +161,7 @@ Protected update/delete routes must filter by both `id` + `req.userId!`, never `
 
 Global catalog rows are shared (`src/lib/authorization.ts`): `PUT`/`DELETE /assets/:id` need an `ADMIN_USER_IDS` admin; per-user flows (`POST /assets/:id/refresh-price`, `PATCH /assets/:id/nav`) 403 unless user holds asset; `GET /assets/:id` has only user's positions.
 
-Tickers repeat across classes (USDE: StablecoinX equity, Ethena stablecoin): reuse catalog rows by identity, then same-group symbol (`sameClassSymbolWhere`/`Key`, `lib/domain.ts`); add no `{ symbol }`-only lookups.
+Tickers repeat across classes (USDE, BTC): reuse catalog rows by identity, then same-group symbol (`sameClassSymbolWhere`/`Key`, `lib/domain.ts`); add no `{ symbol }`-only lookups. Imports create rows via `importPriceFeed()` (no provider id = never priced); unpriced symbol matches adopt an identity only via `canAdoptIdentity()`; bare ticker = Yahoo id only if USD (`impliedYahooTicker`). Fix old rows: `scripts/repair-unpriced-equities.ts` (dry run first). UI keys by asset id, never ticker.
 
 ### WebSocket CORS
 
@@ -173,7 +173,7 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 
 ### Async Feedback (Toasts + Status)
 
-- sonner `AppToaster` (`components/layout/AppToaster.tsx`): raw `theme` (Sonner resolves `system` + tracks OS); Radix `DismissableLayerBranch` prevents toast clicks/focus closing any Radix layer. Pin `@radix-ui/react-dismissable-layer` to one Radix-wide version (`npm ls` after any Radix bump; `docs/DEPENDENCIES.md`).
+- sonner `AppToaster` (`components/layout/AppToaster.tsx`): raw `theme` (Sonner resolves `system` + tracks OS); Radix `DismissableLayerBranch` prevents toast clicks/focus closing any Radix layer. Keep its Radix pin: `docs/DEPENDENCIES.md`.
 - Toaster `className="pointer-events-auto"` counters modal body pointer lock; `top-center` below `sm`, `offset`/`mobileOffset` top 64px clears `h-14`. Modal FocusScope traps Tab: toasts unreachable by keyboard while modal open (pre-existing).
 - `MutationCache.onError` toasts every failed mutation; handlers must never fail silently (`console.error`-only catch = bug); copy/refresh/snapshot toast success + failure. Story: FORET.md.
 - Skeletons `role="status"` + sr-only text; inline errors `role="alert"` + `aria-invalid`/`aria-describedby`.
@@ -201,17 +201,17 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### Trades Review Lenses
 
-`Trades.tsx`: 3 lenses above shared Trade Tape: **Review** default (collapsed stats, All/Open/Closed table); **Ticker Dossier** (`?ticker=SOL`, chip clears param); **Monthly Postmortem** (`?view=monthly`, month summaries, edge tags, loss review, open watchlist). `useTrades()` fetches all once; local filters preserve summaries across tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` synced to seeds. `TradeForm` optional `trade` prop = edit; defaults entry 5 days ago, exit today. Tape rows clickable + keyboard-activatable (Clickable Rows). UI: `TradeLensViews.tsx`; aggregation: `tradeLensModels.ts`.
+`Trades.tsx`: 3 lenses above shared Trade Tape: **Review** default (collapsed stats, All/Open/Closed table); **Ticker Dossier** (`?ticker=SOL`, `&asset=` if shared; chip clears); **Monthly Postmortem** (`?view=monthly`, month summaries, edge tags, loss review, open watchlist). `useTrades()` fetches all once; local filters preserve summaries across tab switches. Keep demo `TradeAnalytics.bestTrade/worstTrade` synced to seeds. `TradeForm` optional `trade` prop = edit; defaults entry 5 days ago, exit today. Tape rows clickable + keyboard-activatable (Clickable Rows). UI: `TradeLensViews.tsx`; aggregation: `tradeLensModels.ts`.
 
 ### News Tab
 
-`/news` (`N`): owned (`custodyOf: null`) + open-trade holdings; holding page `?asset=<assetId>`. Details (sources, X posts, ranking, UI): [docs/NEWS.md](docs/NEWS.md). Binding rules:
+`/news` (`N`): owned (`custodyOf: null`) + open-trade holdings; holding page `?asset=<assetId>`. Details: [docs/NEWS.md](docs/NEWS.md). Binding rules:
 
-- Bound `Asset.name` before any regex (old rows predate the cap). Google News RSS (`.SI`) never fails the page: linear CDATA-safe parse, `news.google.com` links only; classify by `sourceUrl`, never enrich its redirects.
-- Uncached failures reject; partial refresh keeps successes; all-Yahoo-failed rejects so React Query keeps last-good headlines. `GET /news/asset/:assetId`: 404 unless an owned/open-trade news target.
+- Bound `Asset.name` before any regex. Google News RSS (`.SI`) never fails the page: linear CDATA-safe parse, `news.google.com` links only; tier by `sourceUrl`, never enrich its redirects.
+- Uncached failures reject; partial refresh keeps successes; all-Yahoo-failed rejects (React Query keeps last-good). `GET /news/asset/:assetId`: 404 unless an owned/open-trade news target.
 - Tiers: unknown = tier 4/null label, never "verified"; tier 1/primary ONLY from official domains (gov/allowlist or `Asset.officialDomain`), never publisher strings. API: labels only, never scores/weights/position values/provider tags (test-enforced); flag feedback logs story metadata only.
-- Stage 2 enrichment (optional `ANTHROPIC_API_KEY`): Top stories only, from the FETCHED article body (no text = no enrichment), pinned public-DNS fetches; success cache keyed by story id + sorted `affectedSymbols` (never cross holding contexts); low confidence never served.
-- X posts (optional `TWITTERAPI_IO_KEY` + `X_NEWS_SOURCES`): roster private (secret only; never name its accounts or quote their posts in this public repo); prod cron queries roster handles, never holdings; never primary/Top stories; roles rank only, never shown/sent; radar only on holding pages; demo/tests use X-invalid (hyphenated) handles.
+- Enrichment (optional `ANTHROPIC_API_KEY`): Top stories only, from the FETCHED article body, pinned public-DNS fetches; success cache keyed by story id + sorted `affectedSymbols`; low confidence never served.
+- X posts (optional `TWITTERAPI_IO_KEY` + `X_NEWS_SOURCES`): the roster is a secret; never name its accounts or quote their posts in this public repo.
 - No money → no privacy wiring; demo mocks every news route.
 
 ### Portfolio Hero Summary
@@ -326,11 +326,11 @@ See **Dev Demo Route** (mocked `/api`, `/dev/demo`); **Local QA Auth Bypass** (s
 
 - Backend Node: `https://api.foliobuddy.xyz`; static frontend: `https://foliobuddy.xyz` (rewrites API calls); Postgres private network. Backend auto-deploy: GitHub Actions, main pushes touching backend; frontend: Vercel. DB backups daily/weekly/monthly → private object storage.
 - `DEPLOYMENT.md`: public shape, checks, monitoring, smoke tests, backups; secrets in private ops notes. API-path changes: backend before frontend. Env-var workflow: `printf`, never `echo`.
-- Clerk Development `pk_test_`/`sk_test_` are the only keys that work on localhost; Production `pk_live_`/`sk_live_`, Frontend API `clerk.foliobuddy.xyz`. Users never transfer instances; `User.id` IS Clerk id. Switching needs `packages/backend/scripts/` mirror + remap; runbook/rollback: DEPLOYMENT.md "Auth (Clerk)" + `docs/solutions/2026-08-17-clerk-dev-to-prod-user-id-remap.md`. Backend GitHub secrets `CLERK_SECRET_KEY`/`CLERK_PUBLISHABLE_KEY`/`ADMIN_USER_IDS` → Coolify via `sync-backend-env.yml`; frontend key in Vercel.
+- Clerk: only Development `pk_test_`/`sk_test_` keys work on localhost; `User.id` IS the Clerk id, so users never transfer instances. Keys, secret sync (`sync-backend-env.yml`) + switching runbook: DEPLOYMENT.md "Auth (Clerk)" + `docs/solutions/2026-08-17-clerk-dev-to-prod-user-id-remap.md`.
 
 ### Copy/Paste JSON Import Pattern
 
-Portfolio/Trades/History share 1 pattern: per-row clipboard icon, Copy All header button, Import tab in Add/Log dialog — 1 JSON format for copy + import.
+Portfolio/Trades/History share 1 pattern: per-row clipboard icon, Copy All header button, Import tab in Add/Log dialog — 1 JSON format for copy + import. Bulk row errors: `userSafeErrorMessage()`, never raw Prisma text.
 
 ### Branding
 
@@ -355,7 +355,6 @@ See `PRODUCT.md` — source of truth for users, brand, aesthetic, design princip
 - npm 10.8.2/`uuid` override/ExcelJS rules: `docs/DEPENDENCIES.md`.
 - Sentry: unexpected 500s only, skip Zod 400s + AppErrors <500. Node `console.error` crashes on ZodError: integration tests MUST mock logger.
 - vitest `exclude: ['dist/**']` prevents duplicate runs after `npm run build`.
-- Mutating by `id` alone = security bug (Ownership Checks on Mutations).
 - `@foliobuddy/shared` imports MUST be declared in consumer `package.json`: hoisting masks omissions, Vercel `npm ci` rejects them; CI `npm ls --workspaces` guards.
 - Backend Dockerfile package-isolated: `src/lib/constants.ts`/`domain.ts` duplicate shared enums/helpers; `npm run domain:check` enforces parity.
-- Vercel `VITE_API_URL` needs full `/api/v1`; prod WebSocket needs `VITE_WS_BACKEND_URL`: `DEPLOYMENT.md`.
+- Prod WebSocket needs `VITE_WS_BACKEND_URL`: `DEPLOYMENT.md`.

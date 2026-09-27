@@ -2,6 +2,8 @@ import ExcelJS from 'exceljs';
 import { PrismaClient } from '@prisma/client';
 import * as path from 'path';
 import type { AssetCategory, SnapshotType, StorageType } from '../lib/constants.js';
+import { categoryGroup } from '../lib/constants.js';
+import { importPriceFeed, sameClassSymbolWhere } from '../lib/domain.js';
 
 const prisma = new PrismaClient();
 
@@ -80,22 +82,44 @@ async function ensureDefaultUser() {
   }
 }
 
+// Without a category (Trading sheet rows), a ticker is reused only when a single
+// asset class holds it; guessing between USDE the stablecoin and USDE the equity
+// would file the trade under the wrong asset.
+async function findBySymbol(symbol: string, category?: AssetCategory) {
+  if (category) {
+    return prisma.asset.findFirst({ where: sameClassSymbolWhere(symbol, category) });
+  }
+  const matches = await prisma.asset.findMany({ where: { symbol } });
+  if (new Set(matches.map((asset) => categoryGroup(asset.category))).size > 1) {
+    throw new Error(`${symbol} exists in more than one asset class; add it with a category`);
+  }
+  return matches[0] ?? null;
+}
+
 async function getOrCreateAsset(
   symbol: string,
   name?: string,
-  category: AssetCategory = 'LIQUID_CRYPTO'
+  requestedCategory?: AssetCategory
 ): Promise<string> {
   const upperSymbol = symbol.toUpperCase().trim();
+  const category = requestedCategory ?? 'LIQUID_CRYPTO';
+  const coingeckoId = COINGECKO_MAPPINGS[upperSymbol] ?? null;
+  const feed = importPriceFeed({ category, symbol: upperSymbol, coingeckoId });
 
-  let asset = await prisma.asset.findFirst({
-    where: { symbol: upperSymbol },
-  });
+  // Identity first; a ticker alone may reuse only a same-class asset (USDE is
+  // both a stablecoin and StablecoinX's equity).
+  let asset =
+    (feed.providerAssetId
+      ? await prisma.asset.findFirst({
+          where: { priceProvider: feed.priceProvider, providerAssetId: feed.providerAssetId },
+        })
+      : null) ??
+    (coingeckoId ? await prisma.asset.findUnique({ where: { coingeckoId } }) : null) ??
+    (await findBySymbol(upperSymbol, requestedCategory));
 
   if (asset) {
     return asset.id;
   }
-
-  const coingeckoId = COINGECKO_MAPPINGS[upperSymbol] ?? null;
 
   asset = await prisma.asset.create({
     data: {
@@ -103,6 +127,7 @@ async function getOrCreateAsset(
       name: name || upperSymbol,
       category,
       coingeckoId,
+      ...feed,
     },
   });
 
