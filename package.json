@@ -16,6 +16,7 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm run dev --workspace=@foliobuddy/backend",
     "dev:frontend": "npm run dev --workspace=@foliobuddy/frontend",
+    "sandbox": "node scripts/sandbox.mjs",
     "test": "npm run test --workspace=@foliobuddy/backend && npm run test --workspace=@foliobuddy/frontend",
     "test:e2e": "playwright test",
     "build": "npm run build --workspaces",
