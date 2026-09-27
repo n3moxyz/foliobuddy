@@ -17,6 +17,22 @@ describe('TTLCache', () => {
     expect(cache.get('key')).toBeUndefined();
   });
 
+  it('lets one entry expire sooner without shortening the others', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const cache = new TTLCache<string, number>(1_000);
+    cache.set('short', 1, 100);
+    cache.set('default', 2);
+
+    vi.setSystemTime(99);
+    expect(cache.get('short')).toBe(1);
+    vi.setSystemTime(100);
+    expect(cache.has('short')).toBe(false);
+    expect(cache.get('default')).toBe(2);
+    vi.setSystemTime(1_000);
+    expect(cache.has('default')).toBe(false);
+  });
+
   it('uses successful reads and overwrites to refresh LRU order', () => {
     const cache = new TTLCache<string, number>(10_000, 2);
     cache.set('a', 1);
