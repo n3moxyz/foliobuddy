@@ -41,7 +41,9 @@ In the Claude desktop app, `preview_start` with the `sandbox` configuration (`.c
 3. The collector's own log lines: started, paused, out of credits.
 4. The News feed serves X posts, and so does the busiest holding's page.
 
-It runs by itself after every successful **Deploy Backend** or **Sync Backend Env to Coolify** run, daily at 09:17 Singapore time, and on pull requests that change it. A failed scheduled run emails the owner, which is how a stalled collector (for example, out of twitterapi.io credits) gets noticed.
+It runs by itself after every successful **Deploy Backend** or **Sync Backend Env to Coolify** run and daily at 09:17 Singapore time. A failed scheduled run emails the owner, which is how a stalled collector (for example, out of twitterapi.io credits) gets noticed.
+
+It never runs on pull requests: that would hand production credentials to a pull request's unreviewed copy of the workflow. To try a change to the check, review the branch first, then run it by hand with `gh workflow run prod-check.yml --ref <branch>`.
 
 ```bash
 gh run list --workflow prod-check.yml --limit 5   # latest results
