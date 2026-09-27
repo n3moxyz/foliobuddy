@@ -205,12 +205,13 @@ Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fiel
 
 ### News Tab
 
-`/news` (shortcut `N`): owned (`custodyOf: null`) + open-trade holdings; per-holding page at `?asset=<assetId>`. How it works (queries, sources, endpoints, ranking, UI): [docs/NEWS.md](docs/NEWS.md). Binding rules:
+`/news` (`N`): owned (`custodyOf: null`) + open-trade holdings; holding page `?asset=<assetId>`. Details (sources, X posts, ranking, UI): [docs/NEWS.md](docs/NEWS.md). Binding rules:
 
 - Bound `Asset.name` before any regex (old rows predate the cap). Google News RSS (`.SI`) never fails the page: linear CDATA-safe parse, `news.google.com` links only; classify by `sourceUrl`, never enrich its redirects.
 - Uncached failures reject; partial refresh keeps successes; all-Yahoo-failed rejects so React Query keeps last-good headlines. `GET /news/asset/:assetId`: 404 unless an owned/open-trade news target.
 - Tiers: unknown = tier 4/null label, never "verified"; tier 1/primary ONLY from official domains (gov/allowlist or `Asset.officialDomain`), never publisher strings. API: labels only, never scores/weights/position values/provider tags (test-enforced); flag feedback logs story metadata only.
 - Stage 2 enrichment (optional `ANTHROPIC_API_KEY`): Top stories only, from the FETCHED article body (no text = no enrichment), pinned public-DNS fetches; success cache keyed by story id + sorted `affectedSymbols` (never cross holding contexts); low confidence never served.
+- X posts (optional `TWITTERAPI_IO_KEY` + `X_NEWS_SOURCES`): roster private (secret only; never name its accounts or quote their posts in this public repo); prod cron queries roster handles, never holdings; never primary/Top stories; roles rank only, never shown/sent; radar only on holding pages; demo/tests use X-invalid (hyphenated) handles.
 - No money → no privacy wiring; demo mocks every news route.
 
 ### Portfolio Hero Summary

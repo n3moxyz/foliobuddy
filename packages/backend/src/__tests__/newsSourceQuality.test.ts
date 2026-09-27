@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifySource,
+  classifyXSource,
   domainFromUrl,
   normalizeOfficialDomain,
   normalizePublisher,
@@ -127,5 +128,18 @@ describe('classifySource', () => {
   it('labels press-release wires distinctly without primary status', () => {
     const wire = classifySource('Business Wire', 'https://www.businesswire.com/news/x');
     expect(wire).toMatchObject({ tier: 3, label: 'Press release', primary: false });
+  });
+});
+
+describe('classifyXSource', () => {
+  it('ranks roster posts by role with no label to show, and never as primary', () => {
+    expect(classifyXSource('anchor')).toEqual({
+      tier: 3,
+      label: null,
+      primary: false,
+      denied: false,
+    });
+    expect(classifyXSource('corroboration')).toMatchObject({ tier: 4, label: null });
+    expect(classifyXSource('radar')).toMatchObject({ tier: 4, label: null, primary: false });
   });
 });

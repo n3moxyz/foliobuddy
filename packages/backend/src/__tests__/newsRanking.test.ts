@@ -6,7 +6,10 @@ import {
   sanitizePublishedAt,
   titleSignature,
   type NewsCandidate,
+  type NewsSourceItem,
 } from '../services/news/ranking.js';
+import type { NewsImportance } from '../services/news/materiality.js';
+import type { XSourceRole } from '../services/news/xSources.js';
 
 const NOW = Date.parse('2026-08-25T12:00:00.000Z');
 const HOUR = 60 * 60 * 1000;
@@ -28,7 +31,7 @@ function makeItem(
 }
 
 function candidate(
-  item: ProviderNewsItem,
+  item: NewsSourceItem,
   symbol: string | null,
   overrides: Partial<Pick<NewsCandidate, 'held' | 'weight' | 'assetId'>> = {}
 ): NewsCandidate {
@@ -461,5 +464,115 @@ describe('isTopStoryCandidate', () => {
 
     expect(aliased.corroboration).toBe(1);
     expect(isTopStoryCandidate(aliased)).toBe(false);
+  });
+});
+
+describe('X posts', () => {
+  function xItem(
+    id: string,
+    title: string,
+    role: XSourceRole,
+    hoursAgo: number,
+    maxImportance?: NewsImportance
+  ): NewsSourceItem {
+    const handle = `fx_${role}`;
+    return {
+      ...makeItem(id, title, `@${handle}`, hoursAgo, `https://x.com/${handle}/status/${id}`),
+      xRole: role,
+      maxImportance,
+    };
+  }
+
+  const EARNINGS = 'Micron beats estimates as HBM revenue triples';
+
+  it('ranks posts by roster role without ever exposing the role', () => {
+    const stories = rankStories(
+      [
+        candidate(xItem('1', 'Nvidia channel checks look healthy this month', 'anchor', 1), 'NVDA'),
+        candidate(xItem('2', 'Nvidia supply chain chatter from the desk', 'radar', 1), 'NVDA'),
+      ],
+      NOW
+    );
+
+    expect(
+      stories.map((s) => [
+        s.ranked.id,
+        s.ranked.sourceKind,
+        s.ranked.sourceTier,
+        s.ranked.sourceLabel,
+        s.ranked.primarySource,
+      ])
+    ).toEqual([
+      // The anchor outranks the radar post from the same hour, yet both read as
+      // unrated posts: roles shape ranking, never the API.
+      ['1', 'x_post', 4, null, false],
+      ['2', 'x_post', 4, null, false],
+    ]);
+    expect(stories.map((s) => s.xRole)).toEqual(['anchor', 'radar']);
+    expect(stories.flatMap((s) => s.ranked.rankingReasons)).toEqual([
+      'Held position',
+      'Held position',
+    ]);
+  });
+
+  it('never merges posts on a thin title signature (non-Latin text)', () => {
+    // Only "tsmc" and "60" survive as signature words in both posts.
+    const stories = rankStories(
+      [
+        candidate(xItem('x:k1', 'TSMC 2나노 수율 60% 돌파', 'anchor', 1), 'TSM'),
+        candidate(xItem('x:k2', 'TSMC 3나노 가격 60% 인상', 'anchor', 2), 'TSM'),
+      ],
+      NOW
+    );
+
+    expect(stories.map((s) => s.ranked.id).sort()).toEqual(['x:k1', 'x:k2']);
+  });
+
+  it("caps a post's importance by its role, keeping the event label", () => {
+    const [anchor] = rankStories([candidate(xItem('a', EARNINGS, 'anchor', 1, 'high'), 'MU')], NOW);
+    const [corroborating] = rankStories(
+      [candidate(xItem('c', EARNINGS, 'corroboration', 1, 'medium'), 'MU')],
+      NOW
+    );
+
+    expect(anchor.ranked).toMatchObject({ importance: 'high', eventType: 'earnings' });
+    expect(corroborating.ranked).toMatchObject({ importance: 'medium', eventType: 'earnings' });
+  });
+
+  it('never makes a post a Top story, even when two roster accounts relay it', () => {
+    // Two accounts relaying one headline cluster into a "corroborated" tier-3
+    // story, which clears the press bar; posts corroborate press, never replace it.
+    const relay = { ...xItem('x:b', EARNINGS, 'anchor', 2, 'high'), publisher: '@fx_other' };
+    const [story] = rankStories(
+      [
+        candidate(xItem('x:a', EARNINGS, 'anchor', 1, 'high'), 'MU'),
+        candidate({ ...relay, url: 'https://x.com/fx_other/status/b' }, 'MU'),
+      ],
+      NOW
+    );
+
+    expect(story.ranked).toMatchObject({ importance: 'high', sourceKind: 'x_post' });
+    expect(story.xRole).toBe('anchor');
+    expect(story.corroboration).toBe(2);
+    expect(isTopStoryCandidate(story)).toBe(false);
+  });
+
+  it('lets an earlier anchor post corroborate a specialist article that still represents it', () => {
+    const stories = rankStories(
+      [
+        candidate(xItem('x:post', EARNINGS, 'anchor', 3, 'high'), 'MU'),
+        candidate(makeItem('article', EARNINGS, 'Yahoo Finance', 1), 'MU'),
+      ],
+      NOW
+    );
+
+    expect(stories).toHaveLength(1);
+    expect(stories[0].ranked).toMatchObject({
+      id: 'article',
+      sourceKind: 'article',
+      sourceTier: 3,
+    });
+    expect(stories[0].corroboration).toBe(2);
+    expect(isTopStoryCandidate(stories[0])).toBe(true);
   });
 });

@@ -46,16 +46,21 @@ export interface ParsedStatementResponse {
 
 export type NewsSourceTier = 1 | 2 | 3 | 4;
 export type NewsImportance = 'high' | 'medium' | 'low';
+export type NewsSourceKind = 'article' | 'x_post';
 
 export interface NewsItem {
   id: string;
+  /** Headline, or the post's text for an X post */
   title: string;
+  /** Outlet name, or "@handle" for an X post */
   publisher: string;
   url: string;
   publishedAt: string | null;
+  /** Absent from a pre-X backend during the deploy window: treat as "article" */
+  sourceKind?: NewsSourceKind;
   /** 1 = primary/authoritative … 4 = low-confidence or unrated */
   sourceTier: NewsSourceTier;
-  /** Interpretable source label ("Primary source", "Trusted press", …); null when unrated */
+  /** Interpretable source label ("Primary source", "Trusted press", "Anchor source", …); null when unrated */
   sourceLabel: string | null;
   primarySource: boolean;
   /** Likely decision relevance from the headline — never verified truth */

@@ -108,7 +108,7 @@ function isUsableName(name: string, ticker: string): boolean {
   return name.length >= 3 && /\p{L}/u.test(name) && name.toUpperCase() !== ticker;
 }
 
-function distinctiveTerm(name: string): string | null {
+export function distinctiveTerm(name: string): string | null {
   const first = name.split(' ')[0]?.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '') ?? '';
   if (first.length < 3 || GENERIC_NAME_WORDS.has(first.toLowerCase())) return null;
   return first;

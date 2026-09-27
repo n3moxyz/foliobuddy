@@ -37,6 +37,8 @@ Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `mai
 | `ALLOWED_ORIGINS`       | `https://foliobuddy.xyz,http://localhost:4000` | Exact origin matching — no wildcards.                                                                                                                                                                      |
 | `RATE_LIMIT_MAX`        | (unset → 200)                                  | Override only for load testing.                                                                                                                                                                            |
 | `SENTRY_DSN`            | (optional)                                     |                                                                                                                                                                                                            |
+| `TWITTERAPI_IO_KEY`     | GitHub secret → Coolify (optional)             | twitterapi.io key for X posts in News (about $3/month at 15-minute polling). Without it (or `X_NEWS_SOURCES`) the collector stays off and `/news` is unchanged. Synced by `sync-backend-env.yml`.          |
+| `X_NEWS_SOURCES`        | GitHub secret → Coolify (optional)             | The private X roster, `handle:allowed_use,…`, built from the validatex CSV. Never commit it — this repo is public. Synced by `sync-backend-env.yml`.                                                       |
 | `NODE_ENV`              | `production`                                   | Required — gates the scheduler jobs (price/snapshot crons).                                                                                                                                                |
 | `PORT`                  | `4001`                                         |                                                                                                                                                                                                            |
 
@@ -56,6 +58,14 @@ Backend image builds run on the small API host. If a deployment fails with `exit
 gh secret set CLERK_SECRET_KEY            # interactive paste — never in shell history
 gh secret set CLERK_PUBLISHABLE_KEY --body "pk_live_..."
 gh secret set ADMIN_USER_IDS --body "user_xxx"
+gh workflow run sync-backend-env.yml
+```
+
+The optional X-news pair syncs the same way (unset secrets are skipped). Re-run the roster step whenever the validatex roster changes. It pipes the value through stdin so the roster never appears in a command line, and it warns on stderr (listing the rows) if a policy is new to `xSources.ts`:
+
+```bash
+gh secret set TWITTERAPI_IO_KEY           # interactive paste — never in shell history
+npm run -s news:x-sources --workspace=@foliobuddy/backend -- /absolute/path/to/verified-ai-roster.csv | gh secret set X_NEWS_SOURCES
 gh workflow run sync-backend-env.yml
 ```
 

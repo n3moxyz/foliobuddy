@@ -272,3 +272,27 @@ model Settings {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+// Posts from the private X source roster (X_NEWS_SOURCES), collected every 15
+// minutes for the News tab. Portfolio-independent: holdings are matched when
+// the feed is read, so collection never reveals what anyone holds. Pruned
+// after 60 days (the holding page's window).
+model XPost {
+  id              String   @id // X status id
+  authorHandle    String
+  // Lower-cased handle: X handles are case-insensitive, the roster may differ in case.
+  authorKey       String
+  text            String
+  quotedPostId    String?
+  quotedHandle    String?
+  quotedText      String?
+  // Links a non-X page — the "source-backed" signal for conditional roster roles.
+  hasExternalLink Boolean  @default(false)
+  cashtags        String[]
+  lang            String?
+  postedAt        DateTime
+  collectedAt     DateTime @default(now())
+
+  @@index([postedAt])
+  @@index([authorKey, postedAt])
+}

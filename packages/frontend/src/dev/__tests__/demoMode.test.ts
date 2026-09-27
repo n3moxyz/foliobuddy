@@ -126,6 +126,26 @@ describe('demo mode API mock', () => {
     ).toBe(true);
   });
 
+  it('mixes fictional X posts into the demo feed and dossiers, never Top stories', async () => {
+    type DemoItem = { id: string; sourceKind?: string; publisher: string; url: string };
+    const news = await readJson<{
+      topStories: DemoItem[];
+      crypto: Array<{ symbol: string; items: DemoItem[] }>;
+    }>(await demoRequest('/news'));
+    const aapl = await readJson<{ items: DemoItem[] }>(await demoRequest('/news/asset/aapl'));
+
+    const eth = news.crypto.find((group) => group.symbol === 'ETH');
+    expect(eth?.items[0].sourceKind).toBe('x_post');
+    expect(news.topStories.some((item) => item.sourceKind === 'x_post')).toBe(false);
+    const posts = [...(eth?.items ?? []), ...aapl.items].filter(
+      (item) => item.sourceKind === 'x_post'
+    );
+    expect(posts.length).toBeGreaterThanOrEqual(3);
+    // Hyphenated handles can't exist on X, so no real account is ever quoted.
+    expect(posts.every((item) => /^@demo-[a-z0-9-]+$/.test(item.publisher))).toBe(true);
+    expect(posts.every((item) => item.url.startsWith('https://example.com/'))).toBe(true);
+  });
+
   it('lists every news holding with story counts, including quiet and not-loaded ones', async () => {
     type DemoGroup = { assetId: string; items: unknown[]; storyCount?: number };
     const news = await readJson<{

@@ -11,13 +11,28 @@
 import type { ProviderNewsItem } from '../providers/types.js';
 import {
   classifySource,
+  classifyXSource,
   normalizePublisher,
   type SourceClassification,
   type SourceTier,
 } from './sourceQuality.js';
 import { classifyMateriality, type NewsEventType, type NewsImportance } from './materiality.js';
+import type { XSourceRole } from './xSources.js';
+
+/** A fetched item plus internal-only X metadata (never serialized to clients). */
+export interface NewsSourceItem extends ProviderNewsItem {
+  /** Set only on X posts: the author's roster role for this post. */
+  xRole?: XSourceRole;
+  /** Most importance the item may claim; X posts are capped by role and content. */
+  maxImportance?: NewsImportance;
+  /** What the headline classifier reads when it isn't the title: an X post's opening. */
+  classificationText?: string;
+}
+
+export type NewsSourceKind = 'article' | 'x_post';
 
 export interface RankedNewsItem extends ProviderNewsItem {
+  sourceKind: NewsSourceKind;
   sourceTier: SourceTier;
   sourceLabel: string | null;
   primarySource: boolean;
@@ -30,7 +45,7 @@ export interface RankedNewsItem extends ProviderNewsItem {
 }
 
 export interface NewsCandidate {
-  item: ProviderNewsItem;
+  item: NewsSourceItem;
   /** Asset id this fetch belongs to; null for macro-query results. Assets are
    *  keyed by id, never by ticker string — symbols are not unique. */
   assetId: string | null;
@@ -52,6 +67,8 @@ export interface RankedStory {
   ownerAssetIds: string[];
   /** Distinct publishers in the cluster — independent-ish corroboration. */
   corroboration: number;
+  /** Roster role when an X post represents the story; null for articles. */
+  xRole: XSourceRole | null;
 }
 
 export const NEWS_RANKING_CONFIG = {
@@ -70,6 +87,10 @@ export const NEWS_RANKING_CONFIG = {
   maxAgeDaysHighImportance: 30,
   futureSkewToleranceMs: 15 * 60 * 1000,
   clusterWindowMs: 72 * 60 * 60 * 1000,
+  // A post's signature can be thin: non-Latin text keeps only its Latin words
+  // and numbers ("TSMC 2나노 … 60%" is just "tsmc|60"), so two unrelated posts
+  // could merge. A post joins a signature cluster only with this many words.
+  minPostSignatureWords: 4,
 } as const;
 
 /** Per-call overrides — a single holding's page looks further back than the feed. */
@@ -178,7 +199,7 @@ interface Owner {
 }
 
 interface EnrichedArticle {
-  item: ProviderNewsItem;
+  item: NewsSourceItem;
   source: SourceClassification;
   importance: NewsImportance;
   eventType: NewsEventType;
@@ -228,22 +249,35 @@ function mergeClusters(target: Cluster, other: Cluster): void {
   target.macro = target.macro || other.macro;
 }
 
+const IMPORTANCE_ORDER: Record<NewsImportance, number> = { low: 0, medium: 1, high: 2 };
+
+function capImportance(importance: NewsImportance, cap: NewsImportance | undefined) {
+  return cap && IMPORTANCE_ORDER[importance] > IMPORTANCE_ORDER[cap] ? cap : importance;
+}
+
 function enrich(
   candidate: NewsCandidate,
   nowMs: number,
   officialDomains: readonly string[],
   options: RankOptions
 ): EnrichedArticle | null {
+  // X posts are rated by the author's roster role, never by publisher string.
   // Aggregator links (Google News) are opaque redirects: classify by the
   // publisher's own site, never by the redirect host.
-  const source = classifySource(
-    candidate.item.publisher,
-    candidate.item.sourceUrl ?? candidate.item.url,
-    officialDomains
-  );
+  const source = candidate.item.xRole
+    ? classifyXSource(candidate.item.xRole)
+    : classifySource(
+        candidate.item.publisher,
+        candidate.item.sourceUrl ?? candidate.item.url,
+        officialDomains
+      );
   if (source.denied) return null;
 
-  const { importance, eventType } = classifyMateriality(candidate.item.title);
+  const materiality = classifyMateriality(
+    candidate.item.classificationText ?? candidate.item.title
+  );
+  const { eventType } = materiality;
+  const importance = capImportance(materiality.importance, candidate.item.maxImportance);
   const publishedMs = sanitizePublishedAt(candidate.item.publishedAt, nowMs);
 
   // Configurable maximum age: hide stale stories unless they stay highly
@@ -293,6 +327,13 @@ function buildClusters(
   const merged: Cluster[] = [];
   for (const cluster of byUrl.values()) {
     const signature = titleSignature(cluster.articles[0].item.title);
+    const thinPost =
+      Boolean(cluster.articles[0].item.xRole) &&
+      signature.split('|').length < NEWS_RANKING_CONFIG.minPostSignatureWords;
+    if (thinPost) {
+      merged.push(cluster);
+      continue;
+    }
     const buckets = bySignature.get(signature) ?? [];
     const anchorTime = cluster.articles[0].publishedMs;
     const match = buckets.find((bucket) => {
@@ -314,11 +355,14 @@ function buildClusters(
   return merged;
 }
 
-/** Prefer primary source, then highest tier, then the earliest (original) copy. */
+/** Prefer primary source, then highest tier, then an article over a post, then the earliest copy. */
 function pickRepresentative(articles: EnrichedArticle[]): EnrichedArticle {
   return [...articles].sort((a, b) => {
     if (a.source.primary !== b.source.primary) return a.source.primary ? -1 : 1;
     if (a.source.tier !== b.source.tier) return a.source.tier - b.source.tier;
+    // Posts usually beat articles to the news; at equal tier the accountable
+    // article still represents the story (and keeps it Top-story eligible).
+    if (Boolean(a.item.xRole) !== Boolean(b.item.xRole)) return a.item.xRole ? 1 : -1;
     const aTime = a.publishedMs ?? Number.MAX_SAFE_INTEGER;
     const bTime = b.publishedMs ?? Number.MAX_SAFE_INTEGER;
     if (aTime !== bTime) return aTime - bTime;
@@ -396,7 +440,10 @@ function scoreCluster(cluster: Cluster, nowMs: number): RankedStory {
       url: rep.item.url,
       // Expose the sanitized cluster event time, never the raw provider string.
       publishedAt: eventPublishedMs === null ? null : new Date(eventPublishedMs).toISOString(),
-      sourceTier: rep.source.tier,
+      sourceKind: rep.item.xRole ? 'x_post' : 'article',
+      // A post's tier encodes its author's roster role, which is never shown
+      // or sent: every post reads as unrated (tier 4, null label).
+      sourceTier: rep.item.xRole ? 4 : rep.source.tier,
       sourceLabel: rep.source.label,
       primarySource: rep.source.primary,
       importance: rep.importance,
@@ -409,6 +456,7 @@ function scoreCluster(cluster: Cluster, nowMs: number): RankedStory {
     primaryAssetId: bestOwner?.assetId ?? null,
     ownerAssetIds: owners.map((owner) => owner.assetId),
     corroboration: publisherCount,
+    xRole: rep.item.xRole ?? null,
   };
 }
 
@@ -435,8 +483,10 @@ export function rankStories(
 
 // Top-stories bar: high materiality AND an evidentiary floor — tier 1–2
 // qualifies alone; tier 3 (a wide quality range) needs at least a second
-// distinct publisher on the same story; tier 4 never qualifies.
+// distinct publisher on the same story; tier 4 never qualifies. A story an X
+// post represents never qualifies: posts corroborate press, never replace it.
 export function isTopStoryCandidate(story: RankedStory): boolean {
+  if (story.ranked.sourceKind === 'x_post') return false;
   if (story.ranked.importance !== 'high') return false;
   if (story.ranked.sourceTier <= 2) return true;
   return story.ranked.sourceTier === 3 && story.corroboration >= 2;

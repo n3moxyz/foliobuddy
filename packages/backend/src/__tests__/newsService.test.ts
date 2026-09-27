@@ -6,12 +6,14 @@ const mocks = vi.hoisted(() => ({
   tradeFindMany: vi.fn(),
   getNews: vi.fn(),
   googleSearch: vi.fn(),
+  xPostFindMany: vi.fn(),
 }));
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
     position: { findMany: mocks.positionFindMany },
     trade: { findMany: mocks.tradeFindMany },
+    xPost: { findMany: mocks.xPostFindMany },
   },
 }));
 vi.mock('../services/priceService.js', () => ({
@@ -25,6 +27,7 @@ vi.mock('../services/news/googleNews.js', () => ({
 }));
 
 const { newsService, newsBucketFor } = await import('../services/newsService.js');
+const { clearXPostCache } = await import('../services/news/xPostMatching.js');
 
 const MACRO_QUERIES = ['^GSPC', '^TNX', 'DX-Y.NYB', 'Federal Reserve', 'inflation'];
 
@@ -692,6 +695,177 @@ describe('newsService.getAssetNews', () => {
     mocks.getNews.mockRejectedValue(new Error('Yahoo unavailable'));
 
     await expect(newsService.getAssetNews('user-1', 'asset-dbs')).rejects.toThrow(
+      'Yahoo unavailable'
+    );
+  });
+});
+
+describe('newsService with X roster posts', () => {
+  const NOW_MS = Date.parse('2026-08-25T12:00:00.000Z');
+  const nvda = makeAsset({
+    id: 'asset-nvda',
+    symbol: 'NVDA',
+    name: 'NVIDIA Corporation',
+    category: 'EQUITY',
+    priceProvider: 'yahoo',
+    providerAssetId: 'NVDA',
+  });
+
+  function xPost(id: string, text: string, hoursAgo: number, handle = 'fx_anchor') {
+    return {
+      id,
+      authorHandle: handle,
+      authorKey: handle,
+      text,
+      quotedPostId: null,
+      quotedText: null,
+      hasExternalLink: false,
+      cashtags: [],
+      postedAt: new Date(NOW_MS - hoursAgo * 60 * 60 * 1000),
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW_MS));
+    vi.stubEnv('X_NEWS_SOURCES', 'fx_anchor:anchor_source,fx_radar:radar_only');
+    clearXPostCache();
+    mocks.positionFindMany.mockResolvedValue([makePosition(nvda, { marketValueUsd: 5000 })]);
+    mocks.tradeFindMany.mockResolvedValue([]);
+    mocks.googleSearch.mockResolvedValue([]);
+    mocks.getNews.mockImplementation(async (query: string) =>
+      query === 'NVDA'
+        ? [
+            customItem(
+              'press',
+              'Nvidia shares slip in quiet trading',
+              'Reuters',
+              '2026-08-25T06:00:00.000Z'
+            ),
+          ]
+        : []
+    );
+    mocks.xPostFindMany.mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
+
+  it('adds matched posts to the holding feed, capped per holding, never as Top stories', async () => {
+    mocks.xPostFindMany.mockResolvedValue([
+      xPost('1', 'Nvidia wins a $5 billion supply deal with a hyperscaler', 1),
+      xPost('2', 'Nvidia Rubin orders keep climbing into next year', 2),
+      xPost('3', 'Nvidia raises the Rubin build plan by a third', 3),
+      xPost('4', 'Nvidia channel checks look healthy this month', 4),
+      xPost('5', 'Nvidia radar chatter never reaches the main feed', 1, 'fx_radar'),
+    ]);
+
+    const result = await newsService.getPortfolioNews('user-1');
+
+    const group = result.equities[0];
+    expect(group.items.map((i) => i.id)).toEqual(['x:1', 'press', 'x:2', 'x:3']);
+    expect(group.storyCount).toBe(4);
+    expect(group.items[0]).toMatchObject({
+      sourceKind: 'x_post',
+      publisher: '@fx_anchor',
+      url: 'https://x.com/fx_anchor/status/1',
+      // Roles rank but are never sent: every post reads as unrated.
+      sourceTier: 4,
+      sourceLabel: null,
+      primarySource: false,
+      importance: 'high',
+      affectedSymbols: ['NVDA'],
+    });
+    expect(group.items[1].sourceKind).toBe('article');
+    expect(result.topStories).toEqual([]);
+    expect(mocks.xPostFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { postedAt: { gte: new Date(NOW_MS - 14 * 86400000) } } })
+    );
+  });
+
+  it('keeps chatter from corroboration accounts out of the feed but on the holding page', async () => {
+    vi.stubEnv('X_NEWS_SOURCES', 'fx_anchor:anchor_source,fx_corro:corroboration_source');
+    mocks.xPostFindMany.mockResolvedValue([
+      xPost('1', 'Nvidia channel checks look healthy this month', 1, 'fx_corro'),
+      xPost('2', 'Nvidia wins a $5 billion supply deal with a hyperscaler', 2, 'fx_corro'),
+      xPost('3', 'Nvidia Rubin orders keep climbing into next year', 3),
+    ]);
+
+    const feed = await newsService.getPortfolioNews('user-1');
+    const page = await newsService.getAssetNews('user-1', 'asset-nvda');
+
+    // Low-importance corroboration (x:1) never reaches the feed; an anchor's
+    // post (x:3) and a corroborated event (x:2, capped at medium) do.
+    expect(feed.equities[0].items.map((i) => i.id).sort()).toEqual(['press', 'x:2', 'x:3']);
+    expect(feed.equities[0].items.find((i) => i.id === 'x:2')?.importance).toBe('medium');
+    expect(page.items.map((i) => i.id)).toContain('x:1');
+  });
+
+  it('never exposes X internals in the response', async () => {
+    mocks.xPostFindMany.mockResolvedValue([
+      { ...xPost('1', 'Nvidia raises the Rubin build plan by a third', 1), quotedText: 'Q' },
+    ]);
+
+    const serialized = JSON.stringify(await newsService.getPortfolioNews('user-1'));
+
+    expect(serialized).toContain('x:1');
+    for (const internal of [
+      'xRole',
+      'maxImportance',
+      'classificationText',
+      'cashtags',
+      'quotedText',
+      'authorKey',
+      'Anchor source',
+      'Corroboration',
+      'Radar',
+    ]) {
+      expect(serialized).not.toContain(internal);
+    }
+  });
+
+  it('keeps the feed when stored posts cannot be read', async () => {
+    mocks.xPostFindMany.mockRejectedValue(new Error('db down'));
+
+    const result = await newsService.getPortfolioNews('user-1');
+
+    expect(result.equities[0].items.map((i) => i.id)).toEqual(['press']);
+  });
+
+  it("shows radar posts on a holding's page, capped at 20, newest first", async () => {
+    mocks.xPostFindMany.mockResolvedValue(
+      Array.from({ length: 25 }, (_, i) =>
+        xPost(
+          String(100 + i),
+          `Nvidia supply chain note ${100 + i} from the desk`,
+          i + 1,
+          i % 2 === 0 ? 'fx_anchor' : 'fx_radar'
+        )
+      )
+    );
+
+    const result = await newsService.getAssetNews('user-1', 'asset-nvda');
+
+    const posts = result.items.filter((i) => i.sourceKind === 'x_post');
+    expect(posts).toHaveLength(20);
+    // Anchors (even ids) outrank radar, so all 13 anchor posts survive the cap.
+    const anchorIds = Array.from({ length: 13 }, (_, i) => `x:${100 + 2 * i}`);
+    expect(posts.map((i) => i.id)).toEqual(expect.arrayContaining(anchorIds));
+    const times = result.items.map((i) => Date.parse(i.publishedAt!));
+    expect(times).toEqual([...times].sort((a, b) => b - a));
+    expect(mocks.xPostFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { postedAt: { gte: new Date(NOW_MS - 60 * 86400000) } } })
+    );
+  });
+
+  it('still rejects a holding page when every headline source failed, posts or not', async () => {
+    mocks.getNews.mockRejectedValue(new Error('Yahoo unavailable'));
+    mocks.xPostFindMany.mockResolvedValue([xPost('1', 'Nvidia raises the build plan', 1)]);
+
+    await expect(newsService.getAssetNews('user-1', 'asset-nvda')).rejects.toThrow(
       'Yahoo unavailable'
     );
   });

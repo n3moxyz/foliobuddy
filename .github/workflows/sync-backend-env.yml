@@ -7,6 +7,8 @@ name: Sync Backend Env to Coolify
 #   gh secret set CLERK_SECRET_KEY            # interactive paste, never in shell history
 #   gh secret set CLERK_PUBLISHABLE_KEY --body "pk_live_..."
 #   gh workflow run sync-backend-env.yml
+# Optional X posts in News: TWITTERAPI_IO_KEY and X_NEWS_SOURCES (the private
+# roster — never committed; see DEPLOYMENT.md "Backend secrets sync").
 on:
   workflow_dispatch:
 
@@ -37,6 +39,8 @@ jobs:
           ADMIN_USER_IDS: ${{ secrets.ADMIN_USER_IDS }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+          TWITTERAPI_IO_KEY: ${{ secrets.TWITTERAPI_IO_KEY }}
+          X_NEWS_SOURCES: ${{ secrets.X_NEWS_SOURCES }}
         run: |
           base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
           auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
@@ -70,6 +74,8 @@ jobs:
           upsert AGENT_USER_ID "$ADMIN_USER_IDS"
           upsert CLERK_SECRET_KEY "$CLERK_SECRET_KEY"
           upsert CLERK_PUBLISHABLE_KEY "$CLERK_PUBLISHABLE_KEY"
+          upsert TWITTERAPI_IO_KEY "$TWITTERAPI_IO_KEY"
+          upsert X_NEWS_SOURCES "$X_NEWS_SOURCES"
 
       - name: Trigger Coolify Deploy
         timeout-minutes: 2

@@ -27,6 +27,7 @@ function makeStory(id: string): RankedNewsItem {
     publisher: 'Reuters',
     url: `https://reuters.com/${id}`,
     publishedAt: '2026-08-25T06:00:00.000Z',
+    sourceKind: 'article',
     sourceTier: 2,
     sourceLabel: 'Trusted press',
     primarySource: false,
