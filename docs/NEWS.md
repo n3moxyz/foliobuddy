@@ -24,7 +24,7 @@ Detail for the News tab. The binding rules are summarized in [CLAUDE.md](../CLAU
 
 - `cleanCompanyName()` strips legal suffixes ("Singapore Telecommunications Limited" returned 0 Yahoo headlines; without "Limited", 13). It reads only the first 200 characters: suffix stripping is quadratic on adversarial names (a 64k-character name took 1.6s of event loop before the bound), and rows written before the ingestion cap (`MAX_ASSET_NAME_LENGTH`, enforced on every asset-writing route) can be longer.
 - The gate fails open when no result in a response carries any ticker tag, so a Yahoo response-shape change degrades to unfiltered headlines, not an empty feed.
-- Company-name headline matches exist because some local listings are tagged with their US ADR (Toyota as `TM`, not `7203.T`). Generic first words ("Singapore", "United") never count.
+- Company-name headline matches exist because some local listings are tagged with their US ADR (Toyota as `TM`, not `7203.T`). Generic first words ("Singapore", "Taiwan", "United") never count. Where that leaves a listing nameless and its coverage never carries the local ticker, `NEWS_NAME_ALIASES` supplies the names headlines use: 2330.TW matches "TSMC" and "Taiwan Semiconductor" (Yahoo tags that coverage `TSM`, never `2330.TW`; accepting the `TSM` tag instead would admit every multi-stock listicle).
 
 `googleNews.ts` reads Google News RSS (Singapore English edition, exact-phrase name, `when:14d` for the feed, `when:60d` for a holding page). It is an unofficial feed, so it never fails the page:
 

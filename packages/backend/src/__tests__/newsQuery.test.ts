@@ -149,6 +149,21 @@ describe('newsQueryPlan', () => {
     expect(plan?.googleQuery).toBe('"Singapore Telecommunications"');
   });
 
+  it("never treats a place name as TSMC's name, using the names headlines use instead", () => {
+    const plan = newsQueryPlan(
+      asset({
+        symbol: '2330.TW',
+        name: 'Taiwan Semiconductor Manufacturing Company Limited',
+        providerAssetId: '2330.TW',
+      })
+    );
+    expect(plan).toEqual({
+      yahooQuery: 'Taiwan Semiconductor Manufacturing',
+      relevance: { tickers: ['2330.TW'], titleTerms: ['TSMC', 'Taiwan Semiconductor'] },
+      googleQuery: null,
+    });
+  });
+
   it('falls back to the ticker when the stored name is unusable', () => {
     expect(
       newsQueryPlan(asset({ symbol: 'D05.SI', name: 'D05.SI', providerAssetId: 'D05.SI' }))
@@ -185,6 +200,28 @@ describe('relevance gate', () => {
   it('rejects untagged stories that only contain the term inside another word', () => {
     expect(isRelevantNewsItem(item('Europe car registrations rise', ['TSLA']), gate)).toBe(false);
     expect(isRelevantNewsItem(item('Toyotafication of supply chains', ['X']), gate)).toBe(false);
+  });
+
+  it('drops "Taiwan" headlines for 2330.TW but keeps coverage naming TSMC', () => {
+    const plan = newsQueryPlan(
+      asset({
+        symbol: '2330.TW',
+        name: 'Taiwan Semiconductor Manufacturing Company Limited',
+        providerAssetId: '2330.TW',
+      })
+    );
+    // Yahoo tags TSMC coverage with the TSM ADR, never 2330.TW.
+    const stories = [
+      item('Taiwan exports climb for a sixth month'),
+      item('Taiwan Semiconductor raises wafer prices by up to 6%', ['TSM']),
+      item('TSMC slips 1% as packaging moves toward suppliers', ['TSM']),
+      item('5 dividend growth stocks to buy as yields rise', ['TSM', 'AMGN']),
+    ];
+
+    expect(filterRelevantNews(stories, plan!.relevance).map((i) => i.title)).toEqual([
+      'Taiwan Semiconductor raises wafer prices by up to 6%',
+      'TSMC slips 1% as packaging moves toward suppliers',
+    ]);
   });
 
   it('filters when the provider sent tags, and fails open when it sent none at all', () => {

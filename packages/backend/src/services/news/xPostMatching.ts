@@ -101,7 +101,6 @@ const X_ALIASES: ReadonlyMap<string, Partial<XMatchPlan>> = new Map([
 // headline list newsQuery already applies). The capital rule doesn't help at
 // the start of a sentence: "Target raised to $200…" is not about Target Corp.
 const X_GENERIC_TERMS = new Set([
-  'taiwan',
   'advanced',
   'applied',
   'micro',
