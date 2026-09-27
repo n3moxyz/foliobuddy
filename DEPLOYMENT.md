@@ -52,7 +52,7 @@ Backend image builds run on the small API host. If a deployment fails with `exit
 
 ### Backend secrets sync (`sync-backend-env.yml`)
 
-`ADMIN_USER_IDS`, `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` live as GitHub Actions secrets and are pushed into the Coolify app by the manual workflow, which then redeploys and health-checks. `ADMIN_USER_IDS` is required and must contain exactly one owner; the workflow mirrors it into `AGENT_USER_ID`. Either Clerk key may be omitted when rotating only the other value.
+`ADMIN_USER_IDS`, `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` live as GitHub Actions secrets and are pushed into the Coolify app by the manual workflow, which then redeploys, waits for that exact deployment to finish, and health-checks. `ADMIN_USER_IDS` is required and must contain exactly one owner; the workflow mirrors it into `AGENT_USER_ID`. Either Clerk key may be omitted when rotating only the other value.
 
 ```bash
 gh secret set CLERK_SECRET_KEY            # interactive paste — never in shell history

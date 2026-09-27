@@ -8,6 +8,9 @@ name: Production Check
 # Credentials are read from Coolify at run time (as the repair workflow does)
 # and masked. This repo is public, so every step prints counts and ages only:
 # never handles, post text, holdings, values, or secret values.
+# No pull_request trigger, ever: it would run a PR's edited copy of this file
+# with production credentials before review. To try a change, review the
+# branch, then run it by hand: `gh workflow run prod-check.yml --ref <branch>`.
 on:
   workflow_dispatch:
   workflow_run:
@@ -17,9 +20,6 @@ on:
     # Daily at 09:17 Singapore time. A failed scheduled run emails the owner,
     # which is how a stalled X collector (say, out of credits) surfaces.
     - cron: '17 1 * * *'
-  pull_request:
-    # Exercise the check itself whenever it changes.
-    paths: ['.github/workflows/prod-check.yml']
 
 permissions:
   contents: read
@@ -31,11 +31,8 @@ concurrency:
 jobs:
   check:
     name: Portfolio, X collection, news
-    # Fork pull requests get no secrets; a failed deploy has nothing to check.
-    if: >-
-      (github.event_name != 'pull_request' ||
-       github.event.pull_request.head.repo.full_name == github.repository) &&
-      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    # A failed deploy or env sync has nothing new to check.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -58,8 +55,9 @@ jobs:
               echo "::error::$key is not set in Coolify"
               exit 1
             fi
-            echo "::add-mask::$value"
-            echo "$key=$value" >> "$GITHUB_ENV"
+            # printf, never echo, for env values: nothing in the value is reinterpreted.
+            printf '::add-mask::%s\n' "$value"
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
           done
 
       # Each check runs even when an earlier one failed, so one run shows every problem.
@@ -183,10 +181,6 @@ jobs:
           set -euo pipefail
           code=$(curl -sS -o news.json -w '%{http_code}' --max-time 120 \
             "$APP_URL/api/v1/agent/news" -H "x-api-key: $AGENT_API_KEY")
-          if [ "$code" = 404 ] && [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            echo "::warning::/agent/news is not deployed yet; this check runs for real after merge"
-            exit 0
-          fi
           if [ "$code" != 200 ]; then
             echo "::error::Agent news feed returned HTTP $code"
             exit 1
