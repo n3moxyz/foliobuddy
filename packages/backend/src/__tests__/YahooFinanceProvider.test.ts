@@ -498,4 +498,42 @@ describe('YahooFinanceProvider', () => {
     expect(retried).toHaveLength(1);
     expect(searchMock).toHaveBeenCalledTimes(2);
   });
+
+  it('keeps an empty news answer only briefly, so one Yahoo blip cannot pin an empty page', async () => {
+    // Yahoo once answered "Solana" with nothing (2026-09-27); cached for the
+    // full 15 minutes, that left SOL's holding page without articles.
+    vi.useFakeTimers();
+    try {
+      searchMock.mockResolvedValueOnce({ quotes: [], news: [] }).mockResolvedValueOnce({
+        quotes: [],
+        news: [
+          {
+            uuid: 'sol-1',
+            title: 'Solana ETF filings pile up',
+            publisher: 'Wire',
+            link: 'https://example.com/sol-1',
+            providerPublishTime: new Date('2026-09-27T14:00:00.000Z'),
+            relatedTickers: ['SOL-USD'],
+          },
+        ],
+      });
+      const provider = new YahooFinanceProvider();
+
+      expect(await provider.getNews('Solana', 30)).toEqual([]);
+      // Still cached for a moment, so a burst of page loads doesn't re-ask Yahoo.
+      expect(await provider.getNews('Solana', 30)).toEqual([]);
+      expect(searchMock).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(60_000);
+      expect(await provider.getNews('Solana', 30)).toHaveLength(1);
+      expect(searchMock).toHaveBeenCalledTimes(2);
+
+      // A real answer keeps the full 15-minute cache.
+      vi.advanceTimersByTime(10 * 60_000);
+      expect(await provider.getNews('Solana', 30)).toHaveLength(1);
+      expect(searchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

@@ -23,6 +23,10 @@ const HISTORICAL_CACHE_DURATION_MS = 30 * 60 * 1000;
 const HISTORICAL_CACHE_MAX_ENTRIES = 50;
 const SEARCH_CACHE_DURATION_MS = 10 * 60 * 1000;
 const NEWS_CACHE_DURATION_MS = 15 * 60 * 1000;
+// Yahoo occasionally answers a well-covered query ("Solana") with no news at
+// all. Kept this long, one such blip heals on the next load instead of
+// pinning an article-less holding page for the full TTL.
+const EMPTY_NEWS_CACHE_DURATION_MS = 60 * 1000;
 const NEWS_CACHE_MAX_ENTRIES = 300;
 const BATCH_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 8000;
@@ -525,9 +529,13 @@ export class YahooFinanceProvider implements AssetPriceProvider {
           relatedTickers: relatedTickersOf(raw.relatedTickers),
         });
       }
-      // Empty-but-successful responses are cached; failures are not, so a
-      // transient Yahoo outage doesn't pin an empty feed for the full TTL.
-      this.newsCache.set(cacheKey, items);
+      // Failures are never cached and empty answers only briefly, so neither
+      // a Yahoo outage nor a stray empty response pins an empty feed.
+      this.newsCache.set(
+        cacheKey,
+        items,
+        items.length > 0 ? NEWS_CACHE_DURATION_MS : EMPTY_NEWS_CACHE_DURATION_MS
+      );
       return items;
     } catch (err) {
       logger.warn(

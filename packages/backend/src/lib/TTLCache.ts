@@ -36,7 +36,8 @@ export class TTLCache<K, V> {
     return true;
   }
 
-  set(key: K, value: V): void {
+  /** `ttlMs` overrides the cache's TTL for this one entry. */
+  set(key: K, value: V, ttlMs = this.ttlMs): void {
     this.purgeExpired();
 
     if (this.store.has(key)) {
@@ -45,7 +46,7 @@ export class TTLCache<K, V> {
 
     this.store.set(key, {
       value,
-      expiresAt: Date.now() + this.ttlMs,
+      expiresAt: Date.now() + ttlMs,
     });
 
     this.evictIfNeeded();

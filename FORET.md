@@ -2447,3 +2447,13 @@ What we learned:
 - **A fresh worktree has nothing**: no `.env`, sometimes no `node_modules`. A launcher that installs, finds a database, migrates and seeds is what turns "test it" into a one-liner in every session. Its first run also found that this Mac uses Homebrew Postgres rather than Docker, so it now uses whichever is there.
 - **Give agents a pre-approved road to production.** Reading production directly needs a human's OK each time. A checked-in workflow that runs by itself after deploys moves that approval into one code review; the agent then only reads a public, counts-only result.
 - **A realistic sandbox pays for itself on day one.** Its first run showed SOL's holding page with X posts but no articles, while BTC, ETH and NVDA each had about thirty. The demo's mocks could never have shown that; it is logged as a follow-up.
+
+### The Page That Remembered One Bad Answer (September 2026)
+
+**Symptom:** the new sandbox showed Solana's holding page with its X posts but no articles, twice in a row, while Bitcoin, Ethereum and NVIDIA pages each had about thirty. The feed's SOL card had articles at the same moment.
+
+**Investigation:** the obvious suspects were wrong. Yahoo tagged Solana coverage `SOL-USD` correctly (29 of 30 items), and a larger request did not strip the tags. A burst test first seemed to show Yahoo throttling with empty answers, but that run had changed the query text; the same queries back to back never came back empty. Thirty spaced samples were all healthy, and twenty minutes later the page itself had 29 articles again. The one bad Yahoo answer could not be caught again, but what made it stick was in our own code: `getNews` cached every successful answer for 15 minutes, including an empty one. That comment even claimed the rule prevented pinning; it only did for errors.
+
+**Fix:** an empty Yahoo answer is cached for one minute instead of fifteen (`TTLCache.set` takes a per-entry TTL), so a stray blip heals on the next load while a truly quiet query still is not re-asked on every request. Relevance did not change, so ordinary-word coins like "Near" still show nothing unrelated. `YahooFinanceProvider.test.ts` pins the rule.
+
+**Lesson:** when a third party returns "success, but nothing", treat it as weaker evidence than real data and let it expire sooner. And don't mistake a changed experiment for a reproduced one.
