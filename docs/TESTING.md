@@ -51,4 +51,4 @@ gh workflow run prod-check.yml                    # run it now
 
 It gets in without a sign-in the way `repair-agent-portfolio-owner.yml` does: it reads `DATABASE_URL` and `AGENT_API_KEY` from Coolify at run time and masks them. The `/api/v1/agent/*` routes (`portfolio`, `news`, `news/asset/:assetId`) accept that key in place of a Clerk session. Actions logs are public for this repo, so every step prints counts and ages only: no handles, post text, holdings, values or secrets.
 
-To let an agent start runs without a permission prompt, add `Bash(gh workflow run prod-check.yml)` to the `permissions.allow` list in your Claude Code settings. Reading results needs no rule.
+Most runs start by themselves, so an agent usually only reads results. To let it also start one without a permission prompt, add `Bash(gh workflow run prod-check.yml:*)` to the `permissions.allow` list in your Claude Code settings.
