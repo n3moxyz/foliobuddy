@@ -27,6 +27,12 @@ import {
 } from '../lib/domain.js';
 import { parseBoundedIntegerQuery } from '../lib/queryParams.js';
 import { navTransaction } from '../services/unitTrustNavService.js';
+import { projectNativeCosts } from '../services/nativeCostService.js';
+import { nativeCostFields, nativeCostChange, validateNativeCost } from '../lib/nativeCost.js';
+import {
+  reconcileNativeCosts,
+  restoreNativeCosts,
+} from '../services/nativeReconciliationService.js';
 import {
   FUND_MANAGER_SOURCES,
   findFundManagerSource,
@@ -38,6 +44,7 @@ const createPositionSchema = z.object({
   assetId: z.string().min(1),
   quantity: z.number().positive(),
   avgCostUsd: z.number().min(0).default(0),
+  ...nativeCostFields,
   storageType: z.enum(STORAGE_TYPES).default(StorageType.WALLET),
   storageLocation: z.string().optional(),
   notes: z.string().optional(),
@@ -52,6 +59,8 @@ const positionDeltaSchema = z.object({
   totalCostUsd: z.number().finite().min(0).optional(),
   // Reduce only: sale proceeds. Never touches cost basis; credited to the linked cash pile.
   proceedsUsd: z.number().finite().min(0).optional(),
+  nativeAmount: z.number().finite().min(0).optional(),
+  fxRateToUsd: z.number().finite().positive().optional(),
 });
 
 const updatePositionSchema = createPositionSchema.partial().extend({
@@ -232,7 +241,7 @@ router.get('/', async (req, res, next) => {
       take: 500,
     });
 
-    res.json(positions);
+    res.json(await projectNativeCosts(positions));
   } catch (error) {
     next(error);
   }
@@ -242,6 +251,36 @@ router.get('/summary', async (req, res, next) => {
   try {
     const summary = await portfolioService.getSummary(req.userId!);
     res.json(summary);
+  } catch (error) {
+    next(error);
+  }
+});
+
+const nativeReconciliationRequest = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('preview'), input: z.unknown() }),
+  z.object({
+    action: z.literal('apply'),
+    input: z.unknown(),
+    expectedState: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+  z.object({ action: z.literal('restore-preview'), backup: z.unknown() }),
+  z.object({ action: z.literal('restore'), backup: z.unknown() }),
+]);
+router.get('/native-cost-capabilities', (_req, res) => {
+  res.json({ supported: true });
+});
+router.post('/native-cost-reconciliation', async (req, res, next) => {
+  try {
+    const data = nativeReconciliationRequest.parse(req.body);
+    const result =
+      data.action === 'preview' || data.action === 'apply'
+        ? await reconcileNativeCosts(
+            req.userId!,
+            data.input,
+            data.action === 'apply' ? data.expectedState : undefined
+          )
+        : await restoreNativeCosts(req.userId!, data.backup, data.action === 'restore');
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -314,6 +353,7 @@ const bulkImportPositionSchema = z.object({
   }),
   quantity: z.number().positive(),
   avgCostUsd: z.number().min(0).default(0),
+  ...nativeCostFields,
   storageType: z.enum(STORAGE_TYPES).default(StorageType.CEX),
   storageLocation: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -502,6 +542,8 @@ router.post('/bulk', async (req, res, next) => {
               ? await tx.asset.findUnique({ where: { id: asset.id } })
               : asset;
           if (!pricedAsset) throw new AppError('Asset not found', 404);
+          validateNativeCost(pos, pricedAsset);
+          await projectNativeCosts([{ ...pos, asset: pricedAsset }]);
           const valueFields = calculatePositionValue({
             quantity: pos.quantity,
             avgCostUsd: pos.avgCostUsd,
@@ -514,6 +556,8 @@ router.post('/bulk', async (req, res, next) => {
               assetId: asset.id,
               quantity: pos.quantity,
               avgCostUsd: pos.avgCostUsd,
+              avgCostNative: pos.avgCostNative,
+              costCurrency: pos.costCurrency,
               storageType: pos.storageType,
               storageLocation: pos.storageLocation?.trim() || null,
               notes: pos.notes || null,
@@ -649,6 +693,10 @@ router.delete('/:id/history/:historyId', async (req, res, next) => {
           entryToCancel.position.assetId !== entryToCancel.history.assetId ||
           !numbersClose(entryToCancel.position.quantity, entryToCancel.history.nextQuantity) ||
           !numbersClose(entryToCancel.position.avgCostUsd, entryToCancel.history.nextAvgCostUsd) ||
+          (entryToCancel.position.avgCostNative ?? null) !==
+            (entryToCancel.history.nextAvgCostNative ?? null) ||
+          (entryToCancel.position.costCurrency ?? null) !==
+            (entryToCancel.history.costCurrency ?? null) ||
           !numbersClose(currentTotalCostUsd, entryToCancel.history.nextTotalCostUsd)
         ) {
           throw new AppError('Position has changed since this history entry was recorded', 409);
@@ -669,6 +717,11 @@ router.delete('/:id/history/:historyId', async (req, res, next) => {
           data: {
             quantity: entryToCancel.history.previousQuantity,
             avgCostUsd: entryToCancel.history.previousAvgCostUsd,
+            avgCostNative: entryToCancel.history.previousAvgCostNative,
+            costCurrency:
+              entryToCancel.history.previousAvgCostNative != null
+                ? entryToCancel.history.costCurrency
+                : null,
             ...valueFields,
           },
           include: {
@@ -700,7 +753,7 @@ router.delete('/:id/history/:historyId', async (req, res, next) => {
       return updatedRequestedPosition;
     });
 
-    res.json(position);
+    res.json((await projectNativeCosts([position]))[0]);
   } catch (error) {
     next(error);
   }
@@ -719,7 +772,7 @@ router.get('/:id', async (req, res, next) => {
       throw new AppError('Position not found', 404);
     }
 
-    res.json(position);
+    res.json((await projectNativeCosts([position]))[0]);
   } catch (error) {
     next(error);
   }
@@ -739,6 +792,8 @@ router.post('/', async (req, res, next) => {
     if (!asset) {
       throw new AppError('Asset not found', 404);
     }
+    validateNativeCost(data, asset);
+    await projectNativeCosts([{ ...data, asset }]);
 
     const group = categoryGroup(asset.category);
     const categoryPositions = await prisma.position.findMany({
@@ -796,6 +851,7 @@ router.post('/', async (req, res, next) => {
       const fundingDelta = fundingCashPosition
         ? buildFundingCashDelta(fundingCashPosition, purchaseCostUsd)
         : null;
+      const initialOperationId = data.avgCostNative != null && fundingDelta ? randomUUID() : null;
 
       const createdPosition = await tx.position.create({
         data: {
@@ -803,6 +859,8 @@ router.post('/', async (req, res, next) => {
           assetId: data.assetId,
           quantity: data.quantity,
           avgCostUsd: data.avgCostUsd,
+          avgCostNative: data.avgCostNative,
+          costCurrency: data.costCurrency,
           storageType: data.storageType,
           storageLocation,
           notes: data.notes,
@@ -813,6 +871,31 @@ router.post('/', async (req, res, next) => {
           asset: true,
         },
       });
+
+      if (data.avgCostNative != null && data.costCurrency) {
+        await tx.positionHistory.create({
+          data: {
+            userId: req.userId!,
+            positionId: createdPosition.id,
+            assetId: data.assetId,
+            mode: 'add',
+            quantity: data.quantity,
+            costBasisUsd: purchaseCostUsd,
+            previousQuantity: 0,
+            previousAvgCostUsd: 0,
+            previousTotalCostUsd: 0,
+            nextQuantity: data.quantity,
+            nextAvgCostUsd: data.avgCostUsd,
+            nextTotalCostUsd: purchaseCostUsd,
+            costCurrency: data.costCurrency,
+            costBasisNative: data.quantity * data.avgCostNative,
+            previousAvgCostNative: 0,
+            nextAvgCostNative: data.avgCostNative,
+            fxRateToUsd: data.avgCostNative > 0 ? data.avgCostUsd / data.avgCostNative : null,
+            operationId: initialOperationId,
+          },
+        });
+      }
 
       if (fundingCashPosition && fundingDelta) {
         const nextValueFields = calculatePositionValue({
@@ -844,6 +927,7 @@ router.post('/', async (req, res, next) => {
             nextQuantity: fundingDelta.result.nextQuantity,
             nextAvgCostUsd: fundingDelta.result.nextAvgCostUsd,
             nextTotalCostUsd: fundingDelta.result.nextTotalCostUsd,
+            operationId: initialOperationId,
           },
         });
       }
@@ -851,7 +935,7 @@ router.post('/', async (req, res, next) => {
       return createdPosition;
     });
 
-    res.status(201).json(position);
+    res.status(201).json((await projectNativeCosts([position]))[0]);
   } catch (error) {
     next(error);
   }
@@ -933,14 +1017,37 @@ router.put('/:id', async (req, res, next) => {
     });
     const assetChanged =
       positionData.assetId !== undefined && positionData.assetId !== existing.assetId;
+    if (assetChanged && (existing.avgCostNative != null || positionData.avgCostNative != null)) {
+      throw new AppError('Reconcile native costs before changing the asset identity', 400);
+    }
+    const nativeChange = nativeCostChange(existing, positionData, positionDelta);
+    if (
+      !positionDelta &&
+      existing.avgCostNative != null &&
+      (!numbersClose(quantity, existing.quantity) ||
+        !numbersClose(avgCostUsd, existing.avgCostUsd)) &&
+      positionData.avgCostNative === undefined
+    ) {
+      throw new AppError('Native cost must be supplied when correcting this position', 400);
+    }
+    await projectNativeCosts([
+      { ...existing, ...nativeChange.position, quantity, avgCostUsd, asset: valueAsset },
+    ]);
+    validateNativeCost({ ...existing, ...nativeChange.position }, valueAsset);
     const manualTotalsChanged =
       !positionDelta &&
       (positionData.quantity !== undefined ||
         positionData.avgCostUsd !== undefined ||
+        positionData.avgCostNative !== undefined ||
+        positionData.costCurrency !== undefined ||
         assetChanged) &&
       (assetChanged ||
         !numbersClose(quantity, existing.quantity) ||
-        !numbersClose(avgCostUsd, existing.avgCostUsd));
+        !numbersClose(avgCostUsd, existing.avgCostUsd) ||
+        (positionData.avgCostNative !== undefined &&
+          positionData.avgCostNative !== existing.avgCostNative) ||
+        (positionData.costCurrency !== undefined &&
+          positionData.costCurrency !== existing.costCurrency));
 
     if (positionDelta) {
       if (positionData.quantity === undefined || positionData.avgCostUsd === undefined) {
@@ -976,6 +1083,7 @@ router.put('/:id', async (req, res, next) => {
 
     const updateData = {
       ...positionData,
+      ...nativeChange.position,
       storageLocation:
         positionData.storageLocation !== undefined
           ? positionData.storageLocation?.trim() || null
@@ -989,7 +1097,12 @@ router.put('/:id', async (req, res, next) => {
     // the same stale snapshot and the second write would silently drop the first.
     const position = await prisma.$transaction(
       async (tx) => {
-        if (valueAsset.category === 'UNIT_TRUST' || existing.asset.category === 'UNIT_TRUST') {
+        if (
+          valueAsset.category === 'UNIT_TRUST' ||
+          existing.asset.category === 'UNIT_TRUST' ||
+          existing.avgCostNative != null ||
+          positionData.avgCostNative != null
+        ) {
           const current = await tx.position.findFirst({
             where: { id: req.params.id, userId: req.userId! },
             include: { asset: true },
@@ -999,6 +1112,8 @@ router.put('/:id', async (req, res, next) => {
             current.assetId !== existing.assetId ||
             current.quantity !== existing.quantity ||
             current.avgCostUsd !== existing.avgCostUsd ||
+            current.avgCostNative !== existing.avgCostNative ||
+            current.costCurrency !== existing.costCurrency ||
             current.custodyOf !== existing.custodyOf
           ) {
             throw new AppError('Position changed while saving; refresh and try again', 409);
@@ -1062,6 +1177,7 @@ router.put('/:id', async (req, res, next) => {
               mode: positionDelta.mode,
               quantity: positionDelta.quantity,
               costBasisUsd,
+              ...nativeChange.history,
               previousQuantity: existing.quantity,
               previousAvgCostUsd: existing.avgCostUsd,
               previousTotalCostUsd,
@@ -1086,6 +1202,11 @@ router.put('/:id', async (req, res, next) => {
               mode: 'reset',
               quantity: updatedPosition.quantity,
               costBasisUsd: nextTotalCostUsd,
+              ...nativeChange.history,
+              costBasisNative:
+                updatedPosition.avgCostNative != null
+                  ? updatedPosition.quantity * updatedPosition.avgCostNative
+                  : null,
               previousQuantity: existing.quantity,
               previousAvgCostUsd: existing.avgCostUsd,
               previousTotalCostUsd,
@@ -1118,7 +1239,7 @@ router.put('/:id', async (req, res, next) => {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
 
-    res.json(position);
+    res.json((await projectNativeCosts([position]))[0]);
   } catch (error) {
     next(error);
   }

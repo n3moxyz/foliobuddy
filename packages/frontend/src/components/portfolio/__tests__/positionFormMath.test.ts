@@ -11,6 +11,21 @@ import {
 } from '../positionFormMath';
 
 describe('positionFormMath', () => {
+  it('preserves native average precision and ignores current FX in a native sale preview', () => {
+    expect(Number(calculateAverageCostInput('total', '3', '1000', ''))).toBeCloseTo(1000 / 3, 10);
+    const preview = buildPositionDeltaPreview({
+      currentQuantity: 10,
+      currentAvgCostUsd: 10,
+      currentAvgCostNative: 30000.123456,
+      deltaQuantity: '3',
+      deltaTotalCostInput: '',
+      mode: 'reduce',
+      costCurrency: 'KRW',
+      usdFxRates: { KRW: 1200 },
+    });
+    expect(preview?.nextAvgCost).toBeCloseTo(30000.123456, 8);
+    expect(preview?.nextQuantity).toBe(7);
+  });
   it('derives average and total cost display values', () => {
     expect(calculateAverageCostInput('total', '4', '100', '')).toBe('25.00');
     expect(calculateAverageCostInput('avg', '4', '100', '30')).toBe('30');

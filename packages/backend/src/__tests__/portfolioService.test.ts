@@ -122,23 +122,27 @@ describe('portfolioService', () => {
     ]);
   });
 
-  it('scopes performer queries to owned positions and the requested bounded result count', async () => {
-    mocks.positionFindMany.mockResolvedValue([position({ marketValueUsd: 100 })]);
+  it('ranks owned performers by current P&L and honors the requested result count', async () => {
+    mocks.positionFindMany.mockResolvedValue([
+      position({ assetId: 'winner-small', unrealizedPnL: 10 }),
+      position({ assetId: 'loser', unrealizedPnL: -50 }),
+      position({ assetId: 'winner-large', unrealizedPnL: 80 }),
+    ]);
 
-    await portfolioService.getTopPerformers('user-1', 3);
+    expect((await portfolioService.getTopPerformers('user-1', 1)).map((p) => p.assetId)).toEqual([
+      'winner-large',
+    ]);
     expect(mocks.positionFindMany).toHaveBeenLastCalledWith({
-      where: { userId: 'user-1', custodyOf: null, unrealizedPnL: { gt: 0 } },
+      where: { userId: 'user-1', custodyOf: null },
       include: { asset: true },
-      orderBy: { unrealizedPnL: 'desc' },
-      take: 3,
     });
 
-    await portfolioService.getWorstPerformers('user-1', 4);
+    expect((await portfolioService.getWorstPerformers('user-1', 4)).map((p) => p.assetId)).toEqual([
+      'loser',
+    ]);
     expect(mocks.positionFindMany).toHaveBeenLastCalledWith({
-      where: { userId: 'user-1', custodyOf: null, unrealizedPnL: { lt: 0 } },
+      where: { userId: 'user-1', custodyOf: null },
       include: { asset: true },
-      orderBy: { unrealizedPnL: 'asc' },
-      take: 4,
     });
   });
 });

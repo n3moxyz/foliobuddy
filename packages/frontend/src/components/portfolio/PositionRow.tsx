@@ -117,6 +117,7 @@ export const PositionRow = React.memo(function PositionRow({
     valuesHidden,
   });
   const localAvgCost = localPriceLabel({
+    nativePrice: position.avgCostNative,
     usdPrice: position.avgCostUsd,
     nativeCurrency: position.asset.nativeCurrency,
     displayCurrency: currency,

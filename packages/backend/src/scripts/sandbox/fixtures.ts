@@ -113,6 +113,10 @@ export const SANDBOX_ASSETS: SandboxAsset[] = [
     nativeCurrency: 'SGD',
     exchange: 'SES',
   }),
+  equity('hynix', '000660.KS', 'SK Hynix Inc.', 90000 / 1380, {
+    nativeCurrency: 'KRW',
+    exchange: 'KSC',
+  }),
   asset('fund', {
     symbol: 'SBXGEF',
     name: 'Sandbox Global Equity Fund',
@@ -132,6 +136,8 @@ export interface SandboxPosition {
   assetId: string;
   quantity: number;
   avgCostUsd: number;
+  avgCostNative?: number;
+  costCurrency?: string;
   storageType: StorageType;
   storageLocation: string;
   custodyOf: string | null;
@@ -166,6 +172,11 @@ export const SANDBOX_POSITIONS: SandboxPosition[] = [
   position('msft', 30, 305, StorageType.BROKERAGE, 'IBKR'),
   position('googl', 45, 118, StorageType.BROKERAGE, 'Tiger'),
   position('tsmc', 600, 18, StorageType.BROKERAGE, 'IBKR'),
+  {
+    ...position('hynix', 30, 40, StorageType.BROKERAGE, 'IBKR'),
+    avgCostNative: 60000.123456,
+    costCurrency: 'KRW',
+  },
   position('dbs', 900, 21, StorageType.BROKERAGE, 'UOB KH'),
   position('fund', 8_000, 0.98, StorageType.BROKERAGE, 'FSMOne'),
   position('sgd', 25_000, 1 / SGD_PER_USD, StorageType.BANK, 'DBS'),

@@ -2457,3 +2457,31 @@ What we learned:
 **Fix:** an empty Yahoo answer is cached for one minute instead of fifteen (`TTLCache.set` takes a per-entry TTL), so a stray blip heals on the next load while a truly quiet query still is not re-asked on every request. Relevance did not change, so ordinary-word coins like "Near" still show nothing unrelated. `YahooFinanceProvider.test.ts` pins the rule.
 
 **Lesson:** when a third party returns "success, but nothing", treat it as weaker evidence than real data and let it expire sooner. And don't mistake a changed experiment for a reproduced one.
+
+### Native Costs That Stay Put (September 2026)
+
+Foreign-stock costs looked badly wrong against the broker because we had saved
+only USD. Translating those old dollars at today's FX made the local labels look
+like original purchase prices. Keeping the USD average after a sale did not solve
+that missing native information.
+
+Positions can now retain a native weighted average. Purchases weight native
+amounts; partial sales keep that average exactly. The portfolio translates it at
+current, dated FX for the main USD cost and position P&L. The original USD ledger
+stays available, including copy/import and old history. An unknown historical FX
+rate remains unknown.
+
+The IBKR repair screen previews the exact rows, downloads a private backup and
+checks the same records again before an atomic native-only update. Its restore
+path refuses later edits. Verified order histories retain gross prices, full
+statement charges and order IDs, while basis follows the selected portfolio
+average. A statement's remaining tax lots and fee treatment can be different;
+we must preserve that distinction instead of forcing one number into both roles.
+
+Real Postgres regression checks cover the migration, apply, unchanged USD ledger,
+ownership, concurrent-edit refusal and exact restoration. The sandbox includes a
+fictional KRW position for sale/edit checks. Cash debt and full-close archival are
+separate existing contracts. Local checks and a prepared capture are preparation;
+the live portfolio is repaired only after deployment, preview, backup, apply and
+independent readback. The [runbook](docs/solutions/2026-09-30-native-cost-reconciliation.md)
+documents those boundaries.

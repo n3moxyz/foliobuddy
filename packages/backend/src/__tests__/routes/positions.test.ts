@@ -23,6 +23,7 @@ const mockPrisma = {
     create: vi.fn(),
     deleteMany: vi.fn(),
   },
+  fxRate: { findMany: vi.fn() },
 };
 
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }));
@@ -470,6 +471,135 @@ describe('bulk unit-trust identity', () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe('native position writes and undo', () => {
+  let stored: ReturnType<typeof mockPosition> & {
+    avgCostNative?: number | null;
+    costCurrency?: string | null;
+  };
+  let savedHistory: Record<string, any>;
+  beforeEach(() => {
+    stored = mockPosition({
+      quantity: 10,
+      avgCostUsd: 20,
+      avgCostNative: 30000.123456,
+      costCurrency: 'KRW',
+      asset: mockAsset({ category: 'EQUITY', nativeCurrency: 'KRW', currentPriceUsd: 30 }),
+    });
+    mockPrisma.fxRate.findMany.mockResolvedValue([
+      { toCcy: 'KRW', rate: 1200, timestamp: new Date() },
+    ]);
+    mockPrisma.position.findFirst.mockImplementation(async () => stored);
+    mockPrisma.position.update.mockImplementation(
+      async ({ data }) => (stored = { ...stored, ...data })
+    );
+    mockPrisma.positionHistory.create.mockImplementation(
+      async ({ data }) => (savedHistory = { id: 'native-history', ...data })
+    );
+    mockPrisma.positionHistory.deleteMany.mockResolvedValue({ count: 1 });
+  });
+
+  it('keeps native and recorded USD averages after a sale and restores both on undo', async () => {
+    const sold = await request(app)
+      .put('/api/positions/position-1')
+      .send({
+        quantity: 7,
+        avgCostUsd: 20,
+        positionDelta: {
+          mode: 'reduce',
+          quantity: 3,
+          proceedsUsd: 100,
+          nativeAmount: 120000,
+          fxRateToUsd: 1 / 1200,
+        },
+      });
+    expect(sold.status).toBe(200);
+    expect(sold.body).toMatchObject({
+      quantity: 7,
+      avgCostNative: 30000.123456,
+      recordedAvgCostUsd: 20,
+    });
+    expect(sold.body.avgCostUsd).toBeCloseTo(30000.123456 / 1200, 10);
+    expect(savedHistory).toMatchObject({
+      previousAvgCostUsd: 20,
+      nextAvgCostUsd: 20,
+      previousAvgCostNative: 30000.123456,
+      nextAvgCostNative: 30000.123456,
+      proceedsNative: 120000,
+    });
+    expect(stored.avgCostUsd).toBe(20);
+    mockPrisma.positionHistory.findFirst.mockResolvedValue(savedHistory);
+    const undone = await request(app).delete('/api/positions/position-1/history/native-history');
+    expect(undone.status).toBe(200);
+    expect(undone.body).toMatchObject({
+      quantity: 10,
+      avgCostNative: 30000.123456,
+      recordedAvgCostUsd: 20,
+    });
+  });
+
+  it('rejects an old-client purchase and a mismatched captured conversion before writing', async () => {
+    for (const delta of [
+      { mode: 'add', quantity: 5, totalCostUsd: 100 },
+      { mode: 'add', quantity: 5, totalCostUsd: 100, nativeAmount: 150000, fxRateToUsd: 1 / 1200 },
+    ]) {
+      const response = await request(app)
+        .put('/api/positions/position-1')
+        .send({ quantity: 15, avgCostUsd: 20, positionDelta: delta });
+      expect(response.status).toBe(400);
+    }
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+    expect(mockPrisma.positionHistory.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a concurrent native edit instead of overwriting the other correction', async () => {
+    mockPrisma.position.findFirst
+      .mockResolvedValueOnce(stored)
+      .mockResolvedValueOnce({ ...stored, avgCostNative: 31000 });
+    const response = await request(app)
+      .put('/api/positions/position-1')
+      .send({ avgCostNative: 32000, costCurrency: 'KRW' });
+    expect(response.status).toBe(409);
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
+
+  it('allows a verified native correction while retaining the original USD ledger', async () => {
+    stored = { ...stored, avgCostNative: null, costCurrency: null };
+    const response = await request(app)
+      .put('/api/positions/position-1')
+      .send({ avgCostNative: 30000.123456, costCurrency: 'KRW' });
+    expect(response.status).toBe(200);
+    expect(stored.avgCostUsd).toBe(20);
+    expect(savedHistory).toMatchObject({
+      mode: 'reset',
+      previousAvgCostUsd: 20,
+      nextAvgCostUsd: 20,
+      previousAvgCostNative: null,
+      nextAvgCostNative: 30000.123456,
+    });
+  });
+
+  it('does not save a native correction when its display FX is unavailable', async () => {
+    mockPrisma.fxRate.findMany.mockResolvedValue([]);
+    const response = await request(app)
+      .put('/api/positions/position-1')
+      .send({ avgCostNative: 32000, costCurrency: 'KRW' });
+    expect(response.status).toBe(503);
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+    expect(mockPrisma.positionHistory.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects partially clearing the native pair without writing', async () => {
+    for (const data of [
+      { avgCostNative: null, costCurrency: 'KRW' },
+      { avgCostNative: 30000, costCurrency: null },
+    ]) {
+      const response = await request(app).put('/api/positions/position-1').send(data);
+      expect(response.status).toBe(400);
+    }
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /api/positions', () => {

@@ -56,6 +56,8 @@ export function PositionDeltaEditor({
   canSubmit,
 }: PositionDeltaEditorProps) {
   const formatPositionQuantity = (value: number) => formatQuantity(value, position.asset.category);
+  const formatAverageCost = (value: number) =>
+    value.toFixed(position.avgCostNative != null ? 4 : value >= 1000 ? 0 : 2);
   const isAdd = deltaMode === 'add';
   // Reduce's amount pair is optional; the helper paragraph says so and is wired
   // to both inputs so screen readers announce it with the field.
@@ -225,7 +227,7 @@ export function PositionDeltaEditor({
               {formatPositionQuantity(preview.currentQuantity)}
             </div>
             <div className="text-right font-mono text-muted-foreground">
-              {preview.currentAvgCost.toFixed(preview.currentAvgCost >= 1000 ? 0 : 2)}
+              {formatAverageCost(preview.currentAvgCost)}
             </div>
             <div className="text-right font-mono text-muted-foreground">
               {preview.currentTotalCost.toFixed(0)}
@@ -236,7 +238,7 @@ export function PositionDeltaEditor({
               {formatPositionQuantity(preview.nextQuantity)}
             </div>
             <div className="text-right font-mono font-medium text-primary">
-              {preview.nextAvgCost.toFixed(preview.nextAvgCost >= 1000 ? 0 : 2)}
+              {formatAverageCost(preview.nextAvgCost)}
             </div>
             <div className="text-right font-mono font-medium text-primary">
               {preview.nextTotalCost.toFixed(0)}

@@ -60,6 +60,7 @@ jobs:
         run: |
           npx prisma migrate deploy
           npx tsx scripts/verify-unit-trust-nav.ts
+          npx tsx scripts/verify-native-cost-reconciliation.ts
 
       - name: Build frontend
         run: npm run build

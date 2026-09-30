@@ -3,6 +3,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Upload, AlertCircle, Loader2 } from 'lucide-react';
 import type { BulkImportPosition } from '@/lib/types';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { formatTrimmedNumber } from '@/lib/utils';
 
 interface PositionImportTabProps {
   jsonInput: string;
@@ -30,7 +31,7 @@ export function PositionImportTab({
   onPaste,
   onImport,
 }: PositionImportTabProps) {
-  const { formatPrice } = useMoneyFormatter();
+  const { formatPrice, maskMoney } = useMoneyFormatter();
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
@@ -76,7 +77,10 @@ export function PositionImportTab({
               >
                 <span className="font-medium">{pos.asset.symbol}</span>
                 <span className="text-muted-foreground ml-2">
-                  {pos.quantity} @ {formatPrice(pos.avgCostUsd)}
+                  {pos.quantity} @{' '}
+                  {pos.avgCostNative != null && pos.costCurrency
+                    ? maskMoney(`${pos.costCurrency} ${formatTrimmedNumber(pos.avgCostNative, 8)}`)
+                    : formatPrice(pos.avgCostUsd, 'USD')}
                 </span>
                 {pos.storageLocation && (
                   <span className="text-muted-foreground ml-2">({pos.storageLocation})</span>

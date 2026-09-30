@@ -17,7 +17,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { formatPercent, formatDateTime, formatQuantity, getPnLColorClass, cn } from '@/lib/utils';
+import {
+  formatPercent,
+  formatDateTime,
+  formatQuantity,
+  formatNumber,
+  getPnLColorClass,
+  cn,
+} from '@/lib/utils';
 import {
   useCancelPositionHistory,
   useDeletePosition,
@@ -747,6 +754,7 @@ export function PositionTable({
 
   const renderAverageCost = (position: Position) => {
     const localAvgCost = localPriceLabel({
+      nativePrice: position.avgCostNative,
       usdPrice: position.avgCostUsd,
       nativeCurrency: position.asset.nativeCurrency,
       displayCurrency: currency,
@@ -782,18 +790,6 @@ export function PositionTable({
       valuesHidden,
     });
 
-  const nativePriceLabelFor = (
-    position: Position,
-    usdPrice: number | null | undefined
-  ): string | null =>
-    localPriceLabel({
-      usdPrice,
-      nativeCurrency: position.asset.nativeCurrency,
-      displayCurrency: currency,
-      usdFxRates: priceFxRates,
-      valuesHidden,
-    });
-
   const renderNativeHint = (
     label: string | null,
     className = 'font-mono text-[11px] leading-none text-muted-foreground'
@@ -802,13 +798,30 @@ export function PositionTable({
   const renderAmountWithNative = (
     position: Position,
     usdValue: number | null | undefined,
-    options: { className?: string; decimals?: number; nativeClassName?: string } = {}
+    options: {
+      className?: string;
+      decimals?: number;
+      nativeClassName?: string;
+      nativeAmount?: number | null;
+    } = {}
   ) => (
     <>
       <p className={options.className ?? 'font-mono'}>
         {formatCurrency(convert(usdValue), currency, options.decimals ?? 0)}
       </p>
-      {renderNativeHint(nativeAmountLabelFor(position, usdValue), options.nativeClassName)}
+      {renderNativeHint(
+        options.nativeAmount != null
+          ? localAmountLabel({
+              nativeAmount: options.nativeAmount,
+              usdValue,
+              nativeCurrency: position.costCurrency,
+              displayCurrency: currency,
+              usdFxRates: priceFxRates,
+              valuesHidden,
+            })
+          : nativeAmountLabelFor(position, usdValue),
+        options.nativeClassName
+      )}
     </>
   );
 
@@ -1018,6 +1031,9 @@ export function PositionTable({
       toneClass: string;
       canCancel: boolean;
       historyEntry: PositionHistoryEntry | null;
+      priceNative?: number | null;
+      nextAvgCostNative?: number | null;
+      costCurrency?: string | null;
       /** Word before the per-unit price; sales say "sold @" so the number reads right alone. */
       priceLabel?: string;
       detail?: ReactNode;
@@ -1073,6 +1089,9 @@ export function PositionTable({
           toneClass: 'text-info',
           canCancel: false,
           historyEntry: entry,
+          priceNative: entry.nextAvgCostNative,
+          nextAvgCostNative: entry.nextAvgCostNative,
+          costCurrency: entry.costCurrency,
           detail: `Previous baseline: ${formatQuantity(
             entry.previousQuantity,
             viewPosition.asset.category
@@ -1098,6 +1117,13 @@ export function PositionTable({
         toneClass: isAdd ? 'text-profit' : 'text-loss',
         canCancel: entry.id === latestCancelableHistoryId,
         historyEntry: entry,
+        priceNative:
+          entry.executionPriceNative ??
+          (entry.quantity > 0 && (entry.proceedsNative ?? entry.costBasisNative) != null
+            ? (entry.proceedsNative ?? entry.costBasisNative)! / entry.quantity
+            : null),
+        nextAvgCostNative: entry.nextAvgCostNative,
+        costCurrency: entry.costCurrency,
         priceLabel: proceedsUsd !== null ? 'sold @' : undefined,
         detail:
           proceedsUsd !== null ? renderSaleDetail(proceedsUsd, entry.costBasisUsd) : undefined,
@@ -1120,6 +1146,11 @@ export function PositionTable({
             toneClass: 'text-foreground',
             canCancel: false,
             historyEntry: null,
+            priceNative:
+              firstPreviousChange?.previousAvgCostNative ?? resetEntry.previousAvgCostNative,
+            nextAvgCostNative:
+              firstPreviousChange?.previousAvgCostNative ?? resetEntry.previousAvgCostNative,
+            costCurrency: firstPreviousChange?.costCurrency ?? resetEntry.costCurrency,
           },
           ...historyBeforeReset.map(rowForHistoryEntry),
         ]
@@ -1137,103 +1168,137 @@ export function PositionTable({
         priceUsd:
           resetEntry?.nextAvgCostUsd ??
           firstCurrentChange?.previousAvgCostUsd ??
+          viewPosition.recordedAvgCostUsd ??
           viewPosition.avgCostUsd,
         nextQuantity:
           resetEntry?.nextQuantity ?? firstCurrentChange?.previousQuantity ?? viewPosition.quantity,
         nextAvgCostUsd:
           resetEntry?.nextAvgCostUsd ??
           firstCurrentChange?.previousAvgCostUsd ??
+          viewPosition.recordedAvgCostUsd ??
           viewPosition.avgCostUsd,
         toneClass: resetEntry ? 'text-info' : 'text-foreground',
         canCancel: false,
         historyEntry: null,
+        priceNative: resetEntry?.nextAvgCostNative ?? firstCurrentChange?.previousAvgCostNative,
+        nextAvgCostNative:
+          resetEntry?.nextAvgCostNative ?? firstCurrentChange?.previousAvgCostNative,
+        costCurrency:
+          resetEntry?.costCurrency ?? firstCurrentChange?.costCurrency ?? viewPosition.costCurrency,
         detail: resetEntry ? 'Manual total correction starts a new active history.' : undefined,
       },
       ...currentHistoryEntries.map(rowForHistoryEntry),
     ];
-    const activityRowCount = previousRows.length + currentRows.length;
+    const activityRowCount = [...previousRows, ...currentRows].filter(
+      (entry) => entry.quantity > 0 || entry.historyEntry
+    ).length;
 
     const renderActivityRows = (rows: ActivityRow[]) =>
-      rows.map((entry) => {
-        const localExecutionPrice = nativePriceLabelFor(viewPosition, entry.priceUsd);
-        const localNextAvgCost = nativePriceLabelFor(viewPosition, entry.nextAvgCostUsd);
+      rows
+        .filter((entry) => entry.quantity > 0 || entry.historyEntry)
+        .map((entry) => {
+          // Historical USD is a recorded amount, not an original native price.
+          // Native labels require saved inputs or verified broker reconstruction.
+          const historyNativeLabel = (value: number | null | undefined) =>
+            value == null
+              ? null
+              : localPriceLabel({
+                  nativePrice: value,
+                  usdPrice: null,
+                  nativeCurrency: entry.costCurrency,
+                  displayCurrency: currency,
+                  usdFxRates: {},
+                  valuesHidden,
+                });
+          const localExecutionPrice = historyNativeLabel(entry.priceNative);
+          const localNextAvgCost = historyNativeLabel(entry.nextAvgCostNative);
 
-        return (
-          <div
-            key={entry.id}
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5"
-          >
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className={`text-xs font-medium uppercase ${entry.toneClass}`}>
-                  {entry.label}
-                </span>
-                <span className="text-xs text-muted-foreground">{formatDateTime(entry.date)}</span>
-              </div>
-              <div className="mt-0.5 text-sm leading-snug">
-                <p className="flex min-w-0 flex-wrap items-start gap-x-1">
-                  <span className={`font-mono font-medium ${entry.toneClass}`}>
-                    {entry.quantityPrefix}
-                    {formatQuantity(entry.quantity, viewPosition.asset.category)}
+          return (
+            <div
+              key={entry.id}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className={`text-xs font-medium uppercase ${entry.toneClass}`}>
+                    {entry.label}
                   </span>
-                  <span>{viewPosition.asset.symbol}</span>
-                  <span className="text-muted-foreground"> {entry.priceLabel ?? '@'} </span>
-                  <span className="inline-flex min-w-0 flex-col">
-                    <span className="font-mono">
-                      {formatCurrency(
-                        convert(entry.priceUsd),
-                        currency,
-                        getSmartDecimals(convert(entry.priceUsd))
+                  <span className="text-xs text-muted-foreground">
+                    {formatDateTime(entry.date)}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-sm leading-snug">
+                  <p className="flex min-w-0 flex-wrap items-start gap-x-1">
+                    <span className={`font-mono font-medium ${entry.toneClass}`}>
+                      {entry.quantityPrefix}
+                      {formatQuantity(entry.quantity, viewPosition.asset.category)}
+                    </span>
+                    <span>{viewPosition.asset.symbol}</span>
+                    <span className="text-muted-foreground"> {entry.priceLabel ?? '@'} </span>
+                    <span className="inline-flex min-w-0 flex-col">
+                      <span className="font-mono">
+                        {formatCurrency(
+                          convert(entry.priceUsd),
+                          currency,
+                          getSmartDecimals(convert(entry.priceUsd))
+                        )}
+                      </span>
+                      {localExecutionPrice && (
+                        <span className="font-mono text-[11px] leading-none text-muted-foreground">
+                          {localExecutionPrice}
+                        </span>
                       )}
                     </span>
-                    {localExecutionPrice && (
-                      <span className="font-mono text-[11px] leading-none text-muted-foreground">
-                        {localExecutionPrice}
-                      </span>
+                  </p>
+                </div>
+                {entry.detail && (
+                  <p className="mt-0.5 break-words text-xs text-muted-foreground">{entry.detail}</p>
+                )}
+                {entry.historyEntry?.feesNative != null && entry.costCurrency && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Statement charges:{' '}
+                    {valuesHidden
+                      ? '••••'
+                      : `${entry.costCurrency} ${formatNumber(entry.historyEntry.feesNative, 2)}`}
+                  </p>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center justify-end gap-2 text-right">
+                <div>
+                  <p className="font-mono text-sm font-medium">
+                    {formatQuantity(entry.nextQuantity, viewPosition.asset.category)}
+                  </p>
+                  <p className="font-mono text-xs text-muted-foreground">
+                    avg{' '}
+                    {formatCurrency(
+                      convert(entry.nextAvgCostUsd),
+                      currency,
+                      getSmartDecimals(convert(entry.nextAvgCostUsd))
                     )}
-                  </span>
-                </p>
+                  </p>
+                  {renderNativeHint(localNextAvgCost)}
+                </div>
+                {entry.canCancel && entry.historyEntry && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="-mr-1 shrink-0 text-destructive touch-manipulation hover:text-destructive"
+                    aria-label={`Delete ${entry.label.toLowerCase()} history entry`}
+                    title="Delete history entry"
+                    onClick={() => {
+                      cancelPositionHistoryMutation.reset();
+                      setCancelHistoryEntry(entry.historyEntry);
+                    }}
+                    disabled={cancelPositionHistoryMutation.isPending}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
-              {entry.detail && (
-                <p className="mt-0.5 break-words text-xs text-muted-foreground">{entry.detail}</p>
-              )}
             </div>
-            <div className="flex shrink-0 items-center justify-end gap-2 text-right">
-              <div>
-                <p className="font-mono text-sm font-medium">
-                  {formatQuantity(entry.nextQuantity, viewPosition.asset.category)}
-                </p>
-                <p className="font-mono text-xs text-muted-foreground">
-                  avg{' '}
-                  {formatCurrency(
-                    convert(entry.nextAvgCostUsd),
-                    currency,
-                    getSmartDecimals(convert(entry.nextAvgCostUsd))
-                  )}
-                </p>
-                {renderNativeHint(localNextAvgCost)}
-              </div>
-              {entry.canCancel && entry.historyEntry && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="-mr-1 shrink-0 text-destructive touch-manipulation hover:text-destructive"
-                  aria-label={`Delete ${entry.label.toLowerCase()} history entry`}
-                  title="Delete history entry"
-                  onClick={() => {
-                    cancelPositionHistoryMutation.reset();
-                    setCancelHistoryEntry(entry.historyEntry);
-                  }}
-                  disabled={cancelPositionHistoryMutation.isPending}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          </div>
-        );
-      });
+          );
+        });
 
     return (
       <div className="border-t pt-4">
@@ -1494,7 +1559,13 @@ export function PositionTable({
                   <p className="text-xs text-muted-foreground">Total Cost</p>
                   {renderAmountWithNative(
                     viewPosition,
-                    viewPosition.quantity * viewPosition.avgCostUsd
+                    viewPosition.quantity * viewPosition.avgCostUsd,
+                    {
+                      nativeAmount:
+                        viewPosition.avgCostNative != null
+                          ? viewPosition.quantity * viewPosition.avgCostNative
+                          : null,
+                    }
                   )}
                 </div>
                 <div className="space-y-1">
@@ -1553,6 +1624,24 @@ export function PositionTable({
                 </div>
               )}
 
+              {viewPosition.avgCostNative != null && (
+                <p className="text-xs text-muted-foreground">
+                  Weighted average in {viewPosition.costCurrency}. USD cost uses current FX.{' '}
+                  Recorded USD average:{' '}
+                  {formatCurrency(
+                    viewPosition.recordedAvgCostUsd ?? viewPosition.avgCostUsd,
+                    'USD',
+                    2
+                  )}
+                  .
+                </p>
+              )}
+              {positionHistory?.some((entry) => entry.brokerOrderId) && (
+                <p className="text-xs text-muted-foreground">
+                  Native history uses IBKR’s portfolio average. Statement charges include taxes and
+                  can differ from the charges included in that average.
+                </p>
+              )}
               {renderPositionHistory(positionHistory, {
                 isLoading: isHistoryLoading,
                 isError: isHistoryError,
@@ -1646,7 +1735,7 @@ export function PositionTable({
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Current avg</p>
+                  <p className="text-xs text-muted-foreground">Current recorded average</p>
                   <p className="font-mono">
                     {formatCurrency(
                       convert(cancelHistoryEntry.nextAvgCostUsd),
@@ -1655,11 +1744,18 @@ export function PositionTable({
                     )}
                   </p>
                   {renderNativeHint(
-                    nativePriceLabelFor(viewPosition, cancelHistoryEntry.nextAvgCostUsd)
+                    localPriceLabel({
+                      nativePrice: cancelHistoryEntry.nextAvgCostNative,
+                      usdPrice: null,
+                      nativeCurrency: cancelHistoryEntry.costCurrency,
+                      displayCurrency: currency,
+                      usdFxRates: {},
+                      valuesHidden,
+                    })
                   )}
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Restored avg</p>
+                  <p className="text-xs text-muted-foreground">Restored recorded average</p>
                   <p className="font-mono">
                     {formatCurrency(
                       convert(cancelHistoryEntry.previousAvgCostUsd),
@@ -1668,7 +1764,14 @@ export function PositionTable({
                     )}
                   </p>
                   {renderNativeHint(
-                    nativePriceLabelFor(viewPosition, cancelHistoryEntry.previousAvgCostUsd)
+                    localPriceLabel({
+                      nativePrice: cancelHistoryEntry.previousAvgCostNative,
+                      usdPrice: null,
+                      nativeCurrency: cancelHistoryEntry.costCurrency,
+                      displayCurrency: currency,
+                      usdFxRates: {},
+                      valuesHidden,
+                    })
                   )}
                 </div>
               </div>

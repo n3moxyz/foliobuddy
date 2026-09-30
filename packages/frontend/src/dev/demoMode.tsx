@@ -1540,6 +1540,8 @@ function computePosition(
     assetId: string;
     quantity: number;
     avgCostUsd: number;
+    avgCostNative?: number | null;
+    costCurrency?: string | null;
     storageType: Position['storageType'];
     storageLocation: string | null;
     notes: string | null;
@@ -1550,12 +1552,18 @@ function computePosition(
 ): Position {
   const price = asset.currentPriceUsd ?? 0;
   const marketValueUsd = round(data.quantity * price);
-  const totalCostUsd = data.quantity * data.avgCostUsd;
+  const rate =
+    data.costCurrency === 'USD' ? 1 : fxRates.find((r) => r.toCcy === data.costCurrency)?.rate;
+  const avgCostUsd =
+    data.avgCostNative != null && rate ? data.avgCostNative / rate : data.avgCostUsd;
+  const totalCostUsd = data.quantity * avgCostUsd;
   const unrealizedPnL = round(marketValueUsd - totalCostUsd);
   const unrealizedPnLPct = totalCostUsd > 0 ? round((unrealizedPnL / totalCostUsd) * 100, 1) : 0;
 
   return {
     ...data,
+    avgCostUsd,
+    ...(data.avgCostNative != null ? { recordedAvgCostUsd: data.avgCostUsd } : {}),
     asset,
     marketValueUsd,
     unrealizedPnL,
@@ -1797,16 +1805,21 @@ function createDemoPosition(data: CreatePositionData): Position {
   }
 
   const timestamp = new Date().toISOString();
+  const operationId =
+    data.avgCostNative != null && data.fundingCashPositionId ? nextDemoId('operation') : undefined;
   reduceDemoFundingCashPositionByCost(
     data.fundingCashPositionId,
     data.quantity * (data.avgCostUsd ?? 0),
-    timestamp
+    timestamp,
+    operationId
   );
   const position = computePosition(asset, {
     id: nextDemoId('pos'),
     assetId: data.assetId,
     quantity: data.quantity,
     avgCostUsd: data.avgCostUsd ?? 0,
+    avgCostNative: data.avgCostNative,
+    costCurrency: data.costCurrency,
     storageType: data.storageType ?? 'WALLET',
     storageLocation: data.storageLocation ?? null,
     notes: data.notes ?? null,
@@ -1816,6 +1829,32 @@ function createDemoPosition(data: CreatePositionData): Position {
   });
 
   demoPositions = [position, ...demoPositions];
+  if (data.avgCostNative != null && data.costCurrency) {
+    demoPositionHistory = [
+      {
+        id: nextDemoId('hist'),
+        positionId: position.id,
+        assetId: data.assetId,
+        mode: 'add',
+        quantity: data.quantity,
+        costBasisUsd: data.quantity * (data.avgCostUsd ?? 0),
+        previousQuantity: 0,
+        previousAvgCostUsd: 0,
+        previousTotalCostUsd: 0,
+        nextQuantity: data.quantity,
+        nextAvgCostUsd: data.avgCostUsd ?? 0,
+        nextTotalCostUsd: data.quantity * (data.avgCostUsd ?? 0),
+        costCurrency: data.costCurrency,
+        costBasisNative: data.quantity * data.avgCostNative,
+        previousAvgCostNative: 0,
+        nextAvgCostNative: data.avgCostNative,
+        fxRateToUsd: data.avgCostNative > 0 ? (data.avgCostUsd ?? 0) / data.avgCostNative : null,
+        operationId,
+        createdAt: timestamp,
+      },
+      ...demoPositionHistory,
+    ];
+  }
   return position;
 }
 
@@ -1966,6 +2005,32 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
   }
   const operationId =
     data.positionDelta && data.fundingCashPositionId ? nextDemoId('operation') : undefined;
+  let nextNativeAverage =
+    data.avgCostNative === undefined ? existing.avgCostNative : data.avgCostNative;
+  if (data.positionDelta && existing.avgCostNative != null) {
+    const delta = data.positionDelta;
+    if (delta.mode === 'add' && delta.nativeAmount === undefined) {
+      throw new Error('A native purchase amount is required for this position');
+    }
+    if (delta.nativeAmount !== undefined) {
+      const usd = delta.mode === 'add' ? delta.totalCostUsd : delta.proceedsUsd;
+      if (
+        !delta.fxRateToUsd ||
+        usd == null ||
+        !numbersClose(delta.nativeAmount * delta.fxRateToUsd, usd)
+      ) {
+        throw new Error('Native amount and USD amount do not match the entry rate');
+      }
+    }
+    const nativeDelta = applyPositionDelta({
+      currentQuantity: existing.quantity,
+      currentAvgCostUsd: existing.avgCostNative,
+      deltaQuantity: delta.quantity,
+      mode: delta.mode,
+      deltaTotalCostUsd: delta.nativeAmount,
+    });
+    nextNativeAverage = nativeDelta.nextAvgCostUsd;
+  }
   if (data.fundingCashPositionId && data.positionDelta) {
     if (data.positionDelta.mode === 'add') {
       reduceDemoFundingCashPositionByCost(
@@ -1989,7 +2054,9 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
     id: existing.id,
     assetId: asset.id,
     quantity: data.quantity ?? existing.quantity,
-    avgCostUsd: data.avgCostUsd ?? existing.avgCostUsd,
+    avgCostUsd: data.avgCostUsd ?? existing.recordedAvgCostUsd ?? existing.avgCostUsd,
+    avgCostNative: nextNativeAverage,
+    costCurrency: data.costCurrency === undefined ? existing.costCurrency : data.costCurrency,
     storageType: data.storageType ?? existing.storageType,
     storageLocation: data.storageLocation ?? existing.storageLocation,
     notes: data.notes === undefined ? existing.notes : data.notes || null,
@@ -2006,12 +2073,13 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
   demoPositions = demoPositions.map((position) => (position.id === id ? updated : position));
 
   if (data.positionDelta) {
-    const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
-    const nextTotalCostUsd = updated.quantity * updated.avgCostUsd;
+    const previousTotalCostUsd =
+      existing.quantity * (existing.recordedAvgCostUsd ?? existing.avgCostUsd);
+    const nextTotalCostUsd = updated.quantity * (updated.recordedAvgCostUsd ?? updated.avgCostUsd);
     const costBasisUsd =
       data.positionDelta.mode === 'add'
         ? (data.positionDelta.totalCostUsd ?? nextTotalCostUsd - previousTotalCostUsd)
-        : data.positionDelta.quantity * existing.avgCostUsd;
+        : data.positionDelta.quantity * (existing.recordedAvgCostUsd ?? existing.avgCostUsd);
 
     demoPositionHistory = [
       {
@@ -2019,15 +2087,27 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
         positionId: existing.id,
         assetId: updated.assetId,
         mode: data.positionDelta.mode,
+        costCurrency: updated.costCurrency,
+        previousAvgCostNative: existing.avgCostNative,
+        nextAvgCostNative: updated.avgCostNative,
+        costBasisNative:
+          existing.avgCostNative != null
+            ? data.positionDelta.mode === 'add'
+              ? data.positionDelta.nativeAmount
+              : data.positionDelta.quantity * existing.avgCostNative
+            : null,
+        proceedsNative:
+          data.positionDelta.mode === 'reduce' ? data.positionDelta.nativeAmount : null,
+        fxRateToUsd: data.positionDelta.fxRateToUsd,
         quantity: data.positionDelta.quantity,
         costBasisUsd,
         proceedsUsd:
           data.positionDelta.mode === 'reduce' ? (data.positionDelta.proceedsUsd ?? null) : null,
         previousQuantity: existing.quantity,
-        previousAvgCostUsd: existing.avgCostUsd,
+        previousAvgCostUsd: existing.recordedAvgCostUsd ?? existing.avgCostUsd,
         previousTotalCostUsd,
         nextQuantity: updated.quantity,
-        nextAvgCostUsd: updated.avgCostUsd,
+        nextAvgCostUsd: updated.recordedAvgCostUsd ?? updated.avgCostUsd,
         nextTotalCostUsd,
         operationId,
         createdAt: timestamp,
@@ -2037,14 +2117,23 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
   } else {
     const assetChanged = data.assetId !== undefined && data.assetId !== existing.assetId;
     const manualTotalsChanged =
-      (data.quantity !== undefined || data.avgCostUsd !== undefined || assetChanged) &&
+      (data.quantity !== undefined ||
+        data.avgCostUsd !== undefined ||
+        data.avgCostNative !== undefined ||
+        assetChanged) &&
       (assetChanged ||
         !numbersClose(updated.quantity, existing.quantity) ||
-        !numbersClose(updated.avgCostUsd, existing.avgCostUsd));
+        !numbersClose(
+          updated.recordedAvgCostUsd ?? updated.avgCostUsd,
+          existing.recordedAvgCostUsd ?? existing.avgCostUsd
+        ) ||
+        updated.avgCostNative !== existing.avgCostNative);
 
     if (manualTotalsChanged) {
-      const previousTotalCostUsd = existing.quantity * existing.avgCostUsd;
-      const nextTotalCostUsd = updated.quantity * updated.avgCostUsd;
+      const previousTotalCostUsd =
+        existing.quantity * (existing.recordedAvgCostUsd ?? existing.avgCostUsd);
+      const nextTotalCostUsd =
+        updated.quantity * (updated.recordedAvgCostUsd ?? updated.avgCostUsd);
 
       demoPositionHistory = [
         {
@@ -2052,13 +2141,16 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
           positionId: existing.id,
           assetId: updated.assetId,
           mode: 'reset',
+          costCurrency: updated.costCurrency ?? existing.costCurrency,
+          previousAvgCostNative: existing.avgCostNative,
+          nextAvgCostNative: updated.avgCostNative,
           quantity: updated.quantity,
           costBasisUsd: nextTotalCostUsd,
           previousQuantity: existing.quantity,
-          previousAvgCostUsd: existing.avgCostUsd,
+          previousAvgCostUsd: existing.recordedAvgCostUsd ?? existing.avgCostUsd,
           previousTotalCostUsd,
           nextQuantity: updated.quantity,
-          nextAvgCostUsd: updated.avgCostUsd,
+          nextAvgCostUsd: updated.recordedAvgCostUsd ?? updated.avgCostUsd,
           nextTotalCostUsd,
           createdAt: timestamp,
         },
@@ -2133,11 +2225,20 @@ function cancelDemoPositionHistory(positionId: string, historyId: string) {
       throw new Error('Only the latest position history entry can be canceled');
     }
 
-    const currentTotalCostUsd = entryToCancel.position.quantity * entryToCancel.position.avgCostUsd;
+    const currentTotalCostUsd =
+      entryToCancel.position.quantity *
+      (entryToCancel.position.recordedAvgCostUsd ?? entryToCancel.position.avgCostUsd);
     if (
       entryToCancel.position.assetId !== entryToCancel.history.assetId ||
       !numbersClose(entryToCancel.position.quantity, entryToCancel.history.nextQuantity) ||
-      !numbersClose(entryToCancel.position.avgCostUsd, entryToCancel.history.nextAvgCostUsd) ||
+      !numbersClose(
+        entryToCancel.position.recordedAvgCostUsd ?? entryToCancel.position.avgCostUsd,
+        entryToCancel.history.nextAvgCostUsd
+      ) ||
+      (entryToCancel.position.avgCostNative ?? null) !==
+        (entryToCancel.history.nextAvgCostNative ?? null) ||
+      (entryToCancel.position.costCurrency ?? null) !==
+        (entryToCancel.history.costCurrency ?? null) ||
       !numbersClose(currentTotalCostUsd, entryToCancel.history.nextTotalCostUsd)
     ) {
       throw new Error('Position has changed since this history entry was recorded');
@@ -2153,6 +2254,11 @@ function cancelDemoPositionHistory(positionId: string, historyId: string) {
       assetId: entryToCancel.position.assetId,
       quantity: entryToCancel.history.previousQuantity,
       avgCostUsd: entryToCancel.history.previousAvgCostUsd,
+      avgCostNative: entryToCancel.history.previousAvgCostNative,
+      costCurrency:
+        entryToCancel.history.previousAvgCostNative != null
+          ? entryToCancel.history.costCurrency
+          : null,
       storageType: entryToCancel.position.storageType,
       storageLocation: entryToCancel.position.storageLocation,
       notes: entryToCancel.position.notes,
@@ -2246,6 +2352,8 @@ function createImportedPosition(position: BulkImportPosition) {
     assetId: asset.id,
     quantity: position.quantity,
     avgCostUsd: position.avgCostUsd,
+    avgCostNative: position.avgCostNative,
+    costCurrency: position.costCurrency,
     storageType: position.storageType,
     storageLocation: position.storageLocation ?? undefined,
     notes: position.notes ?? undefined,
@@ -2775,6 +2883,121 @@ function demoApiPath(url: URL) {
 
 export async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   const path = demoApiPath(url);
+
+  if (path === '/api/positions/native-cost-capabilities' && method === 'GET')
+    return json({ supported: true });
+
+  if (path === '/api/positions/native-cost-reconciliation' && method === 'POST') {
+    const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
+      action: string;
+      expectedState?: string;
+      input?: {
+        positions: Array<{
+          symbol: string;
+          quantity: number;
+          recordedAvgCostUsd: number;
+          avgCostNative: number;
+          currency: string;
+          orders?: unknown[];
+        }>;
+      };
+      backup?: { version: string; before: Position[]; after: Position[] };
+    };
+    const stateOf = (rows: Position[]) =>
+      JSON.stringify(
+        rows
+          .map((p) => ({
+            id: p.id,
+            quantity: p.quantity,
+            avgCostUsd: p.recordedAvgCostUsd ?? p.avgCostUsd,
+            avgCostNative: p.avgCostNative ?? null,
+            costCurrency: p.costCurrency ?? null,
+          }))
+          .sort((a, b) => a.id.localeCompare(b.id))
+      );
+    if (body.action === 'restore' || body.action === 'restore-preview') {
+      const backup = body.backup;
+      if (
+        backup?.version !== 'demo-native-v1' ||
+        stateOf(demoPositions) !== stateOf(backup.after)
+      ) {
+        return json({ error: 'Demo positions changed after preview' }, 409);
+      }
+      if (body.action === 'restore') demoPositions = backup.before;
+      return json({
+        applied: body.action === 'restore',
+        review: backup.before
+          .filter((p) => backup.after.find((a) => a.id === p.id)?.avgCostNative !== p.avgCostNative)
+          .map((p) => ({
+            symbol: p.asset.symbol,
+            quantity: p.quantity,
+            recordedAvgCostUsd: p.recordedAvgCostUsd ?? p.avgCostUsd,
+            avgCostNative: p.avgCostNative ?? null,
+            costCurrency: p.costCurrency ?? null,
+          })),
+      });
+    }
+    const input = body.input;
+    if (!input?.positions?.length) return json({ error: 'No positions supplied' }, 400);
+    if (input.positions.some((p) => p.orders?.length)) {
+      return json(
+        {
+          error:
+            'Detailed broker ledgers require a signed-in portfolio. This demo supports native baseline repairs.',
+        },
+        400
+      );
+    }
+    const state = stateOf(demoPositions);
+    if (body.action === 'apply' && body.expectedState !== state)
+      return json({ error: 'Demo positions changed after preview' }, 409);
+    const next = [...demoPositions];
+    const review = [];
+    for (const item of input.positions) {
+      const matches = next.filter(
+        (p) =>
+          p.asset.symbol === item.symbol &&
+          p.storageType === 'BROKERAGE' &&
+          p.storageLocation === 'IBKR' &&
+          !p.custodyOf
+      );
+      if (
+        matches.length !== 1 ||
+        matches[0].avgCostNative != null ||
+        matches[0].quantity !== item.quantity ||
+        (matches[0].recordedAvgCostUsd ?? matches[0].avgCostUsd) !== item.recordedAvgCostUsd ||
+        matches[0].asset.nativeCurrency !== item.currency
+      ) {
+        return json({ error: 'Position, cost, broker or currency differs' }, 409);
+      }
+      const p = matches[0];
+      const updated = computePosition(p.asset, {
+        ...p,
+        avgCostUsd: item.recordedAvgCostUsd,
+        avgCostNative: item.avgCostNative,
+        costCurrency: item.currency,
+      });
+      next[next.findIndex((row) => row.id === p.id)] = updated;
+      review.push({
+        symbol: item.symbol,
+        quantity: p.quantity,
+        recordedAvgCostUsd: item.recordedAvgCostUsd,
+        avgCostNative: item.avgCostNative,
+        costCurrency: item.currency,
+        avgCostUsd: updated.avgCostUsd,
+        costFxAsOf: updated.costFxAsOf,
+        nativeHistoryRows: 0,
+        initialRowAdded: false,
+      });
+    }
+    const backup = {
+      version: 'demo-native-v1',
+      before: structuredClone(demoPositions),
+      after: structuredClone(next),
+    };
+    if (body.action === 'apply') demoPositions = next;
+    return json({ state, backup, review, applied: body.action === 'apply' });
+  }
 
   if (path === '/api/positions' && method === 'GET') return json(demoPositions);
   if (path === '/api/positions' && method === 'POST') {

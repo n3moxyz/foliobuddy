@@ -8,6 +8,8 @@ import {
   type Trade,
 } from '@foliobuddy/shared';
 import { handleDemoApi, resetDemoDataForTests } from '../demoMode';
+import { copyPositionsToClipboard } from '../../components/portfolio/positionClipboard';
+import { vi } from 'vitest';
 
 function apiUrl(path: string) {
   return new URL(`http://localhost:4000/api/v1${path}`);
@@ -51,6 +53,109 @@ async function positionHistoryFor(positionId: string) {
 describe('demo mode API mock', () => {
   beforeEach(() => {
     resetDemoDataForTests();
+  });
+
+  it('previews a native baseline repair without writes, applies the reviewed state, and restores its backup', async () => {
+    const original = (await seedPositions()).find((p) => p.asset.symbol === 'D05.SI')!;
+    await demoRequest(`/positions/${original.id}`, 'PUT', { storageLocation: 'IBKR' });
+    const input = {
+      capturedAt: new Date().toISOString(),
+      positions: [
+        {
+          symbol: 'D05.SI',
+          quantity: original.quantity,
+          recordedAvgCostUsd: original.avgCostUsd,
+          currency: 'SGD',
+          avgCostNative: 25.123456,
+        },
+      ],
+    };
+    const preview = await readJson<{ state: string; backup: unknown }>(
+      await demoRequest('/positions/native-cost-reconciliation', 'POST', {
+        action: 'preview',
+        input,
+      })
+    );
+    expect(
+      (await seedPositions()).find((p) => p.id === original.id)?.avgCostNative
+    ).toBeUndefined();
+    const applied = await demoRequest('/positions/native-cost-reconciliation', 'POST', {
+      action: 'apply',
+      input,
+      expectedState: preview.state,
+    });
+    expect(applied.status).toBe(200);
+    expect((await seedPositions()).find((p) => p.id === original.id)).toMatchObject({
+      avgCostNative: 25.123456,
+      recordedAvgCostUsd: original.avgCostUsd,
+    });
+    const restored = await demoRequest('/positions/native-cost-reconciliation', 'POST', {
+      action: 'restore',
+      backup: preview.backup,
+    });
+    expect(restored.status).toBe(200);
+    expect(
+      (await seedPositions()).find((p) => p.id === original.id)?.avgCostNative
+    ).toBeUndefined();
+  });
+
+  it('round-trips native cost and the retained USD ledger through a sale, undo, and clipboard import', async () => {
+    const seed = (await seedPositions()).find((p) => p.asset.symbol === 'D05.SI')!;
+    const created = await readJson<Position>(
+      await demoRequest('/positions', 'POST', {
+        assetId: seed.assetId,
+        quantity: 10,
+        avgCostUsd: 20,
+        avgCostNative: 30.123456,
+        costCurrency: 'SGD',
+        storageType: 'BROKERAGE',
+        storageLocation: 'IBKR',
+      })
+    );
+    expect(created.avgCostUsd).not.toBe(20);
+    expect(created.recordedAvgCostUsd).toBe(20);
+    expect((await positionHistoryFor(created.id))[0]).toMatchObject({
+      nextAvgCostNative: 30.123456,
+      previousQuantity: 0,
+    });
+    const sold = await readJson<Position>(
+      await demoRequest(`/positions/${created.id}`, 'PUT', {
+        quantity: 7,
+        avgCostUsd: 20,
+        positionDelta: { mode: 'reduce', quantity: 3 },
+      })
+    );
+    expect(sold).toMatchObject({ quantity: 7, avgCostNative: 30.123456, recordedAvgCostUsd: 20 });
+    const sale = (await positionHistoryFor(created.id))[0];
+    const undone = await readJson<Position>(
+      await demoRequest(`/positions/${created.id}/history/${sale.id}`, 'DELETE')
+    );
+    expect(undone).toMatchObject({
+      quantity: 10,
+      avgCostNative: 30.123456,
+      recordedAvgCostUsd: 20,
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    expect(await copyPositionsToClipboard(undone)).toBe(true);
+    const copied = JSON.parse(writeText.mock.calls[0][0]);
+    expect(copied[0]).toMatchObject({
+      avgCostUsd: 20,
+      avgCostNative: 30.123456,
+      costCurrency: 'SGD',
+    });
+    const imported = await readJson<{ successCount: number }>(
+      await demoRequest('/positions/bulk', 'POST', { positions: copied })
+    );
+    expect(imported.successCount).toBe(1);
+    const roundTrip = (await seedPositions()).find(
+      (p) => p.id !== created.id && p.avgCostNative === 30.123456
+    )!;
+    expect(roundTrip).toMatchObject({
+      quantity: 10,
+      avgCostNative: 30.123456,
+      recordedAvgCostUsd: 20,
+    });
   });
 
   it('round-trips server-backed perp exposure and resets its nullable migration state', async () => {

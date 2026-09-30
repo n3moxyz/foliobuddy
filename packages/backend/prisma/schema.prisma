@@ -92,6 +92,10 @@ model Position {
   asset           Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
   quantity        Float
   avgCostUsd      Float    @default(0)
+  // Optional authoritative weighted average in the purchase currency. The USD
+  // column remains the recorded ledger; API reads project native basis at current FX.
+  avgCostNative   Float?
+  costCurrency    String?
   storageType     String   @default("WALLET")
   storageLocation String?
   notes           String?
@@ -130,6 +134,15 @@ model PositionHistory {
   nextAvgCostUsd       Float
   nextTotalCostUsd     Float
   proceedsUsd          Float?
+  costCurrency         String?
+  costBasisNative      Float?
+  previousAvgCostNative Float?
+  nextAvgCostNative     Float?
+  proceedsNative       Float?
+  fxRateToUsd          Float?
+  executionPriceNative Float?
+  feesNative           Float?
+  brokerOrderId        String?
   operationId          String?
   createdAt            DateTime @default(now())
 

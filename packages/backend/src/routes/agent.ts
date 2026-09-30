@@ -4,6 +4,7 @@ import { portfolioService } from '../services/portfolioService.js';
 import { newsService } from '../services/newsService.js';
 import { logger } from '../lib/logger.js';
 import { assetIdSchema } from './news.js';
+import { projectNativeCosts } from '../services/nativeCostService.js';
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.get('/portfolio', async (req, res, next) => {
 
     // Compute allocation percentage per position
     const totalValue = summary.totalValueUsd;
-    const positionsWithAllocation = positions.map((p) => {
+    const positionsWithAllocation = (await projectNativeCosts(positions)).map((p) => {
       const marketValueUsd = p.marketValueUsd ?? p.quantity * (p.asset.currentPriceUsd ?? 0);
       return {
         symbol: p.asset.symbol,
@@ -46,6 +47,9 @@ router.get('/portfolio', async (req, res, next) => {
         category: p.asset.category,
         quantity: p.quantity,
         avgCostUsd: p.avgCostUsd,
+        avgCostNative: p.avgCostNative,
+        costCurrency: p.costCurrency,
+        recordedAvgCostUsd: p.recordedAvgCostUsd ?? p.avgCostUsd,
         currentPriceUsd: p.asset.currentPriceUsd,
         marketValueUsd,
         unrealizedPnL: p.unrealizedPnL,
