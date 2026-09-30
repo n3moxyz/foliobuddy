@@ -127,6 +127,11 @@ export function validateIbkrCapture(raw: unknown, now = Date.now()) {
     capture.first.summary.currency === capture.second.summary.currency,
     'IBKR base currency changed between reads'
   );
+  const baseCashValues = [capture.first, capture.second].map((s) => {
+    const base = s.balances.find((b) => b.currency === 'BASE');
+    requireIbkr(base, 'IBKR BASE cash aggregate is missing');
+    return base.cash_balance;
+  });
   let cash!: IbkrCashSnapshot;
   for (const s of [capture.first, capture.second]) {
     requireIbkr(
@@ -146,14 +151,16 @@ export function validateIbkrCapture(raw: unknown, now = Date.now()) {
         : s.balances.find((b) => b.currency === 'USD')?.exchange_rate;
     requireIbkr(usd && Number.isFinite(usd) && usd > 0, 'IBKR USD conversion rate is missing');
     const sum = native.reduce((total, b) => total + b.cash_balance * b.exchange_rate, 0);
-    // Rates are reported to eight decimals; allow that rounding, not a missing debt.
+    // Separately quoted FX and BASE can differ by a few base-currency cents.
+    // Keep that bounded; large balances also need the reported-rate rounding budget.
     const rounding = native.reduce((total, b) => total + Math.abs(b.cash_balance) * 0.000000005, 0);
     requireIbkr(
-      close(sum, base.cash_balance, Math.max(0.05, rounding)),
+      close(sum, base.cash_balance, Math.max(0.1, rounding)),
       'IBKR currency cash does not tally with BASE; incomplete capture'
     );
     requireIbkr(
-      close(base.cash_balance, s.summary.total_cash_value),
+      s.summary.total_cash_value >= Math.min(...baseCashValues) - 0.05 &&
+        s.summary.total_cash_value <= Math.max(...baseCashValues) + 0.05,
       'IBKR cash summary differs from its currency balances'
     );
     for (const p of s.positions) {

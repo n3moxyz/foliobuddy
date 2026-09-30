@@ -88,4 +88,28 @@ describe('IBKR source completeness', () => {
       sample.positions[0].average_price = Number.MAX_VALUE;
     expect(() => validateIbkrCapture(input)).toThrow(/numeric range/);
   });
+  it('accepts summary FX movement only within the BASE values actually observed', () => {
+    const input = fictionalIbkrCapture();
+    input.second.balances[2].exchange_rate = 1 / 149;
+    for (const sample of [input.first, input.second]) {
+      const nativeSum = sample.balances
+        .slice(1)
+        .reduce((sum, b) => sum + b.cash_balance * b.exchange_rate, 0);
+      sample.balances[0].cash_balance = nativeSum + 0.075;
+    }
+    for (const sample of [input.first, input.second])
+      sample.summary.total_cash_value = input.second.balances[0].cash_balance;
+    expect(validateIbkrCapture(input).cash.netCashUsd).toBe(input.second.balances[0].cash_balance);
+    input.first.summary.total_cash_value =
+      Math.min(input.first.balances[0].cash_balance, input.second.balances[0].cash_balance) - 0.06;
+    expect(() => validateIbkrCapture(input)).toThrow(/cash summary/);
+  });
+  it('refuses discrepancies beyond the small intra-ledger FX budget', () => {
+    const input = fictionalIbkrCapture();
+    for (const sample of [input.first, input.second]) {
+      sample.balances[0].cash_balance += 0.11;
+      sample.summary.total_cash_value = sample.balances[0].cash_balance;
+    }
+    expect(() => validateIbkrCapture(input)).toThrow(/does not tally with BASE/);
+  });
 });

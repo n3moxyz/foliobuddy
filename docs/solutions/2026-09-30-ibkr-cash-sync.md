@@ -5,6 +5,8 @@ settlement balance does not represent the account when another currency is borro
 The app keeps one owned USD cash position at `BROKERAGE / IBKR`. Its signed quantity
 and value are the net USD cash amount; `ibkrCash` retains every native balance, its
 FX, capture time and source. BASE is a total and never an additional balance.
+IBKR defines ledger FX relative to the account's base currency; see its
+[ledger reference](https://www.interactivebrokers.com/docs/web-api/api-reference/trading/trading-portfolio/get-portfolio-ledger).
 
 Only IBKR fiat cash shows this panel. Tiger, Binance, bank cash and custody forms
 keep their existing controls. Manual entries choose Cash or Debt explicitly and
@@ -60,6 +62,11 @@ missing browser access or unavailable plugins stop the run and require attention
 - The server cross-checks native cash against BASE and securities against summary
   and currency subtotals. Rounded FX cents and asynchronous quote movement have
   bounded tolerances; omissions and unsupported instruments stop the whole sync.
+  Native cash must be unchanged across reads. Individual currency conversions
+  must tally with each BASE within 0.10 base-currency units (or the reported-rate
+  rounding budget for large balances). Because FX totals can refresh between
+  endpoints, summary cash must lie within the two observed BASE values, plus 0.05
+  units for rounding. There is no general percentage tolerance for cash.
 - Match holdings by verified exchange ticker/native currency and then retain their
   IBKR contract IDs. Unknown or duplicate matches require the owner to add or
   resolve the asset. A missing holding reaches zero only with complete closing-sale
