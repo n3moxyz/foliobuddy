@@ -50,11 +50,16 @@ export function localPriceLabel(params: {
   usdFxRates: UsdFxRatesByCurrency;
   valuesHidden?: boolean;
   nativePrice?: number | null;
+  isUnitTrustNav?: boolean;
 }): string | null {
   const { usdPrice, nativeCurrency, displayCurrency, usdFxRates, valuesHidden } = params;
   if (params.nativePrice != null && nativeCurrency && nativeCurrency !== displayCurrency) {
     if (valuesHidden) return `(${MASKED_MONEY_VALUE})`;
-    return `(${nativeCurrency} ${params.nativePrice.toFixed(4)})`;
+    // Published fund NAVs retain their quoted precision; other per-unit values
+    // share the same currency-aware formatting as the Price column.
+    return params.isUnitTrustNav
+      ? `(${nativeCurrency} ${params.nativePrice.toFixed(4)})`
+      : `(${formatNativePrice(params.nativePrice, nativeCurrency)})`;
   }
   return localNativeLabel({
     usdValue: usdPrice,
