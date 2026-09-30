@@ -53,7 +53,7 @@ it('accepts machine rounding in new native fields while keeping existing USD his
       providerAssetId: 'TEST.KS',
     },
   };
-  const patch = {
+  const patch: Parameters<typeof matchesNativeReadback>[2]['historyPatches'][number]['patch'] = {
     costCurrency: 'KRW',
     costBasisNative: 10000000,
     previousAvgCostNative: 300000,
@@ -64,7 +64,7 @@ it('accepts machine rounding in new native fields while keeping existing USD his
     feesNative: 10,
     brokerOrderId: 'order',
   };
-  const plan = {
+  const plan: Parameters<typeof matchesNativeReadback>[2] = {
     positionPatch: { costCurrency: 'KRW', avgCostNative: 334533.93333333335 },
     historyPatches: [{ id: 'h', patch }],
     initialHistory: null,
