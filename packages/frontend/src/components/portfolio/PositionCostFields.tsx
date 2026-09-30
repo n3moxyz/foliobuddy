@@ -102,14 +102,14 @@ export function PositionCostFields({
 
       {showUnitTrustConversion && (
         <p className="text-xs text-muted-foreground">
-          Stored internally as USD ({formatUsdPerNative(unitTrustUsdPerNative)} USD per{' '}
-          {unitTrustNativeCurrency}).
+          USD equivalent uses {formatUsdPerNative(unitTrustUsdPerNative)} USD per{' '}
+          {unitTrustNativeCurrency} at current FX.
         </p>
       )}
       {showNativeConversion && nativeUsdPerUnit !== null && (
         <p className="text-xs text-muted-foreground">
-          Stored internally as USD ({formatUsdPerNative(nativeUsdPerUnit)} USD per{' '}
-          {nativeConversionCurrency}).
+          USD equivalent uses {formatUsdPerNative(nativeUsdPerUnit)} USD per{' '}
+          {nativeConversionCurrency} at current FX.
         </p>
       )}
     </div>

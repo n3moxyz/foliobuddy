@@ -1,5 +1,22 @@
 export * from '@foliobuddy/shared';
 
+export interface NativeReconciliationResult {
+  state?: string;
+  backup?: unknown;
+  applied: boolean;
+  review: Array<{
+    symbol: string;
+    quantity: number;
+    recordedAvgCostUsd: number;
+    avgCostNative: number | null;
+    costCurrency: string | null;
+    avgCostUsd?: number;
+    costFxAsOf?: string;
+    nativeHistoryRows?: number;
+    initialRowAdded?: boolean;
+  }>;
+}
+
 // -- Frontend-only types --
 
 /** Time-period selector used by PortfolioChart and BenchmarkComparisonChart */

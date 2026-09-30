@@ -22,6 +22,7 @@ import type {
   Investor,
   InvestorReport,
   MonthlyReturn,
+  NativeReconciliationResult,
   PaginatedResponse,
   ParsedStatementResponse,
   NewsEnrichmentResponse,
@@ -95,6 +96,34 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   return response.json();
 }
 
+async function writePosition<T>(
+  endpoint: string,
+  method: 'POST' | 'PUT',
+  data: CreatePositionData | UpdatePositionData | { positions: BulkImportPosition[] }
+) {
+  const rows = 'positions' in data ? data.positions : [data];
+  if (
+    rows.some(
+      (row) =>
+        row.avgCostNative !== undefined ||
+        row.costCurrency !== undefined ||
+        ('positionDelta' in row && row.positionDelta?.nativeAmount !== undefined)
+    )
+  ) {
+    // A frontend can finish deploying before the backend. Older servers silently
+    // strip unknown fields, so prove support before submitting a native write.
+    let supported = false;
+    try {
+      supported = (await request<{ supported: boolean }>('/positions/native-cost-capabilities'))
+        .supported;
+    } catch {
+      throw new Error('Native cost support could not be verified. Refresh and try again.');
+    }
+    if (!supported) throw new Error('Native cost support is not ready. Refresh and try again.');
+  }
+  return request<T>(endpoint, { method, body: JSON.stringify(data) });
+}
+
 export const api = {
   // News
   getNews: () => request<PortfolioNewsResponse>('/news'),
@@ -106,6 +135,11 @@ export const api = {
 
   // Positions
   getPositions: () => request<Position[]>('/positions'),
+  reconcileNativeCosts: (payload: unknown) =>
+    request<NativeReconciliationResult>('/positions/native-cost-reconciliation', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   getPositionSummary: () => request<PortfolioSummary>('/positions/summary'),
   getAllocationByCategory: () => request<CategoryAllocation[]>('/positions/allocation/category'),
   getAllocationByStorage: () => request<StorageAllocation[]>('/positions/allocation/storage'),
@@ -116,23 +150,13 @@ export const api = {
   getPositionHistory: (id: string) => request<PositionHistoryEntry[]>(`/positions/${id}/history`),
   cancelPositionHistory: (id: string, historyId: string) =>
     request<Position>(`/positions/${id}/history/${historyId}`, { method: 'DELETE' }),
-  createPosition: (data: CreatePositionData) =>
-    request<Position>('/positions', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+  createPosition: (data: CreatePositionData) => writePosition<Position>('/positions', 'POST', data),
   updatePosition: (id: string, data: UpdatePositionData) =>
-    request<Position>(`/positions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
+    writePosition<Position>(`/positions/${id}`, 'PUT', data),
   deletePosition: (id: string) => request<void>(`/positions/${id}`, { method: 'DELETE' }),
   deleteAllPositions: () => request<{ count: number }>('/positions', { method: 'DELETE' }),
   bulkImportPositions: (positions: BulkImportPosition[]) =>
-    request<BulkImportResult>('/positions/bulk', {
-      method: 'POST',
-      body: JSON.stringify({ positions }),
-    }),
+    writePosition<BulkImportResult>('/positions/bulk', 'POST', { positions }),
 
   // Assets
   getAssets: (params?: { category?: string; search?: string }) =>

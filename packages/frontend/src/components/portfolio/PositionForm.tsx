@@ -342,6 +342,7 @@ export function PositionForm({
   // For SGD-denominated edits we wait for portfolioSummary so the displayed
   // SGD values match the FX rate used on submit.
   const costInitializedRef = useRef(false);
+  const [costEdited, setCostEdited] = useState(false);
   const [storageType, setStorageType] = useState<PositionStorageType>(
     (position?.storageType as PositionStorageType | undefined) || 'CEX'
   );
@@ -555,8 +556,14 @@ export function PositionForm({
     const dec = currencyDecimals(costCurrency);
     const displayAvg = position.avgCostUsd * costDisplayRate;
     const displayTotal = position.quantity * position.avgCostUsd * costDisplayRate;
-    setAvgCostInput(displayAvg.toFixed(dec));
-    setTotalCost(displayTotal.toFixed(dec));
+    setAvgCostInput(
+      position.avgCostNative != null ? String(position.avgCostNative) : displayAvg.toFixed(dec)
+    );
+    setTotalCost(
+      position.avgCostNative != null
+        ? String(position.quantity * position.avgCostNative)
+        : displayTotal.toFixed(dec)
+    );
     costInitializedRef.current = true;
   }, [position, costCurrency, costDisplayRate, costRateIsReal]);
 
@@ -696,6 +703,7 @@ export function PositionForm({
     return buildPositionDeltaPreview({
       currentQuantity: position.quantity,
       currentAvgCostUsd: position.avgCostUsd,
+      currentAvgCostNative: position.avgCostNative,
       deltaQuantity: additionalQuantity,
       deltaTotalCostInput: additionalCostInput,
       mode: deltaMode,
@@ -1339,7 +1347,7 @@ export function PositionForm({
       try {
         deltaResult = applyPositionDelta({
           currentQuantity: position.quantity,
-          currentAvgCostUsd: position.avgCostUsd,
+          currentAvgCostUsd: position.recordedAvgCostUsd ?? position.avgCostUsd,
           deltaQuantity: deltaQty,
           mode: deltaMode,
           deltaTotalCostUsd: deltaMode === 'add' ? deltaCostAddUsd : undefined,
@@ -1360,6 +1368,7 @@ export function PositionForm({
           data: {
             quantity: deltaResult.nextQuantity,
             avgCostUsd: deltaResult.nextAvgCostUsd,
+            ...(position.avgCostNative != null ? { costCurrency: position.costCurrency } : {}),
             custodyOf: isCustody ? custodyOf.trim() || 'Someone' : '',
             fundingCashPositionId: fundingCashPositionIdForSubmit,
             positionDelta: {
@@ -1367,6 +1376,12 @@ export function PositionForm({
               quantity: deltaQty,
               ...(deltaMode === 'add' ? { totalCostUsd: deltaCostAddUsd } : {}),
               ...(deltaProceedsUsd !== undefined ? { proceedsUsd: deltaProceedsUsd } : {}),
+              ...(position.avgCostNative != null && hasAmount
+                ? {
+                    nativeAmount: parseFloat(additionalCostInput),
+                    fxRateToUsd: costUsdPerNative!,
+                  }
+                : {}),
             },
           },
         });
@@ -1427,7 +1442,7 @@ export function PositionForm({
         return;
       }
 
-      // Inputs are in the native currency (SGD or USD). The backend stores USD.
+      // Keep the statement's native basis as well as the original USD ledger.
       const totalCostUsd =
         utNativeCurrency === 'USD' ? costNumInput : costNumInput * utUsdPerNative;
 
@@ -1454,7 +1469,14 @@ export function PositionForm({
             data: {
               assetId: utStatementMatchedPosition.assetId,
               quantity: qtyNum,
-              avgCostUsd: qtyNum > 0 ? totalCostUsd / qtyNum : 0,
+              avgCostUsd:
+                utStatementMatchedPosition.avgCostNative != null
+                  ? (utStatementMatchedPosition.recordedAvgCostUsd ??
+                    utStatementMatchedPosition.avgCostUsd)
+                  : totalCostUsd / qtyNum,
+              ...(utNativeCurrency !== 'USD' || utStatementMatchedPosition.avgCostNative != null
+                ? { avgCostNative: costNumInput / qtyNum, costCurrency: utNativeCurrency }
+                : {}),
               storageType: 'BROKERAGE',
               storageLocation: storageLocation || undefined,
               notes: notes.trim() || undefined,
@@ -1481,6 +1503,9 @@ export function PositionForm({
             assetId: newAsset.id,
             quantity: qtyNum,
             avgCostUsd: qtyNum > 0 ? totalCostUsd / qtyNum : 0,
+            ...(utNativeCurrency !== 'USD'
+              ? { avgCostNative: costNumInput / qtyNum, costCurrency: utNativeCurrency }
+              : {}),
             storageType: 'BROKERAGE',
             storageLocation: storageLocation || undefined,
             notes: notes.trim() || undefined,
@@ -1518,17 +1543,35 @@ export function PositionForm({
       return;
     }
 
-    // Convert local equity input to USD before persisting (backend stores USD).
-    // Applies to both create and edit (single stocks and existing unit trusts).
+    // Native corrections keep the original USD ledger. An unchanged native
+    // input must retain its exact average rather than re-dividing rounded totals.
     const rawAvgCost =
       category === 'cash' ? (selectedAsset?.currentPriceUsd ?? 1) : parseFloat(avgCostUsd) || 0;
     const finalAvgCostUsd =
-      category === 'equity' ? toUsdCost(rawAvgCost, costCurrency, usdFxRates) : rawAvgCost;
+      category === 'equity'
+        ? isEditing && (costCurrency !== 'USD' || position.avgCostNative != null)
+          ? (position.recordedAvgCostUsd ?? position.avgCostUsd)
+          : toUsdCost(rawAvgCost, costCurrency, usdFxRates)
+        : rawAvgCost;
 
     const data = {
       assetId,
       quantity: parseFloat(quantity),
       avgCostUsd: finalAvgCostUsd,
+      ...(category === 'equity' &&
+      (costCurrency !== 'USD' || position?.avgCostNative != null) &&
+      (!isEditing || position.avgCostNative != null || costEdited)
+        ? {
+            avgCostNative:
+              isEditing &&
+              !costEdited &&
+              parseFloat(quantity) === position.quantity &&
+              position.avgCostNative != null
+                ? position.avgCostNative
+                : rawAvgCost,
+            costCurrency,
+          }
+        : {}),
       storageType: storageType as 'WALLET' | 'CEX' | 'DEFI' | 'BANK' | 'BROKERAGE',
       storageLocation: storageLocation || undefined,
       notes: notes.trim() || undefined,
@@ -2276,16 +2319,29 @@ export function PositionForm({
               </div>
 
               {/* Total Cost & Average Cost (Crypto + Equity) */}
+              {isEditing && category === 'equity' && costCurrency !== 'USD' && (
+                <p className="text-xs text-muted-foreground">
+                  {position?.avgCostNative != null
+                    ? `Average cost is saved in ${costCurrency}. Partial sales keep it unchanged; the USD equivalent follows current FX.`
+                    : `This position has no saved ${costCurrency} cost. The amount shown uses current FX. Verify the original broker cost before correcting it.`}
+                </p>
+              )}
               {category !== 'cash' && (
                 <PositionCostFields
                   costInputMode={costInputMode}
                   onCostInputModeChange={setCostInputMode}
                   totalCost={totalCost}
                   calculatedTotalCost={calculatedTotalCost}
-                  onTotalCostChange={setTotalCost}
+                  onTotalCostChange={(value) => {
+                    setCostEdited(true);
+                    setTotalCost(value);
+                  }}
                   avgCostInput={avgCostInput}
                   calculatedAvgCost={calculatedAvgCost}
-                  onAvgCostChange={setAvgCostInput}
+                  onAvgCostChange={(value) => {
+                    setCostEdited(true);
+                    setAvgCostInput(value);
+                  }}
                   costCurrency={costCurrency}
                   showUnitTrustConversion={
                     !isEditing &&

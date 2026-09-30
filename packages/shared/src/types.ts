@@ -252,7 +252,12 @@ export function applyPositionDelta({
     deltaCostUsd,
     nextQuantity,
     nextTotalCostUsd: normalizedTotalCostUsd,
-    nextAvgCostUsd: nextQuantity > 0 ? normalizedTotalCostUsd / nextQuantity : 0,
+    nextAvgCostUsd:
+      nextQuantity > 0
+        ? mode === 'reduce'
+          ? currentAvgCostUsd
+          : normalizedTotalCostUsd / nextQuantity
+        : 0,
   };
 }
 
@@ -304,6 +309,13 @@ export interface Position {
   asset: Asset;
   quantity: number;
   avgCostUsd: number;
+  /** Authoritative native weighted average; null on legacy USD-only records. */
+  avgCostNative?: number | null;
+  costCurrency?: string | null;
+  /** Original USD ledger average, before current-FX projection. Use for ledger deltas. */
+  recordedAvgCostUsd?: number;
+  costFxRateToUsd?: number;
+  costFxAsOf?: string;
   storageType: StorageType;
   storageLocation: string | null;
   notes: string | null;
@@ -327,6 +339,9 @@ export interface PositionDeltaMetadata {
    * to that pile.
    */
   proceedsUsd?: number;
+  /** Original input amount and the actual native-to-USD rate used for this entry. */
+  nativeAmount?: number;
+  fxRateToUsd?: number;
 }
 
 export interface PositionHistoryEntry {
@@ -344,6 +359,15 @@ export interface PositionHistoryEntry {
   nextTotalCostUsd: number;
   /** Reduce rows only: sale proceeds in USD when the user recorded them. */
   proceedsUsd?: number | null;
+  costCurrency?: string | null;
+  costBasisNative?: number | null;
+  previousAvgCostNative?: number | null;
+  nextAvgCostNative?: number | null;
+  proceedsNative?: number | null;
+  fxRateToUsd?: number | null;
+  executionPriceNative?: number | null;
+  feesNative?: number | null;
+  brokerOrderId?: string | null;
   operationId?: string | null;
   createdAt: string;
 }
@@ -583,6 +607,8 @@ export interface CreatePositionData {
   assetId: string;
   quantity: number;
   avgCostUsd?: number;
+  avgCostNative?: number | null;
+  costCurrency?: string | null;
   storageType?: StorageType;
   storageLocation?: string;
   notes?: string;
@@ -669,6 +695,8 @@ export interface BulkImportPosition {
   };
   quantity: number;
   avgCostUsd: number;
+  avgCostNative?: number | null;
+  costCurrency?: string | null;
   storageType: StorageType;
   storageLocation: string | null;
   notes: string | null;

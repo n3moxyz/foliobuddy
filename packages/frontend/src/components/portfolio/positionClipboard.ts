@@ -21,7 +21,10 @@ function formatPositionsForClipboard(positions: Position | Position[]) {
         : {}),
     },
     quantity: p.quantity,
-    avgCostUsd: p.avgCostUsd,
+    avgCostUsd: p.recordedAvgCostUsd ?? p.avgCostUsd,
+    ...(p.avgCostNative != null
+      ? { avgCostNative: p.avgCostNative, costCurrency: p.costCurrency }
+      : {}),
     storageType: p.storageType,
     storageLocation: p.storageLocation,
     notes: p.notes,

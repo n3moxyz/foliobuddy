@@ -72,7 +72,17 @@ export function localAmountLabel(params: {
   displayCurrency: DisplayCurrency;
   usdFxRates: UsdFxRatesByCurrency;
   valuesHidden?: boolean;
+  nativeAmount?: number | null;
 }): string | null {
+  if (
+    params.nativeAmount != null &&
+    params.nativeCurrency &&
+    params.nativeCurrency !== params.displayCurrency
+  ) {
+    return params.valuesHidden
+      ? `(${MASKED_MONEY_VALUE})`
+      : `(${formatNativeAmount(params.nativeAmount, params.nativeCurrency)})`;
+  }
   const { usdValue, nativeCurrency, displayCurrency, usdFxRates, valuesHidden } = params;
   return localNativeLabel({
     usdValue,

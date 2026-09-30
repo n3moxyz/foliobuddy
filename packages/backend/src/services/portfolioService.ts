@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { USD_SGD_FALLBACK_RATE } from '../lib/constants.js';
+import { projectNativeCosts } from './nativeCostService.js';
 
 interface PortfolioSummary {
   totalValueUsd: number;
@@ -50,10 +51,12 @@ function positionValueUsd(position: PositionWithAsset): number {
 
 class PortfolioService {
   private async getOwnedPositions(userId: string): Promise<PositionWithAsset[]> {
-    return prisma.position.findMany({
-      where: { userId, custodyOf: null },
-      include: { asset: true },
-    });
+    return projectNativeCosts(
+      await prisma.position.findMany({
+        where: { userId, custodyOf: null },
+        include: { asset: true },
+      })
+    );
   }
 
   async getSummary(userId: string): Promise<PortfolioSummary> {
@@ -160,12 +163,10 @@ class PortfolioService {
   }
 
   async getTopPerformers(userId: string, limit = 5): Promise<TopPerformer[]> {
-    const positions = await prisma.position.findMany({
-      where: { userId, custodyOf: null, unrealizedPnL: { gt: 0 } },
-      include: { asset: true },
-      orderBy: { unrealizedPnL: 'desc' },
-      take: limit,
-    });
+    const positions = (await this.getOwnedPositions(userId))
+      .filter((p) => (p.unrealizedPnL ?? 0) > 0)
+      .sort((a, b) => (b.unrealizedPnL ?? 0) - (a.unrealizedPnL ?? 0))
+      .slice(0, limit);
 
     return positions.map((p) => ({
       assetId: p.assetId,
@@ -178,12 +179,10 @@ class PortfolioService {
   }
 
   async getWorstPerformers(userId: string, limit = 5): Promise<TopPerformer[]> {
-    const positions = await prisma.position.findMany({
-      where: { userId, custodyOf: null, unrealizedPnL: { lt: 0 } },
-      include: { asset: true },
-      orderBy: { unrealizedPnL: 'asc' },
-      take: limit,
-    });
+    const positions = (await this.getOwnedPositions(userId))
+      .filter((p) => (p.unrealizedPnL ?? 0) < 0)
+      .sort((a, b) => (a.unrealizedPnL ?? 0) - (b.unrealizedPnL ?? 0))
+      .slice(0, limit);
 
     return positions.map((p) => ({
       assetId: p.assetId,

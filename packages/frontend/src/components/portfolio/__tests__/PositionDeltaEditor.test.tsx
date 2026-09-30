@@ -116,4 +116,23 @@ describe('PositionDeltaEditor', () => {
     });
     expect(screen.getByText(/closes the position/i)).toBeInTheDocument();
   });
+
+  it('shows the same fractional native average before and after a partial sale', () => {
+    const average = 60_000.123456;
+    renderEditor({
+      position: { ...position, avgCostNative: average, costCurrency: 'KRW' },
+      costCurrency: 'KRW',
+      deltaMode: 'reduce',
+      preview: {
+        currentQuantity: 30,
+        currentAvgCost: average,
+        currentTotalCost: 30 * average,
+        nextQuantity: 25,
+        nextAvgCost: average,
+        nextTotalCost: 25 * average,
+      },
+    });
+
+    expect(screen.getAllByText('60000.1235')).toHaveLength(2);
+  });
 });

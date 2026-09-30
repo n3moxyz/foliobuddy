@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
+import { projectNativeCosts } from '../services/nativeCostService.js';
 
 const router = Router();
 
@@ -26,9 +27,13 @@ router.get('/csv/positions', async (req, res, next) => {
       'P&L %',
       'Storage Type',
       'Storage Location',
+      'Cost Currency',
+      'Native Average Cost',
+      'Recorded USD Average Cost',
+      'Cost FX As Of',
     ];
 
-    const rows = positions.map((p) => [
+    const rows = (await projectNativeCosts(positions)).map((p) => [
       p.asset.symbol,
       p.asset.name,
       p.asset.category,
@@ -40,6 +45,10 @@ router.get('/csv/positions', async (req, res, next) => {
       p.unrealizedPnLPct ? `${p.unrealizedPnLPct.toFixed(2)}%` : '',
       p.storageType,
       p.storageLocation ?? '',
+      p.costCurrency ?? '',
+      p.avgCostNative ?? '',
+      p.recordedAvgCostUsd ?? p.avgCostUsd,
+      p.costFxAsOf ?? '',
     ]);
 
     const csv = [headers, ...rows]
@@ -173,8 +182,12 @@ router.get('/excel', async (req, res, next) => {
       { header: 'P&L %', key: 'pnlPct', width: 10 },
       { header: 'Storage', key: 'storage', width: 10 },
       { header: 'Location', key: 'location', width: 20 },
+      { header: 'Cost Currency', key: 'costCurrency', width: 12 },
+      { header: 'Native Average', key: 'avgCostNative', width: 18 },
+      { header: 'Recorded USD Average', key: 'recordedAvgCostUsd', width: 20 },
+      { header: 'Cost FX As Of', key: 'costFxAsOf', width: 24 },
     ];
-    positions.forEach((p) => {
+    (await projectNativeCosts(positions)).forEach((p) => {
       positionsSheet.addRow({
         symbol: p.asset.symbol,
         name: p.asset.name,
@@ -187,6 +200,10 @@ router.get('/excel', async (req, res, next) => {
         pnlPct: p.unrealizedPnLPct ?? 0,
         storage: p.storageType,
         location: p.storageLocation ?? '',
+        costCurrency: p.costCurrency ?? '',
+        avgCostNative: p.avgCostNative ?? '',
+        recordedAvgCostUsd: p.recordedAvgCostUsd ?? p.avgCostUsd,
+        costFxAsOf: p.costFxAsOf ?? '',
       });
     });
 

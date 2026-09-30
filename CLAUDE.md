@@ -254,6 +254,8 @@ Create-only sub-type toggle (edit infers category). Provider contract: **Stock/E
 
 ### Position Edit Modes
 
+Native costs: `avgCostNative` is primary; `avgCostUsd` remains a ledger. IBKR preview/backup/apply/restore: [contract](docs/solutions/2026-09-30-native-cost-reconciliation.md).
+
 `PositionForm.tsx`: `Edit Totals` (corrections) + `Add/Reduce Position` tabs.
 
 - `Add`: extra quantity + required total/avg cost → weighted avg. `Reduce`: quantity + same pair as optional sale proceeds (`Total Proceeds`/`Avg Price`); basis removed at current avg; proceeds never alter avg/basis. Quantity 0 deletes the position (history cascades, cash row stays; preview warns).

@@ -22,6 +22,7 @@ import { PositionTable } from '@/components/portfolio/PositionTable';
 import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboard';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { PositionForm } from '@/components/portfolio/PositionForm';
+import { NativeCostReconciliation } from '@/components/portfolio/NativeCostReconciliation';
 import { UpdateNavModal } from '@/components/portfolio/UpdateNavModal';
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import {
@@ -151,6 +152,7 @@ export default function Portfolio() {
   } = usePerpExposure();
   const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showNativeReconciliation, setShowNativeReconciliation] = useState(false);
   const [navAssetId, setNavAssetId] = useState<string | null>(null);
   const navAsset = positions?.find((position) => position.assetId === navAssetId)?.asset;
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
@@ -401,6 +403,10 @@ export default function Portfolio() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowNativeReconciliation(true)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Reconcile IBKR costs
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
                   onClick={() => setShowDeleteAllConfirm(true)}
@@ -456,6 +462,13 @@ export default function Portfolio() {
                 >
                   <Pencil className="h-4 w-4 mr-2" />
                   {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="min-h-11"
+                  onClick={() => setShowNativeReconciliation(true)}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Reconcile IBKR costs
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="min-h-11"
@@ -918,6 +931,16 @@ export default function Portfolio() {
           </CollapsibleCard>
         )}
       </div>
+
+      <Dialog open={showNativeReconciliation} onOpenChange={setShowNativeReconciliation}>
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Reconcile IBKR costs</DialogTitle>
+            <DialogDescription>Preview, back up, and repair native cost records.</DialogDescription>
+          </DialogHeader>
+          {showNativeReconciliation && <NativeCostReconciliation />}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">

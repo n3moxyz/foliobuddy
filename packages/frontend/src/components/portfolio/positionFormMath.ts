@@ -29,6 +29,15 @@ function parseNumber(value: string): number {
   return parseFloat(value);
 }
 
+// Keep at least two decimals for input presentation, without rounding native
+// weighted averages to two decimals before persistence.
+function calculatedInput(value: number): string {
+  const precise = Number(value.toPrecision(15)).toString();
+  if (precise.includes('e')) return precise;
+  const [integer, fraction = ''] = precise.split('.');
+  return `${integer}.${fraction.padEnd(2, '0')}`;
+}
+
 export function normalizeCostCurrency(value: string | null | undefined): CostCurrency {
   const currency = value?.trim().toUpperCase();
   return currency && SUPPORTED_COST_CURRENCY_SET.has(currency) ? (currency as CostCurrency) : 'USD';
@@ -83,7 +92,7 @@ export function calculateAverageCostInput(
   const qty = parseNumber(quantity);
   const total = parseNumber(totalCost);
   if (qty > 0 && total > 0) {
-    return (total / qty).toFixed(2);
+    return calculatedInput(total / qty);
   }
   return '';
 }
@@ -99,7 +108,7 @@ export function calculateTotalCostInput(
   const qty = parseNumber(quantity);
   const avg = parseNumber(avgCost);
   if (qty > 0 && avg > 0) {
-    return (qty * avg).toFixed(2);
+    return calculatedInput(qty * avg);
   }
   return '';
 }
@@ -115,7 +124,7 @@ export function calculateNonNegativeAverageCostInput(
   const qty = parseNumber(quantity);
   const total = parseNumber(totalCost);
   if (qty > 0 && Number.isFinite(total) && total >= 0) {
-    return (total / qty).toFixed(2);
+    return calculatedInput(total / qty);
   }
   return '';
 }
@@ -131,7 +140,7 @@ export function calculateNonNegativeTotalCostInput(
   const qty = parseNumber(quantity);
   const avg = parseNumber(avgCost);
   if (qty > 0 && Number.isFinite(avg) && avg >= 0) {
-    return (qty * avg).toFixed(2);
+    return calculatedInput(qty * avg);
   }
   return '';
 }
@@ -148,6 +157,7 @@ export function toUsdCost(
 export function buildPositionDeltaPreview(params: {
   currentQuantity: number;
   currentAvgCostUsd: number;
+  currentAvgCostNative?: number | null;
   deltaQuantity: string;
   deltaTotalCostInput: string;
   mode: PositionDeltaMode;
@@ -159,27 +169,22 @@ export function buildPositionDeltaPreview(params: {
   const displayRate = costCurrencyDisplayRate(params.costCurrency, params.usdFxRates);
   if (displayRate === null) return null;
 
-  const deltaTotalCostUsd =
-    params.mode === 'reduce'
-      ? undefined
-      : toUsdCost(rawDeltaCost, params.costCurrency, params.usdFxRates);
-
   try {
     const result = applyPositionDelta({
       currentQuantity: params.currentQuantity,
-      currentAvgCostUsd: params.currentAvgCostUsd,
+      currentAvgCostUsd: params.currentAvgCostNative ?? params.currentAvgCostUsd * displayRate,
       deltaQuantity,
       mode: params.mode,
-      deltaTotalCostUsd,
+      deltaTotalCostUsd: params.mode === 'add' ? rawDeltaCost : undefined,
     });
 
     return {
       currentQuantity: params.currentQuantity,
-      currentAvgCost: params.currentAvgCostUsd * displayRate,
-      currentTotalCost: result.currentTotalCostUsd * displayRate,
+      currentAvgCost: params.currentAvgCostNative ?? params.currentAvgCostUsd * displayRate,
+      currentTotalCost: result.currentTotalCostUsd,
       nextQuantity: result.nextQuantity,
-      nextAvgCost: result.nextAvgCostUsd * displayRate,
-      nextTotalCost: result.nextTotalCostUsd * displayRate,
+      nextAvgCost: result.nextAvgCostUsd,
+      nextTotalCost: result.nextTotalCostUsd,
     };
   } catch {
     return null;

@@ -120,7 +120,12 @@ export function applyPositionDelta({
     deltaCostUsd,
     nextQuantity,
     nextTotalCostUsd: normalizedTotalCostUsd,
-    nextAvgCostUsd: nextQuantity > 0 ? normalizedTotalCostUsd / nextQuantity : 0,
+    nextAvgCostUsd:
+      nextQuantity > 0
+        ? mode === 'reduce'
+          ? currentAvgCostUsd
+          : normalizedTotalCostUsd / nextQuantity
+        : 0,
   };
 }
 
