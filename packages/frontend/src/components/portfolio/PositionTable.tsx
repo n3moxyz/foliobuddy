@@ -731,6 +731,7 @@ export function PositionTable({
     const localCurrentPrice = localPriceLabel({
       nativePrice:
         position.asset.category === 'UNIT_TRUST' ? position.asset.currentPriceNative : null,
+      isUnitTrustNav: position.asset.category === 'UNIT_TRUST',
       usdPrice: position.asset.currentPriceUsd,
       nativeCurrency: position.asset.nativeCurrency,
       displayCurrency: currency,

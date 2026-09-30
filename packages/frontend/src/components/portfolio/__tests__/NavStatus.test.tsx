@@ -54,6 +54,7 @@ describe('daily NAV display', () => {
       localPriceLabel({
         usdPrice: asset.currentPriceUsd,
         nativePrice: asset.currentPriceNative,
+        isUnitTrustNav: true,
         nativeCurrency: 'SGD',
         displayCurrency: 'USD',
         usdFxRates: { SGD: 1.5 },

@@ -114,6 +114,7 @@ export const PositionRow = React.memo(function PositionRow({
     : 'NAV never set';
   const localCurrentPrice = localPriceLabel({
     nativePrice: isUnitTrust ? position.asset.currentPriceNative : null,
+    isUnitTrustNav: isUnitTrust,
     usdPrice: position.asset.currentPriceUsd,
     nativeCurrency: position.asset.nativeCurrency,
     displayCurrency: currency,
