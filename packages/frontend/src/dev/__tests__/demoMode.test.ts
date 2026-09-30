@@ -55,6 +55,89 @@ describe('demo mode API mock', () => {
     resetDemoDataForTests();
   });
 
+  it('previews, applies once and restores signed IBKR cash without changing other holdings or history', async () => {
+    const original = await seedPositions();
+    const cash = original.find((p) => p.id === 'pos-cash-usd')!;
+    const history = await positionHistoryFor(cash.id);
+    const input = {
+      capturedAt: new Date().toISOString(),
+      balances: [
+        { currency: 'USD', cashBalance: 100 },
+        { currency: 'JPY', cashBalance: -45000 },
+      ],
+    };
+    const body = { kind: 'cash', cashPositionId: cash.id, input };
+    const preview = await readJson<{ state: string; cash: { netCashUsd: number } }>(
+      await demoRequest('/ibkr/reconcile', 'POST', { ...body, action: 'preview' })
+    );
+    expect(preview.cash.netCashUsd).toBe(-200);
+    expect(await seedPositions()).toEqual(original);
+    expect(
+      (
+        await demoRequest('/ibkr/reconcile', 'POST', {
+          ...body,
+          action: 'apply',
+          expectedState: 'wrong',
+        })
+      ).status
+    ).toBe(409);
+    const applied = await readJson<{ runId: string }>(
+      await demoRequest('/ibkr/reconcile', 'POST', {
+        ...body,
+        action: 'apply',
+        expectedState: preview.state,
+      })
+    );
+    const after = await seedPositions();
+    expect(after.find((p) => p.id === cash.id)).toMatchObject({
+      quantity: -200,
+      marketValueUsd: -200,
+    });
+    expect(after.filter((p) => p.id !== cash.id)).toEqual(original.filter((p) => p.id !== cash.id));
+    expect(await positionHistoryFor(cash.id)).toEqual(history);
+    expect(
+      (
+        await demoRequest('/ibkr/reconcile', 'POST', {
+          ...body,
+          action: 'apply',
+          expectedState: preview.state,
+        })
+      ).status
+    ).toBe(200);
+    expect(await readJson<unknown[]>(await demoRequest('/ibkr/runs'))).toHaveLength(1);
+    expect((await demoRequest(`/positions/${cash.id}`, 'DELETE')).status).toBe(409);
+    await expect(demoRequest(`/positions/${cash.id}`, 'PUT', { quantity: 100 })).rejects.toThrow(
+      /currency balances/
+    );
+    const restore = await demoRequest('/ibkr/restore', 'POST', {
+      runId: applied.runId,
+      action: 'apply',
+    });
+    expect(restore.status).toBe(200);
+    expect(await seedPositions()).toEqual(original);
+  });
+
+  it('stops unsupported broker sync and conflicting restoration in the demo', async () => {
+    expect((await demoRequest('/ibkr/reconcile', 'POST', { kind: 'sync', input: {} })).status).toBe(
+      409
+    );
+    expect(
+      (await demoRequest('/ibkr/restore', 'POST', { action: 'apply', runId: 'unknown' })).status
+    ).toBe(409);
+    expect(
+      (
+        await demoRequest('/ibkr/reconcile', 'POST', {
+          kind: 'cash',
+          cashPositionId: 'pos-cash-sgd',
+          input: {
+            capturedAt: new Date().toISOString(),
+            balances: [{ currency: 'USD', cashBalance: 1 }],
+          },
+        })
+      ).status
+    ).toBe(409);
+  });
+
   it('previews a native baseline repair without writes, applies the reviewed state, and restores its backup', async () => {
     const original = (await seedPositions()).find((p) => p.asset.symbol === 'D05.SI')!;
     await demoRequest(`/positions/${original.id}`, 'PUT', { storageLocation: 'IBKR' });

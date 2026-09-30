@@ -99,6 +99,8 @@ import {
 import type { CategoryType, EquityMode, FormMode, PositionStorageType } from './positionFormTypes';
 import type { PositionDeltaMode } from '@foliobuddy/shared';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { IbkrCashPanel } from './IbkrCashPanel';
+import { isIbkrCashPosition } from './ibkrCash';
 
 const CUSTODY_NAMES_KEY = 'foliobuddy-custody-names';
 const LEGACY_CUSTODY_NAMES_KEY = 'pa-portfolio-custody-names';
@@ -253,6 +255,8 @@ export function PositionForm({
   const [deltaMode, setDeltaMode] = useState<PositionDeltaMode>('add');
   const queryClient = useQueryClient();
   const isEditing = !!position;
+  const [ibkrCashPosition, setIbkrCashPosition] = useState<Position | null>(null);
+  const [openingIbkrCash, setOpeningIbkrCash] = useState(false);
 
   const [jsonInput, setJsonInput] = useState('');
   const [parseError, setParseError] = useState<string | null>(null);
@@ -617,6 +621,8 @@ export function PositionForm({
 
       // Validate structure
       for (const pos of positions) {
+        if (pos.ibkrCash)
+          throw new Error('Restore IBKR currency cash with its checkpoint or broker sync');
         if (!pos.asset?.symbol || !pos.asset?.name) {
           throw new Error('Invalid format: missing asset symbol or name');
         }
@@ -798,6 +804,7 @@ export function PositionForm({
         (item) =>
           item.id !== position?.id &&
           !item.custodyOf &&
+          !item.ibkrCash &&
           isStablecoinCategory(item.asset.category) &&
           (!mustHoldCash || (item.quantity > 0 && cashFundingValueUsd(item) > 0))
       )
@@ -1305,8 +1312,16 @@ export function PositionForm({
     }
   };
 
+  const creatingIbkrCash =
+    !isEditing &&
+    category === 'cash' &&
+    selectedCashTypeId === FIAT_CASH_TYPE_ID &&
+    storageType === 'BROKERAGE' &&
+    storageLocation === 'IBKR' &&
+    !isCustody;
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (creatingIbkrCash) return;
     setError(null);
     setValidationError(null);
 
@@ -1606,6 +1621,10 @@ export function PositionForm({
   };
 
   // If showing import results, show the results UI
+  if (ibkrCashPosition) return <IbkrCashPanel position={ibkrCashPosition} onSuccess={onSuccess} />;
+  if (position && isIbkrCashPosition(position))
+    return <IbkrCashPanel position={position} onSuccess={onSuccess} />;
+
   if (mode === 'import' && importResults) {
     return <ImportResultsList results={importResults} onDone={onSuccess} />;
   }
@@ -1807,6 +1826,34 @@ export function PositionForm({
       ) : (
         /* Add New Mode */
         <form onSubmit={handleSubmit} className="space-y-3">
+          {creatingIbkrCash && (
+            <div className="space-y-2 rounded-md border p-3">
+              <p className="text-sm font-medium">IBKR currency cash &amp; debt</p>
+              <p className="text-sm text-muted-foreground">
+                Track all currency balances in one account, including borrowing.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={openingIbkrCash}
+                onClick={async () => {
+                  setOpeningIbkrCash(true);
+                  setError(null);
+                  try {
+                    const anchor = await api.createIbkrCashPosition();
+                    setIbkrCashPosition(anchor);
+                    await queryClient.invalidateQueries({ queryKey: ['positions'] });
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : 'IBKR cash could not be opened');
+                  } finally {
+                    setOpeningIbkrCash(false);
+                  }
+                }}
+              >
+                {openingIbkrCash ? 'Opening…' : 'Open IBKR currency balances'}
+              </Button>
+            </div>
+          )}
           {isEditing && (
             <div className="flex border-b mb-2">
               <button
@@ -2428,7 +2475,7 @@ export function PositionForm({
               <div className="pt-3 border-t border-border/60">{custodyCheckbox}</div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="submit" disabled={isLoading || !isFormValid}>
+                <Button type="submit" disabled={creatingIbkrCash || isLoading || !isFormValid}>
                   {isLoading
                     ? 'Saving...'
                     : isEditing || utStatementMatch

@@ -281,10 +281,18 @@ const AllocationDonut = memo(function AllocationDonut({
 });
 
 export function AllocationCharts({
-  positions,
+  positions: allPositions,
   perpExposure = 0,
   isLoading,
 }: AllocationChartsProps) {
+  const { formatCurrency } = useMoneyFormatter();
+  const ibkrDebt = allPositions
+    .filter((p) => !p.custodyOf && p.ibkrCash && (p.marketValueUsd ?? 0) < 0)
+    .reduce((sum, p) => sum - (p.marketValueUsd ?? 0), 0);
+  const positions = useMemo(
+    () => allPositions.filter((p) => !p.custodyOf && !(p.ibkrCash && (p.marketValueUsd ?? 0) < 0)),
+    [allPositions]
+  );
   // Track hidden items for each chart
   const [hiddenCategory, setHiddenCategory] = useState<Set<string>>(new Set());
   const [hiddenDetailed, setHiddenDetailed] = useState<Set<string>>(new Set());
@@ -540,6 +548,13 @@ export function AllocationCharts({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {ibkrDebt > 0 && (
+        <p className="col-span-full text-sm text-muted-foreground">
+          Net IBKR cash debt of{' '}
+          <span className="font-mono text-loss">{formatCurrency(ibkrDebt, 'USD', 2)}</span> is
+          deducted from net worth. These charts show positive asset balances.
+        </p>
+      )}
       <AllocationDonut
         data={categoryAllocation}
         colors={ASSET_COLORS}

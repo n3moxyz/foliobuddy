@@ -197,7 +197,7 @@ Use `formatQuantity()` for read-only quantity displays (tables, dialogs, history
 
 ### Formatted Amount Inputs
 
-Use `FormattedNumberInput` for editable money/quantity/NAV/capital/exposure fields — renders `10,000` over raw-string state so `parseFloat()`/payloads stay safe. Avoid raw `type="number"` for finance amounts unless min/max needed. Never coerce leading-negative input positive (`sanitizeNumberInput('-1')` → `''`). Gate submit on `isPositiveNumberInput()`/`isNonNegativeNumberInput()` (`src/lib/formValidation.ts`), not `required`/`parseFloat`, so UI guard matches backend Zod.
+Use `FormattedNumberInput` for editable amounts — renders `10,000` over raw-string state; payloads stay safe. Avoid raw `type="number"` for finance amounts unless min/max needed. Never coerce leading-negative input positive (`sanitizeNumberInput('-1')` → `''`). Gate submit on `isPositiveNumberInput()`/`isNonNegativeNumberInput()` (`src/lib/formValidation.ts`), not `required`/`parseFloat`, so UI guard matches backend Zod.
 
 ### Trades Review Lenses
 
@@ -254,11 +254,11 @@ Create-only sub-type toggle (edit infers category). Provider contract: **Stock/E
 
 ### Position Edit Modes
 
-Native costs: `avgCostNative` is primary; `avgCostUsd` remains a ledger. IBKR preview/backup/apply/restore: [contract](docs/solutions/2026-09-30-native-cost-reconciliation.md).
+Native costs: `avgCostNative` is primary; `avgCostUsd` remains a ledger. [Repair](docs/solutions/2026-09-30-native-cost-reconciliation.md); [IBKR cash/sync](docs/solutions/2026-09-30-ibkr-cash-sync.md): signed currency balances, owner checkpoints, no agent-key writes.
 
 `PositionForm.tsx`: `Edit Totals` (corrections) + `Add/Reduce Position` tabs.
 
-- `Add`: extra quantity + required total/avg cost → weighted avg. `Reduce`: quantity + same pair as optional sale proceeds (`Total Proceeds`/`Avg Price`); basis removed at current avg; proceeds never alter avg/basis. Quantity 0 deletes the position (history cascades, cash row stays; preview warns).
+- `Add`: extra quantity + required total/avg cost → weighted avg. `Reduce`: quantity + same pair as optional sale proceeds (`Total Proceeds`/`Avg Price`); basis removed at current avg; proceeds never alter avg/basis. Quantity 0 deletes unlinked positions; linked IBKR holdings retain history.
 - Optional `Fund From` (Add: debit pile, balance ≥ cost) / `Fund To` (Reduce: credit proceeds >0, empty piles allowed). Tab switch clears amounts + pile; direction-aware confirmation.
 - Persist custody changes from either tab. Old/New preview (qty, avg, total cost). Preview + submit share `applyPositionDelta()`; never hand-roll basis math. UI `PositionDeltaEditor.tsx`, math `positionFormMath.ts`, submit `PositionForm.tsx`.
 

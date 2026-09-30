@@ -1,5 +1,6 @@
 import { AssetCategory, StorageType, USD_SGD_FALLBACK_RATE } from '../../lib/constants.js';
 import { extractCashtags } from '../../services/news/xPostText.js';
+import type { IbkrCashSnapshot } from '../../services/ibkrCapture.js';
 
 /**
  * Sample data for the local sandbox: a made-up portfolio of real, public
@@ -141,6 +142,7 @@ export interface SandboxPosition {
   storageType: StorageType;
   storageLocation: string;
   custodyOf: string | null;
+  ibkrCash?: IbkrCashSnapshot;
 }
 
 function position(
@@ -180,7 +182,21 @@ export const SANDBOX_POSITIONS: SandboxPosition[] = [
   position('dbs', 900, 21, StorageType.BROKERAGE, 'UOB KH'),
   position('fund', 8_000, 0.98, StorageType.BROKERAGE, 'FSMOne'),
   position('sgd', 25_000, 1 / SGD_PER_USD, StorageType.BANK, 'DBS'),
-  position('usd', 6_000, 1, StorageType.BROKERAGE, 'IBKR'),
+  {
+    ...position('usd', -450, 1, StorageType.BROKERAGE, 'IBKR'),
+    ibkrCash: {
+      capturedAt: new Date().toISOString(),
+      source: 'ibkr',
+      baseCurrency: 'USD',
+      baseCash: -450,
+      baseToUsd: 1,
+      netCashUsd: -450,
+      balances: [
+        { currency: 'USD', cashBalance: 300, fxRateToUsd: 1 },
+        { currency: 'JPY', cashBalance: -111000, fxRateToUsd: 1 / 148 },
+      ],
+    },
+  },
   // "Held for Others": excluded from net worth, P&L and snapshots.
   position('eth', 1.5, 2_400, StorageType.WALLET, 'Ledger', 'Alex'),
 ];

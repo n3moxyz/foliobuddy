@@ -25,6 +25,7 @@ model User {
   trades           Trade[]
   investors        Investor[]
   snapshots        Snapshot[]
+  ibkrSyncRuns     IbkrSyncRun[]
 }
 
 // Asset model - represents any tradeable asset
@@ -96,6 +97,10 @@ model Position {
   // column remains the recorded ledger; API reads project native basis at current FX.
   avgCostNative   Float?
   costCurrency    String?
+  // IBKR-only reconciliation metadata; ordinary cash remains a single currency.
+  ibkrContractId  Int?
+  ibkrSyncedAt    DateTime?
+  ibkrCash        Json?
   storageType     String   @default("WALLET")
   storageLocation String?
   notes           String?
@@ -112,6 +117,25 @@ model Position {
   @@index([userId])
   @@index([assetId])
   @@index([custodyOf])
+  @@unique([userId, ibkrContractId])
+}
+
+// Private source receipts and reversible financial-state checkpoints.
+// These are reconciliations, never inferred transaction fills.
+model IbkrSyncRun {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  captureHash String
+  kind        String
+  source      Json
+  before      Json
+  after       Json
+  restoredAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, captureHash])
+  @@index([userId, createdAt])
 }
 
 // PositionHistory - add/reduce activity for aggregate holdings

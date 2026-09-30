@@ -31,6 +31,8 @@ import {
   usePositionHistory,
 } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
+import { IbkrCashPanel } from './IbkrCashPanel';
+import { isIbkrCashPosition } from './ibkrCash';
 import { PositionRow } from './PositionRow';
 import {
   Copy,
@@ -523,16 +525,18 @@ export function PositionTable({
           <Pencil className="h-4 w-4 mr-2" />
           Edit
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="min-h-11 text-destructive focus:text-destructive"
-          onClick={(event) => {
-            event.stopPropagation();
-            handleDeleteClick(position);
-          }}
-        >
-          <Trash2 className="h-4 w-4 mr-2" />
-          Delete
-        </DropdownMenuItem>
+        {!position.ibkrCash && position.ibkrContractId == null && (
+          <DropdownMenuItem
+            className="min-h-11 text-destructive focus:text-destructive"
+            onClick={(event) => {
+              event.stopPropagation();
+              handleDeleteClick(position);
+            }}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -593,7 +597,7 @@ export function PositionTable({
                   )}
                 </div>
                 <p className="mt-0.5 truncate text-xs leading-snug text-muted-foreground">
-                  {position.asset.name}
+                  {position.ibkrCash ? 'IBKR cash & debt' : position.asset.name}
                 </p>
                 <NavStatus asset={position.asset} />
               </div>
@@ -656,7 +660,7 @@ export function PositionTable({
                   </span>
                 )}
                 <p className="min-w-0 truncate text-xs leading-snug text-muted-foreground">
-                  {position.asset.name}
+                  {position.ibkrCash ? 'IBKR cash & debt' : position.asset.name}
                 </p>
               </div>
               <NavStatus asset={position.asset} />
@@ -678,9 +682,11 @@ export function PositionTable({
 
           <div className="mt-1 flex min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden whitespace-nowrap text-[11px] leading-snug text-muted-foreground">
             <span className="inline-flex shrink-0 gap-1">
-              Qty
+              {position.ibkrCash ? 'Net USD' : 'Qty'}
               <span className="font-mono text-foreground">
-                {formatQuantity(position.quantity, position.asset.category)}
+                {position.ibkrCash
+                  ? formatCurrency(position.quantity, 'USD', 2)
+                  : formatQuantity(position.quantity, position.asset.category)}
               </span>
             </span>
             <span aria-hidden="true" className="shrink-0">
@@ -1539,59 +1545,62 @@ export function PositionTable({
           </DialogHeader>
           {viewPosition && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Quantity</p>
-                  <p className="font-mono font-medium">
-                    {formatQuantity(viewPosition.quantity, viewPosition.asset.category)}
-                  </p>
+              {isIbkrCashPosition(viewPosition) && <IbkrCashPanel position={viewPosition} />}
+              {!isIbkrCashPosition(viewPosition) && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Quantity</p>
+                    <p className="font-mono font-medium">
+                      {formatQuantity(viewPosition.quantity, viewPosition.asset.category)}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Current Price</p>
+                    {renderCurrentPrice(viewPosition)}
+                    <NavStatus asset={viewPosition.asset} detailed />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Average Cost</p>
+                    {renderAverageCost(viewPosition)}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Total Cost</p>
+                    {renderAmountWithNative(
+                      viewPosition,
+                      viewPosition.quantity * viewPosition.avgCostUsd,
+                      {
+                        nativeAmount:
+                          viewPosition.avgCostNative != null
+                            ? viewPosition.quantity * viewPosition.avgCostNative
+                            : null,
+                      }
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Market Value</p>
+                    {renderAmountWithNative(viewPosition, viewPosition.marketValueUsd, {
+                      className: 'font-mono font-medium',
+                    })}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Unrealized P&L</p>
+                    <p
+                      className={`font-mono font-medium ${getPnLColorClass(viewPosition.unrealizedPnL)}`}
+                    >
+                      {formatCurrency(convert(viewPosition.unrealizedPnL), currency, 0)}
+                      <span className="text-xs ml-1">
+                        ({formatPercent(viewPosition.unrealizedPnLPct)})
+                      </span>
+                    </p>
+                    {renderNativeHint(
+                      nativeAmountLabelFor(viewPosition, viewPosition.unrealizedPnL),
+                      `font-mono text-[11px] leading-none ${getPnLColorClass(
+                        viewPosition.unrealizedPnL
+                      )}`
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Current Price</p>
-                  {renderCurrentPrice(viewPosition)}
-                  <NavStatus asset={viewPosition.asset} detailed />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Average Cost</p>
-                  {renderAverageCost(viewPosition)}
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Total Cost</p>
-                  {renderAmountWithNative(
-                    viewPosition,
-                    viewPosition.quantity * viewPosition.avgCostUsd,
-                    {
-                      nativeAmount:
-                        viewPosition.avgCostNative != null
-                          ? viewPosition.quantity * viewPosition.avgCostNative
-                          : null,
-                    }
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Market Value</p>
-                  {renderAmountWithNative(viewPosition, viewPosition.marketValueUsd, {
-                    className: 'font-mono font-medium',
-                  })}
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Unrealized P&L</p>
-                  <p
-                    className={`font-mono font-medium ${getPnLColorClass(viewPosition.unrealizedPnL)}`}
-                  >
-                    {formatCurrency(convert(viewPosition.unrealizedPnL), currency, 0)}
-                    <span className="text-xs ml-1">
-                      ({formatPercent(viewPosition.unrealizedPnLPct)})
-                    </span>
-                  </p>
-                  {renderNativeHint(
-                    nativeAmountLabelFor(viewPosition, viewPosition.unrealizedPnL),
-                    `font-mono text-[11px] leading-none ${getPnLColorClass(
-                      viewPosition.unrealizedPnL
-                    )}`
-                  )}
-                </div>
-              </div>
+              )}
 
               <div className="border-t pt-4">
                 {viewPosition.storageType === 'BROKERAGE' ? (
@@ -1642,10 +1651,17 @@ export function PositionTable({
                   can differ from the charges included in that average.
                 </p>
               )}
-              {renderPositionHistory(positionHistory, {
-                isLoading: isHistoryLoading,
-                isError: isHistoryError,
-              })}
+              {viewPosition.ibkrSyncedAt && !isIbkrCashPosition(viewPosition) && (
+                <p className="text-xs text-muted-foreground">
+                  Broker reconciled: {formatDateTime(viewPosition.ibkrSyncedAt)}. Purchase and sale
+                  history is retained separately.
+                </p>
+              )}
+              {!viewPosition.ibkrCash &&
+                renderPositionHistory(positionHistory, {
+                  isLoading: isHistoryLoading,
+                  isError: isHistoryError,
+                })}
 
               <div className="border-t pt-4 text-xs text-muted-foreground">
                 <p>Created: {formatDateTime(viewPosition.createdAt)}</p>
@@ -1682,17 +1698,19 @@ export function PositionTable({
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   Edit
                 </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => {
-                    setViewPosition(null);
-                    handleDeleteClick(viewPosition);
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-1" />
-                  Delete
-                </Button>
+                {!viewPosition.ibkrCash && viewPosition.ibkrContractId == null && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setViewPosition(null);
+                      handleDeleteClick(viewPosition);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
           )}

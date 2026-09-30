@@ -20,6 +20,7 @@ vite.config.js
 vite.config.d.ts
 
 # Logs
+.local/
 logs/
 *.log
 npm-debug.log*

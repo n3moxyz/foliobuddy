@@ -61,6 +61,7 @@ jobs:
           npx prisma migrate deploy
           npx tsx scripts/verify-unit-trust-nav.ts
           npx tsx scripts/verify-native-cost-reconciliation.ts
+          npx tsx scripts/verify-ibkr-sync.ts
 
       - name: Build frontend
         run: npm run build

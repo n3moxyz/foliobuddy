@@ -25,6 +25,7 @@ function formatPositionsForClipboard(positions: Position | Position[]) {
     ...(p.avgCostNative != null
       ? { avgCostNative: p.avgCostNative, costCurrency: p.costCurrency }
       : {}),
+    ...(p.ibkrCash ? { ibkrCash: p.ibkrCash } : {}),
     storageType: p.storageType,
     storageLocation: p.storageLocation,
     notes: p.notes,

@@ -7,6 +7,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useThemeEffect } from '@/hooks/useThemeEffect';
 import { setTokenGetter } from '@/lib/api';
 import { impliedYahooTicker } from '@/components/portfolio/assetSearchMatching';
+import { handleDemoIbkr, resetDemoIbkr } from './demoIbkr';
 import type {
   Asset,
   AssetPrice,
@@ -775,8 +776,20 @@ const initialPositions: Position[] = [
     quantity: 8500,
     avgCostUsd: 1,
     storageType: 'BROKERAGE',
-    storageLocation: 'Interactive Brokers',
-    notes: 'USD settlement cash',
+    storageLocation: 'IBKR',
+    notes: 'Multi-currency settlement cash',
+    ibkrCash: {
+      source: 'ibkr',
+      capturedAt: NOW,
+      baseCurrency: 'USD',
+      baseCash: 8500,
+      baseToUsd: 1,
+      netCashUsd: 8500,
+      balances: [
+        { currency: 'USD', cashBalance: 9000, fxRateToUsd: 1 },
+        { currency: 'JPY', cashBalance: -75000, fxRateToUsd: 1 / 150 },
+      ],
+    },
     custodyOf: null,
     marketValueUsd: 8500,
     unrealizedPnL: 0,
@@ -1466,6 +1479,7 @@ const fxRates: FxRate[] = [
   { id: 'usd-twd', fromCcy: 'USD', toCcy: 'TWD', rate: 31.2, timestamp: NOW },
   { id: 'usd-krw', fromCcy: 'USD', toCcy: 'KRW', rate: 1375, timestamp: NOW },
   { id: 'usd-nok', fromCcy: 'USD', toCcy: 'NOK', rate: 10.5, timestamp: NOW },
+  { id: 'usd-gbp', fromCcy: 'USD', toCcy: 'GBP', rate: 0.76, timestamp: NOW },
 ];
 let demoAssets: Asset[] = [...initialAssets];
 let demoPositions: Position[] = [...initialPositions];
@@ -1478,6 +1492,7 @@ let demoPerformance: PerformancePoint[] = [...initialPerformance];
 let demoIdCounter = 0;
 
 export function resetDemoDataForTests() {
+  resetDemoIbkr();
   demoPreferences = { ...INITIAL_DEMO_PREFERENCES };
   demoAssets = [...initialAssets];
   demoPositions = [...initialPositions];
@@ -1865,6 +1880,8 @@ function findDemoLinkedCashPosition(cashPositionId: string, isFunding: boolean):
   if (!cashPosition) {
     throw new Error('Funding cash position not found');
   }
+  if (cashPosition.ibkrCash)
+    throw new Error('Edit IBKR currency balances or sync the broker account instead');
   if (categoryGroup(cashPosition.asset.category) !== CategoryGroup.STABLES) {
     throw new Error(
       isFunding
@@ -1972,6 +1989,8 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
   if (!existing) {
     throw new Error('Position not found');
   }
+  if (existing.ibkrCash)
+    throw new Error('Edit IBKR currency balances or sync the broker account instead');
 
   const asset = demoAssets.find((item) => item.id === (data.assetId ?? existing.assetId));
   if (!asset) {
@@ -2883,6 +2902,16 @@ function demoApiPath(url: URL) {
 
 export async function handleDemoApi(url: URL, method: string, init?: RequestInit) {
   const path = demoApiPath(url);
+  if (path.startsWith('/api/ibkr/'))
+    return handleDemoIbkr(path, method, JSON.parse((init?.body as string | undefined) ?? '{}'), {
+      positions: demoPositions,
+      history: demoPositionHistory,
+      rates: fxRates,
+      save: (rows) => {
+        demoPositions = rows;
+      },
+      newId: () => nextDemoId('ibkr-run'),
+    });
 
   if (path === '/api/positions/native-cost-capabilities' && method === 'GET')
     return json({ supported: true });
@@ -3005,6 +3034,8 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
     return json(createDemoPosition(body), 201);
   }
   if (path === '/api/positions' && method === 'DELETE') {
+    if (demoPositions.some((p) => p.ibkrCash || p.ibkrContractId != null))
+      return json({ error: 'Linked IBKR records require reconciliation' }, 409);
     const count = demoPositions.length;
     demoPositions = [];
     demoPositionHistory = [];
@@ -3032,6 +3063,8 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
   }
   if (path.startsWith('/api/positions/') && method === 'DELETE') {
     const id = path.split('/')[3];
+    if (demoPositions.find((p) => p.id === id)?.ibkrCash)
+      return json({ error: 'Edit IBKR currency balances or sync the broker account instead' }, 409);
     const before = demoPositions.length;
     demoPositions = demoPositions.filter((position) => position.id !== id);
     demoPositionHistory = demoPositionHistory.filter((entry) => entry.positionId !== id);
@@ -3046,6 +3079,8 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
     const imports = body.positions ?? [];
     const results = imports.map((position) => {
       try {
+        if ('ibkrCash' in position)
+          throw new Error('Use the IBKR reconciliation controls to import currency balances');
         createImportedPosition(position);
         return { success: true, symbol: position.asset.symbol };
       } catch (error) {
