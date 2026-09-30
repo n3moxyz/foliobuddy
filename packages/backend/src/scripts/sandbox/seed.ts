@@ -68,8 +68,11 @@ async function seedPortfolio(now: Date): Promise<void> {
 
   const prices = new Map(SANDBOX_ASSETS.map((asset) => [asset.id, asset.currentPriceUsd]));
   await prisma.position.createMany({
-    data: SANDBOX_POSITIONS.map((position) => ({
+    data: SANDBOX_POSITIONS.map(({ ibkrCash, ...position }) => ({
       ...position,
+      ...(ibkrCash
+        ? { ibkrCash: JSON.parse(JSON.stringify(ibkrCash)) as Prisma.InputJsonValue }
+        : {}),
       userId: SANDBOX_USER_ID,
       notes: 'Sandbox sample data',
       ...calculatePositionValue({ ...position, currentPriceUsd: prices.get(position.assetId) }),

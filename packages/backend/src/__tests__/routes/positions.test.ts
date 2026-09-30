@@ -63,6 +63,49 @@ vi.mock('../../services/portfolioService.js', () => ({
 const { default: positionsRouter } = await import('../../routes/positions.js');
 const app = createTestApp(positionsRouter, '/api/positions');
 
+describe('IBKR reconciliation guards', () => {
+  beforeEach(() => vi.clearAllMocks());
+  it('blocks ordinary edits and deletion of multi-currency cash before writing', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({ ibkrCash: { balances: [] } } as any)
+    );
+    const edited = await request(app).put('/api/positions/cash').send({ quantity: 1 });
+    const deleted = await request(app).delete('/api/positions/cash');
+    expect(edited.status).toBe(409);
+    expect(deleted.status).toBe(409);
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+    expect(mockPrisma.position.deleteMany).not.toHaveBeenCalled();
+  });
+  it('rejects changing a linked holding to an empty broker', async () => {
+    mockPrisma.position.findFirst.mockResolvedValue(
+      mockPosition({
+        ibkrContractId: 101,
+        storageType: 'BROKERAGE',
+        storageLocation: 'IBKR',
+      } as any)
+    );
+    const response = await request(app).put('/api/positions/stock').send({ storageLocation: '' });
+    expect(response.status).toBe(409);
+    expect(mockPrisma.position.update).not.toHaveBeenCalled();
+  });
+  it('refuses importing an aggregate as a flat cash balance', async () => {
+    const response = await request(app)
+      .post('/api/positions/bulk')
+      .send({
+        positions: [
+          {
+            asset: { symbol: 'USD', name: 'US Dollar', category: 'CASH' },
+            quantity: 1,
+            avgCostUsd: 1,
+            ibkrCash: { balances: [] },
+          },
+        ],
+      });
+    expect(response.status).toBe(400);
+    expect(mockPrisma.position.create).not.toHaveBeenCalled();
+  });
+});
+
 describe('bulk import text caps', () => {
   it('rejects over-long asset names and symbols before touching the catalog', async () => {
     const { MAX_ASSET_NAME_LENGTH, MAX_ASSET_SYMBOL_LENGTH } =
@@ -923,7 +966,12 @@ describe('DELETE /api/positions/:id', () => {
 
     expect(res.status).toBe(204);
     expect(mockPrisma.position.deleteMany).toHaveBeenCalledWith({
-      where: { id: 'position-1', userId: 'test-user-id' },
+      where: {
+        id: 'position-1',
+        userId: 'test-user-id',
+        ibkrContractId: null,
+        ibkrCash: { equals: Prisma.DbNull },
+      },
     });
   });
 });

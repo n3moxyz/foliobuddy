@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { USD_SGD_FALLBACK_RATE } from '../lib/constants.js';
 import { projectNativeCosts } from './nativeCostService.js';
+import { isActiveIbkrPosition } from '../lib/ibkrCashGuard.js';
 
 interface PortfolioSummary {
   totalValueUsd: number;
@@ -51,12 +52,14 @@ function positionValueUsd(position: PositionWithAsset): number {
 
 class PortfolioService {
   private async getOwnedPositions(userId: string): Promise<PositionWithAsset[]> {
-    return projectNativeCosts(
-      await prisma.position.findMany({
-        where: { userId, custodyOf: null },
-        include: { asset: true },
-      })
-    );
+    return (
+      await projectNativeCosts(
+        await prisma.position.findMany({
+          where: { userId, custodyOf: null },
+          include: { asset: true },
+        })
+      )
+    ).filter(isActiveIbkrPosition);
   }
 
   async getSummary(userId: string): Promise<PortfolioSummary> {

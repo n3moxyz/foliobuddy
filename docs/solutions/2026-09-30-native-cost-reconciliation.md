@@ -113,6 +113,13 @@ use native-only patches, verify readback inside the transaction, and reject
 subsequent record changes. CLI backups use exclusive creation and mode `0600`,
 with a successful file readback required before writes.
 
+Prisma's float transport can round freshly derived averages by one machine unit.
+Readback accepts at most two `Number.EPSILON` units relative to a newly written
+native number (or a reconstructed initial USD total). Existing USD fields,
+dates, quantities, ownership and identities still require exact equality. A
+financial difference cannot be hidden by a general decimal tolerance. The real
+Postgres verifier includes fractional weighted averages to exercise this path.
+
 ## Verification and limits
 
 CI applies the real migration to Postgres and runs

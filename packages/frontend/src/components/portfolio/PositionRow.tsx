@@ -104,7 +104,11 @@ export const PositionRow = React.memo(function PositionRow({
   const isUnitTrust = position.asset.category === 'UNIT_TRUST';
   const shouldShowNavAge = !isUnitTrust && isManual && !isStable;
   const ageInfo = shouldShowNavAge ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
-  const assetNameLabel = isStable ? 'Cash' : position.asset.name;
+  const assetNameLabel = position.ibkrCash
+    ? 'IBKR cash & debt'
+    : isStable
+      ? 'Cash'
+      : position.asset.name;
   const priceUpdatedTitle = position.asset.priceUpdatedAt
     ? `NAV updated ${formatDateTime(position.asset.priceUpdatedAt)}`
     : 'NAV never set';
@@ -163,7 +167,9 @@ export const PositionRow = React.memo(function PositionRow({
         </div>
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
-        {formatQuantity(position.quantity, position.asset.category)}
+        {position.ibkrCash
+          ? formatCurrency(position.quantity, 'USD', 2)
+          : formatQuantity(position.quantity, position.asset.category)}
       </TableCell>
       <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         <p>
@@ -272,15 +278,17 @@ export const PositionRow = React.memo(function PositionRow({
           >
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
-            onClick={() => onDelete(position)}
-            aria-label="Delete position"
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          {!position.ibkrCash && position.ibkrContractId == null && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
+              onClick={() => onDelete(position)}
+              aria-label="Delete position"
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
         </div>
       </TableCell>
     </TableRow>

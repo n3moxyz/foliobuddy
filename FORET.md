@@ -2480,8 +2480,32 @@ we must preserve that distinction instead of forcing one number into both roles.
 
 Real Postgres regression checks cover the migration, apply, unchanged USD ledger,
 ownership, concurrent-edit refusal and exact restoration. The sandbox includes a
-fictional KRW position for sale/edit checks. Cash debt and full-close archival are
-separate existing contracts. Local checks and a prepared capture are preparation;
+fictional KRW position for sale/edit checks. Local checks and a prepared capture are preparation;
 the live portfolio is repaired only after deployment, preview, backup, apply and
 independent readback. The [runbook](docs/solutions/2026-09-30-native-cost-reconciliation.md)
 documents those boundaries.
+
+### IBKR Cash Includes Borrowing (September 2026)
+
+One USD settlement balance had hidden borrowing in another currency. IBKR now has
+a dedicated cash/debt panel: native balances feed one signed net USD account value.
+Other brokers keep their ordinary cash forms. Positive allocation pies explain the
+debt deduction, while net worth includes it directly.
+
+The daily sync reads two complete broker samples, checks them against currency and
+account totals, and reconciles existing verified instruments. Native weighted
+averages and quantities follow the broker; the original USD ledger and histories
+remain. Source snapshots and private before/after checkpoints record reconciliation
+without inventing executions. Full closures require sale evidence and retain their
+history. Unknown assets, partial reads and stale inputs stop the entire update.
+
+A failed first native repair also taught us to test the database transport, not
+only the formulas. Prisma can move a freshly calculated average by one floating
+point unit. We accept that minute rounding only in new derived fields and keep
+old USD records exact. An interrupted multi-row sync rolls back; retries are
+idempotent, and restoration checks the exact saved financial state.
+
+Daily runs use the existing owner session and stop on expired authentication.
+Read-only agent credentials do not gain writes. The schedule starts only after
+deployment and a successful production rehearsal; the [runbook](docs/solutions/2026-09-30-ibkr-cash-sync.md)
+defines the source, edit and notification rules.

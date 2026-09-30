@@ -90,7 +90,7 @@ try {
         quantity: 15,
         recordedAvgCostUsd: 1.5,
         currency: 'KRW',
-        avgCostNative: 150.15,
+        avgCostNative: 150.4833333333333,
         orders: [
           {
             orderId: 'a',
@@ -106,7 +106,7 @@ try {
             timestamp: '2026-06-25T02:00:00Z',
             side: 'BUY',
             quantity: 10,
-            price: 200,
+            price: 200.6666666666667,
             portfolioFees: 2,
             statementFees: 2.18,
           },
@@ -148,7 +148,7 @@ try {
   });
   assert.equal(current.avgCostUsd, 1.5);
   assert.equal(current.quantity, 15);
-  assert.equal(current.avgCostNative, 150.15);
+  assert.equal(current.avgCostNative, 150.4833333333333);
   const firstUsd = (await projectNativeCosts([current]))[0].avgCostUsd;
   await prisma.fxRate.update({
     where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: 'KRW' } },
@@ -204,7 +204,7 @@ try {
     assert.equal(JSON.parse(await readFile(backupPath, 'utf8')).version, 2);
     if (process.platform !== 'win32') assert.equal((await stat(backupPath)).mode & 0o777, 0o600);
     const applied = await prisma.position.findUniqueOrThrow({ where: { id: positionId } });
-    assert.equal(applied.avgCostNative, 150.15);
+    assert.equal(applied.avgCostNative, 150.4833333333333);
     assert.equal(applied.avgCostUsd, 1.5);
     await runCli(['--restore', backupPath]);
     await runCli(['--restore', backupPath, '--apply']);

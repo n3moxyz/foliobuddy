@@ -23,6 +23,8 @@ import type {
   InvestorReport,
   MonthlyReturn,
   NativeReconciliationResult,
+  IbkrReconciliationResult,
+  IbkrSyncRun,
   PaginatedResponse,
   ParsedStatementResponse,
   NewsEnrichmentResponse,
@@ -135,6 +137,39 @@ export const api = {
 
   // Positions
   getPositions: () => request<Position[]>('/positions'),
+  createIbkrCashPosition: () => request<Position>('/ibkr/cash-position', { method: 'POST' }),
+  reconcileIbkr: (payload: {
+    action: 'preview' | 'apply';
+    kind: 'cash' | 'sync';
+    cashPositionId: string;
+    input: unknown;
+    expectedState?: string;
+  }) =>
+    request<IbkrReconciliationResult>('/ibkr/reconcile', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getIbkrRuns: () => request<IbkrSyncRun[]>('/ibkr/runs'),
+  restoreIbkr: (runId: string, action: 'preview' | 'apply') =>
+    request<{
+      applied: boolean;
+      runId: string;
+      before: unknown;
+      after: unknown;
+      review: Array<{
+        id: string;
+        symbol: string;
+        cash: boolean;
+        previousQuantity: number;
+        quantity: number;
+        previousAvgCostNative: number | null;
+        avgCostNative: number | null;
+        costCurrency: string | null;
+      }>;
+    }>('/ibkr/restore', {
+      method: 'POST',
+      body: JSON.stringify({ runId, action }),
+    }),
   reconcileNativeCosts: (payload: unknown) =>
     request<NativeReconciliationResult>('/positions/native-cost-reconciliation', {
       method: 'POST',

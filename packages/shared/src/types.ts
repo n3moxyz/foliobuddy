@@ -303,6 +303,16 @@ export interface Asset {
   priceFxRateToUsd?: number | null;
 }
 
+export interface IbkrCashSnapshot {
+  capturedAt: string;
+  source: 'ibkr' | 'manual';
+  baseCurrency: string;
+  baseCash: number;
+  baseToUsd: number;
+  netCashUsd: number;
+  balances: Array<{ currency: string; cashBalance: number; fxRateToUsd: number }>;
+}
+
 export interface Position {
   id: string;
   assetId: string;
@@ -312,6 +322,9 @@ export interface Position {
   /** Authoritative native weighted average; null on legacy USD-only records. */
   avgCostNative?: number | null;
   costCurrency?: string | null;
+  ibkrContractId?: number | null;
+  ibkrSyncedAt?: string | null;
+  ibkrCash?: IbkrCashSnapshot | null;
   /** Original USD ledger average, before current-FX projection. Use for ledger deltas. */
   recordedAvgCostUsd?: number;
   costFxRateToUsd?: number;

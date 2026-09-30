@@ -17,6 +17,33 @@ export interface NativeReconciliationResult {
   }>;
 }
 
+export interface IbkrReconciliationResult {
+  state?: string;
+  backup: unknown;
+  applied: boolean;
+  unchanged: boolean;
+  runId?: string;
+  cash: import('@foliobuddy/shared').IbkrCashSnapshot;
+  review: Array<{
+    id: string;
+    symbol: string;
+    cash: boolean;
+    previousQuantity: number;
+    quantity: number;
+    previousAvgCostNative: number | null;
+    avgCostNative: number | null;
+    costCurrency: string | null;
+    avgCostUsd: number;
+    recordedAvgCostUsd: number;
+  }>;
+}
+export interface IbkrSyncRun {
+  id: string;
+  kind: 'sync' | 'cash';
+  createdAt: string;
+  restoredAt: string | null;
+}
+
 // -- Frontend-only types --
 
 /** Time-period selector used by PortfolioChart and BenchmarkComparisonChart */

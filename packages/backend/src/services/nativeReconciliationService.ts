@@ -210,6 +210,45 @@ function expectedAfter(before: Before, plan: Plan): Before {
   };
 }
 
+/** Prisma's float transport can round a derived average by a machine unit.
+ * Only freshly written native fields and the recovered initial buy's derived
+ * total may differ at that precision. Original
+ * USD amounts, identities, dates, quantities and untouched rows stay exact. */
+export function matchesNativeReadback(actual: Before, before: Before, plan: Plan) {
+  const expected = expectedAfter(before, plan);
+  const nativeNumber = (a: unknown, b: unknown) =>
+    typeof a === 'number' &&
+    typeof b === 'number' &&
+    Number.isFinite(a) &&
+    Number.isFinite(b) &&
+    Math.abs(a - b) <= Number.EPSILON * 2 * Math.max(Math.abs(a), Math.abs(b), Number.MIN_VALUE);
+  const normalized: Before = {
+    ...actual,
+    avgCostNative: nativeNumber(actual.avgCostNative, expected.avgCostNative)
+      ? expected.avgCostNative
+      : actual.avgCostNative,
+    history: actual.history.map((row) => {
+      if (
+        !plan.historyPatches.some((patch) => patch.id === row.id) &&
+        !(plan.initialHistory && row.id === initialId(before, plan))
+      )
+        return row;
+      const target = expected.history.find((entry) => entry.id === row.id);
+      if (!target) return row;
+      const keys: Array<keyof typeof row> = [...nativeKeys];
+      if (plan.initialHistory && row.id === initialId(before, plan))
+        keys.push('costBasisUsd', 'nextTotalCostUsd');
+      return {
+        ...row,
+        ...Object.fromEntries(
+          keys.filter((key) => nativeNumber(row[key], target[key])).map((key) => [key, target[key]])
+        ),
+      };
+    }),
+  };
+  return hash(normalized) === hash(expected);
+}
+
 /** Authenticated UI transport for the same native-only plan as the private CLI. */
 export async function reconcileNativeCosts(
   userId: string,
@@ -302,7 +341,7 @@ export async function reconcileNativeCosts(
             include: { asset: true, history: true },
           });
           requireMatch(
-            hash(snapshot(after)) === hash(expectedAfter(before, plan)),
+            matchesNativeReadback(snapshot(after), before, plan),
             'Readback differs; transaction rolled back'
           );
         }
@@ -325,7 +364,7 @@ export async function restoreNativeCosts(userId: string, rawBackup: unknown, app
           include: { asset: true, history: true },
         });
         requireMatch(
-          !!current && hash(snapshot(current)) === hash(expectedAfter(before, plan)),
+          !!current && matchesNativeReadback(snapshot(current), before, plan),
           'Position or history changed after reconciliation; restoring requires review'
         );
       }

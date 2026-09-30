@@ -28,6 +28,7 @@ import {
 import { parseBoundedIntegerQuery } from '../lib/queryParams.js';
 import { navTransaction } from '../services/unitTrustNavService.js';
 import { projectNativeCosts } from '../services/nativeCostService.js';
+import { requireUnmanagedCash, isActiveIbkrPosition } from '../lib/ibkrCashGuard.js';
 import { nativeCostFields, nativeCostChange, validateNativeCost } from '../lib/nativeCost.js';
 import {
   reconcileNativeCosts,
@@ -77,6 +78,7 @@ interface FundingCashPosition {
   assetId: string;
   quantity: number;
   avgCostUsd: number;
+  ibkrCash?: unknown;
   asset: {
     category: string;
     currentPriceUsd: number | null;
@@ -101,6 +103,7 @@ function buildFundingCashDelta(
   fundingCashPosition: FundingCashPosition,
   purchaseCostUsd: number
 ): LinkedCashDelta {
+  requireUnmanagedCash(fundingCashPosition);
   if (categoryGroup(fundingCashPosition.asset.category) !== CategoryGroup.STABLES) {
     throw new AppError('Funding position must be a cash position', 400);
   }
@@ -140,6 +143,7 @@ function buildProceedsCashDelta(
   cashPosition: FundingCashPosition,
   proceedsUsd: number
 ): LinkedCashDelta {
+  requireUnmanagedCash(cashPosition);
   if (categoryGroup(cashPosition.asset.category) !== CategoryGroup.STABLES) {
     throw new AppError('Proceeds destination must be a cash position', 400);
   }
@@ -241,7 +245,7 @@ router.get('/', async (req, res, next) => {
       take: 500,
     });
 
-    res.json(await projectNativeCosts(positions));
+    res.json(await projectNativeCosts(positions.filter(isActiveIbkrPosition)));
   } catch (error) {
     next(error);
   }
@@ -333,6 +337,8 @@ router.get('/performers/worst', async (req, res, next) => {
 });
 
 const bulkImportPositionSchema = z.object({
+  // A broker aggregate requires its signed currency ledger, not a flattened import.
+  ibkrCash: z.never().optional(),
   asset: z.object({
     coingeckoId: z.string().nullable().optional(),
     // Same caps as single-asset creation, so bulk import can't bypass them.
@@ -625,6 +631,8 @@ router.delete('/:id/history/:historyId', async (req, res, next) => {
         throw new AppError('Position not found', 404);
       }
 
+      requireUnmanagedCash(existing);
+
       const historyEntry = await tx.positionHistory.findFirst({
         where: {
           id: req.params.historyId,
@@ -674,6 +682,7 @@ router.delete('/:id/history/:historyId', async (req, res, next) => {
       }
 
       for (const entryToCancel of entriesToCancel) {
+        requireUnmanagedCash(entryToCancel.position);
         const latestHistoryEntry = await tx.positionHistory.findFirst({
           where: {
             positionId: entryToCancel.position.id,
@@ -963,6 +972,21 @@ router.put('/:id', async (req, res, next) => {
       throw new AppError('Position not found', 404);
     }
 
+    requireUnmanagedCash(existing);
+    if (
+      existing.ibkrContractId != null &&
+      ((positionData.assetId && positionData.assetId !== existing.assetId) ||
+        (positionData.storageType && positionData.storageType !== existing.storageType) ||
+        (positionData.storageLocation !== undefined &&
+          positionData.storageLocation !== existing.storageLocation) ||
+        !!positionData.custodyOf)
+    ) {
+      throw new AppError(
+        'A linked IBKR holding must keep its instrument, broker and ownership',
+        409
+      );
+    }
+
     if (fundingCashPositionId && !positionDelta) {
       throw new AppError(
         'A linked cash position is only supported when adding to or reducing a position',
@@ -1100,6 +1124,7 @@ router.put('/:id', async (req, res, next) => {
         if (
           valueAsset.category === 'UNIT_TRUST' ||
           existing.asset.category === 'UNIT_TRUST' ||
+          (existing.storageType === 'BROKERAGE' && existing.storageLocation === 'IBKR') ||
           existing.avgCostNative != null ||
           positionData.avgCostNative != null
         ) {
@@ -1108,13 +1133,18 @@ router.put('/:id', async (req, res, next) => {
             include: { asset: true },
           });
           if (!current) throw new AppError('Position not found', 404);
+          requireUnmanagedCash(current);
           if (
             current.assetId !== existing.assetId ||
             current.quantity !== existing.quantity ||
             current.avgCostUsd !== existing.avgCostUsd ||
             current.avgCostNative !== existing.avgCostNative ||
             current.costCurrency !== existing.costCurrency ||
-            current.custodyOf !== existing.custodyOf
+            current.custodyOf !== existing.custodyOf ||
+            current.storageType !== existing.storageType ||
+            current.storageLocation !== existing.storageLocation ||
+            current.ibkrContractId !== existing.ibkrContractId ||
+            current.ibkrSyncedAt?.getTime() !== existing.ibkrSyncedAt?.getTime()
           ) {
             throw new AppError('Position changed while saving; refresh and try again', 409);
           }
@@ -1227,10 +1257,13 @@ router.put('/:id', async (req, res, next) => {
           });
         }
 
-        // An explicit quantity of 0 (a full reduce) closes the position: the row
-        // goes away instead of lingering at $0, and its history cascades with it.
-        // The linked cash side above is already written and stays.
-        if (positionData.quantity !== undefined && numbersClose(updatedPosition.quantity, 0)) {
+        // Unlinked full reductions delete the row. Linked IBKR holdings keep
+        // their history and disappear from active views at zero quantity.
+        if (
+          positionData.quantity !== undefined &&
+          numbersClose(updatedPosition.quantity, 0) &&
+          existing.ibkrContractId == null
+        ) {
           await tx.position.deleteMany({ where: { id: existing.id, userId: req.userId! } });
         }
 
@@ -1247,10 +1280,20 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
+    const current = await prisma.position.findFirst({
+      where: { id: req.params.id, userId: req.userId! },
+    });
+    if (current) {
+      requireUnmanagedCash(current);
+      if (current.ibkrContractId != null)
+        throw new AppError('Sync the closed IBKR holding to retain its history', 409);
+    }
     const result = await prisma.position.deleteMany({
       where: {
         id: req.params.id,
         userId: req.userId!,
+        ibkrContractId: null,
+        ibkrCash: { equals: Prisma.DbNull },
       },
     });
 
@@ -1268,8 +1311,19 @@ router.delete('/', async (req, res, next) => {
   try {
     const userId = req.userId!;
 
-    const result = await prisma.position.deleteMany({
-      where: { userId },
+    const result = await navTransaction(async (tx) => {
+      const linked = await tx.position.findFirst({
+        where: {
+          userId,
+          OR: [{ ibkrContractId: { not: null } }, { ibkrCash: { not: Prisma.DbNull } }],
+        },
+      });
+      if (linked?.ibkrCash || linked?.ibkrContractId != null)
+        throw new AppError(
+          'IBKR linked records retain broker history; review them before deleting all',
+          409
+        );
+      return tx.position.deleteMany({ where: { userId } });
     });
 
     res.json({ count: result.count });
