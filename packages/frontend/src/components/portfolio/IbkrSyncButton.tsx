@@ -289,9 +289,9 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
                   Keep FolioBuddy open. A private backup is verified before any changes are saved.
                 </p>
               )}
-              {!busy && visiblePhase !== 'done' && (
+              {visiblePhase === 'idle' && (
                 <p className="text-sm text-muted-foreground">
-                  Your Mac helper is connected. No chat message is needed.
+                  This browser is paired with your Mac helper. No chat message is needed.
                 </p>
               )}
             </div>
