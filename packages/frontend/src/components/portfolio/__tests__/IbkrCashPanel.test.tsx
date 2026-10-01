@@ -54,6 +54,15 @@ describe('IBKR cash panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit currency balances' }));
     expect(screen.getByRole('textbox', { name: 'Amount JPY' })).toHaveValue('111,000');
   });
+  it('shows the broker total even when converted currency rows differ', () => {
+    mount({
+      ...position,
+      ibkrCash: { ...position.ibkrCash!, baseCash: -448.5, netCashUsd: -448.5 },
+    });
+    expect(screen.getByText('-$448.50')).toBeInTheDocument();
+    expect(screen.queryByText('-$450.00')).not.toBeInTheDocument();
+    expect(screen.getByText(/FX quotes refresh separately/)).toBeInTheDocument();
+  });
   it('reopens editing from the latest balances after a refetch', () => {
     const { rerender } = mount(position);
     fireEvent.click(screen.getByRole('button', { name: 'Edit currency balances' }));

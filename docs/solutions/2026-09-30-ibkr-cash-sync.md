@@ -71,14 +71,22 @@ missing browser access or unavailable plugins stop the run and require attention
   `id`, `symbol`, `currency`, `side`, `quantity`, `date` (ISO UTC). Missing or
   ambiguous dates cannot certify a closing sale. A missed interval beyond the
   available executions must stop full-close reconciliation for review.
-- The server cross-checks native cash against BASE and securities against summary
-  and currency subtotals. Rounded FX cents and asynchronous quote movement have
-  bounded tolerances; omissions and unsupported instruments stop the whole sync.
-  Native cash must be unchanged across reads. Individual currency conversions
-  must tally with each BASE within 0.10 base-currency units (or the reported-rate
-  rounding budget for large balances). Because FX totals can refresh between
-  endpoints, summary cash must lie within the two observed BASE values, plus 0.05
-  units for rounding. There is no general percentage tolerance for cash.
+- The latest second sample's reported BASE cash is authoritative. Store it and
+  every native balance exactly as returned; never adjust source FX or a native
+  amount to force currency conversions to equal BASE. For non-USD accounts,
+  convert BASE to USD using that sample's reported USD-to-base rate.
+- Native cash and currency identities must be unchanged across reads. Currency
+  FX, BASE and summary refresh separately, so the arithmetic cross-check allows
+  1% of **gross absolute foreign-currency cash exposure**, plus the larger of
+  0.10 base-currency units or the reported-rate rounding budget (absolute foreign
+  native amounts × 0.000000005). This is a bounded sanity check, not an adjustment
+  to the saved total or proof of completeness by itself. Base-currency cash gets
+  no FX allowance; offsetting cash/debt cannot shrink it to a near-zero net value.
+  Summary cash may extend beyond the two observed BASE values by the same
+  allowance. Larger unexplained discrepancies still stop the sync. Currency and
+  contract uniqueness, required holding currencies, stable native amounts,
+  securities totals/subtotals, supported instruments and ownership checks remain
+  mandatory. BASE and any native base-currency row must have an exchange rate of 1.
 - Match holdings by verified exchange ticker/native currency and then retain their
   IBKR contract IDs. Unknown or duplicate matches require the owner to add or
   resolve the asset. A missing holding reaches zero only with complete closing-sale

@@ -203,7 +203,7 @@ function IbkrCashEditor({ position, onSuccess }: { position: Position; onSuccess
             {cash.source === 'ibkr' ? 'Broker capture' : 'Manual balances'} ·{' '}
             {formatDateTime(cash.capturedAt)}.
             {cash.source === 'ibkr' &&
-              ' Net cash uses the broker aggregate and its FX; rounded currency conversions can differ slightly.'}
+              ' Net cash uses IBKR’s reported total. Currency conversions can differ slightly because FX quotes refresh separately.'}
           </p>
         </>
       ) : (

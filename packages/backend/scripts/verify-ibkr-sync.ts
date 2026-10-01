@@ -153,12 +153,13 @@ try {
       s.balances[1].stock_market_value = gross;
       s.balances[2].cash_balance = -45000.111;
       s.balances[2].exchange_rate = fx / 150;
-      const net = 100.123 * fx - (45000.111 * fx) / 150 + 0.0073;
+      // Fictional independently refreshed BASE/summary differ from quoted FX.
+      const net = 100.123 * fx - (45000.111 * fx) / 150 + 1.273;
       s.balances[0].cash_balance = net;
       s.balances[0].stock_market_value = gross * fx;
       s.summary = {
         currency: 'SGD',
-        total_cash_value: net,
+        total_cash_value: net + 0.211,
         gross_position_value: gross * fx,
         net_liquidation: gross * fx + net,
       };
@@ -221,6 +222,26 @@ try {
   assert(applied.applied && applied.runId);
   const cash = await prisma.position.findUniqueOrThrow({ where: { id: cashId } });
   assert(cash.quantity < 0 && cash.ibkrCash);
+  const latestBase = input.second.balances[0].cash_balance;
+  const latestUsdRate = input.second.balances[1].exchange_rate;
+  // PostgreSQL Float serialization can differ by at most two transport ULPs.
+  assert(
+    Math.abs(cash.quantity - latestBase / latestUsdRate) <=
+      Number.EPSILON * 2 * Math.max(1, Math.abs(cash.quantity))
+  );
+  assert.deepEqual(cash.ibkrCash, {
+    source: 'ibkr',
+    capturedAt: input.second.capturedAt,
+    baseCurrency: 'SGD',
+    baseCash: latestBase,
+    baseToUsd: 1 / latestUsdRate,
+    netCashUsd: cash.quantity,
+    balances: input.second.balances.slice(1).map((b) => ({
+      currency: b.currency,
+      cashBalance: b.cash_balance,
+      fxRateToUsd: b.exchange_rate / latestUsdRate,
+    })),
+  });
   requireUnmanagedCash({ ibkrCash: null });
   assert.throws(() => requireUnmanagedCash(cash), /currency balances/);
   assert.equal(
