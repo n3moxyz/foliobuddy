@@ -39,29 +39,17 @@ are protected by the existing Clerk owner session, not the read-only agent key.
    Restore succeeds only when current IBKR financial records and history still
    equal that checkpoint's saved result. Later edits or syncs require review.
 
-## On-demand sync via Codex
+## On-demand sync
 
-The owned IBKR group in Portfolio's **By Broker** view and the IBKR cash panel offer
-**Sync via Codex**. On first use, paste the local link to the existing IBKR Codex
-chat (`codex://threads/<thread-id>`), then choose **Open Codex**. The link is saved
-only in this browser for the owned IBKR cash anchor; other users' anchors remain
-separate. If cash does not exist, the group uses an owned IBKR holding as its anchor.
-Changing the browser or replacing the anchor requires setup again. No private chat
-ID is embedded in the app or stored on the server.
+The owned IBKR group and its cash panel offer **Sync IBKR**. After a one-time Mac
+helper setup, one click reads, validates, backs up, applies and independently
+verifies the complete capture. No chat prompt or Send step is needed. See the
+[one-click sync runbook](2026-10-01-ibkr-one-click-sync.md) for setup, pairing,
+security boundaries, audit files and failure handling.
 
-Subsequent clicks open that chat with a prepared request. **Press Send in Codex**
-to start. Keep the Mac on and FolioBuddy signed in. This uses the existing IBKR
-plugin connection, avoiding a separate gateway that requires daily sign-in;
-expired app/plugin access still requires reconnection. The options menu lets the
-owner change the chat or copy the request if external app links are blocked.
-
-Opening a chat does not confirm a sync. The UI shows the Send instruction and only
-persisted broker capture times. The prepared prompt verifies the owned anchor,
-then follows the complete procedure below, including checkpoint and readback.
-Manual cash snapshots show **Last manual cash edit** using their own timestamp;
-`ibkrSyncedAt` also changes on manual edits and cannot identify a broker capture.
-Other brokers, custody, original USD records and all histories are preserved.
-**Import broker capture** remains the advanced JSON path used by the agent.
+**Import broker capture** remains the manual JSON path. Manual cash snapshots show
+**Last manual cash edit**; `ibkrSyncedAt` also changes on manual edits and cannot
+alone identify a broker capture. The daily agent procedure below is unchanged.
 
 ## Daily agent procedure
 

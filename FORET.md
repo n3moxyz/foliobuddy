@@ -2511,7 +2511,7 @@ deployment and a successful production rehearsal; the [runbook](docs/solutions/2
 defines the source, edit and notification rules.
 
 
-### On-demand IBKR sync without a daily gateway login (October 2026)
+### Initial IBKR chat handoff (October 2026, superseded below)
 
 The old sync control was a JSON importer: it could safely reconcile a capture but
 could not fetch one. A direct retail IBKR gateway would require daily sign-in.
@@ -2526,3 +2526,24 @@ only in browser storage, keyed by an owned IBKR anchor, and the generated prompt
 contains an anchor reference rather than a portfolio export. URL validation keeps
 navigation on local Codex chats and discards supplied prompts/host parameters. We
 added no financial write endpoint, credentials or permissions to make this work.
+
+### One-click IBKR sync (October 2026)
+
+The owner found the extra Send step too cumbersome. We verified that the installed
+Codex app-server can call the existing IBKR connector directly without an AI turn.
+A small Mac helper now handles only those fixed reads and private audit files.
+The signed-in browser keeps all FolioBuddy mutation authority: preview, verified
+local backup, apply the same state, then independent saved-record verification.
+There is no separate broker gateway or daily gateway login.
+
+One-time setup pairs one browser origin, owned cash anchor and connector link.
+Normal use is **Sync IBKR → verified result**, with exact changed lines in the app.
+The helper accepts no arbitrary tools or commands, never sees Clerk credentials,
+and cannot approve authentication or broker actions. A connection change requires
+pairing again. The app fails visibly on uncertain outcomes instead of declaring a
+request sent or a database write alone to be success.
+
+The real sandbox rehearsal changed fictional holdings and cash, then verified the
+checkpoint and preserved ledger/history. Native amounts keep stored precision;
+the result display uses the same clean price/amount formatting and privacy mask as
+the rest of the app. See the [setup and maintenance runbook](docs/solutions/2026-10-01-ibkr-one-click-sync.md).

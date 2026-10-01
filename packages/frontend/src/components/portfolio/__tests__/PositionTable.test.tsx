@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { it, expect, vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PositionTable } from '../PositionTable';
 import type { Position } from '@/lib/types';
 
@@ -10,7 +11,7 @@ vi.mock('@/hooks/usePortfolio', () => ({
 }));
 vi.mock('../PositionForm', () => ({ PositionForm: () => null }));
 
-it('keeps the IBKR handoff outside the collapse toggle and excludes other brokers and custody', async () => {
+it('keeps IBKR sync outside the collapse toggle and excludes other brokers and custody', async () => {
   const holding = {
     id: 'ibkr-stock',
     assetId: 'stock',
@@ -33,16 +34,22 @@ it('keeps the IBKR handoff outside the collapse toggle and excludes other broker
     id: 'ibkr-cash',
     asset: { ...holding.asset, category: 'CASH' },
   } as Position;
+  const client = new QueryClient();
   const { rerender } = render(
-    <PositionTable positions={[holding]} groupBy="broker" ibkrSyncAnchor={anchor} />
+    <PositionTable positions={[holding]} groupBy="broker" ibkrSyncAnchor={anchor} />,
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    }
   );
   const group = screen.getByRole('button', { name: /^IBKR \(/ });
   const expanded = group.getAttribute('aria-expanded');
-  const sync = screen.getByRole('button', { name: 'Sync via Codex' });
+  const sync = screen.getByRole('button', { name: 'Sync IBKR' });
   expect(group.contains(sync)).toBe(false);
   fireEvent.click(sync);
   expect(group).toHaveAttribute('aria-expanded', expanded);
-  expect(screen.getByRole('dialog')).toHaveTextContent('Set up Sync via Codex');
+  expect(screen.getByRole('dialog')).toHaveTextContent('Connect this Mac once');
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   await waitFor(() => expect(sync).toHaveFocus());
   rerender(
@@ -52,7 +59,7 @@ it('keeps the IBKR handoff outside the collapse toggle and excludes other broker
       ibkrSyncAnchor={anchor}
     />
   );
-  expect(screen.queryByRole('button', { name: 'Sync via Codex' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Sync IBKR' })).not.toBeInTheDocument();
   rerender(
     <PositionTable
       positions={[{ ...holding, custodyOf: 'Someone' }]}
@@ -60,7 +67,7 @@ it('keeps the IBKR handoff outside the collapse toggle and excludes other broker
       ibkrSyncAnchor={anchor}
     />
   );
-  expect(screen.queryByRole('button', { name: 'Sync via Codex' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Sync IBKR' })).not.toBeInTheDocument();
 });
 
 it('updates open details after an unchanged native NAV is revalued with new FX', () => {
