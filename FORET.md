@@ -2550,10 +2550,21 @@ the rest of the app. See the [setup and maintenance runbook](docs/solutions/2026
 
 The first production button test exposed a timing case: IBKR had refreshed its
 BASE cash total while a currency row still carried an older exchange rate. The
-strict preview correctly saved nothing, but immediately ending the button flow
+strict preview saved nothing, but immediately ending the button flow
 made the owner repeat the same action. The browser now closes that rejected job
 and can request a new pair of reads after ten seconds, with three attempts maximum.
 Only the two cash/FX preview errors qualify. Native holdings/cash and app financial
 records must remain unchanged, and every attempt keeps its actual receipts.
 Validation budgets, backup verification and the rule against retrying uncertain
 writes remain intact. The existing Mac installation needs only a page refresh.
+
+Retrying did not solve a persistently older currency FX quote. The owner clarified
+that sync should copy the latest broker values, and normal FX differences should
+not block it. The cash cross-check now allows a bounded 1% of gross foreign cash
+exposure plus rounding, while the saved cash remains the exact latest BASE total.
+Native balances and quoted rates are preserved, including debt. Gross exposure
+matters because cash and borrowing can offset to almost zero; base-currency cash
+gets no FX allowance. Missing/changed identities, native amounts, securities and
+large unexplained discrepancies still fail validation. Unit, database and browser
+checks cover a broker total that differs from both the row conversions and the
+separately refreshed summary. No helper reinstall or schema change is needed.

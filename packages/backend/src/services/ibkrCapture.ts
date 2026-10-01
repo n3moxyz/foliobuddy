@@ -66,6 +66,9 @@ export function requireIbkr(value: unknown, message: string): asserts value {
 function close(a: number, b: number, absolute = 0.05, relative = 0) {
   return Math.abs(a - b) <= Math.max(absolute, Math.abs(b) * relative);
 }
+// IBKR refreshes currency FX, BASE and summary independently. This is a sanity
+// allowance, never a replacement for the latest reported BASE or native amounts.
+const CASH_FX_MOVEMENT_ALLOWANCE = 0.01;
 export function ibkrYahooSymbol(position: IbkrHolding): string {
   const match = /^([A-Za-z0-9.^-]+) @([A-Z0-9]+)$/.exec(position.contract_description);
   requireIbkr(match, 'IBKR instrument description needs a verified exchange ticker');
@@ -145,22 +148,40 @@ export function validateIbkrCapture(raw: unknown, now = Date.now()) {
     const base = s.balances.find((b) => b.currency === 'BASE');
     requireIbkr(base, 'IBKR BASE cash aggregate is missing');
     const native = s.balances.filter((b) => b.currency !== 'BASE');
+    requireIbkr(
+      base.exchange_rate === 1 &&
+        native.every((b) => b.currency !== s.summary.currency || b.exchange_rate === 1),
+      'IBKR base currency exchange rate must be one'
+    );
     const usd =
       s.summary.currency === 'USD'
         ? 1
         : s.balances.find((b) => b.currency === 'USD')?.exchange_rate;
     requireIbkr(usd && Number.isFinite(usd) && usd > 0, 'IBKR USD conversion rate is missing');
     const sum = native.reduce((total, b) => total + b.cash_balance * b.exchange_rate, 0);
-    // Separately quoted FX and BASE can differ by a few base-currency cents.
-    // Keep that bounded; large balances also need the reported-rate rounding budget.
-    const rounding = native.reduce((total, b) => total + Math.abs(b.cash_balance) * 0.000000005, 0);
+    const foreign = native.filter((b) => b.currency !== s.summary.currency);
+    // Use gross foreign exposure: offsetting cash/debt can make net cash near zero.
+    // Base-currency cash gets no FX allowance, regardless of its size.
+    const foreignGross = foreign.reduce(
+      (total, b) => total + Math.abs(b.cash_balance * b.exchange_rate),
+      0
+    );
+    const rounding = foreign.reduce(
+      (total, b) => total + Math.abs(b.cash_balance) * 0.000000005,
+      0
+    );
+    const cashTolerance = Math.max(0.1, rounding) + foreignGross * CASH_FX_MOVEMENT_ALLOWANCE;
     requireIbkr(
-      close(sum, base.cash_balance, Math.max(0.1, rounding)),
+      Number.isFinite(sum) && Number.isFinite(foreignGross) && Number.isFinite(cashTolerance),
+      'IBKR cash conversion exceeds the supported numeric range'
+    );
+    requireIbkr(
+      close(sum, base.cash_balance, cashTolerance),
       'IBKR currency cash does not tally with BASE; incomplete capture'
     );
     requireIbkr(
-      s.summary.total_cash_value >= Math.min(...baseCashValues) - 0.05 &&
-        s.summary.total_cash_value <= Math.max(...baseCashValues) + 0.05,
+      s.summary.total_cash_value >= Math.min(...baseCashValues) - cashTolerance &&
+        s.summary.total_cash_value <= Math.max(...baseCashValues) + cashTolerance,
       'IBKR cash summary differs from its currency balances'
     );
     for (const p of s.positions) {

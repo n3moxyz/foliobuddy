@@ -81,10 +81,13 @@ forgets that browser's local token; it does not change the IBKR connection.
    strand an active capture and block retries. Results use the checkpoint's actual
    before/after values, including currencies no longer reported by the broker.
 
-Broker endpoints can temporarily return an updated BASE cash aggregate alongside
-older currency exchange rates. A readable response is not a valid reconciliation:
-the unchanged backend preview rejects it and nothing is applied. The browser can
-end that rejected job, wait ten seconds and request a completely new two-sample
+Broker endpoints can return an updated BASE cash aggregate alongside older
+currency exchange rates. The latest reported BASE is the saved cash total; native
+balances and quoted FX are retained unchanged. Small conversion differences do
+not block the sync. The backend applies the bounded foreign-currency FX allowance
+in the [cash runbook](2026-09-30-ibkr-cash-sync.md), retaining all structural and
+native-amount checks. If a discrepancy exceeds that allowance, the browser can
+end the rejected job, wait ten seconds and request a completely new two-sample
 capture, up to three captures per click. This applies only to the exact currency
 cash/BASE and cash-summary disagreement errors from a read-only preview.
 
@@ -95,8 +98,8 @@ records before and after a retry preview. Quote refreshes do not count as edits.
 The UI explains that it is waiting for currency totals to settle. A
 continuing mismatch stops visibly after the third capture. No access, checkpoint,
 apply or independent readback error is retried; uncertain writes always stop.
-Do not alter source totals or widen validation tolerances. Manual imports and
-daily agent runs retain their original stop-on-validation-error procedure.
+Never alter source totals or invent exchange rates. Manual imports and daily
+agent runs use the same FX-aware validation and stop on a validation error.
 
 This recovery is browser-side; an already paired Mac helper needs no reinstall or
 new code. Reload FolioBuddy after deployment. Regression tests cover fresh-read
