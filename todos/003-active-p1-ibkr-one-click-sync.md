@@ -14,10 +14,13 @@ Plan: [one-click sync](../docs/plans/2026-10-01-ibkr-one-click-sync.md).
 - [x] Implement signed-in browser orchestration and exact independent readback.
 - [x] Test failure/ownership/concurrency paths and real sandbox UI.
 - [x] Run relevant project checks and document setup/limits.
-- [ ] Deploy and pair only with the required authority; verify production separately.
+- [x] Deploy and pair only with the required authority.
+- [ ] Verify production button sync after bounded FX-capture recovery.
 
 Implementation verified against the real local sandbox, including first pairing,
 normal one-click sync, changed-line results and a verified no-change result.
-Direct broker reads through the final helper succeeded; that live capture failed
-the existing currency/BASE total guard and was not applied. No validation tolerance
-was widened. Production activation remains separate from code delivery.
+PR #56 is merged and deployed, and the owner installed/paired the production helper.
+Fresh broker verification passed before merge; the owner's subsequent button runs
+hit a currency/BASE FX timing mismatch and stopped before writing. Browser-side
+recovery now starts at most three independent fresh captures for that specific
+preview failure, preserving all existing validation and write protections.

@@ -1,11 +1,13 @@
 import type { Position, IbkrReconciliationResult } from '@/lib/types';
 import { api } from '@/lib/api';
 import { isOwnedIbkrPosition } from './ibkrOwnership';
+import { ibkrRetryBaseline, isIbkrFxTimingError } from './ibkrCaptureRetry';
 
 export type SyncPhase =
   | 'idle'
   | 'checking'
   | 'reading'
+  | 'retrying'
   | 'reviewing'
   | 'backup'
   | 'saving'
@@ -92,7 +94,7 @@ async function helper<T>(endpoint: string, id: string, body: unknown, pairing = 
   return data as T;
 }
 
-export async function verifyOwnedCashAnchor(id: string) {
+async function readOwnedIbkrState(id: string) {
   const positions = await api.getPositions();
   const anchor = positions.find((row) => row.id === id);
   if (
@@ -105,7 +107,40 @@ export async function verifyOwnedCashAnchor(id: string) {
   ) {
     throw new Error('Open the owned IBKR USD cash position before connecting or syncing.');
   }
-  return anchor;
+  // Price refreshes also bump updatedAt. Compare stored financial/identity fields,
+  // leaving quoted prices, current-FX projections and derived P&L out of the guard.
+  const revision = JSON.stringify(
+    positions
+      .filter(isOwnedIbkrPosition)
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((row) => ({
+        id: row.id,
+        assetId: row.assetId,
+        asset: [
+          row.asset.symbol,
+          row.asset.category,
+          row.asset.nativeCurrency,
+          row.asset.priceProvider,
+          row.asset.providerAssetId,
+        ],
+        quantity: row.quantity,
+        avgCostUsd: row.recordedAvgCostUsd ?? row.avgCostUsd,
+        avgCostNative: row.avgCostNative,
+        costCurrency: row.costCurrency,
+        ibkrContractId: row.ibkrContractId,
+        ibkrSyncedAt: row.ibkrSyncedAt,
+        ibkrCash: row.ibkrCash,
+        notes: row.notes,
+        custodyOf: row.custodyOf,
+        storageType: row.storageType,
+        storageLocation: row.storageLocation,
+      }))
+  );
+  return { anchor, revision };
+}
+
+export async function verifyOwnedCashAnchor(id: string) {
+  return (await readOwnedIbkrState(id)).anchor;
 }
 
 export async function pairHelper(id: string, code: string) {
@@ -179,28 +214,74 @@ export async function syncIbkrDirect(id: string) {
   let jobId: string | undefined;
   let appMayHaveChanged = false;
   try {
-    await verifyOwnedCashAnchor(id);
-    update(id, { phase: 'reading' });
-    const capture = await helper<{
+    const owned = await readOwnedIbkrState(id);
+    async function requireUnchangedApp() {
+      if ((await readOwnedIbkrState(id)).revision !== owned.revision)
+        throw new Error('Your IBKR records changed during the sync. Start a new sync.');
+    }
+    let capture!: {
       version: number;
       jobId: string;
       capture: { second: { capturedAt: string } };
-    }>('capture', id, { cashPositionId: id });
-    if (
-      capture.version !== 1 ||
-      typeof capture.jobId !== 'string' ||
-      !/^[a-f0-9-]{36}$/.test(capture.jobId) ||
-      !capture.capture?.second?.capturedAt
-    )
-      throw new Error('The helper returned an incomplete capture.');
-    jobId = capture.jobId;
-    update(id, { phase: 'reviewing' });
-    const preview = await api.reconcileIbkr({
-      action: 'preview',
-      kind: 'sync',
-      cashPositionId: id,
-      input: capture.capture,
-    });
+    };
+    let preview!: IbkrReconciliationResult;
+    let previous: ReturnType<typeof ibkrRetryBaseline> | undefined;
+    const jobs = new Set<string>();
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      if (attempt > 1) await requireUnchangedApp();
+      update(id, { phase: 'reading' });
+      capture = await helper<typeof capture>('capture', id, { cashPositionId: id });
+      if (
+        capture.version !== 1 ||
+        typeof capture.jobId !== 'string' ||
+        !/^[a-f0-9-]{36}$/.test(capture.jobId) ||
+        !capture.capture?.second?.capturedAt
+      )
+        throw new Error('The helper returned an incomplete capture.');
+      jobId = capture.jobId;
+      if (jobs.has(jobId))
+        throw new Error('The helper reused an earlier capture. Start a new sync.');
+      jobs.add(jobId);
+      if (previous) {
+        const next = ibkrRetryBaseline(capture.capture);
+        if (next.nativeState !== previous.nativeState)
+          throw new Error(
+            'IBKR holdings or native cash changed during the sync. Start a new sync.'
+          );
+        if (next.firstTime <= previous.secondTime)
+          throw new Error('The helper reused an earlier capture. Start a new sync.');
+        await requireUnchangedApp();
+      }
+      update(id, { phase: 'reviewing' });
+      try {
+        preview = await api.reconcileIbkr({
+          action: 'preview',
+          kind: 'sync',
+          cashPositionId: id,
+          input: capture.capture,
+        });
+        if (previous) await requireUnchangedApp();
+        break;
+      } catch (error) {
+        if (!isIbkrFxTimingError(error)) throw error;
+        if (attempt === 3)
+          throw new Error(
+            'IBKR’s currency balances and account total still disagree after three fresh captures. Nothing was saved. Try again shortly.'
+          );
+        previous = ibkrRetryBaseline(capture.capture);
+        // End the rejected job before reading again. Never retry an apply,
+        // checkpoint, access error, changed record or uncertain readback.
+        const finished = await helper<{ verified: boolean }>('finish', id, {
+          jobId,
+          appMayHaveChanged: false,
+        });
+        if (finished.verified !== false)
+          throw new Error('The previous capture could not be closed. Start a new sync.');
+        jobId = undefined;
+        update(id, { phase: 'retrying' });
+        await new Promise((resolve) => window.setTimeout(resolve, 10000));
+      }
+    }
     if (preview.applied || !preview.state || !preview.backup)
       throw new Error('A fresh preview is required before applying this sync.');
     update(id, { phase: 'backup' });

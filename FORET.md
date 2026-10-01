@@ -2547,3 +2547,13 @@ The real sandbox rehearsal changed fictional holdings and cash, then verified th
 checkpoint and preserved ledger/history. Native amounts keep stored precision;
 the result display uses the same clean price/amount formatting and privacy mask as
 the rest of the app. See the [setup and maintenance runbook](docs/solutions/2026-10-01-ibkr-one-click-sync.md).
+
+The first production button test exposed a timing case: IBKR had refreshed its
+BASE cash total while a currency row still carried an older exchange rate. The
+strict preview correctly saved nothing, but immediately ending the button flow
+made the owner repeat the same action. The browser now closes that rejected job
+and can request a new pair of reads after ten seconds, with three attempts maximum.
+Only the two cash/FX preview errors qualify. Native holdings/cash and app financial
+records must remain unchanged, and every attempt keeps its actual receipts.
+Validation budgets, backup verification and the rule against retrying uncertain
+writes remain intact. The existing Mac installation needs only a page refresh.
