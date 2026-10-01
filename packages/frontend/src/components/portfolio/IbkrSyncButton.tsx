@@ -40,6 +40,7 @@ const phaseLabels: Record<SyncPhase, string> = {
   idle: 'Ready to sync',
   checking: 'Checking your IBKR portfolio…',
   reading: 'Reading IBKR twice…',
+  retrying: 'Waiting for IBKR’s currency totals to settle…',
   reviewing: 'Checking shares, costs and cash…',
   backup: 'Saving and verifying your backup…',
   saving: 'Updating your IBKR records…',

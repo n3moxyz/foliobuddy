@@ -75,17 +75,33 @@ forgets that browser's local token; it does not change the IBKR connection.
    The helper verifies both and the exact source time. **No restore is applied.**
 7. Only this successful readback produces **IBKR synced and verified**. Refresh
    errors, partial responses, changed records, missing access, unknown holdings,
-   missing closing evidence and source/checkpoint/readback mismatches stop the run.
+   missing closing evidence and checkpoint/readback mismatches stop the run.
    An interrupted apply is reported as unverified, never silently retried or undone.
    Disconnecting during collection cancels the broker client; a late response cannot
    strand an active capture and block retries. Results use the checkpoint's actual
    before/after values, including currencies no longer reported by the broker.
 
-Broker endpoints can occasionally return FX quotes and BASE cash aggregates that
-do not tally within the existing tolerance. A readable response is not a valid
-reconciliation: preview rejects it and nothing is applied. Keep the private source
-receipts for diagnosis. Do not alter source totals or weaken validation to force a
-successful sync.
+Broker endpoints can temporarily return an updated BASE cash aggregate alongside
+older currency exchange rates. A readable response is not a valid reconciliation:
+the unchanged backend preview rejects it and nothing is applied. The browser can
+end that rejected job, wait ten seconds and request a completely new two-sample
+capture, up to three captures per click. This applies only to the exact currency
+cash/BASE and cash-summary disagreement errors from a read-only preview.
+
+Each attempt retains its own original receipts and source timestamps. A retry
+requires a new job and strictly later receipt times, the same native quantities,
+averages, cash and identities across all samples, and unchanged owned app financial
+records before and after a retry preview. Quote refreshes do not count as edits.
+The UI explains that it is waiting for currency totals to settle. A
+continuing mismatch stops visibly after the third capture. No access, checkpoint,
+apply or independent readback error is retried; uncertain writes always stop.
+Do not alter source totals or widen validation tolerances. Manual imports and
+daily agent runs retain their original stop-on-validation-error procedure.
+
+This recovery is browser-side; an already paired Mac helper needs no reinstall or
+new code. Reload FolioBuddy after deployment. Regression tests cover fresh-read
+recovery, exhaustion, changed native/app records, stale/reused captures, failed job
+closure and the prohibition on retrying an apply.
 
 Daily agent sync remains governed by
 [the original runbook](2026-09-30-ibkr-cash-sync.md). This button does not alter its
