@@ -254,13 +254,15 @@ Create-only sub-type toggle (edit infers category). Provider contract: **Stock/E
 
 ### Position Edit Modes
 
-Native costs: `avgCostNative` is primary; `avgCostUsd` remains a ledger. [Repair](docs/solutions/2026-09-30-native-cost-reconciliation.md); [IBKR cash/sync](docs/solutions/2026-09-30-ibkr-cash-sync.md): signed currency balances, owner checkpoints, no agent-key writes.
+Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/solutions/2026-09-30-native-cost-reconciliation.md); [IBKR sync](docs/solutions/2026-09-30-ibkr-cash-sync.md): signed cash, owner checkpoints, no agent-key writes.
+
+IBKR `IbkrSyncButton.tsx`: opens a Codex draft, requires Send. See sync runbook above.
 
 `PositionForm.tsx`: `Edit Totals` (corrections) + `Add/Reduce Position` tabs.
 
 - `Add`: extra quantity + required total/avg cost → weighted avg. `Reduce`: quantity + same pair as optional sale proceeds (`Total Proceeds`/`Avg Price`); basis removed at current avg; proceeds never alter avg/basis. Quantity 0 deletes unlinked positions; linked IBKR holdings retain history.
 - Optional `Fund From` (Add: debit pile, balance ≥ cost) / `Fund To` (Reduce: credit proceeds >0, empty piles allowed). Tab switch clears amounts + pile; direction-aware confirmation.
-- Persist custody changes from either tab. Old/New preview (qty, avg, total cost). Preview + submit share `applyPositionDelta()`; never hand-roll basis math. UI `PositionDeltaEditor.tsx`, math `positionFormMath.ts`, submit `PositionForm.tsx`.
+- Both tabs persist custody. `applyPositionDelta()` drives preview (qty/avg/total) and submit; never duplicate math. UI/math/submit: `PositionDeltaEditor.tsx`/`positionFormMath.ts`/`PositionForm.tsx`.
 
 ### Position Add/Reduce History
 

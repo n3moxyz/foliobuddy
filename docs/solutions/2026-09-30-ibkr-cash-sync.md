@@ -24,8 +24,8 @@ are protected by the existing Clerk owner session, not the read-only agent key.
    Position and choose **Open IBKR currency balances**. This creates a zero-value
    anchor, never a fabricated deposit or fill. Multiple existing cash rows require
    review rather than automatic consolidation.
-2. Choose **Edit currency balances** for a manual correction or **Sync IBKR
-   account** for a complete broker capture. Preview performs no writes.
+2. Choose **Edit currency balances** for a manual correction or **Import broker
+   capture** for a complete broker capture. Preview performs no writes.
 3. Review quantity, native average and net cash changes, including each currency.
    Download and verify the private checkpoint before applying. Complete Chrome's
    native Save dialog when enabled; a button click alone does not confirm the file.
@@ -38,6 +38,30 @@ are protected by the existing Clerk owner session, not the read-only agent key.
 6. **Recent checkpoints → Restore → Check restoration** shows the exact reversal.
    Restore succeeds only when current IBKR financial records and history still
    equal that checkpoint's saved result. Later edits or syncs require review.
+
+## On-demand sync via Codex
+
+The owned IBKR group in Portfolio's **By Broker** view and the IBKR cash panel offer
+**Sync via Codex**. On first use, paste the local link to the existing IBKR Codex
+chat (`codex://threads/<thread-id>`), then choose **Open Codex**. The link is saved
+only in this browser for the owned IBKR cash anchor; other users' anchors remain
+separate. If cash does not exist, the group uses an owned IBKR holding as its anchor.
+Changing the browser or replacing the anchor requires setup again. No private chat
+ID is embedded in the app or stored on the server.
+
+Subsequent clicks open that chat with a prepared request. **Press Send in Codex**
+to start. Keep the Mac on and FolioBuddy signed in. This uses the existing IBKR
+plugin connection, avoiding a separate gateway that requires daily sign-in;
+expired app/plugin access still requires reconnection. The options menu lets the
+owner change the chat or copy the request if external app links are blocked.
+
+Opening a chat does not confirm a sync. The UI shows the Send instruction and only
+persisted broker capture times. The prepared prompt verifies the owned anchor,
+then follows the complete procedure below, including checkpoint and readback.
+Manual cash snapshots show **Last manual cash edit** using their own timestamp;
+`ibkrSyncedAt` also changes on manual edits and cannot identify a broker capture.
+Other brokers, custody, original USD records and all histories are preserved.
+**Import broker capture** remains the advanced JSON path used by the agent.
 
 ## Daily agent procedure
 

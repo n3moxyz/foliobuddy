@@ -32,6 +32,8 @@ import {
 } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
 import { IbkrCashPanel } from './IbkrCashPanel';
+import { IbkrSyncButton } from './IbkrSyncButton';
+import { isOwnedIbkrPosition } from './ibkrCodexSync';
 import { isIbkrCashPosition } from './ibkrCash';
 import { PositionRow } from './PositionRow';
 import {
@@ -90,6 +92,8 @@ interface BrokerGroup extends BrokerGroupMeta {
 
 interface PositionTableProps {
   positions: Position[];
+  /** One owned account anchor shares the browser's Codex chat across IBKR entry points. */
+  ibkrSyncAnchor?: Position;
   currency?: 'USD' | 'SGD';
   fxRate?: number;
   usdFxRates?: UsdFxRatesByCurrency;
@@ -151,6 +155,7 @@ function slugifySectionLabel(label: string) {
 
 export function PositionTable({
   positions,
+  ibkrSyncAnchor,
   currency = 'USD',
   fxRate = 1,
   usdFxRates,
@@ -910,6 +915,14 @@ export function PositionTable({
     total: number
   ) => {
     const isCompactMobile = mobileVariant === 'compact';
+    const syncPosition =
+      groupBy === 'broker' &&
+      sectionPositions.length > 0 &&
+      sectionPositions.every(isOwnedIbkrPosition)
+        ? ibkrSyncAnchor && isOwnedIbkrPosition(ibkrSyncAnchor)
+          ? ibkrSyncAnchor
+          : sectionPositions[0]
+        : null;
     const groupPnL = calculatePositionGroupPnL(sectionPositions);
     const formattedGroupPnL =
       groupPnL.pnlUsd === null
@@ -923,6 +936,7 @@ export function PositionTable({
       <div
         className={cn(
           'flex items-center gap-2',
+          syncPosition && 'flex-wrap',
           isCompactMobile ? 'mb-0 rounded-md bg-muted/25 px-2' : 'mb-2'
         )}
       >
@@ -931,6 +945,7 @@ export function PositionTable({
             type="button"
             className={cn(
               'group flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left',
+              syncPosition && 'basis-full sm:basis-auto',
               'min-h-11'
             )}
           >
@@ -959,6 +974,11 @@ export function PositionTable({
           </button>
         </CollapsibleTrigger>
         {!isCompactMobile && <HelpTooltip content={helpContent} />}
+        {syncPosition && (
+          <div className="ml-auto pb-1 sm:pb-0">
+            <IbkrSyncButton position={syncPosition} />
+          </div>
+        )}
       </div>
     );
   };

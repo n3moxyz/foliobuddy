@@ -16,6 +16,7 @@ import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { formatQuantity, formatDateTime, formatTrimmedNumber } from '@/lib/utils';
 import { isNonNegativeNumberInput } from '@/lib/formValidation';
 import { isIbkrCashPosition } from './ibkrCash';
+import { IbkrSyncButton } from './IbkrSyncButton';
 import { Plus, Trash2 } from 'lucide-react';
 
 const CURRENCIES = ['USD', 'SGD', 'JPY', 'TWD', 'KRW', 'NOK', 'GBP'];
@@ -211,6 +212,7 @@ function IbkrCashEditor({ position, onSuccess }: { position: Position; onSuccess
         </p>
       )}
       <div className="flex flex-wrap gap-2">
+        <IbkrSyncButton position={position} disabled={busy} />
         <Button
           type="button"
           variant="outline"
@@ -232,7 +234,7 @@ function IbkrCashEditor({ position, onSuccess }: { position: Position; onSuccess
             clear();
           }}
         >
-          Sync IBKR account
+          Import broker capture
         </Button>
       </div>
       {mode === 'cash' && (

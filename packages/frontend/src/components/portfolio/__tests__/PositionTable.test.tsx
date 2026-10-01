@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { it, expect, vi } from 'vitest';
 import { PositionTable } from '../PositionTable';
 import type { Position } from '@/lib/types';
@@ -9,6 +9,59 @@ vi.mock('@/hooks/usePortfolio', () => ({
   usePositionHistory: () => ({ data: [] }),
 }));
 vi.mock('../PositionForm', () => ({ PositionForm: () => null }));
+
+it('keeps the IBKR handoff outside the collapse toggle and excludes other brokers and custody', async () => {
+  const holding = {
+    id: 'ibkr-stock',
+    assetId: 'stock',
+    quantity: 10,
+    avgCostUsd: 50,
+    marketValueUsd: 600,
+    storageType: 'BROKERAGE',
+    storageLocation: 'IBKR',
+    custodyOf: null,
+    asset: {
+      id: 'stock',
+      symbol: 'EXAMPLE',
+      name: 'Example',
+      category: 'EQUITY',
+      currentPriceUsd: 60,
+    },
+  } as Position;
+  const anchor = {
+    ...holding,
+    id: 'ibkr-cash',
+    asset: { ...holding.asset, category: 'CASH' },
+  } as Position;
+  const { rerender } = render(
+    <PositionTable positions={[holding]} groupBy="broker" ibkrSyncAnchor={anchor} />
+  );
+  const group = screen.getByRole('button', { name: /^IBKR \(/ });
+  const expanded = group.getAttribute('aria-expanded');
+  const sync = screen.getByRole('button', { name: 'Sync via Codex' });
+  expect(group.contains(sync)).toBe(false);
+  fireEvent.click(sync);
+  expect(group).toHaveAttribute('aria-expanded', expanded);
+  expect(screen.getByRole('dialog')).toHaveTextContent('Set up Sync via Codex');
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(sync).toHaveFocus());
+  rerender(
+    <PositionTable
+      positions={[{ ...holding, storageLocation: 'Tiger' }]}
+      groupBy="broker"
+      ibkrSyncAnchor={anchor}
+    />
+  );
+  expect(screen.queryByRole('button', { name: 'Sync via Codex' })).not.toBeInTheDocument();
+  rerender(
+    <PositionTable
+      positions={[{ ...holding, custodyOf: 'Someone' }]}
+      groupBy="broker"
+      ibkrSyncAnchor={anchor}
+    />
+  );
+  expect(screen.queryByRole('button', { name: 'Sync via Codex' })).not.toBeInTheDocument();
+});
 
 it('updates open details after an unchanged native NAV is revalued with new FX', () => {
   const position = {

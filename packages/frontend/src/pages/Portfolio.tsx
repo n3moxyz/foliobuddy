@@ -19,6 +19,8 @@ import {
 } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PositionTable } from '@/components/portfolio/PositionTable';
+import { isIbkrCashPosition } from '@/components/portfolio/ibkrCash';
+import { isOwnedIbkrPosition } from '@/components/portfolio/ibkrCodexSync';
 import { copyPositionsToClipboard } from '@/components/portfolio/positionClipboard';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { PositionForm } from '@/components/portfolio/PositionForm';
@@ -304,6 +306,10 @@ export default function Portfolio() {
       custodyPositions: positions.filter((p) => !!p.custodyOf),
     };
   }, [positions]);
+
+  const ibkrSyncAnchor =
+    ownedPositions.find(isIbkrCashPosition) ??
+    ownedPositions.filter(isOwnedIbkrPosition).sort((a, b) => a.id.localeCompare(b.id))[0];
 
   const sections = useMemo(() => {
     return SECTION_CONFIG.map((config) => {
@@ -689,6 +695,7 @@ export default function Portfolio() {
             >
               <PositionTable
                 positions={section.positions}
+                ibkrSyncAnchor={ibkrSyncAnchor}
                 currency={currency}
                 fxRate={fxRate}
                 usdFxRates={usdFxRates}
@@ -873,6 +880,7 @@ export default function Portfolio() {
             >
               <PositionTable
                 positions={section.positions}
+                ibkrSyncAnchor={ibkrSyncAnchor}
                 currency={currency}
                 fxRate={fxRate}
                 usdFxRates={usdFxRates}

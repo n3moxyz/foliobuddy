@@ -2509,3 +2509,20 @@ Daily runs use the existing owner session and stop on expired authentication.
 Read-only agent credentials do not gain writes. The schedule starts only after
 deployment and a successful production rehearsal; the [runbook](docs/solutions/2026-09-30-ibkr-cash-sync.md)
 defines the source, edit and notification rules.
+
+
+### On-demand IBKR sync without a daily gateway login (October 2026)
+
+The old sync control was a JSON importer: it could safely reconcile a capture but
+could not fetch one. A direct retail IBKR gateway would require daily sign-in.
+Instead, the owner chose a small **Sync via Codex** handoff that reuses the connected
+IBKR plugin. Save the existing local chat link once, click the button, then press
+Send in Codex. The existing checkpoint, validation and independent readback flow
+still does the actual work. The JSON control is now **Import broker capture**.
+
+The distinction matters: opening another app is not evidence that any position has
+changed. The button never claims it queued or completed a sync. Chat links live
+only in browser storage, keyed by an owned IBKR anchor, and the generated prompt
+contains an anchor reference rather than a portfolio export. URL validation keeps
+navigation on local Codex chats and discards supplied prompts/host parameters. We
+added no financial write endpoint, credentials or permissions to make this work.
