@@ -58,6 +58,8 @@ owner change the chat or copy the request if external app links are blocked.
 Opening a chat does not confirm a sync. The UI shows the Send instruction and only
 persisted broker capture times. The prepared prompt verifies the owned anchor,
 then follows the complete procedure below, including checkpoint and readback.
+Manual cash snapshots show **Last manual cash edit** using their own timestamp;
+`ibkrSyncedAt` also changes on manual edits and cannot identify a broker capture.
 Other brokers, custody, original USD records and all histories are preserved.
 **Import broker capture** remains the advanced JSON path used by the agent.
 

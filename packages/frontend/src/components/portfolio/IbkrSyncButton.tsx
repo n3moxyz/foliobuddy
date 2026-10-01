@@ -54,9 +54,10 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
   const [link, setLink] = useState('');
   const [error, setError] = useState<string | null>(null);
   const candidate = parseCodexChatId(link);
-  const capturedAt =
-    position.ibkrCash?.source === 'ibkr' ? position.ibkrCash.capturedAt : position.ibkrSyncedAt;
-  const lastCapture = capturedAt && Number.isFinite(Date.parse(capturedAt)) ? capturedAt : null;
+  const recordedAt = position.ibkrCash?.capturedAt ?? position.ibkrSyncedAt;
+  const lastUpdate = recordedAt && Number.isFinite(Date.parse(recordedAt)) ? recordedAt : null;
+  const updateLabel =
+    position.ibkrCash?.source === 'manual' ? 'Last manual cash edit' : 'Last saved broker capture';
 
   function configure() {
     setLink(threadId ? `codex://threads/${threadId}` : '');
@@ -175,8 +176,8 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {lastCapture
-                ? `Last saved broker capture: ${formatDateTime(lastCapture)}.`
+              {lastUpdate
+                ? `${updateLabel}: ${formatDateTime(lastUpdate)}.`
                 : 'No broker capture saved yet.'}{' '}
               Opening Codex does not update your positions until the sync finishes.
             </p>

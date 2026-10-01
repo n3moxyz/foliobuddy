@@ -76,6 +76,37 @@ describe('Sync via Codex', () => {
     expect(screen.getAllByRole('button', { name: 'Sync via Codex' })).toHaveLength(1);
   });
 
+  it.each([
+    ['manual', 'Last manual cash edit'],
+    ['ibkr', 'Last saved broker capture'],
+  ] as const)(
+    'labels the %s cash snapshot without substituting another sync time',
+    (source, label) => {
+      render(
+        <IbkrSyncButton
+          position={{
+            ...position,
+            ibkrSyncedAt: '2026-10-02T08:00:00Z',
+            ibkrCash: {
+              source,
+              capturedAt: '2026-10-01T08:00:00Z',
+              baseCurrency: 'USD',
+              baseCash: 100,
+              baseToUsd: 1,
+              netCashUsd: 100,
+              balances: [{ currency: 'USD', cashBalance: 100, fxRateToUsd: 1 }],
+            },
+          }}
+        />
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Sync via Codex' }));
+      expect(screen.getByText(new RegExp(label))).toHaveTextContent('1 Oct 2026');
+      expect(screen.queryByText(/2 Oct 2026/)).not.toBeInTheDocument();
+      if (source === 'manual')
+        expect(screen.queryByText(/Last saved broker capture/)).not.toBeInTheDocument();
+    }
+  );
+
   it('keeps the dialog open and prevents handoff when the setting cannot be saved', () => {
     render(<IbkrSyncButton position={position} />);
     fireEvent.click(screen.getByRole('button', { name: 'Sync via Codex' }));

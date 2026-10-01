@@ -23,7 +23,8 @@ reconciliation is complete and the daily Codex sync remains in place.
 - [x] Implement the owned-IBKR-only entry point and safe sync flow.
 - [x] Verify sandbox setup, validation, keyboard focus, nested cash panel and
       desktop/mobile layouts. Link/request generation and failure handling tested.
-- [ ] Publish the reviewed PR and confirm CI.
+- [x] Publish PR #55 and confirm CI. Pre-merge review found a manual-cash timestamp
+      label issue; fixed with regression coverage before merging.
 - [ ] After explicit merge authority, deploy and verify the first owner handoff.
       Computer Use blocks inspection of the Codex app itself, so the destination
       composer cannot be automatically inspected. No sandbox prompt was sent.
