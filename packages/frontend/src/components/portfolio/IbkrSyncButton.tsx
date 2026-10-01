@@ -1,5 +1,6 @@
 import { useId, useRef, useState, useSyncExternalStore } from 'react';
-import { Copy, ExternalLink, MoreHorizontal } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Loader2, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Position } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -19,18 +20,34 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, formatQuantity, formatNativePrice, formatNativeAmount } from '@/lib/utils';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { isOwnedIbkrPosition } from './ibkrOwnership';
 import {
-  ibkrCodexUrl,
-  ibkrSyncPrompt,
-  isOwnedIbkrPosition,
-  parseCodexChatId,
-  readIbkrCodexChat,
-  saveIbkrCodexChat,
-  subscribeIbkrCodexChat,
-} from './ibkrCodexSync';
+  disconnectHelper,
+  getDirectSyncState,
+  hasHelperConnection,
+  isDirectSyncResultCurrent,
+  isSyncBusy,
+  pairHelper,
+  recordedBrokerUpdate,
+  subscribeDirectSync,
+  syncIbkrDirect,
+  type SyncPhase,
+} from './ibkrDirectSync';
 
-/** This handoff opens a draft; only the existing reconciliation flow writes data. */
+const phaseLabels: Record<SyncPhase, string> = {
+  idle: 'Ready to sync',
+  checking: 'Checking your IBKR portfolio…',
+  reading: 'Reading IBKR twice…',
+  reviewing: 'Checking shares, costs and cash…',
+  backup: 'Saving and verifying your backup…',
+  saving: 'Updating your IBKR records…',
+  verifying: 'Verifying the saved records…',
+  done: 'IBKR synced and verified',
+  error: 'Sync needs attention',
+};
+
 export function IbkrSyncButton({
   position,
   disabled = false,
@@ -43,181 +60,269 @@ export function IbkrSyncButton({
 }
 
 function IbkrSyncControl({ position, disabled }: { position: Position; disabled: boolean }) {
+  const queryClient = useQueryClient();
+  const { maskMoney } = useMoneyFormatter();
   const fieldId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const threadId = useSyncExternalStore(
-    subscribeIbkrCodexChat,
-    () => readIbkrCodexChat(position.id),
-    () => null
+  const state = useSyncExternalStore(
+    subscribeDirectSync,
+    () => getDirectSyncState(position.id),
+    () => getDirectSyncState(position.id)
   );
+  const connected = useSyncExternalStore(
+    subscribeDirectSync,
+    () => hasHelperConnection(position.id),
+    () => false
+  );
+  const busy = isSyncBusy(state.phase);
   const [open, setOpen] = useState(false);
-  const [link, setLink] = useState('');
+  const [code, setCode] = useState('');
+  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const candidate = parseCodexChatId(link);
-  const recordedAt = position.ibkrCash?.capturedAt ?? position.ibkrSyncedAt;
-  const lastUpdate = recordedAt && Number.isFinite(Date.parse(recordedAt)) ? recordedAt : null;
-  const updateLabel =
-    position.ibkrCash?.source === 'manual' ? 'Last manual cash edit' : 'Last saved broker capture';
-
+  const last = recordedBrokerUpdate(position);
+  const resultIsCurrent = isDirectSyncResultCurrent(state, position);
+  const capturedAt = resultIsCurrent ? state.capturedAt : last.time;
+  const visiblePhase = state.phase === 'done' && !resultIsCurrent ? 'idle' : state.phase;
+  async function refresh() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['positions'] }),
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] }),
+      queryClient.invalidateQueries({ queryKey: ['ibkr-runs'] }),
+    ]);
+  }
+  async function sync() {
+    setError(null);
+    setOpen(true);
+    try {
+      const result = await syncIbkrDirect(position.id);
+      toast.success('IBKR synced and verified', {
+        description: result.unchanged
+          ? 'Shares, native cost bases and currency balances are unchanged.'
+          : 'Your IBKR shares, cost bases and currency balances are up to date.',
+      });
+    } catch (cause) {
+      toast.error('IBKR sync stopped', {
+        description: cause instanceof Error ? cause.message : 'Check the sync details.',
+      });
+    } finally {
+      await refresh();
+    }
+  }
+  async function connect() {
+    setConnecting(true);
+    setError(null);
+    try {
+      await pairHelper(position.id, code);
+      setCode('');
+      await sync();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'This Mac could not connect.');
+    } finally {
+      setConnecting(false);
+    }
+  }
   function configure() {
-    setLink(threadId ? `codex://threads/${threadId}` : '');
+    setCode('');
     setError(null);
     setOpen(true);
   }
-
-  function handoff() {
-    toast.info('Press Send in Codex to start the sync', {
-      description: 'Your portfolio updates after Codex saves and verifies the broker capture.',
-    });
-  }
-
-  async function copyRequest() {
-    try {
-      await navigator.clipboard.writeText(ibkrSyncPrompt(position.id));
-      toast.success('Sync request copied', {
-        description: 'Paste it into your IBKR Codex chat and press Send.',
-      });
-    } catch {
-      toast.error('Could not copy the sync request', {
-        description: 'Allow clipboard access or open your configured Codex chat.',
-      });
-    }
-  }
-
   return (
     <>
-      <div className="inline-flex shrink-0 items-center gap-1">
-        {threadId && !disabled ? (
-          <Button ref={triggerRef} variant="outline" size="sm" asChild>
-            <a href={ibkrCodexUrl(threadId, position.id)} onClick={handoff}>
-              <ExternalLink className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              Sync via Codex
-            </a>
-          </Button>
-        ) : (
-          <Button
-            ref={triggerRef}
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled}
-            onClick={configure}
-          >
-            <ExternalLink className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            Sync via Codex
-          </Button>
-        )}
+      <div className="inline-flex items-center gap-1">
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled || connecting}
+          aria-busy={busy}
+          onClick={() => (busy ? configure() : connected ? void sync() : configure())}
+        >
+          {busy ? (
+            <Loader2 className="mr-1 h-4 w-4 animate-spin motion-reduce:animate-none" />
+          ) : (
+            <RefreshCw className="mr-1 h-4 w-4" />
+          )}
+          {busy ? 'Syncing IBKR…' : 'Sync IBKR'}
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              disabled={disabled}
               aria-label="IBKR sync options"
+              disabled={disabled || busy || connecting}
             >
-              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={configure}>
-              {threadId ? 'Change Codex chat' : 'Set up Codex chat'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => void copyRequest()}>
-              Copy sync request
-            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={configure}>Sync details</DropdownMenuItem>
+            {connected && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  try {
+                    disconnectHelper(position.id);
+                    configure();
+                  } catch (cause) {
+                    toast.error(
+                      cause instanceof Error ? cause.message : 'Could not disconnect this browser'
+                    );
+                  }
+                }}
+              >
+                Disconnect this browser
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="!bottom-0 !left-0 !top-auto max-h-[85vh] w-full max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg pb-[max(1rem,env(safe-area-inset-bottom))] sm:!bottom-auto sm:!left-[50%] sm:!top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-md sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-lg sm:pb-6"
+          className="!bottom-0 !left-0 !top-auto max-h-[85vh] w-full max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg pb-[max(1rem,env(safe-area-inset-bottom))] sm:!bottom-auto sm:!left-[50%] sm:!top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-lg sm:pb-6"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             triggerRef.current?.focus();
           }}
         >
-          <DialogHeader>
-            <DialogTitle>{threadId ? 'IBKR sync chat' : 'Set up Sync via Codex'}</DialogTitle>
+          <DialogHeader className="pr-10 text-left">
+            <DialogTitle>{connected ? 'Sync IBKR' : 'Connect this Mac once'}</DialogTitle>
             <DialogDescription>
-              Open your IBKR Codex chat with a prepared sync request, then press Send.
+              {connected
+                ? 'Updates your IBKR shares, native cost bases and currency cash or debt. Your trade history stays intact.'
+                : 'Connect the Mac helper once. After that, press Sync IBKR to update directly from the app.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Uses your existing IBKR plugin connection. Keep this Mac on and FolioBuddy signed in.
-              If the connection expires, Codex will ask you to reconnect.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor={fieldId}>Codex chat link</Label>
-              <Input
-                id={fieldId}
-                value={link}
-                placeholder="codex://threads/…"
-                autoComplete="off"
-                maxLength={500}
-                spellCheck={false}
-                aria-invalid={Boolean(error)}
-                aria-describedby={`${fieldId}-help${error ? ` ${fieldId}-error` : ''}`}
-                onChange={(event) => {
-                  setLink(event.target.value);
-                  setError(null);
-                }}
-              />
-              <p id={`${fieldId}-help`} className="text-xs text-muted-foreground">
-                Ask your IBKR Codex chat for its local chat link and paste it here. The link is
-                saved only in this browser for this IBKR portfolio.
+          {!connected ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Install the FolioBuddy Mac helper, then enter the code from its setup page. It uses
+                your existing IBKR connection in Codex.
               </p>
-              {error && (
-                <p id={`${fieldId}-error`} role="alert" className="text-sm text-destructive">
-                  {error}
+              <a
+                className="text-sm underline underline-offset-4"
+                href="https://github.com/n3moxyz/foliobuddy/blob/main/docs/solutions/2026-10-01-ibkr-one-click-sync.md"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Mac helper setup instructions
+              </a>
+              <div className="space-y-2">
+                <Label htmlFor={fieldId}>One-time setup code</Label>
+                <Input
+                  id={fieldId}
+                  value={code}
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={connecting}
+                  onChange={(event) => setCode(event.target.value)}
+                  aria-invalid={!!error}
+                  aria-describedby={error ? `${fieldId}-error` : undefined}
+                  placeholder="12-character code"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Keep this Mac on and FolioBuddy open during a sync. If the IBKR connection expires,
+                reconnect it in Codex.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p
+                role="status"
+                aria-live="polite"
+                className="flex items-center gap-2 text-sm font-medium"
+              >
+                {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
+                {phaseLabels[visiblePhase]}
+              </p>
+              {visiblePhase === 'done' && (
+                <p className="text-sm text-muted-foreground">
+                  {state.unchanged
+                    ? 'Shares, native cost bases and currency balances are unchanged. The latest broker capture is saved.'
+                    : 'Your IBKR records match the verified broker capture.'}
+                </p>
+              )}
+              {visiblePhase === 'done' &&
+                state.changes &&
+                (state.changes.positions.length > 0 || state.changes.cash.length > 0) && (
+                  <dl className="divide-y text-sm">
+                    {state.changes.positions.map((row) => (
+                      <div key={row.id} className="space-y-1 py-3">
+                        <dt className="font-medium">{row.symbol}</dt>
+                        {row.quantity !== row.previousQuantity && (
+                          <dd>
+                            Shares: {formatQuantity(row.previousQuantity, 'EQUITY')} →{' '}
+                            {formatQuantity(row.quantity, 'EQUITY')}
+                          </dd>
+                        )}
+                        {row.avgCostNative !== row.previousAvgCostNative && (
+                          <dd className="text-muted-foreground">
+                            Average cost:{' '}
+                            {maskMoney(
+                              formatNativePrice(row.previousAvgCostNative, row.costCurrency)
+                            )}{' '}
+                            → {maskMoney(formatNativePrice(row.avgCostNative, row.costCurrency))}
+                          </dd>
+                        )}
+                      </div>
+                    ))}
+                    {state.changes.cash.map((row) => (
+                      <div key={row.currency} className="space-y-1 py-3">
+                        <dt className="font-medium">{row.currency} cash / debt</dt>
+                        <dd className="font-mono text-muted-foreground">
+                          {row.previous == null
+                            ? 'Not recorded'
+                            : maskMoney(formatNativeAmount(row.previous, row.currency))}{' '}
+                          →{' '}
+                          {row.current == null
+                            ? 'No balance reported'
+                            : maskMoney(formatNativeAmount(row.current, row.currency))}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              {busy && (
+                <p className="text-sm text-muted-foreground">
+                  Keep FolioBuddy open. A private backup is verified before any changes are saved.
+                </p>
+              )}
+              {!busy && visiblePhase !== 'done' && (
+                <p className="text-sm text-muted-foreground">
+                  Your Mac helper is connected. No chat message is needed.
                 </p>
               )}
             </div>
+          )}
+          {capturedAt && (
             <p className="text-xs text-muted-foreground">
-              {lastUpdate
-                ? `${updateLabel}: ${formatDateTime(lastUpdate)}.`
-                : 'No broker capture saved yet.'}{' '}
-              Opening Codex does not update your positions until the sync finishes.
+              {resultIsCurrent ? 'Last verified broker capture' : last.label}:{' '}
+              {formatDateTime(capturedAt)}.
             </p>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => void copyRequest()}>
-              <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              Copy sync request
-            </Button>
-            {candidate ? (
-              <Button asChild>
-                <a
-                  href={ibkrCodexUrl(candidate, position.id)}
-                  onClick={(event) => {
-                    try {
-                      saveIbkrCodexChat(position.id, candidate);
-                      setOpen(false);
-                      handoff();
-                    } catch {
-                      event.preventDefault();
-                      setError(
-                        'This browser could not save the chat link. Allow local storage, or use Copy sync request.'
-                      );
-                    }
-                  }}
-                >
-                  Open Codex
-                  <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                </a>
+          )}
+          {(error || (connected && state.error)) && (
+            <p id={`${fieldId}-error`} role="alert" className="text-sm text-destructive">
+              {error || state.error}
+            </p>
+          )}
+          <DialogFooter>
+            {connected ? (
+              <Button
+                type="button"
+                disabled={busy || connecting || disabled}
+                onClick={() => (visiblePhase === 'done' ? setOpen(false) : void sync())}
+              >
+                {visiblePhase === 'done' ? 'Done' : 'Sync now'}
               </Button>
             ) : (
               <Button
                 type="button"
-                onClick={() =>
-                  setError(
-                    'Enter a local chat link (codex://threads/…) or its chat ID. Shared web links cannot open this chat.'
-                  )
-                }
+                disabled={connecting || disabled}
+                onClick={() => void connect()}
               >
-                Open Codex
+                {connecting ? 'Connecting…' : 'Connect and sync'}
               </Button>
             )}
           </DialogFooter>

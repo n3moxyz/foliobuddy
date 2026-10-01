@@ -33,7 +33,7 @@ import {
 import { PositionForm } from './PositionForm';
 import { IbkrCashPanel } from './IbkrCashPanel';
 import { IbkrSyncButton } from './IbkrSyncButton';
-import { isOwnedIbkrPosition } from './ibkrCodexSync';
+import { isOwnedIbkrPosition } from './ibkrOwnership';
 import { isIbkrCashPosition } from './ibkrCash';
 import { PositionRow } from './PositionRow';
 import {
@@ -919,9 +919,9 @@ export function PositionTable({
       groupBy === 'broker' &&
       sectionPositions.length > 0 &&
       sectionPositions.every(isOwnedIbkrPosition)
-        ? ibkrSyncAnchor && isOwnedIbkrPosition(ibkrSyncAnchor)
+        ? ibkrSyncAnchor && isIbkrCashPosition(ibkrSyncAnchor)
           ? ibkrSyncAnchor
-          : sectionPositions[0]
+          : null
         : null;
     const groupPnL = calculatePositionGroupPnL(sectionPositions);
     const formattedGroupPnL =

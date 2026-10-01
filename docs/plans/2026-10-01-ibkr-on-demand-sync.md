@@ -1,5 +1,9 @@
 # On-demand IBKR sync via Codex
 
+Status: shipped in PR #55, then superseded at the owner's request by
+[one-click sync](2026-10-01-ibkr-one-click-sync.md). Keep this record of the initial
+decision; the current button no longer opens a chat draft.
+
 ## Decision
 
 The Mac will be on when the owner requests a sync, but daily IBKR gateway sign-in
