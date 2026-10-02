@@ -26,6 +26,7 @@ model User {
   investors        Investor[]
   snapshots        Snapshot[]
   ibkrSyncRuns     IbkrSyncRun[]
+  ibkrSyncDevices  IbkrSyncDevice[]
 }
 
 // Asset model - represents any tradeable asset
@@ -113,6 +114,7 @@ model Position {
   unrealizedPnL    Float?
   unrealizedPnLPct Float?
   history          PositionHistory[]
+  ibkrSyncDevices  IbkrSyncDevice[]
 
   @@index([userId])
   @@index([assetId])
@@ -136,6 +138,72 @@ model IbkrSyncRun {
 
   @@unique([userId, captureHash])
   @@index([userId, createdAt])
+}
+
+// A revocable, owner-enrolled public key. It grants only complete IBKR syncs for
+// one existing cash anchor; private keys remain on the enrolled Mac.
+model IbkrSyncDevice {
+  id                    String   @id
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cashPositionId        String
+  cashPosition          Position @relation(fields: [cashPositionId], references: [id], onDelete: Cascade)
+  // Nullable unique value is cleared by revocation, never reassigned.
+  activeCashPositionId  String?  @unique
+  name                  String
+  publicKey             String
+  keyFingerprint        String   @unique
+  connectorFingerprint  String
+  audience              String
+  createdAt             DateTime @default(now())
+  revokedAt             DateTime?
+  lastSeenAt            DateTime?
+  lastVerifiedAt        DateTime?
+  lastCapturedAt        DateTime?
+  lastStatus            String   @default("authorized")
+  lastError             String?
+  lastChanges           Json?
+  nonces                IbkrSyncDeviceNonce[]
+  attempts              IbkrSyncAttempt[]
+
+  @@index([userId, cashPositionId, createdAt])
+}
+
+model IbkrSyncDeviceNonce {
+  deviceId  String
+  device    IbkrSyncDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  nonce     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@id([deviceId, nonce])
+  @@index([expiresAt])
+}
+
+// Financial source/checkpoint material remains private. Unfinished or uncertain
+// attempts retain the unique anchor claim even after the device is revoked.
+model IbkrSyncAttempt {
+  id                   String   @id @default(cuid())
+  deviceId             String
+  device               IbkrSyncDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  activeCashPositionId String?  @unique
+  status               String   @default("previewed")
+  capture              Json
+  // Preserve exact reviewed numeric bytes; Prisma JSON decoding can round a ULP.
+  captureText          String?
+  state                String
+  backup               Json
+  backupText           String?
+  checkpointHash       String
+  runId                String?
+  readbackHash         String?
+  unchanged            Boolean
+  capturedAt           DateTime
+  errorStage           String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([deviceId, createdAt])
 }
 
 // PositionHistory - add/reduce activity for aggregate holdings

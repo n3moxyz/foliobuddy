@@ -65,6 +65,7 @@ export function applySandboxEnv(env: NodeJS.ProcessEnv, webOrigin: string): void
     AGENT_USER_ID: SANDBOX_USER_ID,
     AGENT_API_KEY: SANDBOX_AGENT_API_KEY,
     ALLOWED_ORIGINS: webOrigin,
+    IBKR_DEVICE_AUDIENCE: `http://127.0.0.1:${Number(new URL(webOrigin).port || 4100) + 1}`,
     CLERK_PUBLISHABLE_KEY: PLACEHOLDER_CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY: PLACEHOLDER_CLERK_SECRET_KEY,
     X_NEWS_SOURCES: SANDBOX_X_ROSTER,

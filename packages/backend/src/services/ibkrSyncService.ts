@@ -14,10 +14,11 @@ import {
   type IbkrCashSnapshot,
 } from './ibkrCapture.js';
 
-type Tx = Omit<
+export type IbkrTransaction = Omit<
   typeof prisma,
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
 >;
+type Tx = IbkrTransaction;
 type Row = Awaited<
   ReturnType<
     typeof prisma.position.findMany<{
@@ -306,188 +307,213 @@ async function manualCash(tx: Tx, raw: unknown): Promise<IbkrCashSnapshot> {
   };
 }
 
-export async function reconcileIbkr(
+export type IbkrReconcileOptions = {
+  kind: 'sync' | 'cash';
+  cashPositionId: string;
+  input: unknown;
+  expectedState?: string;
+};
+
+export async function reconcileIbkr(userId: string, options: IbkrReconcileOptions) {
+  return navTransaction((tx) => reconcileIbkrInTransaction(tx, userId, options));
+}
+
+/** Device authorization and replay consumption share this transaction with the writes. */
+export async function reconcileIbkrInTransaction(
+  tx: Tx,
   userId: string,
-  options: {
-    kind: 'sync' | 'cash';
-    cashPositionId: string;
-    input: unknown;
-    expectedState?: string;
-  }
+  options: IbkrReconcileOptions
 ) {
   const source =
     options.kind === 'sync'
       ? validateIbkrCapture(options.input).capture
       : manualIbkrCashSchema.parse(options.input);
   const captureHash = hash({ kind: options.kind, cashPositionId: options.cashPositionId, source });
-  return navTransaction(async (tx) => {
-    const prior = await tx.ibkrSyncRun.findUnique({
-      where: { userId_captureHash: { userId, captureHash } },
-    });
-    const rows = await rowsFor(tx, userId);
-    const before = rows.map(checkpoint);
-    if (prior) {
-      requireIbkr(
-        !prior.restoredAt && hash(before) === hash(prior.after),
-        'This capture was restored or superseded; read IBKR again'
-      );
-      return {
-        applied: true,
-        unchanged: true,
-        runId: prior.id,
-        review: [],
-        cash: rows.find((p) => p.id === options.cashPositionId)?.ibkrCash,
-        backup: { version: 1, runId: prior.id, before: prior.before, after: prior.after },
-      };
-    }
-    const cash =
-      options.kind === 'sync' ? validateIbkrCapture(source).cash : await manualCash(tx, source);
-    const patches =
-      options.kind === 'sync'
-        ? syncPatches(rows, options.cashPositionId, source as IbkrCapture, cash)
-        : [cashPatch(cashRow(rows, options.cashPositionId), cash)];
-    const after = before.map((p) =>
-      afterCheckpoint(
-        p,
-        patches.find((patch) => patch.id === p.id)
-      )
-    );
-    const state = hash({ before, after });
-    const projected = await projectNativeCosts(
-      rows.map((p) => ({ ...p, ...patches.find((patch) => patch.id === p.id), asset: p.asset }))
-    );
-    const review = patches.map((patch) => {
-      const old = rows.find((p) => p.id === patch.id)!;
-      const next = projected.find((p) => p.id === patch.id)!;
-      return {
-        id: patch.id,
-        symbol: old.asset.symbol,
-        cash: isIbkrCash(old),
-        previousQuantity: old.quantity,
-        quantity: patch.quantity,
-        previousAvgCostNative: old.avgCostNative,
-        avgCostNative: patch.avgCostNative,
-        costCurrency: patch.costCurrency,
-        avgCostUsd: next.avgCostUsd,
-        recordedAvgCostUsd: old.avgCostUsd,
-      };
-    });
-    const backup = { version: 1, captureHash, before, after, source };
-    const financial = (list: Checkpoint[]) =>
-      list.map(({ ibkrSyncedAt: _time, ibkrCash, quantity, avgCostNative, ...p }) => ({
-        ...p,
-        quantity: ibkrCash ? null : quantity,
-        avgCostNative: avgCostNative == null ? null : Number(avgCostNative.toPrecision(15)),
-        ibkrCash: ibkrCash
-          ? (ibkrCash as unknown as IbkrCashSnapshot).balances
-              .map(({ currency, cashBalance }) => ({ currency, cashBalance }))
-              .sort((a, b) => a.currency.localeCompare(b.currency))
-          : null,
-      }));
-    const unchanged = hash(financial(before)) === hash(financial(after));
-    if (!options.expectedState) return { applied: false, unchanged, state, backup, review, cash };
+  const prior = await tx.ibkrSyncRun.findUnique({
+    where: { userId_captureHash: { userId, captureHash } },
+  });
+  const rows = await rowsFor(tx, userId);
+  const before = rows.map(checkpoint);
+  if (prior) {
     requireIbkr(
-      options.expectedState === state,
-      'IBKR records or FX changed after preview; preview again'
+      !prior.restoredAt && hash(before) === hash(prior.after),
+      'This capture was restored or superseded; read IBKR again'
     );
-    for (const patch of patches) {
-      const row = rows.find((p) => p.id === patch.id)!;
-      const { id, ibkrCash, ibkrSyncedAt, ...data } = patch;
+    return {
+      applied: true,
+      unchanged: true,
+      runId: prior.id,
+      review: [],
+      cash: rows.find((p) => p.id === options.cashPositionId)?.ibkrCash,
+      backup: { version: 1, runId: prior.id, before: prior.before, after: prior.after },
+    };
+  }
+  if (options.kind === 'sync') {
+    const firstTime = Date.parse((source as IbkrCapture).first.capturedAt);
+    for (const row of before) {
+      const cashTime = (row.ibkrCash as unknown as IbkrCashSnapshot | null)?.capturedAt;
+      for (const timestamp of [row.ibkrSyncedAt, cashTime])
+        requireIbkr(
+          timestamp == null ||
+            (Number.isFinite(Date.parse(timestamp)) && Date.parse(timestamp) <= firstTime),
+          'A newer IBKR sync or cash edit was saved after this capture started; read IBKR again'
+        );
+    }
+  }
+  const cash =
+    options.kind === 'sync' ? validateIbkrCapture(source).cash : await manualCash(tx, source);
+  const patches =
+    options.kind === 'sync'
+      ? syncPatches(rows, options.cashPositionId, source as IbkrCapture, cash)
+      : [cashPatch(cashRow(rows, options.cashPositionId), cash)];
+  const after = before.map((p) =>
+    afterCheckpoint(
+      p,
+      patches.find((patch) => patch.id === p.id)
+    )
+  );
+  const state = hash({ before, after });
+  const projected = await projectNativeCosts(
+    rows.map((p) => ({ ...p, ...patches.find((patch) => patch.id === p.id), asset: p.asset }))
+  );
+  const review = patches.map((patch) => {
+    const old = rows.find((p) => p.id === patch.id)!;
+    const next = projected.find((p) => p.id === patch.id)!;
+    return {
+      id: patch.id,
+      symbol: old.asset.symbol,
+      cash: isIbkrCash(old),
+      previousQuantity: old.quantity,
+      quantity: patch.quantity,
+      previousAvgCostNative: old.avgCostNative,
+      avgCostNative: patch.avgCostNative,
+      costCurrency: patch.costCurrency,
+      avgCostUsd: next.avgCostUsd,
+      recordedAvgCostUsd: old.avgCostUsd,
+    };
+  });
+  const backup = { version: 1, captureHash, before, after, source };
+  const financial = (list: Checkpoint[]) =>
+    list.map(({ ibkrSyncedAt: _time, ibkrCash, quantity, avgCostNative, ...p }) => ({
+      ...p,
+      quantity: ibkrCash ? null : quantity,
+      avgCostNative: avgCostNative == null ? null : Number(avgCostNative.toPrecision(15)),
+      ibkrCash: ibkrCash
+        ? (ibkrCash as unknown as IbkrCashSnapshot).balances
+            .map(({ currency, cashBalance }) => ({ currency, cashBalance }))
+            .sort((a, b) => a.currency.localeCompare(b.currency))
+        : null,
+    }));
+  const unchanged = hash(financial(before)) === hash(financial(after));
+  if (!options.expectedState) return { applied: false, unchanged, state, backup, review, cash };
+  requireIbkr(
+    options.expectedState === state,
+    'IBKR records or FX changed after preview; preview again'
+  );
+  for (const patch of patches) {
+    const row = rows.find((p) => p.id === patch.id)!;
+    const { id, ibkrCash, ibkrSyncedAt, ...data } = patch;
+    await tx.position.update({
+      where: { id, userId },
+      data: {
+        ...data,
+        ibkrSyncedAt: ibkrSyncedAt ? new Date(ibkrSyncedAt) : null,
+        ibkrCash: ibkrCash ? json(ibkrCash) : Prisma.DbNull,
+        ...calculatePositionValue({
+          quantity: data.quantity,
+          avgCostUsd: data.avgCostUsd,
+          currentPriceUsd: row.asset.currentPriceUsd,
+        }),
+      },
+    });
+  }
+  const readback = (await rowsFor(tx, userId)).map(checkpoint);
+  requireIbkr(sameWrittenState(readback, after, patches), 'IBKR reconciliation readback differs');
+  const run = await tx.ibkrSyncRun.create({
+    data: {
+      userId,
+      captureHash,
+      kind: options.kind,
+      source: json(source),
+      before: json(before),
+      after: json(readback),
+    },
+  });
+  return {
+    applied: true,
+    unchanged,
+    state,
+    runId: run.id,
+    backup: { ...backup, runId: run.id },
+    review,
+    cash,
+  };
+}
+
+/** Restore server-held checkpoints; a downloaded backup never grants mutation authority. */
+export async function restoreIbkr(userId: string, runId: string, apply: boolean) {
+  return navTransaction((tx) => restoreIbkrInTransaction(tx, userId, runId, apply));
+}
+
+export async function restoreIbkrInTransaction(
+  tx: Tx,
+  userId: string,
+  runId: string,
+  apply: boolean
+) {
+  const run = await tx.ibkrSyncRun.findFirst({ where: { id: runId, userId } });
+  requireIbkr(run && !run.restoredAt, 'IBKR checkpoint is unavailable or already restored');
+  const rows = await rowsFor(tx, userId);
+  requireIbkr(
+    hash(rows.map(checkpoint)) === hash(run.after),
+    'IBKR records changed after this checkpoint; restoration needs review'
+  );
+  const before = run.before as unknown as Checkpoint[];
+  if (apply) {
+    for (const saved of before) {
+      const row = rows.find((p) => p.id === saved.id)!;
       await tx.position.update({
-        where: { id, userId },
+        where: { id: saved.id, userId },
         data: {
-          ...data,
-          ibkrSyncedAt: ibkrSyncedAt ? new Date(ibkrSyncedAt) : null,
-          ibkrCash: ibkrCash ? json(ibkrCash) : Prisma.DbNull,
+          quantity: saved.quantity,
+          avgCostUsd: saved.avgCostUsd,
+          avgCostNative: saved.avgCostNative,
+          costCurrency: saved.costCurrency,
+          ibkrContractId: saved.ibkrContractId,
+          ibkrSyncedAt: saved.ibkrSyncedAt ? new Date(saved.ibkrSyncedAt) : null,
+          ibkrCash: saved.ibkrCash === null ? Prisma.DbNull : json(saved.ibkrCash),
           ...calculatePositionValue({
-            quantity: data.quantity,
-            avgCostUsd: data.avgCostUsd,
+            quantity: saved.quantity,
+            avgCostUsd: saved.avgCostUsd,
             currentPriceUsd: row.asset.currentPriceUsd,
           }),
         },
       });
     }
-    const readback = (await rowsFor(tx, userId)).map(checkpoint);
-    requireIbkr(sameWrittenState(readback, after, patches), 'IBKR reconciliation readback differs');
-    const run = await tx.ibkrSyncRun.create({
-      data: {
-        userId,
-        captureHash,
-        kind: options.kind,
-        source: json(source),
-        before: json(before),
-        after: json(readback),
-      },
+    requireIbkr(
+      hash((await rowsFor(tx, userId)).map(checkpoint)) === hash(before),
+      'IBKR restoration readback differs'
+    );
+    await tx.ibkrSyncRun.update({
+      where: { id: run.id, userId },
+      data: { restoredAt: new Date() },
     });
+  }
+  const after = run.after as unknown as Checkpoint[];
+  const review = before.map((saved) => {
+    const current = after.find((p) => p.id === saved.id)!;
     return {
-      applied: true,
-      unchanged,
-      state,
-      runId: run.id,
-      backup: { ...backup, runId: run.id },
-      review,
-      cash,
+      id: saved.id,
+      symbol: saved.asset.symbol,
+      cash: saved.asset.category === 'CASH',
+      previousQuantity: current.quantity,
+      quantity: saved.quantity,
+      previousAvgCostNative: current.avgCostNative,
+      avgCostNative: saved.avgCostNative,
+      costCurrency: saved.costCurrency ?? current.costCurrency,
     };
   });
-}
-
-/** Restore server-held checkpoints; a downloaded backup never grants mutation authority. */
-export async function restoreIbkr(userId: string, runId: string, apply: boolean) {
-  return navTransaction(async (tx) => {
-    const run = await tx.ibkrSyncRun.findFirst({ where: { id: runId, userId } });
-    requireIbkr(run && !run.restoredAt, 'IBKR checkpoint is unavailable or already restored');
-    const rows = await rowsFor(tx, userId);
-    requireIbkr(
-      hash(rows.map(checkpoint)) === hash(run.after),
-      'IBKR records changed after this checkpoint; restoration needs review'
-    );
-    const before = run.before as unknown as Checkpoint[];
-    if (apply) {
-      for (const saved of before) {
-        const row = rows.find((p) => p.id === saved.id)!;
-        await tx.position.update({
-          where: { id: saved.id, userId },
-          data: {
-            quantity: saved.quantity,
-            avgCostUsd: saved.avgCostUsd,
-            avgCostNative: saved.avgCostNative,
-            costCurrency: saved.costCurrency,
-            ibkrContractId: saved.ibkrContractId,
-            ibkrSyncedAt: saved.ibkrSyncedAt ? new Date(saved.ibkrSyncedAt) : null,
-            ibkrCash: saved.ibkrCash === null ? Prisma.DbNull : json(saved.ibkrCash),
-            ...calculatePositionValue({
-              quantity: saved.quantity,
-              avgCostUsd: saved.avgCostUsd,
-              currentPriceUsd: row.asset.currentPriceUsd,
-            }),
-          },
-        });
-      }
-      requireIbkr(
-        hash((await rowsFor(tx, userId)).map(checkpoint)) === hash(before),
-        'IBKR restoration readback differs'
-      );
-      await tx.ibkrSyncRun.update({
-        where: { id: run.id, userId },
-        data: { restoredAt: new Date() },
-      });
-    }
-    const after = run.after as unknown as Checkpoint[];
-    const review = before.map((saved) => {
-      const current = after.find((p) => p.id === saved.id)!;
-      return {
-        id: saved.id,
-        symbol: saved.asset.symbol,
-        cash: saved.asset.category === 'CASH',
-        previousQuantity: current.quantity,
-        quantity: saved.quantity,
-        previousAvgCostNative: current.avgCostNative,
-        avgCostNative: saved.avgCostNative,
-        costCurrency: saved.costCurrency ?? current.costCurrency,
-      };
-    });
-    return { applied: apply, runId: run.id, before, after: run.after, review };
-  });
+  return { applied: apply, runId: run.id, before, after: run.after, review };
 }
 
 export async function ibkrRuns(userId: string) {
