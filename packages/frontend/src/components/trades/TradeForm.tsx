@@ -14,6 +14,7 @@ import {
 import type { Asset, Trade } from '@/lib/types';
 import { TradeImportTab } from './TradeImportTab';
 import { AssetSearchDropdown } from './AssetSearchDropdown';
+import { TradePnLPreview } from './TradePnLPreview';
 
 interface TradeFormProps {
   trade?: Trade;
@@ -293,6 +294,14 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                 USD amount paid; deducted from realized P&amp;L.
               </p>
             </div>
+
+            <TradePnLPreview
+              direction={direction}
+              entryPrice={entryPrice}
+              exitPrice={exitPrice}
+              quantity={quantity}
+              fundingCost={fundingCost}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes (Optional)</Label>
