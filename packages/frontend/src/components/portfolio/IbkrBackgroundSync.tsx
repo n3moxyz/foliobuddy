@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { captureAuthSession, isAuthSessionCurrent } from '@/lib/authSession';
 import { Textarea } from '@/components/ui/textarea';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
-import { formatDateTime, formatQuantity, formatTrimmedNumber } from '@/lib/utils';
+import { formatDateTime, formatTrimmedNumber } from '@/lib/utils';
 import { isIbkrCashPosition } from './ibkrCash';
 import { backgroundSyncStatus, parsePublicEnrollment } from './ibkrBackgroundStatus';
 
@@ -274,7 +274,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
 
 function DeviceStatus({ device, now }: { device: IbkrSyncDevice; now: number }) {
   const status = backgroundSyncStatus(device, now);
-  const { maskMoney } = useMoneyFormatter();
+  const { maskMoney, formatQuantity } = useMoneyFormatter();
   const money = (value: number | null, currency = 'USD') =>
     value == null
       ? 'Not saved'

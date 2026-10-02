@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
-import { formatTrimmedNumber, formatQuantity } from '@/lib/utils';
+import { formatTrimmedNumber } from '@/lib/utils';
 
 export function NativeCostReconciliation() {
   const [mode, setMode] = useState('reconcile');
@@ -17,7 +17,7 @@ export function NativeCostReconciliation() {
   const [backupSaved, setBackupSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  const { formatPrice, maskMoney } = useMoneyFormatter();
+  const { formatPrice, formatQuantity, maskMoney } = useMoneyFormatter();
   const mutation = useMutation({ mutationFn: api.reconcileNativeCosts });
   const reset = () => {
     setPreview(null);

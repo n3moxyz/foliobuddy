@@ -20,7 +20,7 @@ import {
 import {
   formatPercent,
   formatDateTime,
-  formatQuantity,
+  formatCurrency as formatVisibleCurrency,
   formatNumber,
   getPnLColorClass,
   cn,
@@ -165,7 +165,8 @@ export function PositionTable({
   mobileVariant = 'focus',
   showMobileColumnToggle = true,
 }: PositionTableProps) {
-  const { formatCurrency, formatSignedCurrency, valuesHidden } = useMoneyFormatter();
+  const { formatCurrency, formatQuantity, formatSignedCurrency, valuesHidden } =
+    useMoneyFormatter();
   const [viewPositionId, setViewPositionId] = useState<string | null>(null);
   const viewPosition = positions.find((position) => position.id === viewPositionId) ?? null;
   const setViewPosition = useCallback((position: Position | null) => {
@@ -700,7 +701,7 @@ export function PositionTable({
             <span className="inline-flex shrink-0 gap-1">
               Price
               <span className="font-mono text-foreground">
-                {formatCurrency(
+                {formatVisibleCurrency(
                   priceValue,
                   currency,
                   isUnitTrust ? 4 : getSmartDecimals(priceValue)
@@ -741,13 +742,12 @@ export function PositionTable({
       nativeCurrency: position.asset.nativeCurrency,
       displayCurrency: currency,
       usdFxRates: priceFxRates,
-      valuesHidden,
     });
 
     return (
       <>
         <p className="font-mono font-medium text-muted-foreground">
-          {formatCurrency(
+          {formatVisibleCurrency(
             displayedAssetPrice(position.asset, currency, fxRate),
             currency,
             position.asset.category === 'UNIT_TRUST'

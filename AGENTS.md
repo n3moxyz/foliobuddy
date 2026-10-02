@@ -193,7 +193,7 @@ iOS HIG, all pages:
 
 ### Smart Quantity Formatting
 
-Use `formatQuantity()` for read-only quantity displays (tables, dialogs, history, previews) — trims trailing zeroes, caps precision by asset type (equities 4, UT 3, crypto 8, cash 2). Keep editable fields as raw `FormattedNumberInput` strings so precision survives typing/saving.
+Use `useMoneyFormatter().formatQuantity()` for read-only quantity displays (tables, dialogs, history, previews) — masks when the eye is off, otherwise trims trailing zeroes and caps precision by asset type (equities 4, UT 3, crypto 8, cash 2). Keep editable fields as raw `FormattedNumberInput` strings so precision survives typing/saving.
 
 ### Formatted Amount Inputs
 
@@ -268,7 +268,7 @@ Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/soluti
 
 ### Global Value Privacy
 
-`AppShell` eye → `privacyStore`, persisted `foliobuddy-values-hidden`. All read-only money MUST use `useMoneyFormatter()` (`formatCurrency`/`formatPrice`/`formatSignedCurrency`): pages, dialogs, tables, chart labels/tooltips, import previews; inputs stay visible. Native sublabels: `positionPriceDisplay.ts` takes `valuesHidden`. Percentages, quantities, counts, chart geometry stay visible; copied charts reflect current privacy.
+`AppShell` eye → `privacyStore`, persisted `foliobuddy-values-hidden`. All read-only account money and holding/trade quantities MUST use `useMoneyFormatter()` (`formatCurrency`/`formatPrice`/`formatSignedCurrency`/`formatQuantity`): pages, dialogs, tables, chart labels/tooltips, import and sync previews; inputs stay visible. Public current asset quotes and published NAVs use the unmasked `lib/utils.ts` formatters. Native sublabels: pass `valuesHidden` to `positionPriceDisplay.ts` for costs/totals, omit it for current quotes. Percentages, counts, chart geometry stay visible; copied charts reflect current privacy. See [privacy display contract](docs/solutions/2026-10-02-quantity-privacy.md).
 
 ### Dashboard Charts
 

@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Check, Copy, Pencil, TrendingDown, TrendingUp, Trash2 } from 'lucide-react';
-import { formatDate, formatNumber, formatPercent, getPnLColorClass } from '@/lib/utils';
+import { formatDate, formatPercent, getPnLColorClass } from '@/lib/utils';
 import type { Trade } from '@/lib/types';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
@@ -43,7 +43,7 @@ export function TradeDetailDialog({
   copiedId,
   onCopy,
 }: TradeDetailDialogProps) {
-  const { formatCurrency, formatPrice, formatSignedCurrency } = useMoneyFormatter();
+  const { formatCurrency, formatPrice, formatQuantity, formatSignedCurrency } = useMoneyFormatter();
   const tags = trade ? formatTradeTags(trade.tags) : null;
 
   return (
@@ -90,7 +90,9 @@ export function TradeDetailDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Quantity</p>
-                <p className="font-mono font-medium">{formatNumber(trade.quantity, 4)}</p>
+                <p className="font-mono font-medium">
+                  {formatQuantity(trade.quantity, trade.asset.category)}
+                </p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Position Size</p>

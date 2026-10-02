@@ -1,9 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { Snapshot, SnapshotPosition } from '@/lib/types';
 import { SnapshotTable } from '../SnapshotTable';
+import { MASKED_MONEY_VALUE, usePrivacyStore } from '@/stores/privacyStore';
+
+afterEach(() => act(() => usePrivacyStore.getState().setValuesHidden(false)));
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -78,6 +81,32 @@ describe('SnapshotTable expand row', () => {
     await waitFor(() => expect(row).toHaveAttribute('aria-expanded', 'true'));
     expect(screen.getByText(/no positions recorded/i)).toBeInTheDocument();
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('masks snapshot holdings and values while keeping public prices visible', async () => {
+    vi.mocked(api.getSnapshotPositions).mockResolvedValue([
+      {
+        id: 'private-holding',
+        snapshotId: automaticSnapshot.id,
+        assetSymbol: 'PRIVATE',
+        quantity: 54321.25,
+        priceUsd: 12.34,
+        valueUsd: 670324.225,
+        allocation: 67.03,
+      } as SnapshotPosition,
+    ]);
+    act(() => usePrivacyStore.getState().setValuesHidden(true));
+    renderTable();
+    fireEvent.click(screen.getByRole('row', { name: /expand daily snapshot/i }));
+    const row = (await screen.findByText('PRIVATE')).closest('tr')!;
+    const cells = within(row).getAllByRole('cell');
+    expect(cells[1]).toHaveTextContent(MASKED_MONEY_VALUE);
+    expect(cells[2]).toHaveTextContent('$12.34');
+    expect(cells[3]).toHaveTextContent(MASKED_MONEY_VALUE);
+    expect(cells[4]).toHaveTextContent('67.03%');
+    act(() => usePrivacyStore.getState().toggleValuesHidden());
+    expect(cells[1]).toHaveTextContent('54,321.25');
+    expect(cells[3]).toHaveTextContent('$670,324');
   });
 });
 

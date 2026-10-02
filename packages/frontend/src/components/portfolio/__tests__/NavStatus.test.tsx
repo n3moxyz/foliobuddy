@@ -61,10 +61,10 @@ describe('daily NAV display', () => {
       })
     ).toBe('(SGD 6.0462)');
   });
-  it('respects monetary privacy for the official native quote', () => {
+  it('keeps the public native quote visible with monetary privacy enabled', () => {
     usePrivacyStore.setState({ valuesHidden: true });
     render(<NavStatus asset={asset} detailed />);
-    expect(screen.queryByText(/6\.0462/)).not.toBeInTheDocument();
+    expect(screen.getByText('Published NAV: S$6.0462')).toBeInTheDocument();
     expect(screen.getByText(/NAV as of 09 Sept? 2026/)).toBeInTheDocument();
   });
 });

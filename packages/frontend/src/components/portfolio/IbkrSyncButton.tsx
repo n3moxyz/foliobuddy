@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatDateTime, formatQuantity, formatNativePrice, formatNativeAmount } from '@/lib/utils';
+import { formatDateTime, formatNativePrice, formatNativeAmount } from '@/lib/utils';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { isOwnedIbkrPosition } from './ibkrOwnership';
 import { captureAuthSession, isAuthSessionCurrent } from '@/lib/authSession';
@@ -63,7 +63,7 @@ export function IbkrSyncButton({
 
 function IbkrSyncControl({ position, disabled }: { position: Position; disabled: boolean }) {
   const queryClient = useQueryClient();
-  const { maskMoney } = useMoneyFormatter();
+  const { maskMoney, formatQuantity } = useMoneyFormatter();
   const fieldId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const state = useSyncExternalStore(

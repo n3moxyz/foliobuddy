@@ -2645,3 +2645,17 @@ attest who owns the external brokerage account. Different people need separate
 macOS profiles and their own Codex/IBKR sign-ins. Setup is now “Connect a Mac”, with
 a user-chosen name; Merlin is just one user's device. Protocol 2 requires a one-time
 helper update and browser reconnection, while broker permissions stay read-only.
+
+### The eye also hides quantities (October 2026)
+
+Hiding a cash value while displaying its quantity still exposes the balance.
+The eye now masks read-only cash, asset and trade quantities through the same
+reactive formatter as account amounts, including details, history, mobile rows,
+import previews and broker sync summaries. Snapshot holdings and position previews
+also mask their values so they cannot reveal the quantity indirectly.
+
+Current asset prices and published NAVs stay visible, including native-currency
+quotes. Average costs and execution prices still belong to the private account
+record and remain masked. Editable inputs and clipboard/export data keep their
+original values. The lesson is to separate public quotes from account data,
+and to check the secondary views when changing the privacy contract.

@@ -4,7 +4,7 @@ import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
-import { formatQuantity } from '@/lib/utils';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import type { Position } from '@/lib/types';
 import type { CostCurrency, CostInputMode, DeltaPreview } from './positionFormMath';
 
@@ -55,9 +55,10 @@ export function PositionDeltaEditor({
   isLoading,
   canSubmit,
 }: PositionDeltaEditorProps) {
+  const { formatQuantity, maskMoney } = useMoneyFormatter();
   const formatPositionQuantity = (value: number) => formatQuantity(value, position.asset.category);
   const formatAverageCost = (value: number) =>
-    value.toFixed(position.avgCostNative != null ? 4 : value >= 1000 ? 0 : 2);
+    maskMoney(value.toFixed(position.avgCostNative != null ? 4 : value >= 1000 ? 0 : 2));
   const isAdd = deltaMode === 'add';
   // Reduce's amount pair is optional; the helper paragraph says so and is wired
   // to both inputs so screen readers announce it with the field.
@@ -230,7 +231,7 @@ export function PositionDeltaEditor({
               {formatAverageCost(preview.currentAvgCost)}
             </div>
             <div className="text-right font-mono text-muted-foreground">
-              {preview.currentTotalCost.toFixed(0)}
+              {maskMoney(preview.currentTotalCost.toFixed(0))}
             </div>
 
             <div className="text-[11px] font-medium uppercase tracking-wide text-primary">New</div>
@@ -241,7 +242,7 @@ export function PositionDeltaEditor({
               {formatAverageCost(preview.nextAvgCost)}
             </div>
             <div className="text-right font-mono font-medium text-primary">
-              {preview.nextTotalCost.toFixed(0)}
+              {maskMoney(preview.nextTotalCost.toFixed(0))}
             </div>
           </div>
           {preview.nextQuantity === 0 && (

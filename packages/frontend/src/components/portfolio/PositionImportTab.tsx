@@ -31,7 +31,7 @@ export function PositionImportTab({
   onPaste,
   onImport,
 }: PositionImportTabProps) {
-  const { formatPrice, maskMoney } = useMoneyFormatter();
+  const { formatPrice, formatQuantity, maskMoney } = useMoneyFormatter();
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
@@ -77,7 +77,7 @@ export function PositionImportTab({
               >
                 <span className="font-medium">{pos.asset.symbol}</span>
                 <span className="text-muted-foreground ml-2">
-                  {pos.quantity} @{' '}
+                  {formatQuantity(pos.quantity, pos.asset.category)} @{' '}
                   {pos.avgCostNative != null && pos.costCurrency
                     ? maskMoney(`${pos.costCurrency} ${formatTrimmedNumber(pos.avgCostNative, 8)}`)
                     : formatPrice(pos.avgCostUsd, 'USD')}

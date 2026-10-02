@@ -1,8 +1,11 @@
 import type { ComponentProps } from 'react';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Position } from '@/lib/types';
 import { PositionDeltaEditor } from '../PositionDeltaEditor';
+import { MASKED_MONEY_VALUE, usePrivacyStore } from '@/stores/privacyStore';
+
+afterEach(() => act(() => usePrivacyStore.getState().setValuesHidden(false)));
 
 const position = {
   id: 'sol-position',
@@ -53,6 +56,26 @@ function renderEditor(overrides: Partial<ComponentProps<typeof PositionDeltaEdit
 }
 
 describe('PositionDeltaEditor', () => {
+  it('masks read-only quantities and previews while keeping the entered quantity editable', () => {
+    act(() => usePrivacyStore.getState().setValuesHidden(true));
+    renderEditor({
+      additionalQuantity: '2.5',
+      preview: {
+        currentQuantity: 10,
+        currentAvgCost: 100,
+        currentTotalCost: 1000,
+        nextQuantity: 12.5,
+        nextAvgCost: 110,
+        nextTotalCost: 1375,
+      },
+    });
+    expect(screen.getAllByText(MASKED_MONEY_VALUE)).toHaveLength(7);
+    expect(screen.getByLabelText('Additional Quantity')).toHaveValue('2.5');
+    expect(screen.queryByText('12.5')).not.toBeInTheDocument();
+    act(() => usePrivacyStore.getState().toggleValuesHidden());
+    expect(screen.getByText('12.5')).toBeInTheDocument();
+  });
+
   it('reduce mode: proceeds/avg price are optional, funding slot renders, submit reads Reduce Position', () => {
     renderEditor({ deltaMode: 'reduce' });
 
