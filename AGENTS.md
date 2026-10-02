@@ -132,7 +132,7 @@ Investor create, stake update, owner reassignment + delete/reassign are multi-ro
 
 ### Trade Date & Analytics Contracts
 
-Create/update/close/import dates: real calendar values, `exitDate >= entryDate`; analytics month buckets UTC. `TradeAnalytics.profitFactor = null` = JSON-safe ∞ (wins, no losses) → UI `∞`; best/worst trade null unless the corresponding trade exists. Optional USD `fundingCost` ≥ 0, default `0`: closed `realizedPnL` = `price P&L - fundingCost`, `realizedPnLPct` = net ÷ entry size → analytics inherit it; create/edit/bulk-import, clipboard, exports + demo mode MUST keep it; trade details show deduction beside net Realized P&L.
+Valid calendar dates, `exitDate >= entryDate`; UTC analytics months. `TradeAnalytics.profitFactor = null` → UI `∞` (wins/no losses); absent best/worst trades = null. USD `fundingCost` ≥ 0 (default 0): closed P&L = directional price P&L − funding; return = net ÷ entry size; analytics use net. Preserve funding in create/edit/import, clipboard, exports, demo and details. `TradePnLPreview.tsx`: inline net USD/return below funding; mirror `tradePnL.ts`, guard incomplete/non-finite results, respect privacy.
 
 ### Lazy-Loaded Routes
 
