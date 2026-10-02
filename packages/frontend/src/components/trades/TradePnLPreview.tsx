@@ -55,7 +55,7 @@ export function TradePnLPreview({
       <span className="text-sm font-medium text-muted-foreground">Net P&amp;L:</span>{' '}
       <span
         className={cn(
-          'min-w-0 break-all font-mono text-xl font-semibold tracking-tight tabular-nums',
+          'min-w-0 break-all font-mono text-sm font-semibold tracking-tight tabular-nums',
           resultClass
         )}
       >
