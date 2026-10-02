@@ -16,7 +16,7 @@ Approved plan: [Merlin background sync](../docs/plans/2026-10-02-ibkr-merlin-bac
 - [x] Add and visually verify owner connection/status/revocation in the IBKR panel and Settings.
 - [x] Complete database integration, project checks and independent review.
 - [x] Document setup/recovery.
-- [ ] Publish the reviewable PR and verify CI.
+- [x] Publish the reviewable PR and verify CI.
 - [ ] Deploy, install and complete owner enrollment with required authority.
 - [ ] Verify a fresh production run, then retire the old local heartbeat.
 
@@ -29,3 +29,9 @@ PostgreSQL integration, and desktop/mobile sandbox checks passed. The signed wor
 rehearsal covered changed holdings, FX-only updates, initial contract linking,
 private checkpoints, independent readback, and confirmed device revocation. Final
 security, architecture, performance and correctness review findings were resolved.
+
+[PR #59](https://github.com/n3moxyz/foliobuddy/pull/59) is open; CI passed on the
+implementation commit `bb0d857`. Merlin's 23 worker tests also passed. Its public
+enrollment proof, immutable runtime and private file permissions are verified;
+the schedule is disabled and no production grant is enrolled. Merge approval,
+owner authorization and a fresh verified production run remain outstanding.
