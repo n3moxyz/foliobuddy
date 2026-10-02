@@ -49,11 +49,21 @@ security boundaries, audit files and failure handling.
 
 **Import broker capture** remains the manual JSON path. Manual cash snapshots show
 **Last manual cash edit**; `ibkrSyncedAt` also changes on manual edits and cannot
-alone identify a broker capture. The daily agent procedure below is unchanged.
+alone identify a broker capture.
+
+## Browser-free daily worker
+
+The owner approved a separate, revocable IBKR-only device permission for daily
+execution on Merlin. See the [background worker runbook](2026-10-02-ibkr-merlin-background-sync.md)
+for enrollment, signature/replay checks, private checkpoints, interrupted-run
+handling and activation. It reuses the complete capture validation below. Keep
+the old heartbeat active until a production worker run is independently verified;
+then pause it through the supported automation tool to avoid duplicate schedules.
+The worker's permission does not broaden the existing agent API or browser helper.
 
 ## Daily agent procedure
 
-Use a thread heartbeat at 06:00 Asia/Singapore. Enable it only after a successful
+For the browser-based fallback, use a thread heartbeat at 06:00 Asia/Singapore. Enable it only after a successful
 production rehearsal. It uses the IBKR plugin for reads and the existing signed-in
 FolioBuddy browser session for owner-authorized app edits. Expired authentication,
 missing browser access or unavailable plugins stop the run and require attention.

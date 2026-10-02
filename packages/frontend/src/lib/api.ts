@@ -25,6 +25,8 @@ import type {
   NativeReconciliationResult,
   IbkrReconciliationResult,
   IbkrSyncRun,
+  IbkrSyncDevice,
+  IbkrDeviceEnrollment,
   PaginatedResponse,
   ParsedStatementResponse,
   NewsEnrichmentResponse,
@@ -150,6 +152,12 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getIbkrRuns: () => request<IbkrSyncRun[]>('/ibkr/runs'),
+  getIbkrDevices: (cashPositionId?: string) =>
+    request<IbkrSyncDevice[]>(`/ibkr/devices${buildQuery({ cashPositionId })}`),
+  registerIbkrDevice: (payload: { cashPositionId: string; enrollment: IbkrDeviceEnrollment }) =>
+    request<IbkrSyncDevice>('/ibkr/devices', { method: 'POST', body: JSON.stringify(payload) }),
+  revokeIbkrDevice: (deviceId: string) =>
+    request<void>(`/ibkr/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' }),
   restoreIbkr: (runId: string, action: 'preview' | 'apply') =>
     request<{
       applied: boolean;

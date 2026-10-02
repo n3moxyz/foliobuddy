@@ -13,10 +13,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { usePositions } from '@/hooks/usePortfolio';
 import { formatQuantity, formatDateTime, formatTrimmedNumber } from '@/lib/utils';
 import { isNonNegativeNumberInput } from '@/lib/formValidation';
 import { isIbkrCashPosition } from './ibkrCash';
 import { IbkrSyncButton } from './IbkrSyncButton';
+import { IbkrBackgroundSync } from './IbkrBackgroundSync';
 import { Plus, Trash2 } from 'lucide-react';
 
 const CURRENCIES = ['USD', 'SGD', 'JPY', 'TWD', 'KRW', 'NOK', 'GBP'];
@@ -41,7 +43,15 @@ export function IbkrCashPanel({
   return <IbkrCashEditor position={position} onSuccess={onSuccess} />;
 }
 
-function IbkrCashEditor({ position, onSuccess }: { position: Position; onSuccess?: () => void }) {
+function IbkrCashEditor({
+  position: initialPosition,
+  onSuccess,
+}: {
+  position: Position;
+  onSuccess?: () => void;
+}) {
+  const { data: positions } = usePositions();
+  const position = positions?.find((row) => row.id === initialPosition.id) ?? initialPosition;
   const { formatCurrency, formatPrice, maskMoney } = useMoneyFormatter();
   const native = (value: number, currency: string) =>
     maskMoney(`${currency} ${formatTrimmedNumber(value, 8)}`);
@@ -65,7 +75,12 @@ function IbkrCashEditor({ position, onSuccess }: { position: Position; onSuccess
   });
   const runs = useQuery({ queryKey: ['ibkr-runs'], queryFn: api.getIbkrRuns });
   const busy = mutation.isPending || restore.isPending;
-  const cash = preview?.applied ? preview.cash : position.ibkrCash;
+  const cash =
+    preview?.applied &&
+    (!position.ibkrCash ||
+      Date.parse(preview.cash.capturedAt) > Date.parse(position.ibkrCash.capturedAt))
+      ? preview.cash
+      : position.ibkrCash;
   const clear = () => {
     setPreview(null);
     setReviewInput(null);
@@ -521,6 +536,7 @@ function IbkrCashEditor({ position, onSuccess }: { position: Position; onSuccess
           )}
         </div>
       )}
+      <IbkrBackgroundSync position={position} />
       {onSuccess && (
         <Button type="button" variant="ghost" disabled={busy} onClick={onSuccess}>
           Done

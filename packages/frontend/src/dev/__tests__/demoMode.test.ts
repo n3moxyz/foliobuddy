@@ -55,6 +55,50 @@ describe('demo mode API mock', () => {
     resetDemoDataForTests();
   });
 
+  it('keeps daily device enrollment scoped, revocable and disposable in the demo', async () => {
+    const positions = await seedPositions();
+    const cashPositionId = 'pos-cash-usd';
+    const enrollment = {
+      version: 1,
+      deviceId: 'fixture-device',
+      cashPositionId,
+      name: 'Demo Merlin',
+      publicKey: 'public-only',
+      connectorFingerprint: 'a'.repeat(64),
+      audience: 'https://api.foliobuddy.xyz',
+      createdAt: new Date().toISOString(),
+      signature: 'demo-public-proof',
+    };
+    expect(
+      await readJson(await demoRequest(`/ibkr/devices?cashPositionId=${cashPositionId}`))
+    ).toEqual([]);
+    expect(
+      (await demoRequest('/ibkr/devices', 'POST', { cashPositionId: 'pos-cash-sgd', enrollment }))
+        .status
+    ).toBe(409);
+    const registered = await readJson<{ deviceId: string; lastVerifiedAt: null }>(
+      await demoRequest('/ibkr/devices', 'POST', { cashPositionId, enrollment })
+    );
+    expect(registered.deviceId).toBe(enrollment.deviceId);
+    expect(registered.lastVerifiedAt).toBeNull();
+    expect(
+      (await demoRequest('/ibkr/devices', 'POST', { cashPositionId, enrollment })).status
+    ).toBe(409);
+    expect((await demoRequest(`/ibkr/devices/${enrollment.deviceId}`, 'DELETE')).status).toBe(204);
+    expect(
+      (
+        await readJson<Array<{ revokedAt: string }>>(
+          await demoRequest(`/ibkr/devices?cashPositionId=${cashPositionId}`)
+        )
+      )[0].revokedAt
+    ).toBeTruthy();
+    expect(await seedPositions()).toEqual(positions);
+    resetDemoDataForTests();
+    expect(
+      await readJson(await demoRequest(`/ibkr/devices?cashPositionId=${cashPositionId}`))
+    ).toEqual([]);
+  });
+
   it('previews, applies once and restores signed IBKR cash without changing other holdings or history', async () => {
     const original = await seedPositions();
     const cash = original.find((p) => p.id === 'pos-cash-usd')!;

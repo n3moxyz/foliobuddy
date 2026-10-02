@@ -44,6 +44,41 @@ export interface IbkrSyncRun {
   restoredAt: string | null;
 }
 
+export interface IbkrDeviceEnrollment {
+  version: 1;
+  deviceId: string;
+  cashPositionId: string;
+  name: string;
+  publicKey: string;
+  connectorFingerprint: string;
+  audience: string;
+  createdAt: string;
+  signature: string;
+}
+
+export interface IbkrSyncDevice {
+  deviceId: string;
+  cashPositionId: string;
+  name: string;
+  keyFingerprint: string;
+  connectorFingerprint: string;
+  createdAt: string;
+  revokedAt: string | null;
+  lastSeenAt: string | null;
+  lastVerifiedAt: string | null;
+  lastCapturedAt: string | null;
+  lastStatus: 'authorized' | 'running' | 'verified' | 'failed';
+  lastError: string | null;
+  blocked: boolean;
+  lastChanges: Array<{
+    kind: 'quantity' | 'native-average' | 'cash';
+    symbol?: string;
+    currency?: string;
+    previous: number | null;
+    current: number | null;
+  }>;
+}
+
 // -- Frontend-only types --
 
 /** Time-period selector used by PortfolioChart and BenchmarkComparisonChart */

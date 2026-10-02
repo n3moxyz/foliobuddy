@@ -114,6 +114,10 @@ the helper pins the explicitly paired connector link and existing app holdings.
 Changing the connector requires pairing again. New/unsupported holdings still need
 an explicit app identity before the complete account sync can proceed.
 
+The optional [Merlin daily worker](2026-10-02-ibkr-merlin-background-sync.md) has its
+own explicit, revocable app permission and separate installer. Its browser-free
+schedule does not replace this Mac's pairing or change this button's behavior.
+
 Audits live at `.local/ibkr-sync/YYYY-MM-DD/button-<id>/`, outside Git. They include
 both source samples, executions, capture, review, checkpoint, independent readback
 and result. An incomplete run records that status without claiming success. The

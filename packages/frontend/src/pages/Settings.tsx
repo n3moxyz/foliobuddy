@@ -19,6 +19,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { SnapshotScheduleSection } from '@/components/settings/SnapshotScheduleSection';
+import { IbkrDeviceSettings } from '@/components/settings/IbkrDeviceSettings';
 import { RefreshCw, Download, Camera } from 'lucide-react';
 
 export default function Settings() {
@@ -182,6 +183,10 @@ export default function Settings() {
       <Separator />
 
       <SnapshotScheduleSection />
+
+      <Separator />
+
+      <IbkrDeviceSettings />
 
       <Separator />
 
