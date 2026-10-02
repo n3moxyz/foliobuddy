@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, type IbkrDeviceEnrollment, type IbkrSyncDevice, type Position } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { captureAuthSession, isAuthSessionCurrent } from '@/lib/authSession';
 import { Textarea } from '@/components/ui/textarea';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { formatDateTime, formatQuantity, formatTrimmedNumber } from '@/lib/utils';
@@ -17,6 +19,7 @@ export function IbkrBackgroundSync({ position }: { position: Position }) {
 function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
   const headingId = useId();
   const inputId = useId();
+  const nameId = useId();
   const client = useQueryClient();
   const queryKey = ['ibkr-devices', cashPositionId];
   const devices = useQuery({
@@ -28,6 +31,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
   });
   const [connecting, setConnecting] = useState(false);
   const [text, setText] = useState('');
+  const [macName, setMacName] = useState('My Mac');
   const [review, setReview] = useState<IbkrDeviceEnrollment | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,22 +60,27 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
   };
   async function authorize() {
     if (!review) return;
+    const session = captureAuthSession();
     setError(null);
     try {
       const saved = await register.mutateAsync({ cashPositionId, enrollment: review });
+      if (!isAuthSessionCurrent(session)) return;
       client.setQueryData<IbkrSyncDevice[]>(queryKey, (previous) => [saved, ...(previous ?? [])]);
       reset();
-      toast.success('Merlin authorized for daily IBKR sync');
+      toast.success(`${saved.name} authorized for daily IBKR sync`);
       void client.invalidateQueries({ queryKey: ['ibkr-devices'] });
     } catch (e) {
+      if (!isAuthSessionCurrent(session)) return;
       setError(e instanceof Error ? e.message : 'The connection could not be authorized.');
     }
   }
   async function disconnect() {
     if (!device) return;
+    const session = captureAuthSession();
     setError(null);
     try {
       await revoke.mutateAsync(device.deviceId);
+      if (!isAuthSessionCurrent(session)) return;
       client.setQueryData<IbkrSyncDevice[]>(queryKey, (previous) =>
         previous?.map((d) =>
           d.deviceId === device.deviceId ? { ...d, revokedAt: new Date().toISOString() } : d
@@ -81,6 +90,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
       toast.success('Daily IBKR sync disconnected');
       void client.invalidateQueries({ queryKey: ['ibkr-devices'] });
     } catch (e) {
+      if (!isAuthSessionCurrent(session)) return;
       setError(e instanceof Error ? e.message : 'The connection could not be disconnected.');
     }
   }
@@ -153,7 +163,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
       ) : !connecting ? (
         <>
           <p className="text-sm text-muted-foreground">
-            Connect Merlin to sync each morning, even when this browser is closed.
+            Connect your own Mac to sync each morning, even when this browser is closed.
           </p>
           <Button
             type="button"
@@ -164,7 +174,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
               setConnecting(true);
             }}
           >
-            Connect Merlin
+            Connect a Mac
           </Button>
         </>
       ) : review ? (
@@ -175,8 +185,8 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
             Your original USD purchase records and trade histories stay intact.
           </p>
           <p className="text-xs text-muted-foreground">
-            Runs every morning at 6:00 AM Singapore time. Merlin must be awake and connected to
-            IBKR. You can disconnect it here at any time.
+            Runs every morning at 6:00 AM Singapore time. {review.name} must be awake and connected
+            to your IBKR account. You can disconnect it here at any time.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" disabled={busy} onClick={() => void authorize()}>
@@ -190,16 +200,27 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
       ) : (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            In the FolioBuddy folder on Merlin, prepare this account's connection:
+            Use a Mac signed into your own Codex and IBKR plugin. On a shared Mac, use your own
+            macOS user profile. In its FolioBuddy folder, run this setup command:
           </p>
+          <label htmlFor={nameId} className="text-sm font-medium">
+            Mac name
+          </label>
+          <Input
+            id={nameId}
+            value={macName}
+            maxLength={80}
+            onChange={(event) => setMacName(event.target.value)}
+            placeholder="My Mac"
+          />
           <code className="block break-all rounded bg-muted p-2 text-xs">
-            {`npm run ibkr:worker:setup -- --cash-position-id '${cashPositionId.replace(/'/g, "'\\''")}'`}
+            {`npm run ibkr:worker:setup -- --cash-position-id '${cashPositionId.replace(/'/g, "'\\''")}' --name '${(macName.trim() || 'My Mac').replace(/'/g, "'\\''")}'`}
           </code>
           <label htmlFor={inputId} className="text-sm font-medium">
             Public connection details
           </label>
           <p id={`${inputId}-help`} className="text-xs text-muted-foreground">
-            Paste the public connection details generated on Merlin during setup. No passwords or
+            Paste the public connection details generated on your Mac during setup. No passwords or
             private keys are needed.
           </p>
           <Textarea
@@ -272,8 +293,8 @@ function DeviceStatus({ device, now }: { device: IbkrSyncDevice; now: number }) 
         <p role="alert" className="text-sm text-destructive">
           {device.lastError ??
             (status.label === 'Daily sync overdue'
-              ? 'The scheduled sync has not been verified. Check that Merlin is awake and its IBKR connection is available.'
-              : 'This run needs review before another automatic update. Check Merlin’s private sync record.')}
+              ? `The scheduled sync has not been verified. Check that ${device.name} is awake and your IBKR connection is available.`
+              : `This run needs review before another automatic update. Check the private sync record on ${device.name}.`)}
         </p>
       )}
       <dl className="space-y-1 text-xs text-muted-foreground">

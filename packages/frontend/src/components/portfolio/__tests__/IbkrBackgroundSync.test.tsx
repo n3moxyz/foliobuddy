@@ -4,9 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IbkrBackgroundSync } from '../IbkrBackgroundSync';
 import { backgroundSyncStatus } from '../ibkrBackgroundStatus';
 import { api } from '@/lib/api';
+import { installAuthSession } from '@/lib/authSession';
+import { toast } from 'sonner';
 import type { IbkrSyncDevice, Position } from '@/lib/types';
 import { usePrivacyStore } from '@/stores/privacyStore';
 
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/lib/api', () => ({
   api: {
     getIbkrDevices: vi.fn(async () => []),
@@ -59,6 +62,7 @@ function mount(p = position) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  installAuthSession('owner-a', 'session-a', async () => 'test');
   vi.mocked(api.getIbkrDevices).mockResolvedValue([]);
 });
 afterEach(() => {
@@ -78,7 +82,7 @@ describe('daily IBKR connection', () => {
   it('requires review and explicit authorization, scoped to the displayed cash account', async () => {
     vi.mocked(api.registerIbkrDevice).mockResolvedValue({ ...device, lastStatus: 'authorized' });
     mount();
-    fireEvent.click(await screen.findByRole('button', { name: 'Connect Merlin' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Public connection details' }), {
       target: { value: JSON.stringify(enrollment) },
     });
@@ -93,9 +97,51 @@ describe('daily IBKR connection', () => {
       })
     );
   });
+  it('prepares a user-named Mac and uses that device name throughout authorization', async () => {
+    const named = { ...enrollment, name: "Alice's Mini" };
+    vi.mocked(api.registerIbkrDevice).mockResolvedValue({ ...device, name: named.name });
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
+    expect(screen.getByLabelText('Mac name')).toHaveValue('My Mac');
+    fireEvent.change(screen.getByLabelText('Mac name'), { target: { value: named.name } });
+    expect(screen.getByText(/npm run ibkr:worker:setup/).textContent).toContain(
+      "--name 'Alice'\\''s Mini'"
+    );
+    fireEvent.change(screen.getByLabelText('Public connection details'), {
+      target: { value: JSON.stringify(named) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
+    expect(screen.getByText("Authorize Alice's Mini")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Authorize daily IBKR sync' }));
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith("Alice's Mini authorized for daily IBKR sync")
+    );
+  });
+  it('discards an authorization completion after the signed-in account changes', async () => {
+    let resolve!: (value: IbkrSyncDevice) => void;
+    vi.mocked(api.registerIbkrDevice).mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    const { client } = mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
+    fireEvent.change(screen.getByLabelText('Public connection details'), {
+      target: { value: JSON.stringify(enrollment) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Authorize daily IBKR sync' }));
+    await waitFor(() => expect(api.registerIbkrDevice).toHaveBeenCalled());
+    installAuthSession('owner-b', 'session-b', async () => 'test-b');
+    await act(async () => {
+      resolve(device);
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(client.getQueryData(['ibkr-devices', position.id])).toEqual([]);
+  });
   it('rejects unexpected private fields before sending connection details', async () => {
     mount();
-    fireEvent.click(await screen.findByRole('button', { name: 'Connect Merlin' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Public connection details' }), {
       target: { value: JSON.stringify({ ...enrollment, privateKey: 'must-not-send' }) },
     });
@@ -105,7 +151,7 @@ describe('daily IBKR connection', () => {
   });
   it('rejects connection details signed for another cash position', async () => {
     mount();
-    fireEvent.click(await screen.findByRole('button', { name: 'Connect Merlin' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Public connection details' }), {
       target: { value: JSON.stringify({ ...enrollment, cashPositionId: 'other-cash' }) },
     });
@@ -132,7 +178,7 @@ describe('daily IBKR connection', () => {
     vi.mocked(api.getIbkrDevices).mockRejectedValue(new Error('offline'));
     mount();
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not be loaded/);
-    expect(screen.queryByRole('button', { name: 'Connect Merlin' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Connect a Mac' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry connection status' })).toBeInTheDocument();
   });
   it('requires confirmation before revoking and retains the display on failure', async () => {

@@ -1,11 +1,19 @@
 import http from 'node:http';
 import { randomBytes, randomUUID, timingSafeEqual, createHash } from 'node:crypto';
-import { readFile, writeFile, rename } from 'node:fs/promises';
+import { readFile, writeFile, rename, rm, open } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CodexClient } from './codex-client.mjs';
 import { collectCapture } from './capture.mjs';
 import { privateDirectory, savePrivate, verifyCheckpoint, verifyReadback } from './audit.mjs';
+import {
+  createPermitConsumer,
+  opaque,
+  validAnchor,
+  validFingerprint,
+  OPERATIONS,
+  sameScope,
+} from './permits.mjs';
 
 export const ORIGINS = [
   'https://foliobuddy.xyz',
@@ -34,7 +42,9 @@ async function bodyOf(request) {
     chunks.push(chunk);
   }
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid body');
+    return body;
   } catch {
     throw new Error('The sync request is invalid.');
   }
@@ -47,6 +57,8 @@ export function createHelper({
   binary = 'codex',
   makeClient = () => new CodexClient(binary, root),
   collector = collectCapture,
+  consumePermit = createPermitConsumer(origin),
+  now = Date.now,
 }) {
   if (!ORIGINS.includes(origin) || !Number.isInteger(port) || port < 1024 || port > 65535)
     throw new Error('Unsupported helper origin or port.');
@@ -58,8 +70,31 @@ export function createHelper({
   let active = null;
   let reading = false;
   let pairing = false;
-  const loadState = async () =>
-    JSON.parse(await readFile(path.join(directory, 'state.json'), 'utf8'));
+  const challenges = new Map();
+  const pendingFile = path.join(directory, 'pending-sync.json');
+  const syncPrivateDirectory = async () => {
+    const handle = await open(directory, 'r');
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  };
+  const hasPending = async () => {
+    try {
+      await readFile(pendingFile);
+      return true;
+    } catch (error) {
+      if (error.code === 'ENOENT') return false;
+      throw error;
+    }
+  };
+  const loadState = async () => {
+    const state = JSON.parse(await readFile(path.join(directory, 'state.json'), 'utf8'));
+    if (!state || typeof state !== 'object' || Array.isArray(state))
+      throw new Error('Invalid helper state');
+    return state;
+  };
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -82,7 +117,7 @@ export function createHelper({
       return;
     }
     if (req.method === 'GET' && req.url === '/v1/health') {
-      send(200, { version: 1 });
+      send(200, { version: 2 });
       return;
     }
     if (
@@ -103,47 +138,187 @@ export function createHelper({
       send(403, { error: 'The helper is paired to a different app.' });
       return;
     }
+    let body;
+    try {
+      body = await bodyOf(req);
+    } catch {
+      send(400, { error: 'The sync request is invalid.' });
+      return;
+    }
+    const operation = req.url === '/v1/challenge' ? body.operation : req.url?.slice(4);
+    if (!OPERATIONS.includes(operation)) {
+      send(404, { error: 'Unsupported sync action.' });
+      return;
+    }
+    const pairCodeValid = () =>
+      state.version === 2 &&
+      validAnchor(body.cashPositionId) &&
+      typeof state.pairExpiresAt === 'number' &&
+      now() < state.pairExpiresAt &&
+      Number.isInteger(state.pairAttempts) &&
+      state.pairAttempts < 5 &&
+      matchesSecret(body.code, state.pairCodeHash);
+    if (operation !== 'pair') {
+      if (state.version !== 2 || typeof state.userId !== 'string' || !state.userId) {
+        send(401, {
+          error: 'Update the Mac helper and connect this browser again for account-specific sync.',
+        });
+        return;
+      }
+      if (!matchesSecret(req.headers['x-foliobuddy-sync-token'], state.tokenHash)) {
+        send(401, { error: 'Connect this browser to the Mac helper again.' });
+        return;
+      }
+    }
+    const currentJob = () => {
+      const job = active;
+      if (
+        !job ||
+        body.jobId !== job.id ||
+        job.anchor !== state.cashPositionId ||
+        job.owner !== state.userId ||
+        job.fingerprint !== state.fingerprint ||
+        job.busy ||
+        now() - job.startedAt > 15 * 60000
+      )
+        throw new Error(
+          'The sync session changed or expired. Review any incomplete sync before retrying.'
+        );
+      return job;
+    };
+    const authorize = async (jobId = null) => {
+      const challenge = challenges.get(body.challenge);
+      // Delete before awaiting the server, so concurrent permits cannot reuse a challenge.
+      challenges.delete(body.challenge);
+      if (
+        !opaque(body.permit) ||
+        !challenge ||
+        challenge.expiresAt <= now() ||
+        challenge.operation !== operation ||
+        challenge.jobId !== jobId ||
+        (body.cashPositionId != null && body.cashPositionId !== challenge.cashPositionId) ||
+        (operation === 'pair'
+          ? challenge.pairCodeHash !== state.pairCodeHash || !pairCodeValid()
+          : challenge.owner !== state.userId ||
+            challenge.tokenHash !== state.tokenHash ||
+            challenge.cashPositionId !== state.cashPositionId ||
+            challenge.connectorFingerprint !== state.fingerprint)
+      )
+        throw new Error('Fresh signed-in authorization is required for this IBKR account.');
+      const scope = {
+        cashPositionId: challenge.cashPositionId,
+        connectorFingerprint: challenge.connectorFingerprint,
+        operation,
+        challenge: body.challenge,
+        jobId,
+      };
+      const proof = await consumePermit({ ...scope, permit: body.permit });
+      if (
+        !sameScope(proof, scope) ||
+        typeof proof.userId !== 'string' ||
+        !proof.userId ||
+        (operation !== 'pair' && proof.userId !== state.userId)
+      )
+        throw new Error('This signed-in account does not own the helper connection.');
+      const latest = await loadState();
+      if (
+        res.destroyed ||
+        (operation === 'pair'
+          ? latest.pairCodeHash !== state.pairCodeHash
+          : latest.tokenHash !== state.tokenHash || latest.userId !== state.userId)
+      )
+        throw new Error('The browser or helper connection changed. Start a fresh sync.');
+      return proof;
+    };
+    if (req.url === '/v1/challenge') {
+      let client;
+      let pairLock = false;
+      try {
+        for (const [key, value] of challenges) if (value.expiresAt <= now()) challenges.delete(key);
+        if (challenges.size >= 16)
+          throw new Error('Too many pending sync actions. Wait one minute.');
+        let fingerprint = state.fingerprint;
+        let jobId = null;
+        if (operation === 'pair') {
+          if (pairing || reading || active)
+            throw new Error('Finish the current connection or sync first.');
+          pairing = true;
+          pairLock = true;
+          if (!pairCodeValid()) {
+            await storeState(directory, { ...state, pairAttempts: (state.pairAttempts ?? 0) + 1 });
+            send(403, { error: 'The setup code is invalid or expired. Run helper setup again.' });
+            return;
+          }
+          client = makeClient();
+          fingerprint = await client.connect(); // Metadata only; no broker read before authorization.
+        } else {
+          if (body.cashPositionId !== state.cashPositionId)
+            throw new Error('The helper is paired to a different IBKR cash position.');
+          if (operation === 'capture') {
+            if (reading || pairing || (active && now() - active.startedAt < 15 * 60000))
+              throw new Error('An IBKR sync is already running. Wait for its result.');
+            if (await hasPending())
+              throw new Error(
+                'An earlier sync needs review before another update. Keep its private checkpoint.'
+              );
+          } else {
+            jobId = currentJob().id;
+          }
+        }
+        if (!validFingerprint(fingerprint) || (body.jobId ?? null) !== jobId)
+          throw new Error('The helper connection or sync session is invalid.');
+        // No await between the capacity check and reservation.
+        if (challenges.size >= 16)
+          throw new Error('Too many pending sync actions. Wait one minute.');
+        const challenge = randomBytes(32).toString('base64url');
+        const scope = {
+          challenge,
+          connectorFingerprint: fingerprint,
+          operation,
+          cashPositionId: body.cashPositionId,
+          jobId,
+        };
+        challenges.set(challenge, {
+          ...scope,
+          expiresAt: now() + 60000,
+          owner: state.userId,
+          tokenHash: state.tokenHash,
+          pairCodeHash: state.pairCodeHash,
+        });
+        send(200, scope);
+      } catch (error) {
+        send(409, { error: error.message });
+      } finally {
+        client?.close();
+        if (pairLock) pairing = false;
+      }
+      return;
+    }
     if (req.url === '/v1/pair') {
       if (pairing || reading || active) {
         send(409, { error: 'Finish the current connection or sync first.' });
         return;
       }
       pairing = true;
-      let client;
       try {
-        const body = await bodyOf(req);
-        if (
-          !/^[A-Za-z0-9_-]{1,100}$/.test(body.cashPositionId ?? '') ||
-          Date.now() > state.pairExpiresAt ||
-          state.pairAttempts >= 5 ||
-          !matchesSecret(body.code, state.pairCodeHash)
-        ) {
-          await storeState(directory, { ...state, pairAttempts: (state.pairAttempts ?? 0) + 1 });
-          send(403, { error: 'The setup code is invalid or expired. Run helper setup again.' });
-          return;
-        }
-        client = makeClient();
-        const fingerprint = await client.connect();
+        const proof = await authorize();
         const token = randomBytes(32).toString('base64url');
         await storeState(directory, {
-          version: 1,
+          version: 2,
           origin,
-          cashPositionId: body.cashPositionId,
-          fingerprint,
+          userId: proof.userId,
+          cashPositionId: proof.cashPositionId,
+          fingerprint: proof.connectorFingerprint,
           tokenHash: secretHash(token),
-          pairedAt: new Date().toISOString(),
+          pairedAt: new Date(now()).toISOString(),
         });
-        send(200, { version: 1, token, cashPositionId: body.cashPositionId });
+        challenges.clear();
+        send(200, { version: 2, token, cashPositionId: proof.cashPositionId });
       } catch (error) {
-        send(503, { error: error.message });
+        send(403, { error: error.message });
       } finally {
-        client?.close();
         pairing = false;
       }
-      return;
-    }
-    if (!matchesSecret(req.headers['x-foliobuddy-sync-token'], state.tokenHash)) {
-      send(401, { error: 'Connect this browser to the Mac helper again.' });
       return;
     }
     if (req.url === '/v1/capture') {
@@ -161,10 +336,14 @@ export function createHelper({
       };
       res.on('close', disconnected);
       try {
-        const body = await bodyOf(req);
+        await authorize();
+        if (await hasPending())
+          throw new Error(
+            'An earlier sync needs review before another update. Keep its private checkpoint.'
+          );
         if (body.cashPositionId !== state.cashPositionId)
           throw new Error('The helper is paired to a different IBKR cash position.');
-        const id = randomUUID();
+        const id = randomBytes(32).toString('base64url');
         const date = new Date().toISOString().slice(0, 10);
         const audit = path.join(root, '.local', 'ibkr-sync', date, `button-${id}`);
         await privateDirectory(path.dirname(path.dirname(audit)));
@@ -183,9 +362,12 @@ export function createHelper({
           capture,
           save,
           anchor: state.cashPositionId,
+          owner: state.userId,
+          fingerprint: state.fingerprint,
+          audit,
           phase: 'captured',
         };
-        send(200, { version: 1, jobId: id, capture });
+        send(200, { version: 2, jobId: id, capture });
       } catch (error) {
         active = null;
         send(503, { error: error.message });
@@ -202,26 +384,29 @@ export function createHelper({
     }
     let job;
     try {
-      const body = await bodyOf(req);
-      job = active;
-      if (
-        !job ||
-        body.jobId !== job.id ||
-        job.anchor !== state.cashPositionId ||
-        job.busy ||
-        Date.now() - job.startedAt > 15 * 60000
-      )
-        throw new Error('The sync session changed or expired. Start a new sync.');
+      job = currentJob();
       job.busy = true;
+      await authorize(job.id);
       if (req.url === '/v1/checkpoint') {
         if (job.phase !== 'captured') throw new Error('The sync checkpoint was already reviewed.');
-        verifyCheckpoint(body.backup, job.capture, job.anchor, body.state);
+        const checkpoint = verifyCheckpoint(body.backup, job.capture, job.anchor, body.state);
+        if (checkpoint.owner !== job.owner)
+          throw new Error('The checkpoint belongs to a different signed-in account.');
         const checksum = await job.save('account-sync-checkpoint.json', body.backup);
         await job.save('review.json', {
           state: body.state,
           review: body.review,
           checkpointChecksum: checksum,
         });
+        // Durable guard survives logout, disconnect and helper restart after a possible apply.
+        await savePrivate(directory, 'pending-sync.json', {
+          jobId: job.id,
+          owner: job.owner,
+          cashPositionId: job.anchor,
+          audit: job.audit,
+          appMayHaveChanged: true,
+        });
+        await syncPrivateDirectory();
         job.backup = body.backup;
         job.phase = 'backed-up';
         send(200, { verified: true, state: body.state, checkpointChecksum: checksum });
@@ -236,15 +421,23 @@ export function createHelper({
           verifiedAt: new Date().toISOString(),
         });
         const capturedAt = job.capture.second.capturedAt;
+        await rm(pendingFile);
+        await syncPrivateDirectory();
         active = null;
         send(200, { verified: true, capturedAt });
       } else {
+        if (typeof body.appMayHaveChanged !== 'boolean')
+          throw new Error('The sync outcome is uncertain. Keep its private checkpoint for review.');
         // Never claim success on cancellation, timeout, failed apply or lost readback.
         await job.save('incomplete-result.json', {
           verified: false,
           appMayHaveChanged: body.appMayHaveChanged === true,
           stoppedAt: new Date().toISOString(),
         });
+        if (body.appMayHaveChanged === false) {
+          await rm(pendingFile, { force: true });
+          await syncPrivateDirectory();
+        }
         active = null;
         send(200, { verified: false });
       }

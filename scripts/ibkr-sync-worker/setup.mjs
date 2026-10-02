@@ -244,7 +244,7 @@ export async function setup(args = process.argv.slice(2)) {
     root,
     binary,
     audience: options.audience ?? DEFAULT_AUDIENCE,
-    name: options.name ?? 'Merlin',
+    name: options.name ?? previous?.name ?? 'My Mac',
     connectorFingerprint: fingerprint,
     cashPositionId,
     rotate: options.rotate === true,

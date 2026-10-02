@@ -1,6 +1,6 @@
-# Daily IBKR sync on Merlin
+# Daily IBKR sync on your own Mac
 
-The daily worker runs on the owner's Mac mini without a FolioBuddy browser tab,
+Each signed-in FolioBuddy user can run a daily worker on their own Mac without a FolioBuddy browser tab,
 native Save dialog, or chat message. It reuses the existing read-only Interactive
 Brokers connector through Codex. This avoids a separate gateway and daily gateway
 login. Expired connector access still requires the owner to reconnect it.
@@ -14,20 +14,20 @@ one-click **Sync IBKR** control still runs on the Mac paired with that browser.
 1. Deploy the additive database migration and backend before the frontend. The
    backend's signature audience defaults to `https://api.foliobuddy.xyz`; no new
    production secret or environment variable is required.
-2. On Merlin, use Node 20+ and the current bundled Codex CLI with its existing IBKR
-   connector. In the owned IBKR cash panel, choose **Connect Merlin** and use its
-   setup command: `npm run ibkr:worker:setup -- --cash-position-id '<cash reference>'`.
+2. On your own Mac and macOS user profile, use Node 20+ and the current bundled Codex CLI with its existing IBKR
+   connector. In the owned IBKR cash panel, choose **Connect a Mac** and use its
+   setup command: `npm run ibkr:worker:setup -- --cash-position-id '<cash reference>' --name '<your Mac name>'`.
    The public reference pins the intended portfolio before any broker read.
    Setup prepares the runtime, generates an Ed25519 key locally and produces
    **public enrollment JSON**; it does not enable the schedule yet.
-   The private key remains on Merlin, mode `0600`, under the ignored private worker
+   The private key remains on that Mac, mode `0600`, under the ignored private worker
    directory. Never paste a private key, Clerk token, broker credential or `.env`.
 3. In the signed-in FolioBuddy portfolio, edit the owned **IBKR cash & debt**
-   position. Under **Daily sync → Connect Merlin**, paste the public connection
+   position. Under **Daily sync → Connect a Mac**, paste the public connection
    details, review the scope and select **Authorize daily IBKR sync**. This binds
    that device to the signed-in owner and that exact cash anchor. Public enrollment
    expires after 24 hours; rerun setup to refresh it without replacing the key.
-4. From the same Merlin workspace, run
+4. From that Mac’s workspace, run
    `node scripts/ibkr-sync-worker/worker.mjs "$PWD" --once`. Check **Synced and
    verified**, the broker source timestamp and the private independent readback.
    Then enable the schedule with `npm run ibkr:worker:setup -- --enable`.
@@ -39,20 +39,48 @@ one-click **Sync IBKR** control still runs on the Mac paired with that browser.
 
 The LaunchAgent checks once a minute, starts at login, and attempts one run per
 Singapore date after 06:00. Its due check explicitly uses `Asia/Singapore`; changing
-Merlin's system timezone does not change the schedule. It catches up on a missed
-morning when Merlin becomes available. It must be awake, logged into its macOS user
+the Mac’s system timezone does not change the schedule. It catches up on a missed
+morning when the Mac becomes available. It must be awake, logged into its macOS user
 session and able to reach Codex, IBKR and FolioBuddy. A locked screen is supported;
 sleep, logout, shutdown, expired access or a network outage can stop a run. No power,
 FileVault, TCC, network or broker security settings are modified by setup.
 
 `npm run ibkr:worker:remove` stops/removes this worker's LaunchAgent and retains its
-keys and private evidence. **Daily sync → Disconnect Merlin → Stop daily sync**
+keys and private evidence. **Daily sync → Disconnect <Mac name> → Stop daily sync**
 revokes the server permission. **Settings → IBKR daily sync** also lists active
 connections and can revoke them after a cash entry moves or becomes ineligible.
 Revocation takes effect for future transactions;
 a transaction already committed before revocation remains in the checkpoint log.
 The other Mac's browser helper remains independent. Schedule installation, updates
 and removal refuse an active or unresolved worker lock instead of interrupting it.
+
+## Separate accounts
+
+Each user signs into their own FolioBuddy account, uses their own Codex account and
+IBKR plugin, and optionally connects their own always-on Mac. Setup never supplies
+another user’s device, broker connection, or credentials. “Merlin” is only one
+owner’s chosen device name; the default is “My Mac”, and setup preserves an existing
+name unless explicitly changed.
+
+The browser mounts a separate query cache for each login session and cancels in-flight
+work when that session ends. A late result cannot populate the next user’s cache or
+continue an IBKR sync using their token. Before dispatch, requests check the Clerk
+token's user and session claims against the starting login. Queued mutations,
+retries and recovery reads also retain that starting session. The backend independently enforces owner,
+cash anchor, device key and attempt identity; hiding another user’s controls is not
+the authorization boundary.
+
+A connector fingerprint is persistently bound to the first approving FolioBuddy
+owner across both daily and on-demand setup. Revoking a device or deleting its cash
+entry does not free that binding for another account. Conflicting old bindings fail
+closed. Transfers require an explicit reviewed ownership migration; there is no
+self-service reassignment endpoint.
+
+The fingerprint proves connection continuity, not brokerage ownership. Different
+people must use separate macOS profiles with their own Codex and IBKR sign-ins.
+Someone who controls a profile already signed into another person’s Codex already
+has access outside FolioBuddy; this integration does not attest or repair that
+external account ownership.
 
 ## Authentication and write boundaries
 
@@ -126,7 +154,7 @@ new capture. Reusing old data with a new timestamp is prohibited.
 
 The cash panel shows the last contact, broker capture, verified run, exact native
 changes and actionable failure. It reports an overdue daily sync after a one-hour
-grace period even when Merlin cannot report an outage. Successful runs with unchanged
+grace period even when the Mac cannot report an outage. Successful runs with unchanged
 quantities, native averages and native cash balances are quiet, including FX-only
 changes. Private logs retain detailed provider errors; the app shows bounded messages.
 
@@ -149,7 +177,8 @@ review remains available.
 - `npm run test:ibkr-worker`: failure ordering, duplicate dates, interrupted writes,
   private evidence, signature interoperability and installer identity preservation.
 - `packages/backend/scripts/verify-ibkr-device.ts`: real isolated PostgreSQL checks
-  for ownership, replay, revocation, financial atomicity and immutable histories.
+  for two independent owners, copied enrollment, foreign keys/attempts, listing and
+  revocation isolation, replay, financial atomicity and immutable histories.
 - `npm run sandbox`: fictional app only; `IBKR_DEVICE_AUDIENCE` is automatically set
   to its explicit loopback API. Production refuses non-production audiences.
   Never connect real broker holdings to the fictional portfolio. Use injected

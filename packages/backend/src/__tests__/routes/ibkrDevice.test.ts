@@ -82,6 +82,37 @@ describe('owner IBKR device routes', () => {
     expect((await request(owner).delete(`/api/v1/ibkr/devices/${id}`)).status).toBe(200);
     expect(mocks.revoke).toHaveBeenCalledWith('test-user-id', id);
   });
+  it('keeps owner identity per request when two signed-in accounts share the router', async () => {
+    const secondOwner = express();
+    secondOwner.use(express.json());
+    secondOwner.use((req, _res, next) => {
+      req.userId = 'second-user-id';
+      next();
+    });
+    secondOwner.use('/api/v1/ibkr/devices', ibkrDeviceOwnerRouter);
+    secondOwner.use(errorHandler);
+    const id = '2927c799-4158-41f3-a7b9-8889794a05e0';
+    mocks.list.mockResolvedValue([]);
+    mocks.enroll.mockResolvedValue({ deviceId: id });
+    mocks.revoke.mockResolvedValue({ deviceId: id, revokedAt: '2026-10-02T00:00:00Z' });
+    for (const [app, userId] of [
+      [owner, 'test-user-id'],
+      [secondOwner, 'second-user-id'],
+      [owner, 'test-user-id'],
+    ] as const) {
+      const cashPositionId = `${userId}-cash`;
+      const enrollment = { deviceId: id, cashPositionId, signature: 'public-proof' };
+      expect((await request(app).get('/api/v1/ibkr/devices')).status).toBe(200);
+      expect(mocks.list).toHaveBeenLastCalledWith(userId, undefined);
+      expect(
+        (await request(app).post('/api/v1/ibkr/devices').send({ cashPositionId, enrollment }))
+          .status
+      ).toBe(201);
+      expect(mocks.enroll).toHaveBeenLastCalledWith(userId, cashPositionId, enrollment);
+      expect((await request(app).delete(`/api/v1/ibkr/devices/${id}`)).status).toBe(200);
+      expect(mocks.revoke).toHaveBeenLastCalledWith(userId, id);
+    }
+  });
 });
 describe('dedicated signed IBKR routes', () => {
   it('preserves the exact signed target including query text for signature rejection', async () => {

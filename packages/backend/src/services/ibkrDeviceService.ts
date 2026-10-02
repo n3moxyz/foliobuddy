@@ -2,7 +2,12 @@ import { Prisma, type IbkrSyncAttempt, type IbkrSyncDevice } from '@prisma/clien
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { isIbkrCash, requireIbkr, validateIbkrCapture } from './ibkrCapture.js';
+import { requireIbkr, validateIbkrCapture } from './ibkrCapture.js';
+import {
+  bindIbkrConnector,
+  ownedIbkrCash,
+  requireIbkrConnector,
+} from './ibkrConnectorOwnership.js';
 import {
   canonicalIbkrDevice,
   hashIbkrDevice,
@@ -111,32 +116,6 @@ function dto(device: IbkrSyncDevice, pending: { id: string } | null): IbkrDevice
   };
 }
 
-/** Enrollment and signed operations require the current owned IBKR USD cash identity. */
-async function ownedCash(tx: Tx, userId: string, cashPositionId: string) {
-  const rows = await tx.position.findMany({
-    where: {
-      userId,
-      custodyOf: null,
-      storageType: 'BROKERAGE',
-      storageLocation: 'IBKR',
-      asset: { category: 'CASH' },
-    },
-    include: { asset: true },
-    take: 2,
-  });
-  const row = rows.find((candidate) => candidate.id === cashPositionId);
-  requireIbkr(
-    rows.length === 1 &&
-      row &&
-      isIbkrCash(row) &&
-      row.asset.symbol === 'USD' &&
-      row.asset.nativeCurrency === 'USD' &&
-      row.asset.priceProvider === 'manual' &&
-      row.asset.currentPriceUsd === 1,
-    'Select exactly one owned IBKR USD cash position'
-  );
-  return row;
-}
 const pendingFor = (tx: Tx, cashPositionId: string) =>
   tx.ibkrSyncAttempt.findUnique({
     where: { activeCashPositionId: cashPositionId },
@@ -150,7 +129,8 @@ export async function enrollIbkrDevice(userId: string, cashPositionId: string, r
     'IBKR enrollment cash position differs from the requested anchor'
   );
   return navTransaction(async (tx) => {
-    const anchor = await ownedCash(tx, userId, cashPositionId);
+    const anchor = await ownedIbkrCash(tx, userId, cashPositionId);
+    await bindIbkrConnector(tx, userId, enrollment.connectorFingerprint);
     // Serialize enrollment with owner changes without altering a financial field.
     await tx.position.update({
       where: { id: anchor.id, userId },
@@ -234,6 +214,7 @@ export async function revokeIbkrDevice(userId: string, deviceId: string) {
 /** The grant row write serializes revoke with replay acceptance and financial writes. */
 async function authorize(tx: Tx, identity: Identity, signature: IbkrDeviceSignature) {
   requireFreshIbkrSignature(signature.timestamp);
+  await requireIbkrConnector(tx, identity.userId, identity.connectorFingerprint);
   const touched = await tx.ibkrSyncDevice.updateMany({
     where: {
       ...identity,
@@ -243,7 +224,7 @@ async function authorize(tx: Tx, identity: Identity, signature: IbkrDeviceSignat
     data: { lastSeenAt: new Date() },
   });
   if (touched.count !== 1) unauthorized();
-  await ownedCash(tx, identity.userId, identity.cashPositionId);
+  await ownedIbkrCash(tx, identity.userId, identity.cashPositionId);
   // Expired signatures cannot pass again; retain nonces longer than their acceptance window.
   await tx.ibkrSyncDeviceNonce.deleteMany({
     where: { deviceId: identity.id, expiresAt: { lt: new Date() } },

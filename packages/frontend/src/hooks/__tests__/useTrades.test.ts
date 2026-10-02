@@ -1,6 +1,7 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '@/lib/api';
+import { AuthSessionChangedError, installAuthSession } from '@/lib/authSession';
 import { useTrades, useCreateTrade, useUpdateTrade, useDeleteTrade } from '@/hooks/useTrades';
 import { createQueryClientWrapper, createTestQueryClient } from '@/test/utils';
 import type { Trade } from '@/lib/types';
@@ -34,6 +35,7 @@ function createDeferred<T>(): Deferred<T> {
 describe('useTrades hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    installAuthSession('owner-a', 'session-a', async () => null, 'local');
   });
 
   it('returns trades from successful fetch', async () => {
@@ -84,6 +86,33 @@ describe('useTrades hooks', () => {
 
     expect(api.updateTrade).toHaveBeenCalledWith('t1', { notes: 'updated' });
   });
+
+  it.each(['SDK token changed', 'A to B', 'A to B to A'])(
+    'skips recovery reads after the login changes: %s',
+    async (change) => {
+      const pending = createDeferred<Trade>();
+      vi.mocked(api.updateTrade).mockReturnValue(pending.promise);
+      const wrapper = createQueryClientWrapper(createTestQueryClient());
+      const { result } = renderHook(() => useUpdateTrade(), { wrapper });
+      const task = result.current.mutateAsync({ id: 't1', data: { notes: 'updated' } });
+      const rejected = expect(task).rejects.toBeInstanceOf(AuthSessionChangedError);
+      await waitFor(() => expect(api.updateTrade).toHaveBeenCalledOnce());
+      if (change !== 'SDK token changed') {
+        installAuthSession('owner-b', 'session-b', async () => null, 'local');
+        if (change === 'A to B to A')
+          installAuthSession('owner-a', 'next-session-a', async () => null, 'local');
+      }
+      await act(async () => {
+        pending.reject(
+          change === 'SDK token changed'
+            ? new AuthSessionChangedError()
+            : new Error('Request failed (HTTP 502)')
+        );
+        await rejected;
+      });
+      expect(api.getTrade).not.toHaveBeenCalled();
+    }
+  );
 
   it('recovers when an update commits but its response is lost', async () => {
     const updateError = new Error('Request failed (HTTP 502)');

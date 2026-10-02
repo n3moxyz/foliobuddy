@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, type IbkrSyncDevice } from '@/lib/api';
+import { captureAuthSession, isAuthSessionCurrent } from '@/lib/authSession';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/utils';
 
@@ -19,9 +20,11 @@ export function IbkrDeviceSettings() {
   const [error, setError] = useState<string | null>(null);
   const revoke = useMutation({ mutationFn: api.revokeIbkrDevice });
   async function disconnect(deviceId: string) {
+    const session = captureAuthSession();
     setError(null);
     try {
       await revoke.mutateAsync(deviceId);
+      if (!isAuthSessionCurrent(session)) return;
       client.setQueryData<IbkrSyncDevice[]>(queryKey, (rows) =>
         rows?.filter((row) => row.deviceId !== deviceId)
       );
@@ -29,6 +32,7 @@ export function IbkrDeviceSettings() {
       void client.invalidateQueries({ queryKey: ['ibkr-devices'] });
       toast.success('Daily IBKR sync disconnected');
     } catch (cause) {
+      if (!isAuthSessionCurrent(session)) return;
       setError(
         cause instanceof Error ? cause.message : 'The connection could not be disconnected.'
       );
@@ -57,7 +61,7 @@ export function IbkrDeviceSettings() {
         </div>
       ) : devices.data.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No Mac is connected. Set up Merlin from your IBKR cash position.
+          No Mac is connected. Connect your own Mac from your IBKR cash position.
         </p>
       ) : (
         <div className="divide-y">

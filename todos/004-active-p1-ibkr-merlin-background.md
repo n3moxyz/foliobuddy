@@ -24,14 +24,22 @@ Complexity: files 3, dependencies 1, cross-cutting 3, unknowns 3, regression ris
 (13/15). No new runtime dependency is planned. The existing heartbeat remains active
 until the replacement is verified; implementation is not a completed migration.
 
-Local verification: 1,212 tests, full build, formatting/shell/domain checks, isolated
+Local verification: 1,277 tests, full build, formatting/shell/domain checks, isolated
 PostgreSQL integration, and desktop/mobile sandbox checks passed. The signed worker
 rehearsal covered changed holdings, FX-only updates, initial contract linking,
 private checkpoints, independent readback, and confirmed device revocation. Final
 security, architecture, performance and correctness review findings were resolved.
 
-[PR #59](https://github.com/n3moxyz/foliobuddy/pull/59) is open; CI passed on the
-implementation commit `bb0d857`. Merlin's 23 worker tests also passed. Its public
+[PR #59](https://github.com/n3moxyz/foliobuddy/pull/59) contains the implementation
+and multi-user corrections. Merlin's 23 worker tests also passed. Its public
 enrollment proof, immutable runtime and private file permissions are verified;
-the schedule is disabled and no production grant is enrolled. Merge approval,
+the schedule is disabled and no production grant is enrolled. Merge is authorized once the multi-user review passes;
 owner authorization and a fresh verified production run remain outstanding.
+
+Multi-user follow-through: separate login caches, token identity checks, queued
+mutation guards and async cancellation; fresh owner permits for the on-demand
+helper; persistent connector-owner binding; generic Mac setup; two-owner database,
+HTTP and account-switch regressions. The final real-app sandbox run preserved all
+native records, unrelated positions and histories, verified its private checkpoint
+and independently read back the saved source timestamp. Merge requires the final
+independent review and matching-commit CI; production activation remains separate.

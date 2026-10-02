@@ -2610,3 +2610,38 @@ Tests and a deployed feature are not proof that the schedule moved. The old loca
 heartbeat stays active until the owner connection and a fresh production worker run
 are verified. Installation, expiry, revocation and manual recovery are in the
 [Merlin runbook](docs/solutions/2026-10-02-ibkr-merlin-background-sync.md).
+
+
+### IBKR connections belong to each signed-in user (October 2026)
+
+The owner asked us to check whether another Gmail login could accidentally inherit
+his Mac or IBKR access. The daily signed worker already enforced owner, cash anchor,
+key and attempt identity. A two-owner PostgreSQL rehearsal verified both positive
+flows and rejected copied enrollments, foreign signatures, attempt substitutions,
+listing and revocation across owners without changing either portfolio.
+
+The check exposed two separate holes in the older browser path: a shared query cache
+could survive a login change, and a saved helper token did not itself prove the
+current FolioBuddy owner. Login sessions now receive separate caches and abortable
+API contexts. Direct sync captures its starting login and token, checks every async
+boundary, and suppresses late results after a switch, even A → B → A.
+
+Clearing a cache alone is insufficient: queued mutations can outlive it, and
+Clerk's token getter can start returning the next login before React commits that
+change. Requests now check the token's user and session claims before dispatch;
+mutations guard actual execution, retries and observer option updates. Trade-save
+recovery also stops before a follow-up read when its starting session changes.
+
+The helper now requires a fresh, one-use owner permit for every action. Its own
+challenge pins the anchor, connector, operation and job; the backend derives owner
+from Clerk and consumes the permit atomically. A saved local token plus another
+user's permit fails before broker reads. The helper verifies checkpoint ownership
+against this same grant and keeps a durable pending guard after a possible apply.
+An interrupted or uncertain result cannot silently start another sync.
+
+First-approved connector ownership is retained across device revocation and cash
+entry deletion. This guards accidental reuse of a known connection; it does not
+attest who owns the external brokerage account. Different people need separate
+macOS profiles and their own Codex/IBKR sign-ins. Setup is now “Connect a Mac”, with
+a user-chosen name; Merlin is just one user's device. Protocol 2 requires a one-time
+helper update and browser reconnection, while broker permissions stay read-only.

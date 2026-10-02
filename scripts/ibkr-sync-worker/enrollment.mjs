@@ -62,7 +62,7 @@ export async function loadWorkerIdentity(root) {
 async function prepareIdentity({
   root,
   audience = DEFAULT_AUDIENCE,
-  name = 'Merlin',
+  name = 'My Mac',
   connectorFingerprint,
   cashPositionId,
   binary,

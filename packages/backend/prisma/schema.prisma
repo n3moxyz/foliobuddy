@@ -180,6 +180,36 @@ model IbkrSyncDeviceNonce {
   @@index([expiresAt])
 }
 
+// A continuity guard for a previously approved connector, not broker ownership
+// attestation. No cascading relation: revoke, anchor removal or owner deletion
+// must never make the same connector claimable by a different account.
+model IbkrConnectorBinding {
+  connectorFingerprint String   @id
+  // Null means conflicting legacy grants; only an explicit owner review can resolve it.
+  userId               String?
+  createdAt            DateTime @default(now())
+
+  @@index([userId])
+}
+
+// A short-lived browser-approved capability. Only the SHA-256 token digest is
+// persisted; its scope remains immutable and consumption is transactional.
+model IbkrHelperPermit {
+  tokenHash            String   @id
+  userId               String
+  cashPositionId       String
+  connectorFingerprint String
+  challenge            String
+  operation            String
+  jobId                String?
+  createdAt            DateTime @default(now())
+  expiresAt            DateTime
+  consumedAt           DateTime?
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
 // Financial source/checkpoint material remains private. Unfinished or uncertain
 // attempts retain the unique anchor claim even after the device is revoked.
 model IbkrSyncAttempt {

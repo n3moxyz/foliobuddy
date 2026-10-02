@@ -96,3 +96,16 @@ daily runs or writes after revocation, readable checkpoint before apply, indepen
 readback before success, visible actionable failure, no changes outside owned IBKR.
 Merlin must be awake with its user session and existing IBKR access available; a
 locked screen is supported, but logout/shutdown or expired access stops the worker.
+
+
+## Multi-user acceptance refinement
+
+Each signed-in user sets up their own Codex/IBKR connection and optional Mac. No
+user inherits another owner's worker or local helper access. Existing signed-worker
+scope remains; add fresh owner permits to the browser helper and bind connector
+fingerprints persistently across both setup paths. Login changes must cancel pending
+work and replace the query cache, including delayed token acquisition and A→B→A.
+Setup uses “Connect a Mac” and a chosen device name, with separate macOS profiles
+for different people. Verify two positive owners and crossed owner/key/anchor/job
+requests, expiry/replay/concurrency, ownership changes, interrupted apply guards,
+and legacy helper rejection before the authorized merge.

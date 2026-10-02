@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { assertAuthSession, AuthSessionChangedError, captureAuthSession } from '@/lib/authSession';
 import type { CreateTradeData, Trade } from '@/lib/types';
 
 function sameDate(stored: string | null, requested: string | undefined): boolean {
@@ -73,13 +74,17 @@ export function useUpdateTrade() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTradeData> }) => {
+      const session = captureAuthSession();
       try {
         return await api.updateTrade(id, data);
       } catch (updateError) {
+        if (updateError instanceof AuthSessionChangedError) throw updateError;
+        assertAuthSession(session);
         // A proxy can lose the response after the backend commits the update. Re-read the
         // trade before surfacing an error so an idempotent save cannot become a false failure.
         try {
           const persistedTrade = await api.getTrade(id);
+          assertAuthSession(session);
           if (tradeReflectsUpdate(persistedTrade, data)) {
             return persistedTrade;
           }
