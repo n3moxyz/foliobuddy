@@ -15,7 +15,7 @@ interface TradeImportTabProps {
 }
 
 export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
-  const { formatPrice } = useMoneyFormatter();
+  const { formatPrice, formatQuantity } = useMoneyFormatter();
   const queryClient = useQueryClient();
 
   const [jsonInput, setJsonInput] = useState('');
@@ -147,7 +147,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
                 </span>
                 <span className="font-medium ml-2">{t.asset.symbol}</span>
                 <span className="text-muted-foreground ml-2">
-                  {t.quantity} @ {formatPrice(t.entryPrice)}
+                  {formatQuantity(t.quantity, t.asset.category)} @ {formatPrice(t.entryPrice)}
                 </span>
                 {t.exitPrice && (
                   <span className="text-muted-foreground ml-1">→ {formatPrice(t.exitPrice)}</span>

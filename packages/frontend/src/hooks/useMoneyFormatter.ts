@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import {
   formatCurrency as formatCurrencyValue,
   formatPrice as formatPriceValue,
+  formatQuantity as formatQuantityValue,
 } from '@/lib/utils';
 import { MASKED_MONEY_VALUE, usePrivacyStore } from '@/stores/privacyStore';
 
@@ -23,6 +24,11 @@ export function useMoneyFormatter() {
     [maskMoney]
   );
 
+  const formatQuantity = useCallback(
+    (...args: Parameters<typeof formatQuantityValue>) => maskMoney(formatQuantityValue(...args)),
+    [maskMoney]
+  );
+
   const formatSignedCurrency = useCallback(
     (
       value: number | null | undefined,
@@ -36,5 +42,12 @@ export function useMoneyFormatter() {
     [valuesHidden]
   );
 
-  return { valuesHidden, maskMoney, formatCurrency, formatPrice, formatSignedCurrency };
+  return {
+    valuesHidden,
+    maskMoney,
+    formatCurrency,
+    formatPrice,
+    formatQuantity,
+    formatSignedCurrency,
+  };
 }

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { usePositions } from '@/hooks/usePortfolio';
-import { formatQuantity, formatDateTime, formatTrimmedNumber } from '@/lib/utils';
+import { formatDateTime, formatTrimmedNumber } from '@/lib/utils';
 import { isNonNegativeNumberInput } from '@/lib/formValidation';
 import { isIbkrCashPosition } from './ibkrCash';
 import { IbkrSyncButton } from './IbkrSyncButton';
@@ -52,7 +52,7 @@ function IbkrCashEditor({
 }) {
   const { data: positions } = usePositions();
   const position = positions?.find((row) => row.id === initialPosition.id) ?? initialPosition;
-  const { formatCurrency, formatPrice, maskMoney } = useMoneyFormatter();
+  const { formatCurrency, formatPrice, formatQuantity, maskMoney } = useMoneyFormatter();
   const native = (value: number, currency: string) =>
     maskMoney(`${currency} ${formatTrimmedNumber(value, 8)}`);
   const queryClient = useQueryClient();

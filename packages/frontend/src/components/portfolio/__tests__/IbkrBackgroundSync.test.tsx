@@ -194,7 +194,7 @@ describe('daily IBKR connection', () => {
     expect(await screen.findByText('Disconnect failed')).toBeInTheDocument();
     expect(screen.getByText('Merlin')).toBeInTheDocument();
   });
-  it('masks cash and native average changes while keeping quantities visible', async () => {
+  it('masks cash, native average and quantity changes', async () => {
     vi.mocked(api.getIbkrDevices).mockResolvedValue([
       {
         ...device,
@@ -215,7 +215,8 @@ describe('daily IBKR connection', () => {
     mount();
     await screen.findByText('Merlin');
     expect(screen.queryByText(/45,000|55,000|8,400|8,500/)).not.toBeInTheDocument();
-    expect(screen.getByText(/10 → 20 shares/)).toBeInTheDocument();
+    expect(screen.queryByText(/10 → 20 shares/)).not.toBeInTheDocument();
+    expect(screen.getByText('TEST: •••• → •••• shares')).toBeInTheDocument();
     expect(screen.getAllByText(/••••/).length).toBeGreaterThan(0);
   });
 });

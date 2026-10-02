@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
+import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { api } from '@/lib/api';
 import { isBeforeDailySnapshotTime, isSameSingaporeDay } from './snapshotTiming';
 import { toast } from 'sonner';
@@ -73,6 +74,7 @@ export function SnapshotTable({
   onDelete,
   onAddSnapshot,
 }: SnapshotTableProps) {
+  const { formatCurrency, maskMoney } = useMoneyFormatter();
   const [expandedSnapshots, setExpandedSnapshots] = useState<Set<string>>(new Set());
   const [loadingPositions, setLoadingPositions] = useState<Set<string>>(new Set());
   const [positionsCache, setPositionsCache] = useState<Record<string, SnapshotPosition[]>>({});
@@ -460,9 +462,11 @@ export function SnapshotTable({
                                             {pos.assetSymbol}
                                           </TableCell>
                                           <TableCell className="text-right font-mono">
-                                            {pos.quantity.toLocaleString(undefined, {
-                                              maximumFractionDigits: 6,
-                                            })}
+                                            {maskMoney(
+                                              pos.quantity.toLocaleString(undefined, {
+                                                maximumFractionDigits: 6,
+                                              })
+                                            )}
                                           </TableCell>
                                           <TableCell className="text-right font-mono">
                                             $
@@ -472,11 +476,7 @@ export function SnapshotTable({
                                             })}
                                           </TableCell>
                                           <TableCell className="text-right font-mono">
-                                            $
-                                            {pos.valueUsd.toLocaleString(undefined, {
-                                              minimumFractionDigits: 0,
-                                              maximumFractionDigits: 0,
-                                            })}
+                                            {formatCurrency(pos.valueUsd, 'USD', 0)}
                                           </TableCell>
                                           <TableCell className="text-right font-mono">
                                             {pos.allocation.toFixed(2)}%

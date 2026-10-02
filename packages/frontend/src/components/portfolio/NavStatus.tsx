@@ -1,6 +1,5 @@
 import type { Asset } from '@/lib/types';
-import { formatDateTime, getPriceAgeInfo, priceAgeClass } from '@/lib/utils';
-import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { formatCurrency, formatDateTime, getPriceAgeInfo, priceAgeClass } from '@/lib/utils';
 
 function navDateLabel(value: string | null | undefined): string {
   if (!value || !Number.isFinite(new Date(value).getTime())) return 'NAV date unavailable';
@@ -13,7 +12,6 @@ function navDateLabel(value: string | null | undefined): string {
 }
 
 export function NavStatus({ asset, detailed = false }: { asset: Asset; detailed?: boolean }) {
-  const { formatCurrency } = useMoneyFormatter();
   if (asset.category !== 'UNIT_TRUST') return null;
   const date = navDateLabel(asset.priceAsOf);
   const automatic = asset.priceProvider !== 'manual';

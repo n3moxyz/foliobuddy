@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  formatQuantity,
+  formatCurrency as formatVisibleCurrency,
   formatPercent,
   formatDateTime,
   getPnLColorClass,
@@ -84,7 +84,7 @@ export const PositionRow = React.memo(function PositionRow({
   onUpdateNav,
   showUnitTrustBadge = false,
 }: PositionRowProps) {
-  const { formatCurrency, valuesHidden } = useMoneyFormatter();
+  const { formatCurrency, formatQuantity, valuesHidden } = useMoneyFormatter();
   // Helper to convert USD values to selected currency
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
@@ -119,7 +119,6 @@ export const PositionRow = React.memo(function PositionRow({
     nativeCurrency: position.asset.nativeCurrency,
     displayCurrency: currency,
     usdFxRates,
-    valuesHidden,
   });
   const localAvgCost = localPriceLabel({
     nativePrice: position.avgCostNative,
@@ -189,7 +188,7 @@ export const PositionRow = React.memo(function PositionRow({
       </TableCell>
       <TableCell className={`text-right font-mono text-sm text-muted-foreground ${HIDDEN_MOBILE}`}>
         <p>
-          {formatCurrency(
+          {formatVisibleCurrency(
             displayedAssetPrice(position.asset, currency, fxRate),
             currency,
             isUnitTrust ? 4 : getSmartDecimals(convert(position.asset.currentPriceUsd))
