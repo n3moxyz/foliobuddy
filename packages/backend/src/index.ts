@@ -18,6 +18,8 @@ import exportRouter from './routes/export.js';
 import usersRouter from './routes/users.js';
 import agentRouter from './routes/agent.js';
 import ibkrRouter from './routes/ibkr.js';
+import ibkrDeviceRouter from './routes/ibkrDevice.js';
+import ibkrHelperRouter, { ibkrHelperErrorHandler } from './routes/ibkrHelper.js';
 import healthRouter from './routes/health.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { clerkMiddleware, ensureUser } from './middleware/auth.js';
@@ -123,9 +125,13 @@ v1Router.use('/export', ensureUser, exportRouter);
 v1Router.use('/users', ensureUser, usersRouter);
 v1Router.use('/agent', agentAuth, agentRouter);
 v1Router.use('/ibkr', ensureUser, ibkrRouter);
+v1Router.use('/ibkr-device', ibkrDeviceRouter);
+v1Router.use('/ibkr-helper', ibkrHelperRouter);
 
 app.use('/api/v1', v1Router);
 
+app.use('/api/v1/ibkr-helper', ibkrHelperErrorHandler);
+app.use('/api/v1/ibkr/helper-permits', ibkrHelperErrorHandler);
 app.use(errorHandler);
 
 process.on('SIGINT', async () => {

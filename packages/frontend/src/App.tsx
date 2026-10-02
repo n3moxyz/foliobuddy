@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, type ReactNode } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { SignedIn, SignedOut } from '@clerk/clerk-react';
 import { AppShell } from './components/layout/AppShell';
@@ -8,6 +9,8 @@ import { useThemeEffect } from './hooks/useThemeEffect';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
 import { isLocalAuthBypassEnabled } from './lib/localAuthBypass';
+import { createSessionQueryClient } from './lib/queryClient';
+import type { AuthSession } from './lib/authSession';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const Portfolio = lazy(() => import('./pages/Portfolio'));
@@ -63,14 +66,41 @@ function AuthenticatedAppContent({ localAuthBypass = false }: { localAuthBypass?
   );
 }
 
+function SessionQueries({ session, children }: { session: AuthSession; children: ReactNode }) {
+  const [client] = useState(() => createSessionQueryClient(session));
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+
 function ClerkAuthenticatedApp() {
-  useAuthSetup();
-  return <AuthenticatedAppContent />;
+  const session = useAuthSetup();
+  if (!session) return <RouteFallback />;
+  return (
+    <SessionQueries key={session.generation} session={session}>
+      <AuthenticatedAppContent />
+    </SessionQueries>
+  );
 }
 
 function LocalAuthenticatedApp() {
-  useLocalAuthBypassSetup();
-  return <AuthenticatedAppContent localAuthBypass />;
+  const session = useLocalAuthBypassSetup();
+  if (!session) return <RouteFallback />;
+  return (
+    <SessionQueries key={session.generation} session={session}>
+      <AuthenticatedAppContent localAuthBypass />
+    </SessionQueries>
+  );
+}
+
+function LocalDemoApp() {
+  const session = useLocalAuthBypassSetup('demo-user');
+  if (!session || !DemoModeApp) return <RouteFallback />;
+  return (
+    <SessionQueries key={session.generation} session={session}>
+      <Suspense fallback={<RouteFallback />}>
+        <DemoModeApp />
+      </Suspense>
+    </SessionQueries>
+  );
 }
 
 // Signed-out surface: the public landing at /, Clerk sign-in everywhere else
@@ -102,22 +132,7 @@ function App() {
 
   return (
     <Routes>
-      {DemoModeApp && (
-        <Route
-          path="/dev/demo/*"
-          element={
-            <Suspense
-              fallback={
-                <div className="p-6">
-                  <RouteFallback />
-                </div>
-              }
-            >
-              <DemoModeApp />
-            </Suspense>
-          }
-        />
-      )}
+      {DemoModeApp && <Route path="/dev/demo/*" element={<LocalDemoApp />} />}
       <Route
         path="/*"
         element={

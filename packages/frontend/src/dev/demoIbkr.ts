@@ -1,11 +1,14 @@
 import type { FxRate, IbkrCashSnapshot, Position, PositionHistoryEntry } from '@foliobuddy/shared';
-import type { IbkrSyncRun } from '@/lib/types';
+import type { IbkrSyncDevice, IbkrSyncRun } from '@/lib/types';
 import { isIbkrCashPosition } from '@/components/portfolio/ibkrCash';
+import { parsePublicEnrollment } from '@/components/portfolio/ibkrBackgroundStatus';
 
 type Run = IbkrSyncRun & { source: string; before: Position[]; after: Position[]; history: string };
 let runs: Run[] = [];
+let devices: Array<IbkrSyncDevice & { cashPositionId: string }> = [];
 export function resetDemoIbkr() {
   runs = [];
+  devices = [];
 }
 
 /** Cash edits are stateful in the disposable demo; broker validation uses the real sandbox. */
@@ -19,6 +22,7 @@ export function handleDemoIbkr(
     rates: FxRate[];
     save: (rows: Position[]) => void;
     newId: () => string;
+    cashPositionId?: string | null;
   }
 ): Response | null {
   if (!path.startsWith('/api/ibkr/')) return null;
@@ -33,6 +37,60 @@ export function handleDemoIbkr(
   const history = JSON.stringify(
     context.history.filter((h) => ibkr.some((p) => p.id === h.positionId))
   );
+  if (path === '/api/ibkr/devices') {
+    const cashPositionId = method === 'GET' ? context.cashPositionId : body.cashPositionId;
+    if (method === 'GET')
+      return json(
+        devices.filter((d) => (cashPositionId ? d.cashPositionId === cashPositionId : !d.revokedAt))
+      );
+    const anchor = ibkr.find(
+      (p) => p.id === cashPositionId && isIbkrCashPosition(p) && p.asset.symbol === 'USD'
+    );
+    if (!anchor) return json({ error: 'Select the owned IBKR USD cash account' }, 409);
+    if (method === 'POST') {
+      let enrollment;
+      try {
+        enrollment = parsePublicEnrollment(JSON.stringify(body.enrollment));
+      } catch {
+        return json({ error: 'Use public connection details only' }, 400);
+      }
+      if (enrollment.cashPositionId !== cashPositionId)
+        return json({ error: 'The connection belongs to a different IBKR cash position' }, 409);
+      if (
+        devices.some(
+          (d) =>
+            d.deviceId === enrollment.deviceId ||
+            (d.cashPositionId === cashPositionId && !d.revokedAt)
+        )
+      )
+        return json({ error: 'This account already has a daily sync connection' }, 409);
+      // Mock enrollment never reaches the real device API or starts a background worker.
+      const device: IbkrSyncDevice & { cashPositionId: string } = {
+        cashPositionId,
+        deviceId: enrollment.deviceId,
+        name: enrollment.name,
+        keyFingerprint: 'demo-public-key',
+        connectorFingerprint: enrollment.connectorFingerprint,
+        createdAt: new Date().toISOString(),
+        revokedAt: null,
+        lastSeenAt: null,
+        lastVerifiedAt: null,
+        lastCapturedAt: null,
+        lastStatus: 'authorized',
+        lastError: null,
+        lastChanges: [],
+        blocked: false,
+      };
+      devices.push(device);
+      return json(device, 201);
+    }
+  }
+  if (path.startsWith('/api/ibkr/devices/') && method === 'DELETE') {
+    const device = devices.find((d) => d.deviceId === path.split('/').at(-1));
+    if (!device) return json({ error: 'Connection not found' }, 404);
+    device.revokedAt = new Date().toISOString();
+    return new Response(null, { status: 204 });
+  }
   if (path === '/api/ibkr/runs' && method === 'GET')
     return json(
       runs.map(({ id, kind, createdAt, restoredAt }) => ({ id, kind, createdAt, restoredAt }))

@@ -25,6 +25,8 @@ import type {
   NativeReconciliationResult,
   IbkrReconciliationResult,
   IbkrSyncRun,
+  IbkrSyncDevice,
+  IbkrDeviceEnrollment,
   PaginatedResponse,
   ParsedStatementResponse,
   NewsEnrichmentResponse,
@@ -47,6 +49,16 @@ import type {
   UpdateUserPreferencesData,
   UserPreferences,
 } from './types';
+import {
+  assertAuthSession,
+  assertAuthSessionToken,
+  captureAuthSession,
+  combinedSignal,
+  isAuthSessionCurrent,
+  AuthSessionChangedError,
+  setSessionTokenGetter,
+  type AuthSession,
+} from './authSession';
 
 export * from './types';
 
@@ -63,39 +75,47 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
   return qs ? `?${qs}` : '';
 }
 
-// Token getter - will be set by the auth provider
-let getToken: (() => Promise<string | null>) | null = null;
-
 export function setTokenGetter(getter: () => Promise<string | null>) {
-  getToken = getter;
+  setSessionTokenGetter(getter);
 }
 
-async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const url = `${API_BASE}${endpoint}`;
-
-  // Get auth token if available
-  const token = getToken ? await getToken() : null;
-
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
-    },
-    ...options,
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.error || `Request failed (HTTP ${response.status})`);
+async function request<T>(
+  endpoint: string,
+  options?: RequestInit,
+  session = captureAuthSession(),
+  onDispatch?: () => void
+): Promise<T> {
+  assertAuthSession(session);
+  const getToken = session.getToken;
+  const combined = combinedSignal(session.signal, options?.signal);
+  try {
+    const token = await getToken();
+    assertAuthSessionToken(session, token);
+    const headers = new Headers(options?.headers);
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    onDispatch?.();
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: Object.fromEntries(headers.entries()),
+      signal: combined.signal,
+    });
+    assertAuthSession(session);
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      assertAuthSession(session);
+      throw new Error(error?.error || `Request failed (HTTP ${response.status})`);
+    }
+    if (response.status === 204) return undefined as T;
+    const data = await response.json();
+    assertAuthSession(session);
+    return data as T;
+  } catch (error) {
+    if (!isAuthSessionCurrent(session)) throw new AuthSessionChangedError();
+    throw error;
+  } finally {
+    combined.dispose();
   }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
 }
 
 async function writePosition<T>(
@@ -103,6 +123,7 @@ async function writePosition<T>(
   method: 'POST' | 'PUT',
   data: CreatePositionData | UpdatePositionData | { positions: BulkImportPosition[] }
 ) {
+  const session = captureAuthSession();
   const rows = 'positions' in data ? data.positions : [data];
   if (
     rows.some(
@@ -114,16 +135,22 @@ async function writePosition<T>(
   ) {
     // A frontend can finish deploying before the backend. Older servers silently
     // strip unknown fields, so prove support before submitting a native write.
-    let supported = false;
+    let supported: boolean;
     try {
-      supported = (await request<{ supported: boolean }>('/positions/native-cost-capabilities'))
-        .supported;
+      supported = (
+        await request<{ supported: boolean }>(
+          '/positions/native-cost-capabilities',
+          undefined,
+          session
+        )
+      ).supported;
     } catch {
+      assertAuthSession(session);
       throw new Error('Native cost support could not be verified. Refresh and try again.');
     }
     if (!supported) throw new Error('Native cost support is not ready. Refresh and try again.');
   }
-  return request<T>(endpoint, { method, body: JSON.stringify(data) });
+  return request<T>(endpoint, { method, body: JSON.stringify(data) }, session);
 }
 
 export const api = {
@@ -150,6 +177,12 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getIbkrRuns: () => request<IbkrSyncRun[]>('/ibkr/runs'),
+  getIbkrDevices: (cashPositionId?: string) =>
+    request<IbkrSyncDevice[]>(`/ibkr/devices${buildQuery({ cashPositionId })}`),
+  registerIbkrDevice: (payload: { cashPositionId: string; enrollment: IbkrDeviceEnrollment }) =>
+    request<IbkrSyncDevice>('/ibkr/devices', { method: 'POST', body: JSON.stringify(payload) }),
+  revokeIbkrDevice: (deviceId: string) =>
+    request<void>(`/ibkr/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' }),
   restoreIbkr: (runId: string, action: 'preview' | 'apply') =>
     request<{
       applied: boolean;
@@ -241,21 +274,17 @@ export const api = {
       body: JSON.stringify(data),
     }),
   parseUnitTrustStatement: async (file: File): Promise<ParsedStatementResponse> => {
-    const token = getToken ? await getToken() : null;
+    const session = captureAuthSession();
     const arrayBuffer = await file.arrayBuffer();
-    const response = await fetch(`${API_BASE}/assets/parse-unit-trust-statement`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/pdf',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    return request<ParsedStatementResponse>(
+      '/assets/parse-unit-trust-statement',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/pdf' },
+        body: arrayBuffer,
       },
-      body: arrayBuffer,
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: 'Parse failed' }));
-      throw new Error(err.error || `HTTP ${response.status}`);
-    }
-    return response.json();
+      session
+    );
   },
   updateAssetNav: (id: string, data: { navPrice: number; asOfDate?: string; notes?: string }) =>
     request<Asset>(`/assets/${id}/nav`, {
@@ -422,3 +451,38 @@ export const api = {
   // Health
   getDbHealth: () => request<DbHealth>('/health/db'),
 };
+
+export type IbkrHelperOperation = 'pair' | 'capture' | 'checkpoint' | 'verify' | 'finish';
+export interface IbkrHelperChallenge {
+  challenge: string;
+  connectorFingerprint: string;
+  operation: IbkrHelperOperation;
+  cashPositionId: string;
+  jobId: string | null;
+}
+
+/** A multi-step sync must never acquire a different login between its requests. */
+export function apiForSession(session: AuthSession) {
+  return {
+    getPositions: () => request<Position[]>('/positions', undefined, session),
+    reconcileIbkr: (payload: Parameters<typeof api.reconcileIbkr>[0], onDispatch?: () => void) =>
+      request<IbkrReconciliationResult>(
+        '/ibkr/reconcile',
+        { method: 'POST', body: JSON.stringify(payload) },
+        session,
+        onDispatch
+      ),
+    restoreIbkr: (runId: string, action: 'preview' | 'apply') =>
+      request<Awaited<ReturnType<typeof api.restoreIbkr>>>(
+        '/ibkr/restore',
+        { method: 'POST', body: JSON.stringify({ runId, action }) },
+        session
+      ),
+    helperPermit: (challenge: IbkrHelperChallenge) =>
+      request<{ permit: string; expiresAt: string }>(
+        '/ibkr/helper-permits',
+        { method: 'POST', body: JSON.stringify(challenge) },
+        session
+      ),
+  };
+}

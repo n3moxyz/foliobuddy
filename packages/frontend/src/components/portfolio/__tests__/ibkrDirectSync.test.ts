@@ -1,22 +1,36 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '@/lib/api';
+import { installAuthSession } from '@/lib/authSession';
 import type { Position } from '@/lib/types';
 import {
   checkpointCashChanges,
   getDirectSyncState,
+  hasHelperConnection,
   isDirectSyncResultCurrent,
   pairHelper,
   syncIbkrDirect,
 } from '../ibkrDirectSync';
 
-vi.mock('@/lib/api', () => ({
-  api: { getPositions: vi.fn(), reconcileIbkr: vi.fn(), restoreIbkr: vi.fn() },
-}));
+const permits = vi.hoisted(() => ({ issue: vi.fn() }));
+vi.mock('@/lib/api', () => {
+  const api = { getPositions: vi.fn(), reconcileIbkr: vi.fn(), restoreIbkr: vi.fn() };
+  return {
+    api,
+    apiForSession: () => ({
+      ...api,
+      reconcileIbkr: (input: unknown, onDispatch?: () => void) => {
+        onDispatch?.();
+        return api.reconcileIbkr(input);
+      },
+      helperPermit: permits.issue,
+    }),
+  };
+});
 let serial = 0;
 let id: string;
 let order: string[];
 const captureTime = '2026-10-01T15:00:00.000Z';
-const jobId = '12345678-1234-1234-1234-123456789abc';
+const jobId = 'j'.repeat(43);
 const fxError = 'IBKR currency cash does not tally with BASE; incomplete capture';
 let captureCount: number;
 let latestCaptureTime: string;
@@ -53,6 +67,8 @@ const fixture = () =>
 beforeEach(() => {
   vi.resetAllMocks();
   id = `cash-${++serial}`;
+  installAuthSession('owner-a', `session-${serial}`, async () => 'token-a');
+  permits.issue.mockResolvedValue({ permit: 'p'.repeat(43), expiresAt: '2099-01-01T00:00:00Z' });
   captureCount = 0;
   latestCaptureTime = captureTime;
   order = [];
@@ -90,13 +106,27 @@ beforeEach(() => {
     'fetch',
     vi.fn(async (url: string, init: RequestInit) => {
       const step = url.split('/').at(-1)!;
-      order.push(step);
       expect(init.credentials).toBe('omit');
       expect(init.headers).not.toHaveProperty('Authorization');
+      if (step === 'health') return { ok: true, json: async () => ({ version: 2 }) } as Response;
+      const body = JSON.parse(init.body as string);
+      if (step === 'challenge')
+        return {
+          ok: true,
+          json: async () => ({
+            challenge: 'c'.repeat(43),
+            connectorFingerprint: 'f'.repeat(64),
+            operation: body.operation,
+            cashPositionId: body.cashPositionId,
+            jobId: body.jobId ?? null,
+          }),
+        } as Response;
+      order.push(step);
+      expect(body).toMatchObject({ permit: 'p'.repeat(43), challenge: 'c'.repeat(43) });
       const result =
         step === 'capture'
           ? {
-              version: 1,
+              version: 2,
               jobId: `${jobId.slice(0, -1)}${captureCount}`,
               capture: brokerCapture(captureCount++),
             }
@@ -112,6 +142,192 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('one-click IBKR orchestration', () => {
+  it('pairs and syncs two owners independently without exposing either pairing to the other login', async () => {
+    localStorage.clear();
+    const firstId = id;
+    const normal = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (...args) => {
+      if (String(args[0]).endsWith('/pair')) {
+        const body = JSON.parse(args[1]?.body as string);
+        return {
+          ok: true,
+          json: async () => ({
+            version: 2,
+            token: (body.cashPositionId === firstId ? 'a' : 'b').repeat(43),
+            cashPositionId: body.cashPositionId,
+          }),
+        } as Response;
+      }
+      return normal(...args);
+    });
+    await pairHelper(id, 'setupCode123');
+    await expect(syncIbkrDirect(id)).resolves.toMatchObject({ phase: 'done' });
+    installAuthSession('owner-b', 'b-session', async () => 'token-b');
+    expect(hasHelperConnection(firstId)).toBe(false);
+    expect(getDirectSyncState(firstId)).toEqual({ phase: 'idle' });
+    id = `second-${firstId}`;
+    await pairHelper(id, 'secondCode12');
+    await expect(syncIbkrDirect(id)).resolves.toMatchObject({ phase: 'done' });
+    expect(hasHelperConnection(id)).toBe(true);
+    expect(
+      permits.issue.mock.calls
+        .filter(([input]) => input.operation === 'pair')
+        .map(([input]) => input.cashPositionId)
+    ).toEqual([firstId, id]);
+    installAuthSession('owner-a', 'next-a-session', async () => 'token-a');
+    expect(hasHelperConnection(firstId)).toBe(true);
+    expect(hasHelperConnection(id)).toBe(false);
+  });
+  it('keeps the starting helper token when browser storage changes mid-sync', async () => {
+    const normal = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (...args) => {
+      const result = await normal(...args);
+      if (String(args[0]).endsWith('/capture')) {
+        const storedKey = localStorage.key(0)!;
+        localStorage.setItem(storedKey, 'b'.repeat(43));
+      }
+      if (String(args[0]).endsWith('/checkpoint') || String(args[0]).endsWith('/verify'))
+        expect(args[1]?.headers).toMatchObject({ 'X-FolioBuddy-Sync-Token': 'x'.repeat(43) });
+      return result;
+    });
+    await expect(syncIbkrDirect(id)).resolves.toMatchObject({ phase: 'done' });
+  });
+  it('explains the one-time upgrade for a version 1 helper without clearing its pairing', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ version: 1 }),
+    } as Response);
+    await expect(syncIbkrDirect(id)).rejects.toThrow('npm run ibkr:helper:setup');
+    expect(permits.issue).not.toHaveBeenCalled();
+    expect(api.reconcileIbkr).not.toHaveBeenCalled();
+    expect(
+      Array.from({ length: localStorage.length }, (_, index) =>
+        localStorage.getItem(localStorage.key(index)!)
+      )
+    ).toContain('x'.repeat(43));
+  });
+  it.each(['capture', 'checkpoint'])(
+    'cancels a late %s across A to B to A without applying',
+    async (endpoint) => {
+      const normal = vi.mocked(fetch).getMockImplementation()!;
+      let release!: () => void;
+      let started!: () => void;
+      let signal: AbortSignal | undefined;
+      const ready = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      vi.mocked(fetch).mockImplementation(async (...args) => {
+        const result = await normal(...args);
+        if (String(args[0]).endsWith(`/${endpoint}`)) {
+          signal = args[1]?.signal as AbortSignal;
+          await new Promise<void>((resolve) => {
+            release = resolve;
+            started();
+          });
+        }
+        return result;
+      });
+      const task = syncIbkrDirect(id);
+      const rejection = expect(task).rejects.toThrow('signed-in account changed');
+      await ready;
+      installAuthSession('owner-b', 'b-session', async () => 'token-b');
+      installAuthSession('owner-a', 'new-a-session', async () => 'new-token-a');
+      expect(signal?.aborted).toBe(true);
+      release();
+      await rejection;
+      expect(
+        vi.mocked(api.reconcileIbkr).mock.calls.some(([input]) => input.action === 'apply')
+      ).toBe(false);
+      expect(getDirectSyncState(id)).toEqual({ phase: 'idle' });
+      expect(order).not.toContain('finish');
+    }
+  );
+  it('discards a late pairing result without saving credentials or starting a sync', async () => {
+    localStorage.clear();
+    const normal = vi.mocked(fetch).getMockImplementation()!;
+    let release!: () => void;
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    vi.mocked(fetch).mockImplementation(async (...args) => {
+      if (String(args[0]).endsWith('/pair')) {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+          started();
+        });
+        return {
+          ok: true,
+          json: async () => ({ version: 2, token: 'a'.repeat(43), cashPositionId: id }),
+        } as Response;
+      }
+      return normal(...args);
+    });
+    const task = pairHelper(id, 'setupCode123');
+    const rejection = expect(task).rejects.toThrow('signed-in account changed');
+    await ready;
+    installAuthSession('owner-b', 'b-session', async () => 'token-b');
+    release();
+    await rejection;
+    expect(localStorage.length).toBe(0);
+    expect(api.reconcileIbkr).not.toHaveBeenCalled();
+  });
+  it('retains an uncertain write for its owner and never requests B permits after apply dispatch', async () => {
+    let release!: (result: Awaited<ReturnType<typeof api.reconcileIbkr>>) => void;
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const normal = vi.mocked(api.reconcileIbkr).getMockImplementation()!;
+    vi.mocked(api.reconcileIbkr).mockImplementation((input) =>
+      input.action === 'apply'
+        ? new Promise((resolve) => {
+            release = resolve;
+            started();
+          })
+        : normal(input)
+    );
+    const task = syncIbkrDirect(id);
+    const rejection = expect(task).rejects.toThrow('completion is unverified');
+    await ready;
+    const permitCount = permits.issue.mock.calls.length;
+    installAuthSession('owner-b', 'b-session', async () => 'token-b');
+    expect(getDirectSyncState(id)).toEqual({ phase: 'idle' });
+    release({ applied: true, runId: 'saved-run' } as Awaited<ReturnType<typeof api.reconcileIbkr>>);
+    await rejection;
+    expect(api.restoreIbkr).not.toHaveBeenCalled();
+    expect(permits.issue).toHaveBeenCalledTimes(permitCount);
+    installAuthSession('owner-a', 'next-a-session', async () => 'a-token');
+    expect(getDirectSyncState(id)).toMatchObject({
+      phase: 'error',
+      error: expect.stringContaining('completion is unverified'),
+    });
+  });
+  it('requests a distinct owner-authorized permit before every helper mutation', async () => {
+    await syncIbkrDirect(id);
+    expect(permits.issue.mock.calls.map(([input]) => input.operation)).toEqual([
+      'capture',
+      'checkpoint',
+      'verify',
+    ]);
+    expect(permits.issue.mock.calls[0][0]).toMatchObject({
+      cashPositionId: id,
+      jobId: null,
+      connectorFingerprint: 'f'.repeat(64),
+    });
+    expect(permits.issue.mock.calls[1][0].jobId).toHaveLength(43);
+    expect(
+      Array.from({ length: localStorage.length }, (_, index) =>
+        localStorage.getItem(localStorage.key(index)!)
+      )
+    ).not.toContain('p'.repeat(43));
+  });
+  it('stops before capture when its owner permit is denied', async () => {
+    permits.issue.mockRejectedValue(new Error('This connection belongs to another owner'));
+    await expect(syncIbkrDirect(id)).rejects.toThrow('another owner');
+    expect(order).not.toContain('capture');
+    expect(api.reconcileIbkr).not.toHaveBeenCalled();
+  });
   it('reports the reviewed cash baseline including added and removed currencies', () => {
     expect(
       checkpointCashChanges(
@@ -349,7 +565,7 @@ describe('one-click IBKR orchestration', () => {
     vi.mocked(api.reconcileIbkr).mockRejectedValue(new Error(fxError));
     const normalFetch = vi.mocked(fetch).getMockImplementation()!;
     vi.mocked(fetch).mockImplementation(async (...args) => {
-      if (String(args[0]).endsWith('/finish')) throw new Error('Disconnected');
+      if (String(args[0]).endsWith('/finish')) throw new TypeError('Disconnected');
       return normalFetch(...args);
     });
     await expect(syncIbkrDirect(id)).rejects.toThrow('helper could not be reached');
@@ -365,15 +581,11 @@ describe('one-click IBKR orchestration', () => {
     }
   );
   it('stops on backup readback failure without applying', async () => {
-    vi.mocked(fetch).mockImplementation(
-      async (url) =>
-        ({
-          ok: true,
-          json: async () =>
-            String(url).endsWith('/capture')
-              ? { version: 1, jobId, capture: { second: { capturedAt: captureTime } } }
-              : { verified: false },
-        }) as Response
+    const normalFetch = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (...args) =>
+      String(args[0]).endsWith('/checkpoint')
+        ? ({ ok: true, json: async () => ({ verified: false }) } as Response)
+        : normalFetch(...args)
     );
     await expect(syncIbkrDirect(id)).rejects.toThrow('checkpoint');
     expect(api.reconcileIbkr).toHaveBeenCalledTimes(1);

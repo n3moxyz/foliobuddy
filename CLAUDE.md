@@ -254,9 +254,7 @@ Create-only sub-type toggle (edit infers category). Provider contract: **Stock/E
 
 ### Position Edit Modes
 
-Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/solutions/2026-09-30-native-cost-reconciliation.md); [IBKR sync](docs/solutions/2026-09-30-ibkr-cash-sync.md): signed cash, owner checkpoints, no agent-key writes.
-
-IBKR one-click helper: [setup](docs/solutions/2026-10-01-ibkr-one-click-sync.md).
+Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/solutions/2026-09-30-native-cost-reconciliation.md). IBKR [runbook](docs/solutions/2026-10-02-ibkr-merlin-background-sync.md): owner-bound devices/permits, session isolation, recovery. No agent-key writes.
 
 `PositionForm.tsx`: `Edit Totals` (corrections) + `Add/Reduce Position` tabs.
 

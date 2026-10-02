@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { IbkrCashPanel } from '../IbkrCashPanel';
@@ -6,7 +6,13 @@ import type { Position } from '@/lib/types';
 import { usePrivacyStore } from '@/stores/privacyStore';
 
 vi.mock('@/lib/api', () => ({
-  api: { getIbkrRuns: vi.fn(async () => []), reconcileIbkr: vi.fn(), restoreIbkr: vi.fn() },
+  api: {
+    getPositions: vi.fn(async () => []),
+    getIbkrRuns: vi.fn(async () => []),
+    getIbkrDevices: vi.fn(async () => []),
+    reconcileIbkr: vi.fn(),
+    restoreIbkr: vi.fn(),
+  },
 }));
 const position = {
   id: 'cash',
@@ -36,7 +42,7 @@ function mount(p: Position) {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  return render(<IbkrCashPanel position={p} />, { wrapper });
+  return { ...render(<IbkrCashPanel position={p} />, { wrapper }), client };
 }
 afterEach(() => usePrivacyStore.getState().setValuesHidden(false));
 describe('IBKR cash panel', () => {
@@ -81,5 +87,26 @@ describe('IBKR cash panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit currency balances' }));
     expect(screen.getByRole('textbox', { name: 'Amount USD' })).toHaveValue('42');
     expect(screen.queryByRole('textbox', { name: 'Amount JPY' })).not.toBeInTheDocument();
+  });
+  it('shows a background sync in an already-open cash panel', async () => {
+    const { client } = mount(position);
+    // Let the initial shared positions query finish before simulating its refetch.
+    await waitFor(() => expect(client.getQueryState(['positions'])?.status).toBe('success'));
+    const updated = {
+      ...position,
+      ibkrCash: {
+        ...position.ibkrCash!,
+        capturedAt: '2026-10-02T00:00:00Z',
+        netCashUsd: 42,
+        balances: [{ currency: 'USD', cashBalance: 42, fxRateToUsd: 1 }],
+      },
+    };
+    await act(async () => {
+      client.setQueryData(['positions'], [updated]);
+    });
+    await waitFor(() => expect(screen.getAllByText('$42.00')).toHaveLength(2));
+    expect(screen.queryByText(/111,000/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit currency balances' }));
+    expect(screen.getByRole('textbox', { name: 'Amount USD' })).toHaveValue('42');
   });
 });

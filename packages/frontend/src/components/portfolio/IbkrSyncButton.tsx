@@ -23,6 +23,7 @@ import {
 import { formatDateTime, formatQuantity, formatNativePrice, formatNativeAmount } from '@/lib/utils';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { isOwnedIbkrPosition } from './ibkrOwnership';
+import { captureAuthSession, isAuthSessionCurrent } from '@/lib/authSession';
 import {
   disconnectHelper,
   getDirectSyncState,
@@ -84,6 +85,9 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
   const resultIsCurrent = isDirectSyncResultCurrent(state, position);
   const capturedAt = resultIsCurrent ? state.capturedAt : last.time;
   const visiblePhase = state.phase === 'done' && !resultIsCurrent ? 'idle' : state.phase;
+  // Later portfolio refreshes can invalidate a displayed result, but must not
+  // turn a completed operation's close button into another sync action.
+  const completed = state.phase === 'done';
   async function refresh() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['positions'] }),
@@ -92,34 +96,40 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
     ]);
   }
   async function sync() {
+    const session = captureAuthSession();
     setError(null);
     setOpen(true);
     try {
       const result = await syncIbkrDirect(position.id);
+      if (!isAuthSessionCurrent(session)) return;
       toast.success('IBKR synced and verified', {
         description: result.unchanged
           ? 'Shares, native cost bases and currency balances are unchanged.'
           : 'Your IBKR shares, cost bases and currency balances are up to date.',
       });
     } catch (cause) {
+      if (!isAuthSessionCurrent(session)) return;
       toast.error('IBKR sync stopped', {
         description: cause instanceof Error ? cause.message : 'Check the sync details.',
       });
     } finally {
-      await refresh();
+      if (isAuthSessionCurrent(session)) await refresh();
     }
   }
   async function connect() {
+    const session = captureAuthSession();
     setConnecting(true);
     setError(null);
     try {
       await pairHelper(position.id, code);
+      if (!isAuthSessionCurrent(session)) return;
       setCode('');
       await sync();
     } catch (cause) {
+      if (!isAuthSessionCurrent(session)) return;
       setError(cause instanceof Error ? cause.message : 'This Mac could not connect.');
     } finally {
-      setConnecting(false);
+      if (isAuthSessionCurrent(session)) setConnecting(false);
     }
   }
   function configure() {
@@ -313,9 +323,9 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
               <Button
                 type="button"
                 disabled={busy || connecting || disabled}
-                onClick={() => (visiblePhase === 'done' ? setOpen(false) : void sync())}
+                onClick={() => (completed ? setOpen(false) : void sync())}
               >
-                {visiblePhase === 'done' ? 'Done' : 'Sync now'}
+                {completed ? 'Done' : 'Sync now'}
               </Button>
             ) : (
               <Button

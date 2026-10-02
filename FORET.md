@@ -2571,3 +2571,77 @@ gets no FX allowance. Missing/changed identities, native amounts, securities and
 large unexplained discrepancies still fail validation. Unit, database and browser
 checks cover a broker total that differs from both the row conversions and the
 separately refreshed summary. No helper reinstall or schema change is needed.
+
+### Daily IBKR sync on Merlin (October 2026)
+
+The browser heartbeat could stall on a native Save dialog while the Mac was locked,
+and Codex's local automation could not be moved to the always-on Mac mini through
+the supported scheduling tool. The owner approved a small browser-free worker with
+its own revocable permission to reconcile only the owned IBKR account.
+
+Merlin generates a private signing key locally; the owner enrolls only its public
+details in the IBKR cash panel. Signed requests bind the device, destination, exact
+operation/body, time and a single-use nonce. Authorization is rechecked inside the
+financial transaction, so revoking the device cannot race a previously checked
+request into a later write. The general agent API stays read-only.
+
+The worker reuses the fixed broker reads and financial audit checks. It saves and
+reads back a private checkpoint before applying, then independently verifies saved
+records before reporting success. An uncertain write blocks later automatic runs;
+it never quietly retries or rewrites history. The Singapore schedule runs once per
+date after 06:00 and catches up when the logged-in Mac becomes available. The app
+shows last contact, last verified capture, native changes and overdue/error states.
+The browser button remains a separate on-demand path.
+
+The end-to-end rehearsal caught a subtle transport issue: PostgreSQL JSONB through
+Prisma can round the final bit of a floating-point value. Rehashing that decoded
+checkpoint rejected an otherwise exact preview. Attempts now also retain canonical
+text for source and checkpoint evidence, without loosening financial checks.
+Independent review caught separate definitions of "unchanged" during first-time
+broker linking, and a status panel that could miss its deadline when identical
+poll responses did not trigger React renders. Completion now compares native
+financial changes, and the panel observes poll timestamps. Device revocation stays
+available after an account-shape change; installer updates respect the run lock;
+public enrollment signs a locally pinned cash reference before the first read.
+Settings also lists active IBKR permissions so moving a cash position cannot hide
+the owner's disconnect control.
+
+Tests and a deployed feature are not proof that the schedule moved. The old local
+heartbeat stays active until the owner connection and a fresh production worker run
+are verified. Installation, expiry, revocation and manual recovery are in the
+[Merlin runbook](docs/solutions/2026-10-02-ibkr-merlin-background-sync.md).
+
+
+### IBKR connections belong to each signed-in user (October 2026)
+
+The owner asked us to check whether another Gmail login could accidentally inherit
+his Mac or IBKR access. The daily signed worker already enforced owner, cash anchor,
+key and attempt identity. A two-owner PostgreSQL rehearsal verified both positive
+flows and rejected copied enrollments, foreign signatures, attempt substitutions,
+listing and revocation across owners without changing either portfolio.
+
+The check exposed two separate holes in the older browser path: a shared query cache
+could survive a login change, and a saved helper token did not itself prove the
+current FolioBuddy owner. Login sessions now receive separate caches and abortable
+API contexts. Direct sync captures its starting login and token, checks every async
+boundary, and suppresses late results after a switch, even A → B → A.
+
+Clearing a cache alone is insufficient: queued mutations can outlive it, and
+Clerk's token getter can start returning the next login before React commits that
+change. Requests now check the token's user and session claims before dispatch;
+mutations guard actual execution, retries and observer option updates. Trade-save
+recovery also stops before a follow-up read when its starting session changes.
+
+The helper now requires a fresh, one-use owner permit for every action. Its own
+challenge pins the anchor, connector, operation and job; the backend derives owner
+from Clerk and consumes the permit atomically. A saved local token plus another
+user's permit fails before broker reads. The helper verifies checkpoint ownership
+against this same grant and keeps a durable pending guard after a possible apply.
+An interrupted or uncertain result cannot silently start another sync.
+
+First-approved connector ownership is retained across device revocation and cash
+entry deletion. This guards accidental reuse of a known connection; it does not
+attest who owns the external brokerage account. Different people need separate
+macOS profiles and their own Codex/IBKR sign-ins. Setup is now “Connect a Mac”, with
+a user-chosen name; Merlin is just one user's device. Protocol 2 requires a one-time
+helper update and browser reconnection, while broker permissions stay read-only.

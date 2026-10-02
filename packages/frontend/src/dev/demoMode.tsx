@@ -2911,6 +2911,7 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
         demoPositions = rows;
       },
       newId: () => nextDemoId('ibkr-run'),
+      cashPositionId: url.searchParams.get('cashPositionId'),
     });
 
   if (path === '/api/positions/native-cost-capabilities' && method === 'GET')

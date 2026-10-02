@@ -32,12 +32,23 @@ approve that one-time browser permission. Do not bypass a browser warning. This
 app uses this permission to reach its helper at `127.0.0.1:47683`; the helper binds
 to loopback and checks the exact FolioBuddy Origin and Host itself.
 
-The pairing grants this browser access to the four fixed IBKR account reads,
-not general Codex tools. It binds one IBKR cash anchor and one connector link.
-The random local token is stored in this browser under that anchor; only its hash
-is kept in the helper state. It is separate from broker and Clerk credentials.
-The helper never receives the browser's FolioBuddy authentication token. Signing
-into a different FolioBuddy portfolio cannot silently reuse another anchor.
+The pairing binds the signed-in FolioBuddy owner, one owned IBKR cash anchor and
+one Codex connector link. The browser stores its random helper token under that
+owner and anchor; the helper stores only its hash. The token alone cannot request
+broker data. Before every helper action, the helper supplies a random challenge
+and the signed-in browser obtains a 60-second, one-use permit from FolioBuddy.
+The helper consumes that permit through the fixed backend destination and checks
+owner, anchor, connector, operation and job against its own challenge. It never
+receives Clerk or broker credentials. Permissions are verified again at consumption.
+
+Use your own Codex and IBKR sign-ins on your own macOS profile. A connector link
+already approved by another FolioBuddy account cannot be rebound automatically.
+See the [account boundary](2026-10-02-ibkr-merlin-background-sync.md#separate-accounts).
+
+**Protocol 2 upgrade:** rerun `npm run ibkr:helper:setup` once and reconnect the
+browser. Older unbound pairings are rejected. This does not require daily IBKR
+sign-in or granting a broader broker permission. Deploy the backend permit endpoints
+before the frontend; the updated helper requires them before broker reads.
 
 The LaunchAgent starts at login. Re-running setup refreshes the installed runtime
 and replaces the pairing, so connect the browser again. Other Macs and browser
@@ -53,7 +64,9 @@ forgets that browser's local token; it does not change the IBKR connection.
 
 ## Data flow and fail-closed behavior
 
-1. The signed-in browser freshly verifies the owned IBKR USD cash anchor.
+1. The signed-in browser freshly verifies the owned IBKR USD cash anchor. Each
+   helper operation requires a fresh owner-bound permit. Switching accounts or
+   signing out aborts the workflow; late results cannot continue under the next login.
 2. The helper checks the enabled connector and pinned link identity. It opens an
    ephemeral, read-only Codex context and calls only positions, currency balances,
    account summary and the last 90 days of executions. No AI turn is started.
@@ -67,6 +80,10 @@ forgets that browser's local token; it does not change the IBKR connection.
    A capture older than any saved sync or cash-edit timestamp is rejected, including
    a newer sync saved by another Mac between collection and preview.
 5. The helper writes the checkpoint with mode 0600, fsyncs it and reads it back.
+   It also durably saves `pending-sync.json` before allowing apply. Logout, connection
+   loss or a helper restart preserves this guard; an uncertain result blocks another
+   capture until reviewed. Only verified completion or an explicit pre-apply finish
+   clears it. Never automatically remove a guard to make a retry possible.
    Directories are 0700. Only after that succeeds can the browser apply the same
    preview state through the existing Serializable reconciliation transaction.
 6. A separate request to the existing **restore preview** checks current records
@@ -101,8 +118,8 @@ apply or independent readback error is retried; uncertain writes always stop.
 Never alter source totals or invent exchange rates. Manual imports and daily
 agent runs use the same FX-aware validation and stop on a validation error.
 
-This recovery is browser-side; an already paired Mac helper needs no reinstall or
-new code. Reload FolioBuddy after deployment. Regression tests cover fresh-read
+The FX recovery itself is browser-side. Account isolation additionally requires the
+protocol 2 helper upgrade described above. Reload FolioBuddy after deployment. Regression tests cover fresh-read
 recovery, exhaustion, changed native/app records, stale/reused captures, failed job
 closure and the prohibition on retrying an apply.
 
@@ -113,6 +130,10 @@ USD records. IBKR tools expose connection metadata, not a brokerage account numb
 the helper pins the explicitly paired connector link and existing app holdings.
 Changing the connector requires pairing again. New/unsupported holdings still need
 an explicit app identity before the complete account sync can proceed.
+
+The optional [daily Mac worker](2026-10-02-ibkr-merlin-background-sync.md) has its
+own explicit, revocable app permission and separate installer. Its browser-free
+schedule does not replace this Mac's pairing or change this button's behavior.
 
 Audits live at `.local/ibkr-sync/YYYY-MM-DD/button-<id>/`, outside Git. They include
 both source samples, executions, capture, review, checkpoint, independent readback
@@ -125,12 +146,17 @@ source capture is never re-timestamped to make it appear fresh.
   service, one-time installer and fictional tests. Node built-ins only.
 - `ibkrDirectSync.ts`: owner-session orchestration and shared in-flight status.
 - `IbkrSyncButton.tsx`: one-time pairing, progress, exact changed lines and results.
-- No schema change, new backend write endpoint, agent-key writes or broker writes.
+- Owner-only `/ibkr/helper-permits` issues hashed, expiring permits; the narrowly
+  scoped `/ibkr-helper/consume` endpoint consumes them atomically. A shared connector
+  ownership binding persists across revocation. No agent-key or broker writes.
 - `npm run test:ibkr-helper` covers source failures, ambiguous executions,
   ownership/ledger/history guards, readable private files, Host/Origin/token checks,
   connection changes, single-flight and checkpoint-before-verify ordering.
 - Frontend tests cover owner-first ordering, backup-before-apply, independent
-  readback, missing access, uncertain outcomes and duplicate entry points.
+  readback, missing access, uncertain outcomes and duplicate entry points. Login
+  switch cases cover delayed token getters, queued/offline/retrying mutations,
+  observer option changes and stale recovery reads. The completion button closes
+  even if a background refresh changes the displayed source timestamp.
 - Use the real `npm run sandbox` app for full reconciliation. Its own helper port
   is 47684 and separate state directory is `.local/ibkr-helper-sandbox`. Never pair
   the real IBKR connection to fictional sandbox holdings. A test helper with

@@ -3,8 +3,12 @@ import { z } from 'zod';
 import { ibkrRuns, reconcileIbkr, restoreIbkr } from '../services/ibkrSyncService.js';
 import { navTransaction } from '../services/unitTrustNavService.js';
 import { requireIbkr, isIbkrCash } from '../services/ibkrCapture.js';
+import { ibkrDeviceOwnerRouter } from './ibkrDevice.js';
+import { ibkrHelperOwnerRouter } from './ibkrHelper.js';
 
 const router = Router();
+router.use('/devices', ibkrDeviceOwnerRouter);
+router.use('/helper-permits', ibkrHelperOwnerRouter);
 const request = z
   .object({
     action: z.enum(['preview', 'apply']),

@@ -56,13 +56,19 @@ if (process.argv.includes('--uninstall')) {
   await privateDirectory(folder);
   const runtime = path.join(folder, 'runtime');
   await privateDirectory(runtime);
-  for (const name of ['server.mjs', 'codex-client.mjs', 'capture.mjs', 'audit.mjs']) {
+  for (const name of [
+    'server.mjs',
+    'codex-client.mjs',
+    'capture.mjs',
+    'audit.mjs',
+    'permits.mjs',
+  ]) {
     await copyFile(path.join(source, name), path.join(runtime, name));
     await chmod(path.join(runtime, name), 0o600);
   }
   const code = randomBytes(9).toString('base64url');
   await storeState(folder, {
-    version: 1,
+    version: 2,
     origin,
     pairCodeHash: secretHash(code),
     pairExpiresAt: Date.now() + 10 * 60000,
