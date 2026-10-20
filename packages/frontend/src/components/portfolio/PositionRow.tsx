@@ -20,6 +20,7 @@ import {
 } from './positionPriceDisplay';
 import { NavStatus } from './NavStatus';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { assetDisplayName } from './assetDisplayName';
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
   WALLET: 'Onchain',
@@ -108,7 +109,7 @@ export const PositionRow = React.memo(function PositionRow({
     ? 'IBKR cash & debt'
     : isStable
       ? 'Cash'
-      : position.asset.name;
+      : assetDisplayName(position.asset);
   const priceUpdatedTitle = position.asset.priceUpdatedAt
     ? `NAV updated ${formatDateTime(position.asset.priceUpdatedAt)}`
     : 'NAV never set';
@@ -154,7 +155,9 @@ export const PositionRow = React.memo(function PositionRow({
             <p className="truncate text-sm font-medium">{position.asset.symbol}</p>
             {showUnitTrustBadge && isUnitTrust && <UnitTrustBadge />}
           </div>
-          <p className="text-xs text-muted-foreground truncate">{assetNameLabel}</p>
+          <p className="text-xs text-muted-foreground truncate" title={position.asset.name}>
+            {assetNameLabel}
+          </p>
           <NavStatus asset={position.asset} />
           {ageInfo && (
             <p

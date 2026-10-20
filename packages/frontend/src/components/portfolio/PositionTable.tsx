@@ -72,6 +72,7 @@ import {
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { NavStatus } from './NavStatus';
+import { assetDisplayName } from './assetDisplayName';
 
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
@@ -602,8 +603,11 @@ export function PositionTable({
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 truncate text-xs leading-snug text-muted-foreground">
-                  {position.ibkrCash ? 'IBKR cash & debt' : position.asset.name}
+                <p
+                  className="mt-0.5 truncate text-xs leading-snug text-muted-foreground"
+                  title={position.asset.name}
+                >
+                  {position.ibkrCash ? 'IBKR cash & debt' : assetDisplayName(position.asset)}
                 </p>
                 <NavStatus asset={position.asset} />
               </div>
@@ -665,8 +669,11 @@ export function PositionTable({
                     UT
                   </span>
                 )}
-                <p className="min-w-0 truncate text-xs leading-snug text-muted-foreground">
-                  {position.ibkrCash ? 'IBKR cash & debt' : position.asset.name}
+                <p
+                  className="min-w-0 truncate text-xs leading-snug text-muted-foreground"
+                  title={position.asset.name}
+                >
+                  {position.ibkrCash ? 'IBKR cash & debt' : assetDisplayName(position.asset)}
                 </p>
               </div>
               <NavStatus asset={position.asset} />
