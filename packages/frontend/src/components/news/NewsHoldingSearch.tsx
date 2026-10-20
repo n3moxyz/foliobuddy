@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { HOLDING_ACCENTS, storyCountLabel } from '@/components/news/newsFormat';
 import { cn } from '@/lib/utils';
+import { assetDisplayName } from '@/lib/assetDisplayName';
 import type { NewsHolding } from '@/lib/types';
 
 const MAX_MATCHES = 8;
@@ -11,7 +12,7 @@ const NAME_WORD_SEPARATOR = /[\s\-/(),.]+/;
 /** 0 = symbol prefix, 1 = a name word starts with the query, 2 = any substring; null = no match. */
 function matchRank(holding: NewsHolding, needle: string): number | null {
   const symbol = holding.symbol.toLowerCase();
-  const name = holding.name.toLowerCase();
+  const name = `${holding.name} ${assetDisplayName(holding)}`.toLowerCase();
   if (symbol.startsWith(needle)) return 0;
   if (name.split(NAME_WORD_SEPARATOR).some((word) => word.startsWith(needle))) return 1;
   if (symbol.includes(needle) || name.includes(needle)) return 2;
@@ -168,7 +169,12 @@ export function NewsHoldingSearch({
                   >
                     {holding.symbol}
                   </span>{' '}
-                  <span className="min-w-0 flex-1 truncate">{holding.name}</span>{' '}
+                  <span
+                    className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
+                    title={holding.name}
+                  >
+                    {assetDisplayName(holding)}
+                  </span>{' '}
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {holdingMeta(holding)}
                   </span>

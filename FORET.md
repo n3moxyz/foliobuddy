@@ -2659,3 +2659,17 @@ quotes. Average costs and execution prices still belong to the private account
 record and remain masked. Editable inputs and clipboard/export data keep their
 original values. The lesson is to separate public quotes from account data,
 and to check the secondary views when changing the privacy contract.
+
+### Short names need room to be read (October 2026)
+
+Shortening a company name did not help when the table still squeezed it into a
+fixed-width column. Portfolio rows now size their columns to the content, and
+the shared asset label keeps the complete ticker and a concise company or fund
+name visible. Longer names wrap instead of disappearing behind an ellipsis.
+Dashboard performers, trade rows, snapshot holdings and news use the same names;
+details and exports still retain the original names and share-class information.
+
+The fund NAV display also used a plain space where other currency formatters
+used a nonbreaking one. That let `SGD` sit above its amount in a narrow cell.
+Native quotes now share the currency formatter, keep the fund's four decimal
+places, and stay together in tables, details, imports and broker previews.

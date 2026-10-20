@@ -29,6 +29,7 @@ import { copyTradeToClipboard } from '@/components/trades/tradeClipboard';
 import { toast } from 'sonner';
 import { TradeDetailDialog } from '@/components/trades/TradeDetailDialog';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { AssetLabel } from '@/components/ui/asset-label';
 
 const TRADE_TABLE_HEADER_SKELETON_KEYS = ['asset', 'side', 'entry', 'exit', 'pnl'] as const;
 const TRADE_TABLE_ROW_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth'] as const;
@@ -266,8 +267,8 @@ export function TradeTable({
                       }
                     }}
                   >
-                    <TableCell className="font-medium whitespace-nowrap">
-                      {trade.asset.symbol}
+                    <TableCell className="min-w-[10rem]">
+                      <AssetLabel asset={trade.asset} />
                     </TableCell>
                     <TableCell>
                       <span

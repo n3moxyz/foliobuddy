@@ -20,7 +20,7 @@ import {
 } from './positionPriceDisplay';
 import { NavStatus } from './NavStatus';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
-import { assetDisplayName } from './assetDisplayName';
+import { AssetLabel } from '@/components/ui/asset-label';
 
 const STORAGE_TYPE_LABELS: Record<string, string> = {
   WALLET: 'Onchain',
@@ -105,11 +105,7 @@ export const PositionRow = React.memo(function PositionRow({
   const isUnitTrust = position.asset.category === 'UNIT_TRUST';
   const shouldShowNavAge = !isUnitTrust && isManual && !isStable;
   const ageInfo = shouldShowNavAge ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
-  const assetNameLabel = position.ibkrCash
-    ? 'IBKR cash & debt'
-    : isStable
-      ? 'Cash'
-      : assetDisplayName(position.asset);
+  const assetNameOverride = position.ibkrCash ? 'IBKR cash & debt' : isStable ? 'Cash' : undefined;
   const priceUpdatedTitle = position.asset.priceUpdatedAt
     ? `NAV updated ${formatDateTime(position.asset.priceUpdatedAt)}`
     : 'NAV never set';
@@ -149,32 +145,27 @@ export const PositionRow = React.memo(function PositionRow({
         }
       }}
     >
-      <TableCell>
-        <div className="truncate">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <p className="truncate text-sm font-medium">{position.asset.symbol}</p>
-            {showUnitTrustBadge && isUnitTrust && <UnitTrustBadge />}
-          </div>
-          <p className="text-xs text-muted-foreground truncate" title={position.asset.name}>
-            {assetNameLabel}
-          </p>
+      <TableCell className="min-w-[13rem]">
+        <div className="min-w-[11rem] max-w-[16rem] space-y-0.5">
+          <AssetLabel
+            asset={position.asset}
+            badge={showUnitTrustBadge && isUnitTrust ? <UnitTrustBadge /> : undefined}
+            nameOverride={assetNameOverride}
+          />
           <NavStatus asset={position.asset} />
           {ageInfo && (
-            <p
-              className={`text-xs ${priceAgeClass(ageInfo.severity)} truncate`}
-              title={priceUpdatedTitle}
-            >
+            <p className={`text-xs ${priceAgeClass(ageInfo.severity)}`} title={priceUpdatedTitle}>
               NAV {ageInfo.label}
             </p>
           )}
         </div>
       </TableCell>
-      <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
+      <TableCell className={`whitespace-nowrap text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         {position.ibkrCash
           ? formatCurrency(position.quantity, 'USD', 2)
           : formatQuantity(position.quantity, position.asset.category)}
       </TableCell>
-      <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
+      <TableCell className={`whitespace-nowrap text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         <p>
           {formatCurrency(
             convert(position.avgCostUsd),
@@ -186,10 +177,12 @@ export const PositionRow = React.memo(function PositionRow({
           <p className="mt-0.5 text-[11px] leading-none text-muted-foreground">{localAvgCost}</p>
         )}
       </TableCell>
-      <TableCell className={`text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
+      <TableCell className={`whitespace-nowrap text-right font-mono text-sm ${HIDDEN_MOBILE}`}>
         {formatCurrency(convert(totalCost), currency, 0)}
       </TableCell>
-      <TableCell className={`text-right font-mono text-sm text-muted-foreground ${HIDDEN_MOBILE}`}>
+      <TableCell
+        className={`whitespace-nowrap text-right font-mono text-sm text-muted-foreground ${HIDDEN_MOBILE}`}
+      >
         <p>
           {formatVisibleCurrency(
             displayedAssetPrice(position.asset, currency, fxRate),
@@ -203,10 +196,10 @@ export const PositionRow = React.memo(function PositionRow({
           </p>
         )}
       </TableCell>
-      <TableCell className="text-right font-mono text-sm font-medium">
+      <TableCell className="whitespace-nowrap text-right font-mono text-sm font-medium">
         {formatCurrency(convert(position.marketValueUsd), currency, 0)}
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="whitespace-nowrap text-right">
         <div className={getPnLColorClass(position.unrealizedPnL)}>
           <p className="font-mono text-sm">
             {formatCurrency(convert(position.unrealizedPnL), currency, 0)}

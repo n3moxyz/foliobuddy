@@ -54,7 +54,7 @@ function IbkrCashEditor({
   const position = positions?.find((row) => row.id === initialPosition.id) ?? initialPosition;
   const { formatCurrency, formatPrice, formatQuantity, maskMoney } = useMoneyFormatter();
   const native = (value: number, currency: string) =>
-    maskMoney(`${currency} ${formatTrimmedNumber(value, 8)}`);
+    maskMoney(`${currency}\u00a0${formatTrimmedNumber(value, 8)}`);
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<'view' | 'cash' | 'sync'>('view');
   const [text, setText] = useState('');

@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { assetDisplayName } from '@/lib/assetDisplayName';
 import { ChevronRight } from 'lucide-react';
 import { NewsRow, type NewsFeedbackHandler } from '@/components/news/NewsRow';
 import { groupStoryCount, storyCountLabel, type HoldingAccent } from '@/components/news/newsFormat';
@@ -38,13 +39,18 @@ export function HoldingNewsCard({
         >
           {/* The {' '} separators keep the button's accessible name spaced
               ("BTC Bitcoin 3 stories"); flex layout ignores them visually. */}
-          <span className="flex min-w-0 items-center gap-2">
+          <span className="flex min-w-0 flex-wrap items-center gap-2">
             <span
               className={cn('shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold', accent.chip)}
             >
               {group.symbol}
             </span>{' '}
-            <span className="truncate text-xs text-muted-foreground">{group.name}</span>
+            <span
+              className="min-w-0 max-w-full break-words text-xs text-muted-foreground [overflow-wrap:anywhere]"
+              title={group.name}
+            >
+              {assetDisplayName(group)}
+            </span>
             {group.openTradeOnly && (
               <>
                 {' '}

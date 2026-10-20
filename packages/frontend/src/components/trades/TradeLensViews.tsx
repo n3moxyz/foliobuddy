@@ -10,6 +10,7 @@ import {
   type TickerRef,
 } from '@/components/trades/tradeLensModels';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { AssetLabel } from '@/components/ui/asset-label';
 
 function convertCurrency(usdValue: number, currency: 'USD' | 'SGD', fxRate: number) {
   return currency === 'SGD' ? usdValue * fxRate : usdValue;
@@ -83,7 +84,7 @@ export function TickerDossierLens({
                   Clear
                 </Button>
               </div>
-              <p className="mt-1 max-w-md truncate text-sm text-muted-foreground">
+              <p className="mt-1 max-w-md break-words text-sm text-muted-foreground">
                 {selectedTicker.name}
               </p>
             </div>
@@ -332,10 +333,12 @@ function MiniMetric({
 }) {
   return (
     <div className="min-w-0 p-3">
-      <p className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="break-words text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className={`mt-1 truncate text-sm font-semibold tabular-nums ${valueClass ?? ''}`}>
+      <p
+        className={`mt-1 whitespace-nowrap text-sm font-semibold tabular-nums ${valueClass ?? ''}`}
+      >
         {value}
       </p>
     </div>
@@ -367,7 +370,7 @@ function InsightRow({
     <>
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`truncate text-sm font-semibold ${toneClass}`}>{value}</p>
+        <p className={`break-words text-sm font-semibold ${toneClass}`}>{value}</p>
       </div>
       <p className="shrink-0 text-right text-xs text-muted-foreground">{detail}</p>
     </>
@@ -416,7 +419,7 @@ function TradeEdgeRow({
     >
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="truncate text-sm font-semibold">{trade.asset.symbol}</p>
+        <AssetLabel asset={trade.asset} />
         <p className="truncate text-xs text-muted-foreground">
           {trade.notes || formatDate(trade.exitDate)}
         </p>
@@ -459,7 +462,7 @@ function TradeMiniButton({
       onClick={onClick}
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="truncate text-sm font-semibold">{trade.asset.symbol}</span>
+        <AssetLabel asset={trade.asset} />
         <span
           className={`shrink-0 text-sm font-semibold tabular-nums ${getPnLColorClass(trade.realizedPnL)}`}
         >

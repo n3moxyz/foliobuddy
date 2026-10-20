@@ -2,6 +2,7 @@ import { formatPercent, getPnLColorClass } from '@/lib/utils';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import type { Performer } from '@/lib/types';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { AssetLabel } from '@/components/ui/asset-label';
 
 interface PerformersCardProps {
   title: string;
@@ -60,18 +61,15 @@ export function PerformersCard({
         {performers.map((performer, index) => (
           <div
             key={`${performer.assetId}-${index}`}
-            className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+            className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
           >
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground text-xs tabular-nums w-4">{index + 1}</span>
-              <div>
-                <p className="font-medium text-sm">{performer.symbol}</p>
-                <p className="text-xs text-muted-foreground truncate max-w-[160px] sm:max-w-[200px]">
-                  {performer.name}
-                </p>
-              </div>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="w-4 shrink-0 text-xs tabular-nums text-muted-foreground">
+                {index + 1}
+              </span>
+              <AssetLabel asset={performer} />
             </div>
-            <div className="text-right">
+            <div className="shrink-0 whitespace-nowrap text-right">
               <p
                 className={`font-semibold tabular-nums ${getPnLColorClass(performer.unrealizedPnL)}`}
               >

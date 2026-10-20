@@ -57,9 +57,11 @@ export function localPriceLabel(params: {
     if (valuesHidden) return `(${MASKED_MONEY_VALUE})`;
     // Published fund NAVs retain their quoted precision; other per-unit values
     // share the same currency-aware formatting as the Price column.
-    return params.isUnitTrustNav
-      ? `(${nativeCurrency} ${params.nativePrice.toFixed(4)})`
-      : `(${formatNativePrice(params.nativePrice, nativeCurrency)})`;
+    return `(${formatNativePrice(
+      params.nativePrice,
+      nativeCurrency,
+      params.isUnitTrustNav ? 4 : undefined
+    )})`;
   }
   return localNativeLabel({
     usdValue: usdPrice,
