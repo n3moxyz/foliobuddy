@@ -154,9 +154,79 @@
     @apply bg-background text-foreground;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+  html {
+    scroll-padding-top: var(--app-scroll-offset, 5rem);
+  }
+  :where(button, a, input, textarea, select, [tabindex]) {
+    scroll-margin-block: 1rem 2rem;
+    touch-action: manipulation;
+  }
+  [role='dialog'] :where(button, a, input, textarea, select, [tabindex]) {
+    scroll-margin-block: 1rem;
+  }
+}
+
+@media (forced-colors: active) {
+  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
 }
 
 /* Custom scrollbar */
+.networth-rail {
+  container-type: inline-size;
+  container-name: networth;
+}
+
+.chart-card {
+  container-type: inline-size;
+  container-name: chart;
+}
+
+.allocation-layout {
+  container-type: inline-size;
+  container-name: allocation;
+}
+
+.allocation-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container allocation (min-width: 35rem) {
+  .allocation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container allocation (min-width: 60rem) {
+  .allocation-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container chart (min-width: 64rem) {
+  .chart-toolbar-layout {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .chart-title-layout {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
+@container networth (min-width: 60rem) {
+  .networth-metrics {
+    min-width: 0;
+    grid-auto-flow: row;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    grid-auto-columns: auto;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

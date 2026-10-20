@@ -359,9 +359,9 @@ export function BenchmarkComparisonChart() {
   );
 
   return (
-    <Card ref={chartRef} className="col-span-2">
+    <Card ref={chartRef} className="chart-card col-span-2">
       <CardHeader className="pb-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="chart-toolbar-layout flex flex-col gap-3">
           <CardTitle className="text-base">Portfolio % vs Benchmarks</CardTitle>
 
           <div className="-mx-1 overflow-x-auto pb-1">
@@ -377,6 +377,7 @@ export function BenchmarkComparisonChart() {
                       period === p ? '' : 'hover:bg-muted'
                     }`}
                     onClick={() => setPeriod(p)}
+                    aria-pressed={period === p}
                   >
                     {p}
                   </Button>
@@ -401,6 +402,7 @@ export function BenchmarkComparisonChart() {
                 color: benchmark.foregroundColor ?? benchmark.color,
               }}
               onClick={() => toggleBenchmark(benchmark.id)}
+              aria-pressed={benchmark.enabled}
             >
               {benchmark.symbol}
               {benchmark.enabled && chartData.length > 0 && (
@@ -429,6 +431,7 @@ export function BenchmarkComparisonChart() {
                   color: benchmark.foregroundColor ?? benchmark.color,
                 }}
                 onClick={() => toggleAdditionalBenchmark(benchmark.id)}
+                aria-pressed={benchmark.enabled}
               >
                 {benchmark.symbol}
                 {benchmark.enabled && chartData.length > 0 && (

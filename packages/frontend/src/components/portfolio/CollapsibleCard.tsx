@@ -54,7 +54,7 @@ export function CollapsibleCard({
               {titleHelp}
             </div>
             {headerRight ? (
-              <div className="flex max-w-[48%] shrink-0 flex-wrap items-center justify-end gap-2 sm:max-w-none">
+              <div className="flex max-w-[48%] shrink-0 flex-wrap items-center justify-end gap-2 sm:max-w-[70%] sm:shrink">
                 {headerRight}
               </div>
             ) : null}

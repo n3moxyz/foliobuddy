@@ -93,15 +93,21 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
 
       <Textarea
         aria-label="Snapshot JSON to import"
+        aria-invalid={!!parseError}
+        aria-describedby={parseError ? 'snapshot-import-error' : undefined}
         value={jsonInput}
         onChange={(e) => handleJsonChange(e.target.value)}
         placeholder='[{"timestamp": "2026-01-01", "totalValueUsd": 100000}, ...]'
         rows={6}
-        className="font-mono text-xs"
+        className="font-mono text-base sm:text-xs"
       />
 
       {parseError && (
-        <div className="flex items-start gap-2 text-destructive text-sm">
+        <div
+          id="snapshot-import-error"
+          role="alert"
+          className="flex items-start gap-2 break-words text-destructive text-sm"
+        >
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <span>{parseError}</span>
         </div>

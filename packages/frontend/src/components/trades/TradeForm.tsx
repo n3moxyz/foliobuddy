@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
@@ -122,38 +123,26 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
   return (
     <div className="space-y-3">
       {!isEditing && (
-        <div role="tablist" aria-label="Trade entry mode" className="flex border-b mb-2">
-          <button
-            type="button"
-            role="tab"
-            id="trade-tab-add"
-            aria-selected={mode === 'add'}
-            aria-controls="trade-entry-panel"
-            onClick={() => setMode('add')}
-            className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
-              mode === 'add'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Add New
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="trade-tab-import"
-            aria-selected={mode === 'import'}
-            aria-controls="trade-entry-panel"
-            onClick={() => setMode('import')}
-            className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
-              mode === 'import'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Import
-          </button>
-        </div>
+        <Tabs value={mode} onValueChange={(value) => setMode(value as FormMode)}>
+          <TabsList aria-label="Trade entry mode" className="w-full">
+            <TabsTrigger
+              value="add"
+              id="trade-tab-add"
+              aria-controls="trade-entry-panel"
+              className="flex-1"
+            >
+              Add New
+            </TabsTrigger>
+            <TabsTrigger
+              value="import"
+              id="trade-tab-import"
+              aria-controls="trade-entry-panel"
+              className="flex-1"
+            >
+              Import
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       )}
 
       <div

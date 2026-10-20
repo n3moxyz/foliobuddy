@@ -265,47 +265,30 @@ export function SnapshotTable({
                           ? () => toggleExpand(snapshot.id)
                           : undefined
                       }
-                      tabIndex={snapshot.source === 'AUTOMATIC' ? 0 : undefined}
-                      aria-label={
-                        snapshot.source === 'AUTOMATIC'
-                          ? `Expand ${snapshot.snapshotType.toLowerCase()} snapshot`
-                          : undefined
-                      }
-                      aria-expanded={
-                        snapshot.source === 'AUTOMATIC'
-                          ? expandedSnapshots.has(snapshot.id)
-                          : undefined
-                      }
-                      aria-controls={
-                        snapshot.source === 'AUTOMATIC'
-                          ? `snapshot-detail-${snapshot.id}`
-                          : undefined
-                      }
-                      onKeyDown={
-                        snapshot.source === 'AUTOMATIC'
-                          ? (e) => {
-                              // Guard: without it, Enter/Space on nested action buttons
-                              // bubbles here and toggles the row instead (WCAG 2.1.1).
-                              if (
-                                e.currentTarget === e.target &&
-                                (e.key === 'Enter' || e.key === ' ')
-                              ) {
-                                e.preventDefault();
-                                toggleExpand(snapshot.id);
-                              }
-                            }
-                          : undefined
-                      }
                     >
                       <TableCell className="px-2">
                         {snapshot.source === 'AUTOMATIC' && (
-                          <span className="inline-flex items-center justify-center h-6 w-6">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-11 w-11 sm:h-8 sm:w-8"
+                            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${snapshot.snapshotType.toLowerCase()} snapshot for ${formatDate(snapshot.timestamp)}`}
+                            aria-expanded={isExpanded}
+                            aria-controls={
+                              isExpanded ? `snapshot-detail-${snapshot.id}` : undefined
+                            }
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void toggleExpand(snapshot.id);
+                            }}
+                          >
                             {isExpanded ? (
                               <ChevronDown className="h-4 w-4" aria-hidden="true" />
                             ) : (
                               <ChevronRight className="h-4 w-4" aria-hidden="true" />
                             )}
-                          </span>
+                          </Button>
                         )}
                       </TableCell>
                       <TableCell className="font-medium">

@@ -1,3 +1,5 @@
+/// <reference lib="es2022.error" />
+
 import type { Position, IbkrReconciliationResult } from '@/lib/types';
 import { apiForSession, type IbkrHelperChallenge, type IbkrHelperOperation } from '@/lib/api';
 import {
@@ -127,7 +129,8 @@ async function helperFetch<T>(
     if (error instanceof Error && error.name !== 'TypeError' && error.name !== 'TimeoutError')
       throw error;
     throw new Error(
-      'The Mac helper could not be reached. Keep this Mac on, start the helper and allow this site local-network access if your browser asks.'
+      'The Mac helper could not be reached. Keep this Mac on, start the helper and allow this site local-network access if your browser asks.',
+      { cause: error }
     );
   } finally {
     signal.dispose();
@@ -381,7 +384,8 @@ export async function syncIbkrDirect(id: string) {
         if (!isIbkrFxTimingError(error)) throw error;
         if (attempt === 3)
           throw new Error(
-            'IBKR’s currency balances and account total still disagree after three fresh captures. Nothing was saved. Try again shortly.'
+            'IBKR’s currency balances and account total still disagree after three fresh captures. Nothing was saved. Try again shortly.',
+            { cause: error }
           );
         previous = ibkrRetryBaseline(capture.capture);
         // End the rejected job before reading again. Never retry an apply,
@@ -391,7 +395,9 @@ export async function syncIbkrDirect(id: string) {
           appMayHaveChanged: false,
         });
         if (finished.verified !== false)
-          throw new Error('The previous capture could not be closed. Start a new sync.');
+          throw new Error('The previous capture could not be closed. Start a new sync.', {
+            cause: error,
+          });
         jobId = undefined;
         update(id, { phase: 'retrying' }, session);
         await retryDelay(session);
@@ -472,7 +478,7 @@ export async function syncIbkrDirect(id: string) {
     if (appMayHaveChanged && isAuthSessionCurrent(session))
       uncertain.set(stateKey, { phase: 'error', error: message });
     update(id, { phase: 'error', error: message }, session);
-    throw new Error(message);
+    throw new Error(message, { cause: error });
   } finally {
     session.signal.removeEventListener('abort', changedSession);
   }

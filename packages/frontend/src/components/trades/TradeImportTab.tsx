@@ -112,6 +112,8 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
 
       <Textarea
         aria-label="Trade JSON to import"
+        aria-invalid={!!parseError}
+        aria-describedby={parseError ? 'trade-import-error' : undefined}
         placeholder='[{"asset": {"symbol": "BTC", "name": "Bitcoin", "category": "LIQUID_CRYPTO"}, "direction": "LONG", "entryPrice": 50000, "quantity": 0.5, "entryDate": "2026-01-15"}, ...]'
         value={jsonInput}
         onChange={(e) => {
@@ -119,11 +121,15 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
           parseJson(e.target.value);
         }}
         rows={6}
-        className="font-mono text-xs"
+        className="font-mono text-base sm:text-xs"
       />
 
       {parseError && (
-        <div className="flex items-start gap-2 text-destructive text-sm">
+        <div
+          id="trade-import-error"
+          role="alert"
+          className="flex items-start gap-2 break-words text-destructive text-sm"
+        >
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <span>{parseError}</span>
         </div>

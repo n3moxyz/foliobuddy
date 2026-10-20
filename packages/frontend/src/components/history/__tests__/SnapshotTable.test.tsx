@@ -59,7 +59,7 @@ describe('SnapshotTable expand row', () => {
     vi.mocked(api.getSnapshotPositions).mockRejectedValue(new Error('Network down'));
     renderTable();
 
-    const row = screen.getByRole('row', { name: /expand daily snapshot/i });
+    const row = screen.getByRole('button', { name: /expand daily snapshot/i }).closest('tr')!;
     fireEvent.click(row);
 
     await waitFor(() =>
@@ -67,7 +67,10 @@ describe('SnapshotTable expand row', () => {
         description: 'Network down',
       })
     );
-    expect(row).toHaveAttribute('aria-expanded', 'false');
+    expect(within(row).getByRole('button', { name: /expand daily snapshot/i })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
     expect(screen.queryByText(/no positions recorded/i)).not.toBeInTheDocument();
   });
 
@@ -75,10 +78,16 @@ describe('SnapshotTable expand row', () => {
     vi.mocked(api.getSnapshotPositions).mockResolvedValue([]);
     renderTable();
 
-    const row = screen.getByRole('row', { name: /expand daily snapshot/i });
+    const row = screen.getByRole('button', { name: /expand daily snapshot/i }).closest('tr')!;
     fireEvent.click(row);
 
-    await waitFor(() => expect(row).toHaveAttribute('aria-expanded', 'true'));
+    await waitFor(() =>
+      expect(within(row).getByRole('button', { name: /collapse daily snapshot/i })).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      )
+    );
+    expect(row).not.toHaveAttribute('aria-expanded');
     expect(screen.getByText(/no positions recorded/i)).toBeInTheDocument();
     expect(toast.error).not.toHaveBeenCalled();
   });
@@ -97,7 +106,7 @@ describe('SnapshotTable expand row', () => {
     ]);
     act(() => usePrivacyStore.getState().setValuesHidden(true));
     renderTable();
-    fireEvent.click(screen.getByRole('row', { name: /expand daily snapshot/i }));
+    fireEvent.click(screen.getByRole('button', { name: /expand daily snapshot/i }).closest('tr')!);
     const row = (await screen.findByText('PRIVATE')).closest('tr')!;
     const cells = within(row).getAllByRole('cell');
     expect(cells[1]).toHaveTextContent(MASKED_MONEY_VALUE);
@@ -134,7 +143,7 @@ describe('SnapshotTable copy positions', () => {
     ]);
     renderTable();
 
-    fireEvent.click(screen.getByRole('row', { name: /expand daily snapshot/i }));
+    fireEvent.click(screen.getByRole('button', { name: /expand daily snapshot/i }).closest('tr')!);
     fireEvent.click(await screen.findByRole('button', { name: /copy positions/i }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalled());

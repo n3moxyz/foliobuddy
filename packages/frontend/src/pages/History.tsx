@@ -1,3 +1,4 @@
+import { QueryErrorNotice } from '@/components/ui/QueryErrorNotice';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useSnapshots, useDeleteSnapshot, useDeleteAllSnapshots } from '@/hooks/useSnapshots';
@@ -6,7 +7,7 @@ import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +84,8 @@ export default function History() {
     data: allSnapshots,
     error: snapshotsError,
     isPending: snapshotsPending,
+    refetch: retrySnapshots,
+    isFetching: snapshotsFetching,
   } = useSnapshots({ limit: HISTORY_SNAPSHOT_LIMIT });
   const deleteSnapshot = useDeleteSnapshot();
   const deleteAllMutation = useDeleteAllSnapshots();
@@ -210,23 +213,29 @@ export default function History() {
         </TabsList>
 
         {snapshotsError && (
-          <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            Failed to load snapshots:{' '}
-            {snapshotsError instanceof Error ? snapshotsError.message : 'Unknown error'}
+          <div className="mt-4">
+            <QueryErrorNotice
+              subject="snapshots"
+              hasData={!!allSnapshots}
+              retrying={snapshotsFetching}
+              onRetry={() => void retrySnapshots()}
+            />
           </div>
         )}
 
-        <div className="mt-4">
-          <SnapshotTable
-            snapshots={filteredSnapshots}
-            isLoading={snapshotsPending}
-            displayValue={displayValue}
-            liveValueUsd={summary?.totalValueUsd}
-            onEdit={setEditingSnapshot}
-            onDelete={setDeletingSnapshot}
-            onAddSnapshot={() => setShowAddForm(true)}
-          />
-        </div>
+        {(!snapshotsError || !!allSnapshots) && (
+          <TabsContent value={sourceFilter} className="mt-4">
+            <SnapshotTable
+              snapshots={filteredSnapshots}
+              isLoading={snapshotsPending}
+              displayValue={displayValue}
+              liveValueUsd={summary?.totalValueUsd}
+              onEdit={setEditingSnapshot}
+              onDelete={setDeletingSnapshot}
+              onAddSnapshot={() => setShowAddForm(true)}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>

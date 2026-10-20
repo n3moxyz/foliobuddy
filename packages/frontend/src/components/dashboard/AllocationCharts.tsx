@@ -205,6 +205,7 @@ const AllocationDonut = memo(function AllocationDonut({
                       <Cell
                         key={`cell-${entry.name}`}
                         fill={colors[originalIndex % colors.length]}
+                        aria-label={`${entry.name}: ${formatNumber(entry.displayPercentage, 1)}%`}
                         onMouseEnter={() => setHoveredIndex(i)}
                         onClick={clickable ? () => onSliceClick(entry.name) : undefined}
                         // Non-drillable slices (e.g. Perps) must not advertise a click
@@ -251,7 +252,7 @@ const AllocationDonut = memo(function AllocationDonut({
               return (
                 <button
                   key={item.name}
-                  className={`flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-0 ${
+                  className={`flex min-h-11 items-center gap-2 text-xs transition-colors cursor-pointer md:min-h-8 ${
                     isHidden ? 'opacity-40 line-through text-muted-foreground' : ''
                   }`}
                   aria-pressed={!hidden.has(item.name)}
@@ -460,28 +461,30 @@ export function AllocationCharts({
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {ALLOCATION_CHART_SKELETON_KEYS.map((chartKey) => (
-          <Card key={chartKey}>
-            <CardHeader className="pb-2">
-              <Skeleton className="h-4 w-24" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4 items-center">
-                <Skeleton className="h-[120px] w-[120px] rounded-full flex-shrink-0" />
-                <div className="flex-1 space-y-2">
-                  {ALLOCATION_LEGEND_SKELETON_KEYS.map((legendKey) => (
-                    <div key={`${chartKey}-${legendKey}`} className="flex items-center gap-2">
-                      <Skeleton className="h-2.5 w-2.5 rounded-full" />
-                      <Skeleton className="h-3 w-16" />
-                      <Skeleton className="h-3 w-8 ml-auto" />
-                    </div>
-                  ))}
+      <div className="allocation-layout">
+        <div className="allocation-grid grid gap-4">
+          {ALLOCATION_CHART_SKELETON_KEYS.map((chartKey) => (
+            <Card key={chartKey}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex min-w-0 flex-col gap-4 items-center sm:flex-row">
+                  <Skeleton className="h-[120px] w-[120px] rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    {ALLOCATION_LEGEND_SKELETON_KEYS.map((legendKey) => (
+                      <div key={`${chartKey}-${legendKey}`} className="flex items-center gap-2">
+                        <Skeleton className="h-2.5 w-2.5 rounded-full" />
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-3 w-8 ml-auto" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -546,51 +549,53 @@ export function AllocationCharts({
   );
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {ibkrDebt > 0 && (
-        <p className="col-span-full text-sm text-muted-foreground">
-          Net IBKR cash debt of{' '}
-          <span className="font-mono text-loss">{formatCurrency(ibkrDebt, 'USD', 2)}</span> is
-          deducted from net worth. These charts show positive asset balances.
-        </p>
-      )}
-      <AllocationDonut
-        data={categoryAllocation}
-        colors={ASSET_COLORS}
-        hidden={hiddenCategory}
-        setHidden={setHiddenCategory}
-        title="By Asset"
-        totalValue={totals.portfolio}
-        onSliceClick={focusDetailedBucket}
-        isSliceClickable={isCategoryBucket}
-      />
-      <AllocationDonut
-        data={selectedDetailedAllocation}
-        colors={selectedDetailedColors}
-        hidden={hiddenDetailed}
-        setHidden={setHiddenDetailed}
-        title={detailedTitle}
-        totalValue={selectedDetailedTotal}
-        headerControl={detailedHeaderControl}
-      />
-      <AllocationDonut
-        data={storageAllocation}
-        colors={STORAGE_BREAKDOWN_COLORS}
-        hidden={hiddenStorage}
-        setHidden={setHiddenStorage}
-        title="By Storage"
-        totalValue={totals.portfolio}
-      />
-      {cashAllocation.length > 0 && (
+    <div className="allocation-layout">
+      <div className="allocation-grid grid gap-4">
+        {ibkrDebt > 0 && (
+          <p className="col-span-full text-sm text-muted-foreground">
+            Net IBKR cash debt of{' '}
+            <span className="font-mono text-loss">{formatCurrency(ibkrDebt, 'USD', 2)}</span> is
+            deducted from net worth. These charts show positive asset balances.
+          </p>
+        )}
         <AllocationDonut
-          data={cashAllocation}
-          colors={STABLES_COLORS}
-          hidden={hiddenCash}
-          setHidden={setHiddenCash}
-          title="Cash Breakdown"
-          totalValue={totals.cash}
+          data={categoryAllocation}
+          colors={ASSET_COLORS}
+          hidden={hiddenCategory}
+          setHidden={setHiddenCategory}
+          title="By Asset"
+          totalValue={totals.portfolio}
+          onSliceClick={focusDetailedBucket}
+          isSliceClickable={isCategoryBucket}
         />
-      )}
+        <AllocationDonut
+          data={selectedDetailedAllocation}
+          colors={selectedDetailedColors}
+          hidden={hiddenDetailed}
+          setHidden={setHiddenDetailed}
+          title={detailedTitle}
+          totalValue={selectedDetailedTotal}
+          headerControl={detailedHeaderControl}
+        />
+        <AllocationDonut
+          data={storageAllocation}
+          colors={STORAGE_BREAKDOWN_COLORS}
+          hidden={hiddenStorage}
+          setHidden={setHiddenStorage}
+          title="By Storage"
+          totalValue={totals.portfolio}
+        />
+        {cashAllocation.length > 0 && (
+          <AllocationDonut
+            data={cashAllocation}
+            colors={STABLES_COLORS}
+            hidden={hiddenCash}
+            setHidden={setHiddenCash}
+            title="Cash Breakdown"
+            totalValue={totals.cash}
+          />
+        )}
+      </div>
     </div>
   );
 }

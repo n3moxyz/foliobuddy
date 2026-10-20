@@ -1,3 +1,4 @@
+import { QueryErrorNotice } from '@/components/ui/QueryErrorNotice';
 import { useState, useMemo } from 'react';
 import {
   usePositions,
@@ -141,7 +142,13 @@ export default function Portfolio() {
   const { formatCurrency } = useMoneyFormatter();
   // isPending, not isLoading: a first load paused offline or in a hidden tab has
   // no data yet, so it must show the skeleton rather than an empty state.
-  const { data: positions, isPending: positionsPending } = usePositions();
+  const {
+    data: positions,
+    isPending: positionsPending,
+    isError: positionsError,
+    refetch: retryPositions,
+    isFetching: positionsFetching,
+  } = usePositions();
   const { data: summary } = usePortfolioSummary();
   const { data: fxRates } = useFxRates();
   const { currentDrawdownPct } = useDrawdownStats(summary?.totalValueUsd ?? 0);
@@ -522,7 +529,12 @@ export default function Portfolio() {
                   {formatPercent(summary.unrealizedPnLPct)}
                 </p>
               </div>
-              <Button size="sm" className="shrink-0 px-3" onClick={() => setShowAddForm(true)}>
+              <Button
+                size="sm"
+                className="shrink-0 px-3"
+                aria-label="Add position"
+                onClick={() => setShowAddForm(true)}
+              >
                 <Plus className="h-4 w-4 mr-1" />
                 Add
               </Button>
@@ -647,12 +659,22 @@ export default function Portfolio() {
         </div>
       )}
 
-      {!positionsPending && (!positions || positions.length === 0) && (
+      {positionsError && (
+        <QueryErrorNotice
+          subject="positions"
+          hasData={!!positions}
+          retrying={positionsFetching}
+          onRetry={() => void retryPositions()}
+        />
+      )}
+
+      {!positionsPending && !positionsError && (!positions || positions.length === 0) && (
         <div className="py-16 text-center">
           <Wallet className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <h2 className="text-lg font-semibold mb-1">No positions yet</h2>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-            Add your first crypto or cash position to start tracking your portfolio value and P&L.
+            Add your first crypto, equity, or cash position to start tracking your portfolio value
+            and P&L.
           </p>
           <Button onClick={() => setShowAddForm(true)}>
             <Plus className="h-4 w-4 mr-1.5" />
@@ -750,7 +772,7 @@ export default function Portfolio() {
               isExpanded={isExpanded(section.id)}
               onToggle={() => toggle(section.id)}
               headerRight={
-                <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+                <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
                   {!isExpanded(section.id) && (
                     <span className="hidden text-xs text-muted-foreground sm:inline">
                       {section.positions.length} position
@@ -901,7 +923,7 @@ export default function Portfolio() {
             isExpanded={isExpanded('custody')}
             onToggle={() => toggle('custody')}
             headerRight={
-              <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
                 {!isExpanded('custody') && (
                   <span className="hidden text-xs text-muted-foreground sm:inline">
                     {custodyPositions.length} position{custodyPositions.length !== 1 ? 's' : ''}

@@ -161,7 +161,7 @@ export default function Settings() {
             <div>
               <Label htmlFor="shortcuts-select">Keyboard Shortcuts</Label>
               <p className="text-sm text-muted-foreground">
-                Single-key navigation (D, P, T, H, I, S) and / for theme
+                Single-key navigation (D, P, T, N, H, I, S) and / for theme
               </p>
             </div>
             <Select

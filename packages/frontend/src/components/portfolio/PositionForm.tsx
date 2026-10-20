@@ -952,7 +952,17 @@ export function PositionForm({
 
   // Keyboard navigation handler for search dropdown
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showDropdown || combinedResults.length === 0) return;
+    if (e.key === 'Escape' && showDropdown) {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowDropdown(false);
+      setHighlightedIndex(-1);
+      return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      setShowDropdown(true);
+    }
+    if (combinedResults.length === 0) return;
 
     switch (e.key) {
       case 'ArrowDown':
@@ -973,10 +983,6 @@ export function PositionForm({
             handleSelectCoin(result.coin!);
           }
         }
-        break;
-      case 'Escape':
-        setShowDropdown(false);
-        setHighlightedIndex(-1);
         break;
     }
   };
@@ -2262,7 +2268,7 @@ export function PositionForm({
                     positionAssetName={position?.asset.name}
                     onSearchChange={handleSearchChange}
                     onFocus={() => setShowDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                    onBlur={() => setShowDropdown(false)}
                     onKeyDown={handleSearchKeyDown}
                     onSelectExistingAsset={handleSelectExistingAsset}
                     onSelectCoin={handleSelectCoin}

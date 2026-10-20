@@ -53,7 +53,7 @@ export function AssetSearchDropdown({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
   const activeOptionId =
-    highlightedIndex >= 0 && showDropdown && combinedResults.length > 0
+    highlightedIndex >= 0 && highlightedIndex < combinedResults.length && showDropdown
       ? `${listboxId}-option-${highlightedIndex}`
       : undefined;
 
@@ -70,6 +70,7 @@ export function AssetSearchDropdown({
   if (isEditing) {
     return (
       <Input
+        id={id}
         value={`${positionAssetSymbol} - ${positionAssetName}`}
         disabled
         className="bg-muted"
@@ -81,9 +82,10 @@ export function AssetSearchDropdown({
     return (
       <div className="flex items-center gap-2">
         <Input
+          id={id}
           value={`${selectedAsset.symbol} - ${selectedAsset.name}`}
           disabled
-          className="bg-muted flex-1"
+          className="bg-muted min-w-0 flex-1"
         />
         <Button type="button" variant="outline" size="sm" onClick={onClearSelection}>
           Change
@@ -105,8 +107,10 @@ export function AssetSearchDropdown({
         onFocus={onFocus}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
+        autoComplete="off"
+        spellCheck={false}
         role="combobox"
-        aria-expanded={showDropdown && combinedResults.length > 0}
+        aria-expanded={showDropdown}
         aria-haspopup="listbox"
         aria-autocomplete="list"
         aria-controls={listboxId}
@@ -118,6 +122,8 @@ export function AssetSearchDropdown({
           id={listboxId}
           ref={dropdownRef}
           role="listbox"
+          aria-label="Matching assets"
+          onMouseDown={(event) => event.preventDefault()}
           className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
         >
           {searchLoading && searchQuery.length >= 1 ? (
@@ -129,8 +135,9 @@ export function AssetSearchDropdown({
                 id={`${listboxId}-option-${index}`}
                 type="button"
                 role="option"
+                tabIndex={-1}
                 aria-selected={index === highlightedIndex}
-                className={`flex min-h-11 w-full items-center justify-between px-3 py-2 text-left sm:min-h-0 ${
+                className={`flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left sm:min-h-0 ${
                   index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
                 }`}
                 onClick={() => {
@@ -142,7 +149,7 @@ export function AssetSearchDropdown({
                 }}
                 onMouseEnter={() => setHighlightedIndex(index)}
               >
-                <span>
+                <span className="min-w-0 break-words [overflow-wrap:anywhere]">
                   <span className="font-medium">
                     {result.type === 'existing'
                       ? result.asset!.symbol
@@ -155,20 +162,24 @@ export function AssetSearchDropdown({
                 {result.type === 'search' &&
                   'exchange' in result.coin! &&
                   result.coin!.exchange && (
-                    <span className="text-xs text-muted-foreground">{result.coin!.exchange}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {result.coin!.exchange}
+                    </span>
                   )}
                 {result.type === 'search' && !('exchange' in result.coin!) && result.coin!.rank && (
-                  <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    #{result.coin!.rank}
+                  </span>
                 )}
                 {result.type === 'existing' && (
-                  <span className="text-xs text-profit">In portfolio</span>
+                  <span className="shrink-0 text-xs text-profit">In portfolio</span>
                 )}
               </button>
             ))
           ) : searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">No coins found</div>
+            <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
           ) : (
-            <div className="p-3 text-sm text-muted-foreground">Type to search coins...</div>
+            <div className="p-3 text-sm text-muted-foreground">Type to search assets...</div>
           )}
         </div>
       )}

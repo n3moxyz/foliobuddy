@@ -199,7 +199,7 @@ export function NetWorthCard({
         Net Worth{investorLabel && ` (${investorLabel})`}
       </h2>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-3">
         <span className="text-4xl font-bold tracking-tight tabular-nums sm:text-5xl">
           {formatCurrency(animatedValue, currency, 0)}
         </span>
@@ -217,14 +217,14 @@ export function NetWorthCard({
         Scroll horizontally to view all portfolio statistics on narrower screens.
       </p>
       <div
-        className="-mx-4 mt-4 snap-x snap-proximity scroll-px-4 overflow-x-auto overscroll-x-contain px-4 pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:scroll-px-0 sm:px-0 xl:snap-none xl:overflow-visible"
+        className="networth-rail -mx-4 mt-4 snap-x snap-proximity scroll-px-4 overflow-x-auto overscroll-x-contain px-4 pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:scroll-px-0 sm:px-0"
         role="region"
         aria-label="Net worth statistics"
         aria-describedby="net-worth-stats-instructions"
         tabIndex={0}
         data-testid="net-worth-stat-grid"
       >
-        <div className="grid min-w-max grid-flow-col auto-cols-[9rem] xl:min-w-0 xl:grid-flow-row xl:grid-cols-9 xl:auto-cols-auto">
+        <div className="networth-metrics grid min-w-max grid-flow-col auto-cols-[9rem]">
           {stats.map((stat, index) => (
             <NetWorthStatCell key={stat.label} {...stat} index={index} />
           ))}

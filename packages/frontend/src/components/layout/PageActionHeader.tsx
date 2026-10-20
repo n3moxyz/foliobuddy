@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface PageActionHeaderProps {
@@ -20,8 +20,35 @@ export function PageActionHeader({
   contentClassName,
   stickyOnMobile = true,
 }: PageActionHeaderProps) {
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const root = document.documentElement;
+    const updateOffset = () => {
+      const style = getComputedStyle(header);
+      const offset =
+        style.position === 'sticky'
+          ? (parseFloat(style.top) || 0) + header.getBoundingClientRect().height + 16
+          : 80;
+      root.style.setProperty('--app-scroll-offset', `${Math.ceil(offset)}px`);
+    };
+    updateOffset();
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateOffset);
+    observer?.observe(header);
+    window.addEventListener('resize', updateOffset);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateOffset);
+      root.style.removeProperty('--app-scroll-offset');
+    };
+  }, []);
+
   return (
     <div
+      ref={headerRef}
       data-page-sticky-header
       className={cn(
         '-mx-4 -mt-4 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:-mx-6 lg:-mt-6 lg:px-6',

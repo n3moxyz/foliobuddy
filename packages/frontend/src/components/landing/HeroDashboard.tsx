@@ -69,12 +69,15 @@ function HeroSparkline({ animate }: { animate: boolean }) {
 function HeroDonut({ drawn }: { drawn: boolean }) {
   const radius = 30;
   const circumference = 2 * Math.PI * radius;
-  let offset = 0;
 
   return (
     <svg viewBox="0 0 80 80" className="h-20 w-20 shrink-0" aria-hidden="true">
       {HERO_ALLOCATION.map((slice, index) => {
         const length = (slice.pct / 100) * circumference;
+        const offset = HERO_ALLOCATION.slice(0, index).reduce(
+          (sum, previous) => sum + (previous.pct / 100) * circumference,
+          0
+        );
         // Leave a hairline gap between segments, like the app's donuts.
         const gap = 2.5;
         const segment = (
@@ -95,7 +98,6 @@ function HeroDonut({ drawn }: { drawn: boolean }) {
             style={{ transitionDelay: `${350 + index * 70}ms` }}
           />
         );
-        offset += length;
         return segment;
       })}
       <text
@@ -218,9 +220,9 @@ export function HeroDashboard() {
                 ▲ +{HERO_YTD_PCT}% YTD
               </div>
             </div>
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex w-20 shrink-0 flex-col items-center gap-1 sm:w-auto">
               <HeroDonut drawn={reduced || mounted} />
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:flex-nowrap">
                 {HERO_ALLOCATION.map((slice) => (
                   <span
                     key={slice.label}

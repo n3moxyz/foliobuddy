@@ -1,3 +1,4 @@
+import { QueryErrorNotice } from '@/components/ui/QueryErrorNotice';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -69,7 +70,13 @@ export default function Investors() {
 
   // isPending, not isLoading: a first load paused offline or in a hidden tab has
   // no data yet, so it must show the skeleton rather than an empty state.
-  const { data: investors, isPending: investorsPending } = useQuery({
+  const {
+    data: investors,
+    isPending: investorsPending,
+    isError: investorsError,
+    refetch: retryInvestors,
+    isFetching: investorsFetching,
+  } = useQuery({
     queryKey: ['investors'],
     queryFn: api.getInvestors,
   });
@@ -169,6 +176,14 @@ export default function Investors() {
         </div>
       </PageActionHeader>
 
+      {investorsError && (
+        <QueryErrorNotice
+          subject="investors"
+          hasData={!!investors}
+          retrying={investorsFetching}
+          onRetry={() => void retryInvestors()}
+        />
+      )}
       <Card>
         <CardHeader>
           <CardTitle>Investor List</CardTitle>
@@ -188,83 +203,165 @@ export default function Investors() {
               ))}
             </div>
           ) : investors && investors.length > 0 ? (
-            <div className="rounded-md border overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="text-right">Stake %</TableHead>
-                    <TableHead className="hidden sm:table-cell text-right">
-                      Capital (1 Jan)
-                    </TableHead>
-                    <TableHead className="hidden sm:table-cell text-right">Current Value</TableHead>
-                    <TableHead className="text-right">YTD Return</TableHead>
-                    <TableHead className="w-[80px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {investors.map((investor) => (
-                    <TableRow key={investor.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
+            <>
+              <div className="space-y-3 sm:hidden">
+                {investors.map((investor) => (
+                  <article key={investor.id} className="min-w-0 rounded-md border p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="break-words font-semibold [overflow-wrap:anywhere]">
                           {investor.name}
-                          {investor.isOwner && (
-                            <span className="inline-flex items-center gap-1 text-xs text-warning bg-warning/10 px-1.5 py-0.5 rounded">
-                              <Crown className="h-3 w-3" />
-                              Owner
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatStakePercentage(investor.stakePercentage)}%
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-right font-mono">
-                        {investor.capitalAtYearStart
-                          ? displayValue(investor.capitalAtYearStart)
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-right font-mono">
-                        {displayValue(investor.currentValue)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {investor.ytdReturn !== null ? (
-                          <div className={getPnLColorClass(investor.ytdReturn)}>
-                            <p className="font-mono">{displayValue(investor.ytdReturn)}</p>
-                            <p className="text-xs">{formatPercent(investor.ytdReturnPct)}</p>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
+                        </h3>
+                        {investor.isOwner && (
+                          <span className="mt-1 inline-flex items-center gap-1 text-xs text-warning">
+                            <Crown aria-hidden="true" className="h-3 w-3" />
+                            Primary owner
+                          </span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
-                            onClick={() => setEditInvestor(investor)}
-                            aria-label="Edit investor"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="-mx-1 h-11 w-11 shrink-0 text-destructive touch-manipulation hover:text-destructive md:mx-0 md:h-8 md:w-8"
-                            onClick={() => setDeleteInvestor(investor)}
-                            aria-label="Delete investor"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      </div>
+                      <span className="shrink-0 text-right font-mono text-sm">
+                        {formatStakePercentage(investor.stakePercentage)}%
+                        <span className="block font-sans text-xs text-muted-foreground">stake</span>
+                      </span>
+                    </div>
+                    <dl className="my-4 grid grid-cols-2 gap-3 text-sm">
+                      <div className="min-w-0">
+                        <dt className="text-xs text-muted-foreground">Current value</dt>
+                        <dd className="mt-1 break-words font-mono">
+                          {displayValue(investor.currentValue)}
+                        </dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-xs text-muted-foreground">YTD return</dt>
+                        <dd
+                          className={`mt-1 break-words font-mono ${getPnLColorClass(investor.ytdReturn)}`}
+                        >
+                          {investor.ytdReturn != null ? (
+                            <>
+                              {displayValue(investor.ytdReturn)}
+                              <span className="mt-0.5 block text-xs">
+                                {formatPercent(investor.ytdReturnPct)}
+                              </span>
+                            </>
+                          ) : (
+                            '—'
+                          )}
+                        </dd>
+                      </div>
+                      <div className="col-span-2">
+                        <dt className="text-xs text-muted-foreground">Capital (1 Jan)</dt>
+                        <dd className="mt-1 font-mono">
+                          {investor.capitalAtYearStart != null
+                            ? displayValue(investor.capitalAtYearStart)
+                            : '—'}
+                        </dd>
+                      </div>
+                    </dl>
+                    <div className="flex gap-2 border-t pt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setEditInvestor(investor)}
+                        aria-label={`Edit investor ${investor.name}`}
+                      >
+                        <Pencil aria-hidden="true" className="mr-2 h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteInvestor(investor)}
+                        aria-label={`Delete investor ${investor.name}`}
+                      >
+                        <Trash2 aria-hidden="true" className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden rounded-md border overflow-x-auto sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead className="text-right">Stake %</TableHead>
+                      <TableHead className="hidden sm:table-cell text-right">
+                        Capital (1 Jan)
+                      </TableHead>
+                      <TableHead className="hidden sm:table-cell text-right">
+                        Current Value
+                      </TableHead>
+                      <TableHead className="text-right">YTD Return</TableHead>
+                      <TableHead className="w-[80px]">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
+                  </TableHeader>
+                  <TableBody>
+                    {investors.map((investor) => (
+                      <TableRow key={investor.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {investor.name}
+                            {investor.isOwner && (
+                              <span className="inline-flex items-center gap-1 text-xs text-warning bg-warning/10 px-1.5 py-0.5 rounded">
+                                <Crown className="h-3 w-3" />
+                                Owner
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatStakePercentage(investor.stakePercentage)}%
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-right font-mono">
+                          {investor.capitalAtYearStart
+                            ? displayValue(investor.capitalAtYearStart)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-right font-mono">
+                          {displayValue(investor.currentValue)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {investor.ytdReturn !== null ? (
+                            <div className={getPnLColorClass(investor.ytdReturn)}>
+                              <p className="font-mono">{displayValue(investor.ytdReturn)}</p>
+                              <p className="text-xs">{formatPercent(investor.ytdReturnPct)}</p>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
+                              onClick={() => setEditInvestor(investor)}
+                              aria-label={`Edit investor ${investor.name}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="-mx-1 h-11 w-11 shrink-0 text-destructive touch-manipulation hover:text-destructive md:mx-0 md:h-8 md:w-8"
+                              onClick={() => setDeleteInvestor(investor)}
+                              aria-label={`Delete investor ${investor.name}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          ) : !investorsError ? (
             <div className="py-16 text-center">
               <UsersIcon className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-1">No investors yet</h3>
@@ -276,7 +373,7 @@ export default function Investors() {
                 Add Investor
               </Button>
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
@@ -286,12 +383,13 @@ export default function Investors() {
             <DialogTitle>Add New Investor</DialogTitle>
             <DialogDescription>
               {totalStake >= 100
-                ? `Total stake is currently ${formatStakePercentage(totalStake)}%. You may need to rebalance existing investors after adding.`
+                ? "All stake is allocated. Reduce an existing investor's stake before adding another investor."
                 : 'Add an investor with their stake percentage and starting capital.'}
             </DialogDescription>
           </DialogHeader>
           <InvestorForm
             onSubmit={(data) => createMutation.mutate(data)}
+            onCancel={() => setShowAddForm(false)}
             isLoading={createMutation.isPending}
             currentTotalStake={totalStake}
             allInvestors={investors || []}
@@ -310,6 +408,7 @@ export default function Investors() {
           {editInvestor && (
             <InvestorForm
               onSubmit={(data) => updateMutation.mutate({ id: editInvestor.id, data })}
+              onCancel={() => setEditInvestor(null)}
               isLoading={updateMutation.isPending}
               initialData={editInvestor}
               currentTotalStake={totalStake}
@@ -342,7 +441,7 @@ export default function Investors() {
 
             {deleteInvestor && investors && investors.length > 1 && (
               <div className="space-y-2">
-                <Label>
+                <Label htmlFor="reassign-investor">
                   Reassign {formatStakePercentage(deleteInvestor.stakePercentage)}% stake to:
                 </Label>
                 {investors.length === 2 ? (
@@ -354,7 +453,7 @@ export default function Investors() {
                   </p>
                 ) : (
                   <Select value={reassignToId} onValueChange={setReassignToId}>
-                    <SelectTrigger>
+                    <SelectTrigger id="reassign-investor">
                       <SelectValue placeholder="Select an investor" />
                     </SelectTrigger>
                     <SelectContent>
@@ -416,12 +515,14 @@ export default function Investors() {
 
 function InvestorForm({
   onSubmit,
+  onCancel,
   isLoading,
   initialData,
   currentTotalStake = 0,
   allInvestors = EMPTY_INVESTORS,
 }: {
   onSubmit: (data: CreateInvestorData) => void;
+  onCancel: () => void;
   isLoading: boolean;
   initialData?: Investor;
   currentTotalStake?: number;
@@ -451,6 +552,7 @@ function InvestorForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || (!isEditing && suggestedStake <= 0)) return;
     if (isEditing) {
       // Edit mode: send the stake percentage
       onSubmit({
@@ -526,7 +628,11 @@ function InvestorForm({
             <div className="flex items-center h-10 px-3 rounded-md border bg-muted font-mono">
               {formatStakePercentage(suggestedStake)}%
             </div>
-            <p className="text-xs text-muted-foreground">Automatically assigned remaining stake</p>
+            <p id="investor-stake-hint" role="status" className="text-xs text-muted-foreground">
+              {suggestedStake > 0
+                ? 'Automatically assigned remaining stake'
+                : 'No stake is available. Reduce an existing investor’s stake, then add the new investor.'}
+            </p>
           </>
         )}
       </div>
@@ -555,7 +661,16 @@ function InvestorForm({
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="submit" disabled={isLoading || !name || (isEditing && !stakePercentage)}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          aria-describedby={!isEditing ? 'investor-stake-hint' : undefined}
+          disabled={
+            isLoading || !name.trim() || (isEditing ? !stakePercentage : suggestedStake <= 0)
+          }
+        >
           {isLoading
             ? isEditing
               ? 'Saving...'
