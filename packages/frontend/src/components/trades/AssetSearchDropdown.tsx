@@ -102,7 +102,17 @@ export function AssetSearchDropdown({
 
   // Keyboard navigation handler for search dropdown
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showDropdown || combinedResults.length === 0) return;
+    if (e.key === 'Escape' && showDropdown) {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowDropdown(false);
+      setHighlightedIndex(-1);
+      return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      setShowDropdown(true);
+    }
+    if (combinedResults.length === 0) return;
 
     switch (e.key) {
       case 'ArrowDown':
@@ -124,10 +134,6 @@ export function AssetSearchDropdown({
           }
         }
         break;
-      case 'Escape':
-        setShowDropdown(false);
-        setHighlightedIndex(-1);
-        break;
     }
   };
 
@@ -148,6 +154,7 @@ export function AssetSearchDropdown({
   if (disabled && selectedAsset) {
     return (
       <Input
+        id={id}
         value={`${selectedAsset.symbol} - ${selectedAsset.name}`}
         disabled
         className="bg-muted"
@@ -159,9 +166,10 @@ export function AssetSearchDropdown({
     return (
       <div className="flex items-center gap-2">
         <Input
+          id={id}
           value={`${selectedAsset.symbol} - ${selectedAsset.name}`}
           disabled
-          className="bg-muted flex-1"
+          className="bg-muted min-w-0 flex-1"
         />
         <Button type="button" variant="outline" size="sm" onClick={handleClearSelection}>
           Change
@@ -182,10 +190,12 @@ export function AssetSearchDropdown({
           setHighlightedIndex(-1);
         }}
         onFocus={() => setShowDropdown(true)}
-        onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+        onBlur={() => setShowDropdown(false)}
         onKeyDown={handleSearchKeyDown}
+        autoComplete="off"
+        spellCheck={false}
         role="combobox"
-        aria-expanded={showDropdown && combinedResults.length > 0}
+        aria-expanded={showDropdown}
         aria-haspopup="listbox"
         aria-autocomplete="list"
         aria-controls={listboxId}
@@ -197,6 +207,8 @@ export function AssetSearchDropdown({
           id={listboxId}
           ref={dropdownRef}
           role="listbox"
+          aria-label="Matching assets"
+          onMouseDown={(event) => event.preventDefault()}
           className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
         >
           {searchLoading && searchQuery.length >= 1 ? (
@@ -208,8 +220,9 @@ export function AssetSearchDropdown({
                 id={`${listboxId}-option-${index}`}
                 type="button"
                 role="option"
+                tabIndex={-1}
                 aria-selected={index === safeHighlightedIndex}
-                className={`flex min-h-11 w-full items-center justify-between px-3 py-2 text-left sm:min-h-0 ${
+                className={`flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left sm:min-h-0 ${
                   index === safeHighlightedIndex ? 'bg-muted' : 'hover:bg-muted'
                 }`}
                 onClick={() => {
@@ -221,7 +234,7 @@ export function AssetSearchDropdown({
                 }}
                 onMouseEnter={() => setHighlightedIndex(index)}
               >
-                <span>
+                <span className="min-w-0 break-words [overflow-wrap:anywhere]">
                   <span className="font-medium">
                     {result.type === 'existing'
                       ? result.asset!.symbol
@@ -232,17 +245,19 @@ export function AssetSearchDropdown({
                   </span>
                 </span>
                 {result.type === 'search' && result.coin!.rank && (
-                  <span className="text-xs text-muted-foreground">#{result.coin!.rank}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    #{result.coin!.rank}
+                  </span>
                 )}
                 {result.type === 'existing' && (
-                  <span className="text-xs text-profit">In portfolio</span>
+                  <span className="shrink-0 text-xs text-profit">In portfolio</span>
                 )}
               </button>
             ))
           ) : searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">No coins found</div>
+            <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
           ) : (
-            <div className="p-3 text-sm text-muted-foreground">Type to search coins...</div>
+            <div className="p-3 text-sm text-muted-foreground">Type to search assets...</div>
           )}
         </div>
       )}

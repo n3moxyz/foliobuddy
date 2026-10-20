@@ -2673,3 +2673,24 @@ The fund NAV display also used a plain space where other currency formatters
 used a nonbreaking one. That let `SGD` sit above its amount in a narrow cell.
 Native quotes now share the currency formatter, keep the fund's four decimal
 places, and stay together in tables, details, imports and broker previews.
+
+## October 2026: Interactions need the same care as the numbers
+
+The app-wide Sparkleup pass kept the existing visual style. Most friction came
+from shared controls: hidden mobile navigation still accepted focus, asset search
+could close its whole dialog on Escape, and controlled dialogs lost the opener.
+The navigation now uses Radix focus management. Dialogs restore focus and let
+search close first. Failed first loads now offer a retry without claiming that
+the portfolio is empty.
+
+Phone users get investor cards with visible actions. A full allocation now
+explains why another investor cannot be added. Dashboard charts measure their
+container instead of assuming that a wide viewport guarantees enough room.
+This also keeps enlarged text usable beside the desktop sidebar. Explicit
+single-column grids fixed the public landing page's mobile overflow.
+
+The check covered all routes, forms, keyboard navigation, saved sample-data
+actions, error recovery, and three browser engines. Automated checks help, but
+they do not replace physical phone, Windows, or screen-reader testing. The
+[coverage record](docs/solutions/runtime-errors/2026-10-20-app-interactions.md)
+records the tested paths and remaining limits.

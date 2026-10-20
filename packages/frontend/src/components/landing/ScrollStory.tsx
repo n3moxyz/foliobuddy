@@ -323,7 +323,7 @@ export function ScrollStory() {
 
       {/* Reduced motion / no-JS style fallback captions, rendered statically */}
       {reduced && (
-        <div className="mx-auto grid max-w-6xl gap-6 px-4 pb-8 sm:grid-cols-2 sm:px-6">
+        <div className="mx-auto grid grid-cols-1 max-w-6xl gap-6 px-4 pb-8 sm:grid-cols-2 sm:px-6">
           {SCROLL_MILESTONES.map((milestone) => (
             <div key={milestone.id}>
               <div className="font-mono text-xs font-medium uppercase tracking-wider text-primary">

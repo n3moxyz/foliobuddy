@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X } from 'lucide-react';
 import type { Trade } from '@/lib/types';
 import { TradeTable } from '@/components/trades/TradeTable';
@@ -40,21 +40,21 @@ export function TradeTapeSection({
   onHighlightComplete,
 }: TradeTapeSectionProps) {
   return (
-    <section className="space-y-3">
-      <div
-        className={
-          title
-            ? 'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'
-            : 'flex items-center gap-2 flex-wrap'
-        }
-      >
-        {title && (
-          <div>
-            <h2 className="text-base font-semibold">{title}</h2>
-            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-          </div>
-        )}
-        <Tabs value={filter} onValueChange={(v) => onFilterChange(v as 'all' | 'OPEN' | 'CLOSED')}>
+    <Tabs value={filter} onValueChange={(v) => onFilterChange(v as 'all' | 'OPEN' | 'CLOSED')}>
+      <section className="space-y-3">
+        <div
+          className={
+            title
+              ? 'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'
+              : 'flex items-center gap-2 flex-wrap'
+          }
+        >
+          {title && (
+            <div>
+              <h2 className="text-base font-semibold">{title}</h2>
+              {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+            </div>
+          )}
           <div className="flex items-center gap-2 flex-wrap">
             <TabsList className="sm:w-auto">
               <TabsTrigger value="all">All ({filteredCount})</TabsTrigger>
@@ -74,17 +74,19 @@ export function TradeTapeSection({
               </Button>
             )}
           </div>
-        </Tabs>
-      </div>
+        </div>
 
-      <TradeTable
-        trades={trades}
-        isLoading={isLoading}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        highlightTradeId={highlightTradeId}
-        onHighlightComplete={onHighlightComplete}
-      />
-    </section>
+        <TabsContent value={filter}>
+          <TradeTable
+            trades={trades}
+            isLoading={isLoading}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            highlightTradeId={highlightTradeId}
+            onHighlightComplete={onHighlightComplete}
+          />
+        </TabsContent>
+      </section>
+    </Tabs>
   );
 }

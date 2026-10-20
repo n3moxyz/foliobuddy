@@ -1,3 +1,4 @@
+import { QueryErrorNotice } from '@/components/ui/QueryErrorNotice';
 import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -73,7 +74,13 @@ export default function Trades() {
   const { data: summary } = usePortfolioSummary();
   // isPending, not isLoading: a first load paused offline or in a hidden tab has
   // no data yet, so it must show the skeleton rather than an empty state.
-  const { data: trades, isPending: tradesPending } = useTrades();
+  const {
+    data: trades,
+    isPending: tradesPending,
+    isError: tradesError,
+    refetch: retryTrades,
+    isFetching: tradesFetching,
+  } = useTrades();
   const { data: analytics } = useTradeAnalytics();
   const deleteAllMutation = useDeleteAllTrades();
   const deleteTradeMutation = useDeleteTrade();
@@ -166,7 +173,7 @@ export default function Trades() {
           title="Trade Journal"
           subtitle={
             analytics
-              ? `${analytics.totalTrades} trades · ${analytics.winRate?.toFixed(0) ?? 0}% win rate`
+              ? `${analytics.totalTrades} closed trades · ${analytics.winRate?.toFixed(0) ?? 0}% win rate`
               : undefined
           }
           actions={
@@ -278,83 +285,97 @@ export default function Trades() {
           </div>
         </PageActionHeader>
 
-        <TabsContent value="review" className="mt-5 space-y-6">
-          {analytics && (
-            <TradeStatsCard
-              analytics={analytics}
-              currency={currency}
-              fxRate={fxRate}
-              onTradeClick={handleNotableTradeClick}
-              isExpanded={statsExpanded}
-              onToggle={() => setStatsExpanded(!statsExpanded)}
+        {tradesError && (
+          <div className="mt-5">
+            <QueryErrorNotice
+              subject="trades"
+              hasData={!!trades}
+              retrying={tradesFetching}
+              onRetry={() => void retryTrades()}
             />
-          )}
+          </div>
+        )}
+        {(!tradesError || !!trades) && (
+          <>
+            <TabsContent value="review" className="mt-5 space-y-6">
+              {analytics && (
+                <TradeStatsCard
+                  analytics={analytics}
+                  currency={currency}
+                  fxRate={fxRate}
+                  onTradeClick={handleNotableTradeClick}
+                  isExpanded={statsExpanded}
+                  onToggle={() => setStatsExpanded(!statsExpanded)}
+                />
+              )}
 
-          {allTrades.length > 0 && (
-            <TickerPnLCard
-              trades={allTrades}
-              currency={currency}
-              fxRate={fxRate}
-              onTickerClick={setTickerLens}
-              isExpanded={tickerPnlExpanded}
-              onToggle={() => setTickerPnlExpanded(!tickerPnlExpanded)}
-            />
-          )}
+              {allTrades.length > 0 && (
+                <TickerPnLCard
+                  trades={allTrades}
+                  currency={currency}
+                  fxRate={fxRate}
+                  onTickerClick={setTickerLens}
+                  isExpanded={tickerPnlExpanded}
+                  onToggle={() => setTickerPnlExpanded(!tickerPnlExpanded)}
+                />
+              )}
 
-          <TradeTapeSection
-            trades={visibleTrades}
-            isLoading={tradesPending}
-            filter={filter}
-            onFilterChange={setFilter}
-            filteredCount={filteredTrades.length}
-            openCount={openTrades.length}
-            closedCount={closedTrades.length}
-            onEdit={setEditingTrade}
-            onDelete={setDeletingTrade}
-            highlightTradeId={highlightTradeId}
-            onHighlightComplete={() => setHighlightTradeId(null)}
-          />
-        </TabsContent>
+              <TradeTapeSection
+                trades={visibleTrades}
+                isLoading={tradesPending}
+                filter={filter}
+                onFilterChange={setFilter}
+                filteredCount={filteredTrades.length}
+                openCount={openTrades.length}
+                closedCount={closedTrades.length}
+                onEdit={setEditingTrade}
+                onDelete={setDeletingTrade}
+                highlightTradeId={highlightTradeId}
+                onHighlightComplete={() => setHighlightTradeId(null)}
+              />
+            </TabsContent>
 
-        <TabsContent value="ticker" className="mt-5 space-y-5">
-          <TickerDossierLens
-            selectedTicker={selectedTicker}
-            tickerDossiers={tickerDossiers}
-            currency={currency}
-            fxRate={fxRate}
-            onTickerClick={setTickerLens}
-            onClear={clearTickerLens}
-            onTradeClick={handleNotableTradeClick}
-          />
+            <TabsContent value="ticker" className="mt-5 space-y-5">
+              <TickerDossierLens
+                selectedTicker={selectedTicker}
+                tickerDossiers={tickerDossiers}
+                currency={currency}
+                fxRate={fxRate}
+                onTickerClick={setTickerLens}
+                onClear={clearTickerLens}
+                onTradeClick={handleNotableTradeClick}
+              />
 
-          <TradeTapeSection
-            title={tickerFilterLabel ? `${tickerFilterLabel} Trades` : 'Ticker Trades'}
-            subtitle={`${visibleTrades.length} shown`}
-            trades={visibleTrades}
-            isLoading={tradesPending}
-            filter={filter}
-            onFilterChange={setFilter}
-            filteredCount={filteredTrades.length}
-            openCount={openTrades.length}
-            closedCount={closedTrades.length}
-            tickerFilter={tickerFilterLabel}
-            onClearTicker={clearTickerLens}
-            onEdit={setEditingTrade}
-            onDelete={setDeletingTrade}
-            highlightTradeId={highlightTradeId}
-            onHighlightComplete={() => setHighlightTradeId(null)}
-          />
-        </TabsContent>
+              <TradeTapeSection
+                title={tickerFilterLabel ? `${tickerFilterLabel} Trades` : 'Ticker Trades'}
+                subtitle={`${visibleTrades.length} shown`}
+                trades={visibleTrades}
+                isLoading={tradesPending}
+                filter={filter}
+                onFilterChange={setFilter}
+                filteredCount={filteredTrades.length}
+                openCount={openTrades.length}
+                closedCount={closedTrades.length}
+                tickerFilter={tickerFilterLabel}
+                onClearTicker={clearTickerLens}
+                onEdit={setEditingTrade}
+                onDelete={setDeletingTrade}
+                highlightTradeId={highlightTradeId}
+                onHighlightComplete={() => setHighlightTradeId(null)}
+              />
+            </TabsContent>
 
-        <TabsContent value="monthly" className="mt-5">
-          <MonthlyPostmortemLens
-            monthlyReviews={monthlyReviews}
-            openTrades={allOpenTrades}
-            currency={currency}
-            fxRate={fxRate}
-            onTradeClick={handleNotableTradeClick}
-          />
-        </TabsContent>
+            <TabsContent value="monthly" className="mt-5">
+              <MonthlyPostmortemLens
+                monthlyReviews={monthlyReviews}
+                openTrades={allOpenTrades}
+                currency={currency}
+                fxRate={fxRate}
+                onTradeClick={handleNotableTradeClick}
+              />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
 
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>

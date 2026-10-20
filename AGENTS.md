@@ -177,6 +177,7 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 - Toaster `className="pointer-events-auto"` counters modal body pointer lock; `top-center` below `sm`, `offset`/`mobileOffset` top 64px clears `h-14`. Modal FocusScope traps Tab: toasts unreachable by keyboard while modal open (pre-existing).
 - `MutationCache.onError` toasts every failed mutation; handlers must never fail silently (`console.error`-only catch = bug); copy/refresh/snapshot toast success + failure. Story: FORET.md.
 - Skeletons `role="status"` + sr-only text; inline errors `role="alert"` + `aria-invalid`/`aria-describedby`.
+- `QueryErrorNotice` supplies retry controls. Keep loaded data on refresh failure. Show empty states only after successful empty responses.
 
 ### Responsive Mobile Design
 
@@ -186,6 +187,10 @@ iOS HIG, all pages:
 - **Dialogs**: content-heavy dock full-width to mobile's bottom (`!bottom-0`, rounded top, safe-area bottom padding), centered modal `sm+`; all `w-[calc(100%-2rem)]` + `max-h-[85vh] overflow-y-auto`.
 - **Touch**: 44px, compacting `sm+`/`md+`; `Input`/`SelectTrigger`/`DropdownMenuItem`/asset-search options/creatable-select row actions bake `h-11`/`min-h-11` → `sm:`; never redo per-call-site heights; dense row actions need `shrink-0`.
 - **Headers**: `flex-col gap-3 sm:flex-row`; secondary actions → `DropdownMenu` overflow.
+- Mobile navigation uses a modal Radix dialog. Closed navigation has no hidden focus targets. App shortcuts pause while overlays are open.
+- `DialogContent` restores its opener and lets an open asset search consume Escape first. `DialogHeader` reserves close-button space.
+- Mobile text inputs use 16px text. Keep import textareas at 16px below `sm`. `SelectItem` has a 44px mobile target.
+- `PageActionHeader` measures its sticky height for focus scroll offsets. Dashboard charts use container queries for layout and larger text.
 
 ### Smart Price Formatting
 
@@ -284,7 +289,7 @@ Dashboard investor filter defaults to primary owner (`isOwner = true`), not "all
 
 ### Net Worth Card
 
-Borderless hero, investor title (`Net Worth (Nemo)`). Ordered 9-metric rail: YTD P&L, YTD Start, YTD ATH, MDD, MDD (1D), DD from ATH, Exposure, Positions, Trades. `xl+` shares width; narrower: one horizontal snap-scroll rail, 9rem cells, never wrap; visible scrollbar, keyboard-focusable region. Compact footer: alternate USD/SGD total. `useDrawdownStats()` (`usePortfolio.ts`, shared Portfolio hero) → `calculatePortfolioDrawdownStats()` on YTD snapshots + live value: 4 metrics/one pass, positive magnitudes displayed as negative %. `HelpTooltip` labels need distinct accessible `label`; buttons OUTSIDE `<Link>`s, never nest interactive content in links. Key values share `useAnimatedNumbers()` loop.
+Borderless hero, investor title (`Net Worth (Nemo)`). Ordered 9-metric rail: YTD P&L, YTD Start, YTD ATH, MDD, MDD (1D), DD from ATH, Exposure, Positions, Trades. A container at least 60rem wide shares width; narrower containers use: one horizontal snap-scroll rail, 9rem cells, never wrap; visible scrollbar, keyboard-focusable region. Compact footer: alternate USD/SGD total. `useDrawdownStats()` (`usePortfolio.ts`, shared Portfolio hero) → `calculatePortfolioDrawdownStats()` on YTD snapshots + live value: 4 metrics/one pass, positive magnitudes displayed as negative %. `HelpTooltip` labels need distinct accessible `label`; buttons OUTSIDE `<Link>`s, never nest interactive content in links. Key values share `useAnimatedNumbers()` loop.
 
 ### Performers Card
 
@@ -342,7 +347,7 @@ Portfolio/Trades/History share 1 pattern: per-row clipboard icon, Copy All heade
 
 ### Clickable Rows (Keyboard Safety)
 
-AUTOMATIC snapshot + position rows: click anywhere. Every keyboard-activatable row MUST guard `onKeyDown` with `e.currentTarget === e.target`; actions `TableCell` must stop BOTH `onClick`/`onKeyDown` propagation, else nested Enter/Space fires row action (WCAG 2.1.1). Apply to non-table rows too. References: `TradeTable`, `PositionRow`, `SnapshotTable`, `PositionTable` mobile cards.
+Automatic snapshot and position rows support pointer clicks. Snapshot expansion uses a named button with `aria-expanded`. Keep table rows as rows. Every keyboard-activatable row MUST guard `onKeyDown` with `e.currentTarget === e.target`; actions `TableCell` must stop BOTH `onClick`/`onKeyDown` propagation, else nested Enter/Space fires row action (WCAG 2.1.1). Apply to non-table rows too. References: `TradeTable`, `PositionRow`, `SnapshotTable`, `PositionTable` mobile cards.
 
 ## Design Context
 

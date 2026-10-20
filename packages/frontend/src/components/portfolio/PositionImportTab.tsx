@@ -43,15 +43,21 @@ export function PositionImportTab({
 
       <Textarea
         aria-label="Position JSON to import"
+        aria-invalid={!!parseError}
+        aria-describedby={parseError ? 'position-import-error' : undefined}
         placeholder='[{"asset": {"symbol": "BTC", ...}, "quantity": 1, ...}]'
         value={jsonInput}
         onChange={(e) => onJsonChange(e.target.value)}
         rows={6}
-        className="font-mono text-xs"
+        className="font-mono text-base sm:text-xs"
       />
 
       {parseError && (
-        <div className="flex items-start gap-2 text-destructive text-sm">
+        <div
+          id="position-import-error"
+          role="alert"
+          className="flex items-start gap-2 break-words text-destructive text-sm"
+        >
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <span>{parseError}</span>
         </div>

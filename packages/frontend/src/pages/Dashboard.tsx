@@ -1,3 +1,4 @@
+import { QueryErrorNotice } from '@/components/ui/QueryErrorNotice';
 import { useMemo, useState } from 'react';
 import {
   usePortfolioSummary,
@@ -29,7 +30,13 @@ import { usePerpExposure } from '@/hooks/usePerpExposure';
 export default function Dashboard() {
   usePageTitle('Dashboard');
   const { currency } = useCurrencyStore();
-  const { data: summary, isPending: summaryPending } = usePortfolioSummary();
+  const {
+    data: summary,
+    isPending: summaryPending,
+    isError: summaryError,
+    refetch: retrySummary,
+    isFetching: summaryFetching,
+  } = usePortfolioSummary();
   const { data: positions, isLoading: positionsLoading } = usePositions();
   const { data: tradeAnalytics } = useTradeAnalytics();
   const { data: topPerformers } = useTopPerformers(5);
@@ -123,8 +130,8 @@ export default function Dashboard() {
           <Skeleton className="h-4 w-20 mb-2" />
           <Skeleton className="h-12 w-48 mb-2" />
           {/* Mirrors NetWorthCard's single scroll rail. */}
-          <div className="mt-4 overflow-hidden">
-            <div className="grid min-w-max grid-flow-col auto-cols-[9rem] gap-4 xl:min-w-0 xl:grid-flow-row xl:grid-cols-9 xl:auto-cols-auto">
+          <div className="networth-rail mt-4 overflow-hidden">
+            <div className="networth-metrics grid min-w-max grid-flow-col auto-cols-[9rem] gap-4">
               {Array.from({ length: 9 }, (_, index) => (
                 <Skeleton key={index} className="h-11 w-full" />
               ))}
@@ -135,8 +142,29 @@ export default function Dashboard() {
     );
   }
 
+  if (summaryError && !summary) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <QueryErrorNotice
+          subject="your dashboard"
+          retrying={summaryFetching}
+          onRetry={() => void retrySummary()}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {summaryError && (
+        <QueryErrorNotice
+          subject="your dashboard"
+          hasData
+          retrying={summaryFetching}
+          onRetry={() => void retrySummary()}
+        />
+      )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
+import { QueryErrorNotice } from '@/components/ui/QueryErrorNotice';
 import { useUpdateUserPreferences, useUserPreferences } from '@/hooks/useUserPreferences';
 import {
   DEFAULT_SNAPSHOT_HOUR,
@@ -27,7 +28,7 @@ import {
  * FolioBuddy records your portfolio each day. Defaults to 5:00 AM Singapore.
  */
 export function SnapshotScheduleSection() {
-  const { data, isLoading, isError } = useUserPreferences();
+  const { data, isPending, isFetching, isError, refetch } = useUserPreferences();
   const update = useUpdateUserPreferences();
 
   const hour = data?.snapshotHour ?? DEFAULT_SNAPSHOT_HOUR;
@@ -57,7 +58,7 @@ export function SnapshotScheduleSection() {
             </div>
             <p className="text-sm text-muted-foreground">Local time in your chosen timezone</p>
           </div>
-          {isLoading ? (
+          {isPending ? (
             <Skeleton className="h-11 w-full sm:h-10 sm:w-[140px]" />
           ) : (
             <Select
@@ -87,7 +88,7 @@ export function SnapshotScheduleSection() {
               {zoneOffset ? ` · ${zoneOffset}` : ''}
             </p>
           </div>
-          {isLoading ? (
+          {isPending ? (
             <Skeleton className="h-11 w-full sm:h-10 sm:w-[240px]" />
           ) : (
             <Select
@@ -115,12 +116,15 @@ export function SnapshotScheduleSection() {
         </div>
 
         {isError && (
-          <p role="alert" className="text-sm text-loss">
-            Couldn't load your snapshot schedule. Refresh to try again.
-          </p>
+          <QueryErrorNotice
+            subject="your snapshot schedule"
+            hasData={!!data}
+            retrying={isFetching}
+            onRetry={() => void refetch()}
+          />
         )}
 
-        {!isLoading && !isError && next && (
+        {!isPending && !isError && next && (
           <div className="rounded-md bg-muted p-3">
             <p className="text-sm">
               Next snapshot: {next.isToday ? 'today' : 'tomorrow'} at{' '}

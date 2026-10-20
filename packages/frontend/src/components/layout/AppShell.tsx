@@ -1,4 +1,5 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import * as NavigationDialog from '@radix-ui/react-dialog';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -46,6 +47,7 @@ import {
 import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { usePrivacyStore } from '@/stores/privacyStore';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface AppShellProps {
   children: ReactNode;
@@ -105,6 +107,22 @@ function AppShellContent({
 }: AppShellContentProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const previousPath = useRef(location.pathname);
+  const menuPath = useRef(location.pathname);
+
+  useEffect(() => {
+    if (isDesktop) setSidebarOpen(false);
+  }, [isDesktop]);
+
+  useEffect(() => {
+    if (previousPath.current === location.pathname) return;
+    previousPath.current = location.pathname;
+    mainRef.current?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location.pathname]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
   const [refreshing, setRefreshing] = useState(false);
   const { currency, toggleCurrency } = useCurrencyStore();
@@ -144,6 +162,91 @@ function AppShellContent({
     window.open(api.exportExcel(), '_blank');
   };
 
+  const sidebarContent = (
+    <>
+      <div
+        className={cn(
+          'flex h-16 items-center justify-between px-6 border-b',
+          sidebarCollapsed && 'lg:justify-center lg:px-0'
+        )}
+      >
+        <Link
+          to={buildPath('/')}
+          className={cn('flex min-w-0 items-center gap-2', sidebarCollapsed && 'lg:justify-center')}
+          aria-label="FolioBuddy dashboard"
+        >
+          <BrandMark className="h-8 w-8" />
+          <span className={cn('font-semibold text-lg', sidebarCollapsed && 'lg:hidden')}>
+            FolioBuddy
+          </span>
+        </Link>
+        <button
+          className="flex h-11 w-11 items-center justify-center rounded-md lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close navigation menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <TooltipProvider delayDuration={150}>
+        <nav
+          aria-label="Main"
+          className={cn('flex-1 p-4 space-y-1', sidebarCollapsed && 'lg:px-3')}
+        >
+          {navigation.map((item) => {
+            const targetHref = buildPath(item.href);
+            const isActive = location.pathname === targetHref;
+            const link = (
+              <Link
+                key={item.name}
+                to={targetHref}
+                className={cn(
+                  'flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation',
+                  sidebarCollapsed && 'lg:h-11 lg:justify-center lg:px-0',
+                  isActive
+                    ? 'border-primary/30 bg-primary/10 text-primary font-semibold'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground font-medium'
+                )}
+                onClick={() => setSidebarOpen(false)}
+                aria-label={sidebarCollapsed ? item.name : undefined}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className={cn('truncate', sidebarCollapsed && 'lg:hidden')}>
+                    {item.name}
+                  </span>
+                </span>
+                <kbd
+                  aria-hidden="true"
+                  className={cn(
+                    'hidden lg:inline-block text-xs px-1.5 py-0.5 rounded',
+                    sidebarCollapsed && 'lg:hidden',
+                    isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  {item.shortcut}
+                </kbd>
+              </Link>
+            );
+
+            return sidebarCollapsed ? (
+              <Tooltip key={item.name}>
+                <TooltipTrigger asChild>{link}</TooltipTrigger>
+                <TooltipContent side="right" className="hidden lg:block">
+                  {item.name}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              link
+            );
+          })}
+        </nav>
+      </TooltipProvider>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <a
@@ -152,118 +255,44 @@ function AppShellContent({
       >
         Skip to main content
       </a>
-      {sidebarOpen && (
-        <button
-          type="button"
-          aria-label="Close navigation menu"
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       <aside
         aria-label="Main navigation"
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-card border-r transition-[transform,width] duration-200 ease-out lg:translate-x-0',
-          sidebarCollapsed ? 'lg:w-[4.5rem]' : 'lg:w-64',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          'fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-card lg:flex',
+          sidebarCollapsed ? 'w-[4.5rem]' : 'w-64'
         )}
       >
-        <div
-          className={cn(
-            'flex h-16 items-center justify-between px-6 border-b',
-            sidebarCollapsed && 'lg:justify-center lg:px-0'
-          )}
-        >
-          <Link
-            to={buildPath('/')}
-            className={cn(
-              'flex min-w-0 items-center gap-2',
-              sidebarCollapsed && 'lg:justify-center'
-            )}
-            aria-label="FolioBuddy dashboard"
-          >
-            <BrandMark className="h-8 w-8" />
-            <span className={cn('font-semibold text-lg', sidebarCollapsed && 'lg:hidden')}>
-              FolioBuddy
-            </span>
-          </Link>
-          <button
-            className="flex h-11 w-11 items-center justify-center rounded-md lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close navigation menu"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <TooltipProvider delayDuration={150}>
-          <nav
-            aria-label="Main"
-            className={cn('flex-1 p-4 space-y-1', sidebarCollapsed && 'lg:px-3')}
-          >
-            {navigation.map((item) => {
-              const targetHref = buildPath(item.href);
-              const isActive = location.pathname === targetHref;
-              const link = (
-                <Link
-                  key={item.name}
-                  to={targetHref}
-                  className={cn(
-                    'flex items-center justify-between rounded-md border border-transparent px-3 py-3 text-sm transition-colors touch-manipulation',
-                    sidebarCollapsed && 'lg:h-11 lg:justify-center lg:px-0',
-                    isActive
-                      ? 'border-primary/30 bg-primary/10 text-primary font-semibold'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground font-medium'
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                  aria-label={sidebarCollapsed ? item.name : undefined}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <item.icon className="h-5 w-5 shrink-0" />
-                    <span className={cn('truncate', sidebarCollapsed && 'lg:hidden')}>
-                      {item.name}
-                    </span>
-                  </span>
-                  <kbd
-                    aria-hidden="true"
-                    className={cn(
-                      'hidden lg:inline-block text-xs px-1.5 py-0.5 rounded',
-                      sidebarCollapsed && 'lg:hidden',
-                      isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
-                    )}
-                  >
-                    {item.shortcut}
-                  </kbd>
-                </Link>
-              );
-
-              return sidebarCollapsed ? (
-                <Tooltip key={item.name}>
-                  <TooltipTrigger asChild>{link}</TooltipTrigger>
-                  <TooltipContent side="right" className="hidden lg:block">
-                    {item.name}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                link
-              );
-            })}
-          </nav>
-        </TooltipProvider>
+        {sidebarContent}
       </aside>
+      <NavigationDialog.Root open={sidebarOpen && !isDesktop} onOpenChange={setSidebarOpen}>
+        <NavigationDialog.Portal>
+          <NavigationDialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
+          <NavigationDialog.Content
+            aria-describedby={undefined}
+            className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-2rem))] flex-col overflow-y-auto overscroll-contain border-r bg-card pb-[env(safe-area-inset-bottom)] shadow-lg outline-none"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              if (menuPath.current === location.pathname) menuTriggerRef.current?.focus();
+              else mainRef.current?.focus({ preventScroll: true });
+            }}
+          >
+            <NavigationDialog.Title className="sr-only">Navigation</NavigationDialog.Title>
+            {sidebarContent}
+          </NavigationDialog.Content>
+        </NavigationDialog.Portal>
+      </NavigationDialog.Root>
 
-      <div
-        className={cn(
-          'transition-[padding] duration-200 ease-out',
-          sidebarCollapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64'
-        )}
-      >
+      <div className={cn('min-w-0', sidebarCollapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64')}>
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-3 sm:h-16 sm:gap-4 sm:px-4 lg:px-6">
           <button
             className="-ml-3 flex h-11 w-11 items-center justify-center rounded-md touch-manipulation lg:hidden"
-            onClick={() => setSidebarOpen(true)}
+            ref={menuTriggerRef}
+            aria-expanded={sidebarOpen && !isDesktop}
+            aria-haspopup="dialog"
+            onClick={() => {
+              menuPath.current = location.pathname;
+              setSidebarOpen(true);
+            }}
             aria-label="Open navigation menu"
           >
             <Menu className="h-5 w-5" />
@@ -285,6 +314,7 @@ function AppShellContent({
             variant="outline"
             size="sm"
             onClick={toggleCurrency}
+            aria-label={`Display currency: ${currency}. Switch to ${currency === 'USD' ? 'SGD' : 'USD'}`}
             className="h-11 min-w-[3.25rem] font-mono touch-manipulation"
           >
             {currency}
@@ -393,7 +423,12 @@ function AppShellContent({
           )}
         </header>
 
-        <main id="main-content" tabIndex={-1} className="p-4 outline-none lg:p-6">
+        <main
+          ref={mainRef}
+          id="main-content"
+          tabIndex={-1}
+          className="min-w-0 p-4 outline-none lg:p-6"
+        >
           {children}
         </main>
       </div>

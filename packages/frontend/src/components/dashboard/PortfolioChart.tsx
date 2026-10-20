@@ -217,10 +217,10 @@ export function PortfolioChart({
     : '';
 
   return (
-    <Card ref={chartRef} className="col-span-2">
+    <Card ref={chartRef} className="chart-card col-span-2">
       <CardHeader className="pb-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+        <div className="chart-toolbar-layout flex flex-col gap-3">
+          <div className="chart-title-layout flex min-w-0 flex-col gap-1">
             <CardTitle className="text-base">Portfolio Value</CardTitle>
             {valueChange && (
               <div className={`text-sm ${valueChange.change >= 0 ? 'text-profit' : 'text-loss'}`}>
@@ -278,6 +278,7 @@ export function PortfolioChart({
                       period === p ? '' : 'hover:bg-muted'
                     }`}
                     onClick={() => setPeriod(p)}
+                    aria-pressed={period === p}
                   >
                     {p}
                   </Button>

@@ -14,7 +14,16 @@ export function useKeyboardShortcuts({ onShowHelp }: UseKeyboardShortcutsOptions
 
   // Navigation shortcuts - don't fire when typing in inputs. Single-letter keys
   // honor the Settings toggle (WCAG 2.1.4 Character Key Shortcuts).
-  const options = { enableOnFormTags: false, preventDefault: true, enabled: singleKeysEnabled };
+  const ignoreOverlay = () =>
+    !!document.querySelector(
+      '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]'
+    );
+  const options = {
+    enableOnFormTags: false,
+    preventDefault: true,
+    enabled: singleKeysEnabled,
+    ignoreEventWhen: ignoreOverlay,
+  };
 
   useHotkeys('d', () => navigate('/'), options);
   useHotkeys('p', () => navigate('/portfolio'), options);
@@ -25,7 +34,11 @@ export function useKeyboardShortcuts({ onShowHelp }: UseKeyboardShortcutsOptions
   useHotkeys('s', () => navigate('/settings'), options);
 
   // Show help modal — has a modifier, so it stays active regardless of the toggle.
-  useHotkeys('mod+k', () => onShowHelp?.(), { enableOnFormTags: false, preventDefault: true });
+  useHotkeys('mod+k', () => onShowHelp?.(), {
+    enableOnFormTags: false,
+    preventDefault: true,
+    ignoreEventWhen: ignoreOverlay,
+  });
 
   // Toggle theme
   useHotkeys('/', () => cycleTheme(), options);

@@ -52,7 +52,7 @@ export default function Landing() {
             className="landing-grid-bg pointer-events-none absolute inset-0"
             aria-hidden="true"
           />
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-16 sm:px-6 sm:pb-24 sm:pt-24 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pb-28">
+          <div className="relative mx-auto grid grid-cols-1 max-w-6xl items-center gap-12 px-4 pb-20 pt-16 sm:px-6 sm:pb-24 sm:pt-24 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pb-28">
             <div className="animate-fade-in-up">
               <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                 Private portfolio dashboard
