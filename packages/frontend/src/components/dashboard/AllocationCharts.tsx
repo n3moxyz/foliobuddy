@@ -169,7 +169,7 @@ const AllocationDonut = memo(function AllocationDonut({
           {headerControl && <div className="shrink-0">{headerControl}</div>}
         </div>
         <div
-          className="h-4 min-w-0 truncate text-xs text-muted-foreground tabular-nums"
+          className="min-h-4 min-w-0 break-words text-xs text-muted-foreground tabular-nums"
           aria-live="polite"
         >
           {hoveredIndex != null && visibleData[hoveredIndex] ? (
@@ -220,14 +220,13 @@ const AllocationDonut = memo(function AllocationDonut({
             {visibleData.length > 0 &&
               (() => {
                 const top = visibleData.reduce((a, b) => (a.value > b.value ? a : b));
-                const shortName = top.name.length > 8 ? top.name.slice(0, 7) + '…' : top.name;
                 return (
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-lg font-bold leading-tight">
                       {Math.round(top.displayPercentage)}%
                     </span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">
-                      {shortName}
+                    <span className="max-w-[4.25rem] break-words text-center text-[10px] leading-tight text-muted-foreground">
+                      {top.name}
                     </span>
                   </div>
                 );
@@ -264,9 +263,9 @@ const AllocationDonut = memo(function AllocationDonut({
                     }`}
                     style={{ backgroundColor: colors[index % colors.length] }}
                   />
-                  <span className="truncate">{item.name}</span>
+                  <span className="min-w-0 break-words text-left">{item.name}</span>
                   <span
-                    className={`ml-auto font-medium tabular-nums ${isHidden ? '' : 'text-muted-foreground'}`}
+                    className={`ml-auto shrink-0 whitespace-nowrap font-medium tabular-nums ${isHidden ? '' : 'text-muted-foreground'}`}
                   >
                     {formatNumber(displayPct, 0)}%
                   </span>

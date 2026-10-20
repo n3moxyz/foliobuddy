@@ -156,7 +156,9 @@ export function NativeCostReconciliation() {
               <p>
                 Native average:{' '}
                 {row.avgCostNative != null
-                  ? maskMoney(`${row.costCurrency} ${formatTrimmedNumber(row.avgCostNative, 8)}`)
+                  ? maskMoney(
+                      `${row.costCurrency}\u00a0${formatTrimmedNumber(row.avgCostNative, 8)}`
+                    )
                   : 'Return to recorded USD cost'}
               </p>
               {row.avgCostUsd != null && (

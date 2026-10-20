@@ -79,7 +79,9 @@ export function PositionImportTab({
                 <span className="text-muted-foreground ml-2">
                   {formatQuantity(pos.quantity, pos.asset.category)} @{' '}
                   {pos.avgCostNative != null && pos.costCurrency
-                    ? maskMoney(`${pos.costCurrency} ${formatTrimmedNumber(pos.avgCostNative, 8)}`)
+                    ? maskMoney(
+                        `${pos.costCurrency}\u00a0${formatTrimmedNumber(pos.avgCostNative, 8)}`
+                      )
                     : formatPrice(pos.avgCostUsd, 'USD')}
                 </span>
                 {pos.storageLocation && (

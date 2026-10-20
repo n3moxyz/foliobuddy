@@ -487,11 +487,11 @@ export function BenchmarkComparisonChart() {
                       key={benchmarkIdentity(candidate.provider, candidate.providerAssetId)}
                       variant="ghost"
                       size="sm"
-                      className="min-h-10 w-full justify-start gap-2 text-xs"
+                      className="h-auto min-h-10 w-full justify-start gap-2 whitespace-normal py-2 text-xs"
                       onClick={() => addBenchmark(candidate)}
                     >
                       <span className="font-medium">{candidate.symbol.toUpperCase()}</span>
-                      <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
+                      <span className="min-w-0 flex-1 break-words text-left text-muted-foreground">
                         {candidate.name}
                       </span>
                       <span className="shrink-0 text-[10px] text-muted-foreground">

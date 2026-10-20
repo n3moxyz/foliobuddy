@@ -279,7 +279,7 @@ function DeviceStatus({ device, now }: { device: IbkrSyncDevice; now: number }) 
     value == null
       ? 'Not saved'
       : maskMoney(
-          `${currency} ${formatTrimmedNumber(value, ['JPY', 'KRW'].includes(currency) ? 0 : 2)}`
+          `${currency}\u00a0${formatTrimmedNumber(value, ['JPY', 'KRW'].includes(currency) ? 0 : 2)}`
         );
   return (
     <div className="space-y-2">

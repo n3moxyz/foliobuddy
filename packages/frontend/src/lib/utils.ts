@@ -144,12 +144,13 @@ export function formatPrice(
 
 export function formatNativePrice(
   value: number | null | undefined,
-  currency: string | null | undefined
+  currency: string | null | undefined,
+  decimalsOverride?: number
 ): string {
   if (value === null || value === undefined || !currency) return '-';
 
   const code = currency.toUpperCase();
-  const decimals = priceDecimals(value, code);
+  const decimals = decimalsOverride ?? priceDecimals(value, code);
   return formatNativeCurrency(value, code, decimals);
 }
 
@@ -183,7 +184,7 @@ function formatNativeCurrency(value: number, code: string, decimals: number): st
     }
     return formatter.format(value);
   } catch {
-    return `${code} ${formatNumber(value, decimals)}`;
+    return `${code}\u00a0${formatNumber(value, decimals)}`;
   }
 }
 

@@ -72,7 +72,7 @@ import {
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { NavStatus } from './NavStatus';
-import { assetDisplayName } from './assetDisplayName';
+import { AssetLabel } from '@/components/ui/asset-label';
 
 const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
 const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
@@ -562,6 +562,22 @@ export function PositionTable({
       (position.unrealizedPnL ?? 0) >= 0
         ? 'border-profit/25 bg-profit text-profit'
         : 'border-loss/25 bg-loss text-loss';
+    const assetLabel = (
+      <AssetLabel
+        asset={position.asset}
+        nameOverride={position.ibkrCash ? 'IBKR cash & debt' : undefined}
+        badge={
+          options.showUnitTrustBadge && isUnitTrust ? (
+            <span
+              className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
+              aria-label="Unit Trust"
+            >
+              UT
+            </span>
+          ) : undefined
+        }
+      />
+    );
 
     if (mobileVariant === 'compact') {
       // The actions menu renders as a SIBLING of the row button (absolute inside this
@@ -590,25 +606,7 @@ export function PositionTable({
           >
             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
               <div className="min-w-0">
-                <div className="flex min-w-0 items-baseline gap-1.5">
-                  <p className="min-w-0 truncate text-sm font-semibold leading-tight">
-                    {position.asset.symbol}
-                  </p>
-                  {options.showUnitTrustBadge && isUnitTrust && (
-                    <span
-                      className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
-                      aria-label="Unit Trust"
-                    >
-                      UT
-                    </span>
-                  )}
-                </div>
-                <p
-                  className="mt-0.5 truncate text-xs leading-snug text-muted-foreground"
-                  title={position.asset.name}
-                >
-                  {position.ibkrCash ? 'IBKR cash & debt' : assetDisplayName(position.asset)}
-                </p>
+                {assetLabel}
                 <NavStatus asset={position.asset} />
               </div>
 
@@ -657,25 +655,7 @@ export function PositionTable({
         >
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2">
             <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-baseline gap-1.5">
-                <p className="max-w-[5.75rem] shrink-0 truncate text-sm font-semibold leading-tight">
-                  {position.asset.symbol}
-                </p>
-                {options.showUnitTrustBadge && isUnitTrust && (
-                  <span
-                    className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
-                    aria-label="Unit Trust"
-                  >
-                    UT
-                  </span>
-                )}
-                <p
-                  className="min-w-0 truncate text-xs leading-snug text-muted-foreground"
-                  title={position.asset.name}
-                >
-                  {position.ibkrCash ? 'IBKR cash & debt' : assetDisplayName(position.asset)}
-                </p>
-              </div>
+              {assetLabel}
               <NavStatus asset={position.asset} />
             </div>
 
@@ -753,7 +733,7 @@ export function PositionTable({
 
     return (
       <>
-        <p className="font-mono font-medium text-muted-foreground">
+        <p className="whitespace-nowrap font-mono font-medium text-muted-foreground">
           {formatVisibleCurrency(
             displayedAssetPrice(position.asset, currency, fxRate),
             currency,
@@ -763,7 +743,7 @@ export function PositionTable({
           )}
         </p>
         {localCurrentPrice && (
-          <p className="font-mono text-[11px] leading-none text-muted-foreground">
+          <p className="whitespace-nowrap font-mono text-[11px] leading-none text-muted-foreground">
             {localCurrentPrice}
           </p>
         )}
@@ -783,7 +763,7 @@ export function PositionTable({
 
     return (
       <>
-        <p className="font-mono">
+        <p className="whitespace-nowrap font-mono">
           {formatCurrency(
             convert(position.avgCostUsd),
             currency,
@@ -791,7 +771,9 @@ export function PositionTable({
           )}
         </p>
         {localAvgCost && (
-          <p className="font-mono text-[11px] leading-none text-muted-foreground">{localAvgCost}</p>
+          <p className="whitespace-nowrap font-mono text-[11px] leading-none text-muted-foreground">
+            {localAvgCost}
+          </p>
         )}
       </>
     );
@@ -812,7 +794,7 @@ export function PositionTable({
   const renderNativeHint = (
     label: string | null,
     className = 'font-mono text-[11px] leading-none text-muted-foreground'
-  ) => (label ? <p className={className}>{label}</p> : null);
+  ) => (label ? <p className={cn('whitespace-nowrap', className)}>{label}</p> : null);
 
   const renderAmountWithNative = (
     position: Position,
@@ -825,7 +807,7 @@ export function PositionTable({
     } = {}
   ) => (
     <>
-      <p className={options.className ?? 'font-mono'}>
+      <p className={cn('whitespace-nowrap', options.className ?? 'font-mono')}>
         {formatCurrency(convert(usdValue), currency, options.decimals ?? 0)}
       </p>
       {renderNativeHint(
@@ -857,12 +839,12 @@ export function PositionTable({
           activeSortKey={sortState.sortKey}
           sortDirection={sortState.sortDirection}
           onSort={sortState.onSort}
-          style={{ width: '9%' }}
+          className="min-w-[13rem]"
         />
-        <TableHead scope="col" style={{ width: '12%' }} className={`text-right ${HIDDEN_MOBILE}`}>
+        <TableHead scope="col" className={`whitespace-nowrap text-right ${HIDDEN_MOBILE}`}>
           Quantity
         </TableHead>
-        <TableHead scope="col" style={{ width: '10%' }} className={`text-right ${HIDDEN_MOBILE}`}>
+        <TableHead scope="col" className={`whitespace-nowrap text-right ${HIDDEN_MOBILE}`}>
           Avg Cost
         </TableHead>
         <SortableHeader
@@ -872,10 +854,9 @@ export function PositionTable({
           sortDirection={sortState.sortDirection}
           onSort={sortState.onSort}
           align="right"
-          style={{ width: '12%' }}
           className={HIDDEN_MOBILE}
         />
-        <TableHead scope="col" style={{ width: '10%' }} className={`text-right ${HIDDEN_MOBILE}`}>
+        <TableHead scope="col" className={`whitespace-nowrap text-right ${HIDDEN_MOBILE}`}>
           Price
         </TableHead>
         <SortableHeader
@@ -885,7 +866,6 @@ export function PositionTable({
           sortDirection={sortState.sortDirection}
           onSort={sortState.onSort}
           align="right"
-          style={{ width: '12%' }}
         />
         <SortableHeader
           label="P&L"
@@ -894,7 +874,6 @@ export function PositionTable({
           sortDirection={sortState.sortDirection}
           onSort={sortState.onSort}
           align="right"
-          style={{ width: '11%' }}
         />
         <SortableHeader
           label="Storage"
@@ -903,17 +882,16 @@ export function PositionTable({
           sortDirection={sortState.sortDirection}
           onSort={sortState.onSort}
           align="left"
-          style={{ width: '9%' }}
           className={HIDDEN_MOBILE}
         />
-        <TableHead scope="col" style={{ width: '15%' }} className="text-center">
+        <TableHead scope="col" className="min-w-[11.5rem] text-center">
           Actions
         </TableHead>
       </TableRow>
     </TableHeader>
   );
 
-  const tableClass = showAllColumns ? 'w-full min-w-[700px]' : 'table-fixed w-full';
+  const tableClass = 'w-full min-w-[1120px]';
   const renderSectionTrigger = (
     sectionId: string,
     label: string,
@@ -1293,7 +1271,7 @@ export function PositionTable({
                     Statement charges:{' '}
                     {valuesHidden
                       ? '••••'
-                      : `${entry.costCurrency} ${formatNumber(entry.historyEntry.feesNative, 2)}`}
+                      : `${entry.costCurrency}\u00a0${formatNumber(entry.historyEntry.feesNative, 2)}`}
                   </p>
                 )}
               </div>
@@ -1480,7 +1458,7 @@ export function PositionTable({
 
         {positions.length === 0 && (
           <div className="rounded-md border overflow-hidden">
-            <Table className="table-fixed w-full">
+            <Table className={tableClass}>
               {renderTableHeader(cexSort)}
               <TableBody>
                 <TableRow>
@@ -1563,7 +1541,7 @@ export function PositionTable({
       >
         <DialogContent className="!bottom-0 !left-0 !top-auto max-h-[85vh] w-full max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg pb-[max(1rem,env(safe-area-inset-bottom))] sm:!bottom-auto sm:!left-[50%] sm:!top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-lg sm:pb-6">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex flex-wrap items-center gap-2">
               <span>{viewPosition?.asset.symbol}</span>
               <span className="text-muted-foreground font-normal">{viewPosition?.asset.name}</span>
             </DialogTitle>

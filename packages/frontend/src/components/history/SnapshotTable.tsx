@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { AssetLabel } from '@/components/ui/asset-label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
@@ -458,8 +459,10 @@ export function SnapshotTable({
                                     <TableBody>
                                       {positions.map((pos) => (
                                         <TableRow key={pos.id}>
-                                          <TableCell className="font-medium">
-                                            {pos.assetSymbol}
+                                          <TableCell className="min-w-[10rem]">
+                                            <AssetLabel
+                                              asset={{ ...pos.asset, symbol: pos.assetSymbol }}
+                                            />
                                           </TableCell>
                                           <TableCell className="text-right font-mono">
                                             {maskMoney(

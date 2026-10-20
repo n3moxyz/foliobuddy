@@ -59,7 +59,7 @@ describe('daily NAV display', () => {
         displayCurrency: 'USD',
         usdFxRates: { SGD: 1.5 },
       })
-    ).toBe('(SGD 6.0462)');
+    ).toBe('(SGD\u00a06.0462)');
   });
   it('keeps the public native quote visible with monetary privacy enabled', () => {
     usePrivacyStore.setState({ valuesHidden: true });

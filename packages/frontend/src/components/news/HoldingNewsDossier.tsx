@@ -29,7 +29,7 @@ function DossierHeader({
           id={headingId}
           ref={headingRef}
           tabIndex={-1}
-          className="flex min-w-0 items-center gap-2 text-lg font-semibold outline-none"
+          className="flex min-w-0 flex-wrap items-center gap-2 text-lg font-semibold outline-none"
         >
           {holding ? (
             <>
@@ -41,7 +41,7 @@ function DossierHeader({
               >
                 {holding.symbol}
               </span>{' '}
-              <span className="truncate">{holding.name}</span>
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">{holding.name}</span>
             </>
           ) : (
             'Holding news'
