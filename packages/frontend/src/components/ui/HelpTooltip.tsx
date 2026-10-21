@@ -26,6 +26,7 @@ export function HelpTooltip({ content, label }: HelpTooltipProps) {
               setOpen((prev) => !prev);
             }}
             onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
           >
             <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/80" />
           </button>
