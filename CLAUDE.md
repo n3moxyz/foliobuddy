@@ -368,10 +368,11 @@ See `PRODUCT.md` — source of truth for users, brand, aesthetic, design princip
 - Wrong ports/"DB Down": check `.env.local` first; it overrides Vite `.env`.
 - Always Prisma `onDelete: Cascade` (avoids FK errors); snapshots need unique constraint + check-before-create.
 - Position P&L displays as %; bulk import `skipPriceFetch: true`, scheduler fetches in 1 min.
-- Push/PR CI: typecheck, tests, NAV Postgres verify, frontend build, `npm run format:check`. Every PR you open: turn on CI auto-fix (Claude app: `ccd_pr` `set_monitor`, `auto_fix` + `address_comments`); never auto-merge unless asked.
+- Push/PR CI: typecheck, standalone backend Docker build, tests, NAV Postgres verify, frontend build, `npm run format:check`. Every PR you open: turn on CI auto-fix (Claude app: `ccd_pr` `set_monitor`, `auto_fix` + `address_comments`); never auto-merge unless asked.
 - npm 10.8.2/`uuid` override/ExcelJS rules: `docs/DEPENDENCIES.md`.
 - Sentry: unexpected 500s only, skip Zod 400s + AppErrors <500. Node `console.error` crashes on ZodError: integration tests MUST mock logger.
 - vitest `exclude: ['dist/**']` prevents duplicate runs after `npm run build`.
 - `@foliobuddy/shared` imports MUST be declared in consumer `package.json`: hoisting masks omissions, Vercel `npm ci` rejects them; CI `npm ls --workspaces` guards.
 - Backend Dockerfile package-isolated: `src/lib/constants.ts`/`domain.ts` duplicate shared enums/helpers; `npm run domain:check` enforces parity.
+- Backend Docker stages pin npm 11.19.1 to avoid npm 10's dependency resolver crash. Root lockfile stays on npm 10.8.2.
 - Prod WebSocket needs `VITE_WS_BACKEND_URL`: `DEPLOYMENT.md`.

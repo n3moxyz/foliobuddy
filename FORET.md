@@ -2710,3 +2710,16 @@ actions, error recovery, and three browser engines. Automated checks help, but
 they do not replace physical phone, Windows, or screen-reader testing. The
 [coverage record](docs/solutions/runtime-errors/2026-10-20-app-interactions.md)
 records the tested paths and remaining limits.
+
+## October 2026: Test the deployment's installation path
+
+The private database repair exposed a backend build failure before app startup.
+The existing instance stayed online. npm 10.8.2 crashed while resolving the
+standalone Docker dependencies, although the root workspace checks passed.
+The Docker context does not include the root lockfile, so those checks covered
+a different installation path.
+
+Both Docker stages now pin npm 11.19.1. The root workspace keeps npm 10.8.2.
+CI also builds the standalone image, including Prisma generation and TypeScript
+compilation. The lesson is to test the actual deployment context before relying
+on a green workspace build during infrastructure changes.
