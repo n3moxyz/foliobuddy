@@ -2728,3 +2728,22 @@ Both Docker stages now pin npm 11.19.1. The root workspace keeps npm 10.8.2.
 CI also builds the standalone image, including Prisma generation and TypeScript
 compilation. The lesson is to test the actual deployment context before relying
 on a green workspace build during infrastructure changes.
+# Trade names and a saved default order (25 October 2026)
+
+Some imported trades had the ticker saved as the asset name. The shared label
+hid identical names, so those rows lost their subtext. We verified the five
+incomplete names against primary sources and corrected the catalog metadata.
+The repair kept provider identities and trade fields unchanged. Trade rows now
+show the name line consistently, including names that match their ticker.
+
+The journal previously followed entry date, newest first. We added a browser
+preference for entry date, exit date, or date logged, in either direction.
+Settings and the Review and Ticker tables share this preference. Header clicks
+remain temporary. Clearing them restores the saved order. Missing dates stay
+last. Date logged uses the creation timestamp and survives later edits.
+
+The lesson: a ticker is not a complete asset name. Verify imported metadata
+before treating a missing subtitle as a styling defect. Also distinguish the
+event date from the date a journal entry was recorded.
+
+See [the repair and sorting contract](docs/solutions/2026-10-25-trade-labels-default-sort.md).

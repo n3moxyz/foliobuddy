@@ -396,6 +396,8 @@ export interface Trade {
   positionSizeUsd: number;
   entryDate: string;
   exitDate: string | null;
+  /** The API supplies this timestamp. Older clipboard and demo records may omit it. */
+  createdAt?: string;
   fundingCost: number;
   status: TradeStatus;
   realizedPnL: number | null;
