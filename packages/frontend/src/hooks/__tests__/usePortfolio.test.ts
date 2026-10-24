@@ -98,7 +98,7 @@ describe('usePortfolio hooks', () => {
         ethPrice: null,
       },
       {
-        timestamp: '2026-02-01T00:00:00.000Z',
+        timestamp: '2026-01-02T00:00:00.000Z',
         totalValueUsd: 120,
         totalValueSgd: null,
         unrealizedPnL: null,
@@ -106,7 +106,7 @@ describe('usePortfolio hooks', () => {
         ethPrice: null,
       },
       {
-        timestamp: '2026-03-01T00:00:00.000Z',
+        timestamp: '2026-01-03T00:00:00.000Z',
         totalValueUsd: 90,
         totalValueSgd: null,
         unrealizedPnL: null,
@@ -117,15 +117,26 @@ describe('usePortfolio hooks', () => {
 
     const queryClient = createTestQueryClient();
     const wrapper = createQueryClientWrapper(queryClient);
-    const { result } = renderHook(() => useDrawdownStats(96), { wrapper });
+    const { result } = renderHook(() => useDrawdownStats(96, '2026-01-04T00:00:00.000Z'), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.ytdAthUsd).toBe(120));
-    expect(result.current).toEqual({
+    expect(result.current).toMatchObject({
       ytdAthUsd: 120,
+      ytdAthDate: '2026-01-02T00:00:00.000Z',
       currentDrawdownPct: 20,
       maxDrawdownPct: 25,
+      maxDrawdownDate: '2026-01-03T00:00:00.000Z',
       maxDailyDrawdownPct: 25,
+      maxDailyDrawdownDate: '2026-01-03T00:00:00.000Z',
     });
+    expect(result.current.milestones.map((event) => event.kind)).toEqual([
+      'ath',
+      'mdd',
+      'daily',
+      'live',
+    ]);
   });
 
   it('calls createPosition API on create mutation', async () => {

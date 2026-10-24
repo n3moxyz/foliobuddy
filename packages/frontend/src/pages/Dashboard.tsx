@@ -45,8 +45,27 @@ export default function Dashboard() {
   const { perpExposure } = usePerpExposure();
   const totalValueUsd = summary?.totalValueUsd ?? 0;
   const totalValueSgd = summary?.totalValueSgd ?? 0;
-  const { ytdAthUsd, currentDrawdownPct, maxDrawdownPct, maxDailyDrawdownPct } =
-    useDrawdownStats(totalValueUsd);
+  const {
+    ytdAthUsd,
+    ytdAthDate,
+    currentDrawdownPct,
+    maxDrawdownPct,
+    maxDrawdownDate,
+    maxDailyDrawdownPct,
+    maxDailyDrawdownDate,
+    milestones,
+  } = useDrawdownStats(totalValueUsd, summary?.lastUpdated);
+  const chartMilestones = useMemo(() => {
+    if (!summary?.ytdStartDate) return milestones;
+    return [
+      {
+        kind: 'start' as const,
+        timestamp: summary.ytdStartDate,
+        totalValueUsd: summary.totalCostBasis,
+      },
+      ...milestones,
+    ];
+  }, [summary, milestones]);
 
   // Investor filter state - lifted to Dashboard level. Defaults to owner until manually changed.
   const [manualSelectedInvestors, setManualSelectedInvestors] = useState<string[] | null>(null);
@@ -236,9 +255,12 @@ export default function Dashboard() {
             currency={currency}
             stakeMultiplier={stakeMultiplier}
             ytdAthUsd={ytdAthUsd}
+            ytdAthDate={ytdAthDate}
             drawdownFromAthPct={currentDrawdownPct}
             maxDrawdownPct={maxDrawdownPct}
+            maxDrawdownDate={maxDrawdownDate}
             maxDailyDrawdownPct={maxDailyDrawdownPct}
+            maxDailyDrawdownDate={maxDailyDrawdownDate}
             exposurePct={exposurePct}
             positionCount={summary.positionCount ?? 0}
             closedTrades={tradeAnalytics?.totalTrades ?? 0}
@@ -253,6 +275,8 @@ export default function Dashboard() {
           fxRate={fxRate}
           stakeMultiplier={stakeMultiplier}
           liveValueUsd={summary?.totalValueUsd}
+          liveTimestamp={summary?.lastUpdated}
+          milestones={chartMilestones}
         />
       </div>
 

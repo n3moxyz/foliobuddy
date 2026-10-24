@@ -14,6 +14,8 @@ export const BRAND_FOREGROUND_COLORS = {
 
 export const PORTFOLIO_LINE_COLOR = chartColor('--chart-portfolio');
 export const PORTFOLIO_FOREGROUND_COLOR = chartColor('--chart-portfolio-foreground');
+export const DRAWDOWN_MARKER_COLOR = 'hsl(var(--loss-foreground))';
+export const CHART_SURFACE_COLOR = 'hsl(var(--card))';
 
 export const ASSET_COLORS: string[] = [
   chartColor('--chart-asset-1'),

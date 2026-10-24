@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { calculatePortfolioDrawdownStats, getDateRange } from '@/lib/chartUtils';
+import { calculateDatedDrawdownStats, getDateRange } from '@/lib/chartUtils';
+import { portfolioTimeline, type PortfolioMilestone } from '@/lib/portfolioHistory';
 import type { CreatePositionData, Position, ProviderName, UpdatePositionData } from '@/lib/types';
 
 const portfolioFocusRefreshOptions = {
@@ -171,25 +172,48 @@ export function usePerformanceHistory(params?: {
  * Percentages are scale-invariant, so the same values apply whether the page
  * shows net worth or portfolio totals.
  */
-export function useDrawdownStats(liveValueUsd: number) {
+export function useDrawdownStats(liveValueUsd: number, liveTimestamp?: string) {
   const ytdRange = useMemo(() => getDateRange('YTD'), []);
   const { data: perfHistory } = usePerformanceHistory(ytdRange);
 
   return useMemo(() => {
-    const values = (perfHistory ?? []).map((point) => point.totalValueUsd);
-    if (liveValueUsd > 0) {
-      values.push(liveValueUsd);
+    const timeline = portfolioTimeline(
+      perfHistory ?? [],
+      liveValueUsd,
+      liveTimestamp ?? new Date().toISOString()
+    );
+    const stats = calculateDatedDrawdownStats(timeline);
+    const milestones: PortfolioMilestone[] = [];
+    if (stats.athPoint) milestones.push({ ...stats.athPoint, kind: 'ath' });
+    if (stats.maxDrawdownPoint) {
+      milestones.push({
+        ...stats.maxDrawdownPoint,
+        kind: 'mdd',
+        drawdownPct: stats.maxDrawdownPct,
+      });
     }
-
-    const stats = calculatePortfolioDrawdownStats(values);
+    if (stats.maxDailyDrawdownPoint) {
+      milestones.push({
+        ...stats.maxDailyDrawdownPoint,
+        kind: 'daily',
+        drawdownPct: stats.maxDailyDrawdownPct,
+      });
+    }
+    const livePoint = timeline.find((point) => point.isLive);
+    if (livePoint)
+      milestones.push({ ...livePoint, kind: 'live', drawdownPct: stats.currentDrawdownPct });
 
     return {
       ytdAthUsd: stats.athValue,
+      ytdAthDate: stats.athPoint?.timestamp ?? null,
       currentDrawdownPct: stats.currentDrawdownPct,
       maxDrawdownPct: stats.maxDrawdownPct,
+      maxDrawdownDate: stats.maxDrawdownPoint?.timestamp ?? null,
       maxDailyDrawdownPct: stats.maxDailyDrawdownPct,
+      maxDailyDrawdownDate: stats.maxDailyDrawdownPoint?.timestamp ?? null,
+      milestones,
     };
-  }, [perfHistory, liveValueUsd]);
+  }, [perfHistory, liveValueUsd, liveTimestamp]);
 }
 
 export function useInvestors() {

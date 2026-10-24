@@ -31,8 +31,11 @@ describe('NetWorthCard', () => {
           summary={summary}
           currency="USD"
           ytdAthUsd={4_656_848}
+          ytdAthDate="2026-07-15T00:00:00.000Z"
           maxDrawdownPct={19.82}
+          maxDrawdownDate="2026-08-05T00:00:00.000Z"
           maxDailyDrawdownPct={7.57}
+          maxDailyDrawdownDate="2026-08-02T00:00:00.000Z"
           drawdownFromAthPct={15.46}
           exposurePct={66.9}
           positionCount={26}
@@ -68,6 +71,11 @@ describe('NetWorthCard', () => {
     expect(screen.getByText('$4,656,848')).toBeInTheDocument();
     expect(screen.getByText('-19.82%')).toBeInTheDocument();
     expect(screen.getByText('-15.46%')).toBeInTheDocument();
+    expect(statCells[1]).toHaveTextContent('(1 Jan 2026)');
+    expect(statCells[2]).toHaveTextContent('(15 Jul 2026)');
+    expect(statCells[3]).toHaveTextContent('(5 Aug 2026)');
+    expect(statCells[4]).toHaveTextContent('(2 Aug 2026)');
+    expect(within(statCells[5]).getByText('Today (Live)')).toBeInTheDocument();
   });
 
   it('keeps screen-reader-only link text contained by the scroll rail', () => {
