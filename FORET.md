@@ -5,7 +5,7 @@
 
 A disabled Coolify public-access switch did not remove Docker's host port mapping.
 The backend and GitHub checks still used that public database route.
-The focused repair moves backend traffic to Docker's private network.
+The focused repair moved backend traffic to Docker's private network.
 Developer sync now reads through SSH. GitHub checks use a separate key that permits
 only three fixed read-only operations. Host backups already use Docker directly.
 
@@ -15,6 +15,11 @@ checks both databases without copying production data.
 
 Live configuration changes and verification are tracked in private operations notes.
 See the [runbook](docs/solutions/2026-10-24-private-postgres-access.md) before deployment.
+
+The rollout completed on 25 October, Singapore time. Public connections are refused,
+and the app, SSH checks, developer sync check, and backup command still work. The
+database kept its original image and volume. Coolify's pending-change badge remained,
+so we verified the saved settings, generated Compose file, and running container directly.
 
 _Building a personal finance command center from scratch_
 
