@@ -14,17 +14,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ChartCopyButton } from '@/components/dashboard/ChartCopyButton';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
-import { formatDrawdown, formatPercent } from '@/lib/utils';
-import { getDateRange } from '@/lib/chartUtils';
+import { formatPercent } from '@/lib/utils';
+import { formatPercentAxisTick, getDateRange } from '@/lib/chartUtils';
 import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 import type { TimePeriod } from '@/lib/types';
 import {
   buildPortfolioChartData,
-  formatMilestoneDate,
   PORTFOLIO_MILESTONE_LABELS,
+  PORTFOLIO_MILESTONE_EXPLANATIONS,
   type PortfolioMilestone,
 } from '@/lib/portfolioHistory';
 import { PortfolioMilestoneGlyph } from './PortfolioMilestoneGlyph';
+import { PortfolioMilestoneDetails, PortfolioMilestoneLegend } from './PortfolioMilestoneLegend';
 import { DollarSign, Percent } from 'lucide-react';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
@@ -72,7 +73,7 @@ export function PortfolioChart({
       if (!active || !payload?.length) return null;
       const data = payload[0].payload;
       return (
-        <div className="rounded-lg border bg-background p-3 shadow-md">
+        <div className="max-w-[280px] rounded-lg border bg-background p-3 shadow-md">
           <p className="text-xs text-muted-foreground mb-1">
             {data.tooltipDate}
             {data.isLive && <span className="ml-1 text-profit">(Live)</span>}
@@ -88,16 +89,9 @@ export function PortfolioChart({
             </p>
           )}
           {data.milestones.length > 0 && (
-            <ul className="mt-2 space-y-1 border-t pt-2 text-xs text-muted-foreground">
-              {data.milestones.map((event: PortfolioMilestone) => (
-                <li key={event.kind}>
-                  {event.kind === 'live'
-                    ? 'DD from YTD ATH'
-                    : PORTFOLIO_MILESTONE_LABELS[event.kind]}
-                  {event.drawdownPct != null && ` · ${formatDrawdown(event.drawdownPct)}`}
-                </li>
-              ))}
-            </ul>
+            <div className="mt-2 border-t pt-2">
+              <PortfolioMilestoneDetails events={data.milestones} showDate={false} />
+            </div>
           )}
           {currency === 'SGD' && data.milestones.length > 0 && (
             <p className="mt-1 text-xs text-muted-foreground">Milestones use USD history.</p>
@@ -286,7 +280,20 @@ export function PortfolioChart({
             </div>
           </div>
         ) : (
-          <div key={chartAnimationKey} className="relative animate-chart-period-change">
+          <div
+            key={chartAnimationKey}
+            className="relative animate-chart-period-change"
+            onMouseDown={(event) => {
+              // Recharts resets the tooltip to its first date on SVG focus.
+              // Preserve pointer selection, including clicks on its active-dot overlay.
+              if (
+                event.target instanceof Element &&
+                event.target.closest('svg[role="application"]')
+              ) {
+                event.preventDefault();
+              }
+            }}
+          >
             {isFetching && (
               <div className="absolute inset-0 z-10 flex items-center justify-center">
                 <span className="text-sm text-muted-foreground animate-pulse">Loading...</span>
@@ -317,7 +324,7 @@ export function PortfolioChart({
                   domain={yAxisDomain}
                   tickFormatter={(value) =>
                     chartMode === 'percent'
-                      ? `${value >= 0 ? '+' : ''}${value.toFixed(0)}%`
+                      ? formatPercentAxisTick(value, yAxisDomain[1] - yAxisDomain[0])
                       : formatCurrency(value, currency, true)
                   }
                   tick={{ fontSize: 12 }}
@@ -355,14 +362,18 @@ export function PortfolioChart({
                       <g key={`portfolio-dot-${dotKey}`}>
                         <g
                           transform={`translate(${cx}, ${cy})`}
+                          className="cursor-help"
                           data-portfolio-milestone={point.milestones
                             .map((item) => item.kind)
                             .join(' ')}
                         >
                           <title>
                             {point.milestones
-                              .map((item) => PORTFOLIO_MILESTONE_LABELS[item.kind])
-                              .join(' · ')}{' '}
+                              .map(
+                                (item) =>
+                                  `${PORTFOLIO_MILESTONE_LABELS[item.kind]}: ${PORTFOLIO_MILESTONE_EXPLANATIONS[item.kind]}`
+                              )
+                              .join(' ')}{' '}
                             — {point.tooltipDate}
                           </title>
                           <PortfolioMilestoneGlyph kind={event?.kind ?? 'live'} />
@@ -403,33 +414,7 @@ export function PortfolioChart({
               </AreaChart>
             </ResponsiveContainer>
             {visibleMilestones.length > 0 && (
-              <ul
-                aria-label="Portfolio chart milestones"
-                className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground sm:text-xs"
-              >
-                {visibleMilestones.map((events) => (
-                  <li key={events[0].timestamp} className="flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="-6 -6 12 12" aria-hidden="true">
-                      <PortfolioMilestoneGlyph
-                        kind={(events.find((event) => event.kind === 'mdd') ?? events[0]).kind}
-                      />
-                    </svg>
-                    <span>
-                      {events.map((event) => PORTFOLIO_MILESTONE_LABELS[event.kind]).join(' · ')}
-                    </span>
-                    <span className="sr-only">
-                      : {formatMilestoneDate(events[0].timestamp)}
-                      {events
-                        .map((event) =>
-                          event.drawdownPct != null
-                            ? `, ${PORTFOLIO_MILESTONE_LABELS[event.kind]} ${formatDrawdown(event.drawdownPct)}`
-                            : ''
-                        )
-                        .join('')}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <PortfolioMilestoneLegend groups={visibleMilestones} />
             )}
           </div>
         )}

@@ -75,6 +75,13 @@ export function formatTooltipDate(timestamp: string): string {
   });
 }
 
+/** Keep small chart moves distinct instead of rounding every tick to zero. */
+export function formatPercentAxisTick(value: number, domainSpan: number): string {
+  const precision = domainSpan < 1 ? 2 : domainSpan < 10 ? 1 : 0;
+  const rounded = Number(value.toFixed(precision)) || 0;
+  return `${rounded >= 0 ? '+' : ''}${rounded.toFixed(precision)}%`;
+}
+
 /** Normalize values to percentage change from the first positive value. */
 export function normalizeToPercentChange(values: number[]): number[] {
   if (values.length === 0) return [];

@@ -55,17 +55,6 @@ export default function Dashboard() {
     maxDailyDrawdownDate,
     milestones,
   } = useDrawdownStats(totalValueUsd, summary?.lastUpdated);
-  const chartMilestones = useMemo(() => {
-    if (!summary?.ytdStartDate) return milestones;
-    return [
-      {
-        kind: 'start' as const,
-        timestamp: summary.ytdStartDate,
-        totalValueUsd: summary.totalCostBasis,
-      },
-      ...milestones,
-    ];
-  }, [summary, milestones]);
 
   // Investor filter state - lifted to Dashboard level. Defaults to owner until manually changed.
   const [manualSelectedInvestors, setManualSelectedInvestors] = useState<string[] | null>(null);
@@ -276,7 +265,7 @@ export default function Dashboard() {
           stakeMultiplier={stakeMultiplier}
           liveValueUsd={summary?.totalValueUsd}
           liveTimestamp={summary?.lastUpdated}
-          milestones={chartMilestones}
+          milestones={milestones}
         />
       </div>
 

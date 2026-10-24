@@ -5,9 +5,24 @@ import {
   calculateMaxDailyDrawdown,
   calculatePortfolioDrawdownStats,
   downsampleLTTB,
+  formatPercentAxisTick,
   getDateRange,
   normalizeToPercentChange,
 } from '@/lib/chartUtils';
+
+describe('percentage axis labels', () => {
+  it('preserves distinct ticks for moves smaller than one percent', () => {
+    expect([-0.04, 0.1, 0.25, 0.4].map((value) => formatPercentAxisTick(value, 0.5))).toEqual([
+      '-0.04%',
+      '+0.10%',
+      '+0.25%',
+      '+0.40%',
+    ]);
+    expect(formatPercentAxisTick(-0.001, 0.5)).toBe('+0.00%');
+    expect(formatPercentAxisTick(5.5, 8)).toBe('+5.5%');
+    expect(formatPercentAxisTick(44, 50)).toBe('+44%');
+  });
+});
 
 describe('getDateRange', () => {
   it('marks Max as an explicit all-time request', () => {

@@ -8,11 +8,18 @@ import {
 import type { PerformancePoint } from '@/lib/types';
 
 export const PORTFOLIO_MILESTONE_LABELS = {
-  start: 'YTD Start',
   ath: 'YTD ATH',
   mdd: 'MDD',
   daily: 'MDD (1D)',
   live: 'Today (Live)',
+} as const;
+
+export const PORTFOLIO_MILESTONE_EXPLANATIONS = {
+  ath: 'The highest recorded USD portfolio value this year, including the live value.',
+  mdd: 'The trough of this year’s largest peak-to-trough decline, measured in USD.',
+  daily:
+    'The largest USD decline between the last recorded values on consecutive calendar days. Today uses the live value. Missing days are excluded.',
+  live: 'Your latest portfolio value. The percentage shows its current decline from this year’s USD high.',
 } as const;
 
 export interface PortfolioMilestone extends DatedPortfolioValue {
