@@ -27,10 +27,18 @@ jobs:
           audience: ${{ secrets.TS_DEPLOY_AUDIENCE }}
           tags: tag:ci-foliobuddy
           version: 1.104.2
-          args: --accept-routes=false --accept-dns=false --ssh=false
+          args: --accept-dns=false --ssh=false
           ping: ${{ secrets.DB_PRIVATE_SSH_HOST }}
           use-cache: 'false'
           log-mode: quiet
+
+      - name: Restrict runner network preferences
+        timeout-minutes: 1
+        run: |
+          set -euo pipefail
+          sudo tailscale set --accept-routes=false
+          sudo tailscale debug prefs | jq -e \
+            '.RouteAll == false and .CorpDNS == false and .RunSSH == false' >/dev/null
 
       - name: Trigger Coolify Deploy
         id: deploy
