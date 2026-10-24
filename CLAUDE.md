@@ -82,6 +82,9 @@ The Coolify public-access switch and Docker port mappings are separate controls.
 Developer sync uses existing SSH access. GitHub checks use a separate restricted key
 and fixed read-only commands. Never give that key shell or forwarding access.
 See [the private database runbook](docs/solutions/2026-10-24-private-postgres-access.md).
+Production workflows use separate GitHub OIDC identities and ephemeral Tailscale nodes on `main` only.
+Use the private destination secrets in DEPLOYMENT.md. Preserve OpenSSH host verification and the existing restricted key.
+See [the private CI runbook](docs/solutions/2026-10-25-private-ci-access.md) before changing production access.
 
 ## Architecture
 

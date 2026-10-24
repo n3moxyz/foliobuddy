@@ -42,6 +42,35 @@ Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `mai
 | `NODE_ENV`              | `production`                                   | Required — gates the scheduler jobs (price/snapshot crons).                                                                                                                                                |
 | `PORT`                  | `4001`                                         |                                                                                                                                                                                                            |
 
+## Private administration from GitHub Actions
+
+The four production workflows join Tailscale before they contact Coolify or SSH.
+Each job requires this repository's `main` branch and its own federated identity.
+The pinned Tailscale action uses a short-lived GitHub OIDC token and an ephemeral node.
+No reusable Tailscale enrollment key is stored in GitHub.
+
+Configure these repository secrets before merging the workflow migration:
+
+| Secret | Purpose |
+| --- | --- |
+| `COOLIFY_PRIVATE_URL` | Private HTTPS dashboard URL with a valid certificate |
+| `DB_PRIVATE_SSH_HOST` | VPS Tailscale address, also used for the connection check |
+| `DB_PRIVATE_SSH_KNOWN_HOSTS` | Verified SSH host key entry for that private address |
+| `TS_DEPLOY_CLIENT_ID`, `TS_DEPLOY_AUDIENCE` | Identity for `deploy-backend.yml` |
+| `TS_ENV_SYNC_CLIENT_ID`, `TS_ENV_SYNC_AUDIENCE` | Identity for `sync-backend-env.yml` |
+| `TS_PROD_CHECK_CLIENT_ID`, `TS_PROD_CHECK_AUDIENCE` | Identity for `prod-check.yml` |
+| `TS_OWNER_REPAIR_CLIENT_ID`, `TS_OWNER_REPAIR_AUDIENCE` | Identity for `repair-agent-portfolio-owner.yml` |
+
+Keep the existing Coolify API token and restricted `DB_SSH_PRIVATE_KEY`.
+The new destination secrets let existing workflows keep working during migration.
+Keep old destination secrets until the approved merge and private checks pass.
+Do not fall back to public administration when a private connection fails.
+
+The CI tag can reach only the VPS on TCP 22 and 443.
+It cannot reach personal devices. Tailscale SSH stays disabled, so OpenSSH still enforces the restricted database key.
+The public uptime workflow needs no private network access.
+See the [identity restrictions and cutover runbook](docs/solutions/2026-10-25-private-ci-access.md).
+
 ## Backend deploy verification (Coolify)
 
 `.github/workflows/deploy-backend.yml` must verify the exact deployment returned by Coolify, not sleep for a fixed interval and probe `/health`. During a rolling rebuild the previous container can stay healthy for several minutes, making a plain health check a false positive. Parse the `deployment_uuid` returned by `POST /api/v1/deploy`, poll that deployment to a successful terminal state, verify its commit when Coolify returns one, and only then run the public health check. The GitHub `COOLIFY_API_TOKEN` needs `read` + `deploy` + `write` permissions — `write` is required by `sync-backend-env.yml` to upsert env vars (a read+deploy token fails with `403 Missing required permissions: write`).
@@ -69,7 +98,8 @@ npm run -s news:x-sources --workspace=@foliobuddy/backend -- /absolute/path/to/v
 gh workflow run sync-backend-env.yml
 ```
 
-The workflow's fixed sleep + `/health` can pass while Coolify is still building; confirm the new container is live before trusting it (deployment status in Coolify, or the container's `SOURCE_COMMIT`/env).
+The workflow waits for its exact deployment before checking health.
+Confirm the matching container is live before declaring an environment change complete.
 
 ## Auth (Clerk)
 
@@ -162,9 +192,9 @@ It does not use `PRODUCTION_DATABASE_URL` or a public PostgreSQL connection.
 
 GitHub database checks use a separate restricted SSH key and these repository secrets:
 
-- `DB_SSH_HOST`: the SSH server address.
+- `DB_PRIVATE_SSH_HOST`: the private SSH server address, passed to the helper as `DB_SSH_HOST`.
 - `DB_SSH_PRIVATE_KEY`: the dedicated key for fixed read-only checks.
-- `DB_SSH_KNOWN_HOSTS`: the server's verified SSH host key entry.
+- `DB_PRIVATE_SSH_KNOWN_HOSTS`: the verified host key entry, passed to the helper as `DB_SSH_KNOWN_HOSTS`.
 
 The forced command in `scripts/private-db-read.sh` permits only `health`, `x-health`, and `owner`.
 It rejects shell commands, arbitrary SQL, and forwarding. Install it before updating the workflows.
