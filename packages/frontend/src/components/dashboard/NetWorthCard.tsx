@@ -7,15 +7,19 @@ import { useAnimatedNumbers } from '@/hooks/useAnimatedNumber';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import type { PortfolioSummary } from '@/lib/types';
 import { cn, formatDrawdown, formatPercent, getPnLColorClass } from '@/lib/utils';
+import { formatMilestoneDate } from '@/lib/portfolioHistory';
 
 interface NetWorthCardProps {
   summary: PortfolioSummary;
   currency: 'USD' | 'SGD';
   stakeMultiplier?: number;
   ytdAthUsd?: number | null;
+  ytdAthDate?: string | null;
   drawdownFromAthPct?: number | null;
   maxDrawdownPct?: number | null;
+  maxDrawdownDate?: string | null;
   maxDailyDrawdownPct?: number | null;
+  maxDailyDrawdownDate?: string | null;
   exposurePct?: number;
   positionCount?: number;
   closedTrades?: number;
@@ -29,6 +33,8 @@ interface NetWorthStat {
   valueClassName?: string;
   to?: string;
   linkDescription?: string;
+  recordedAt?: string | null;
+  isLive?: boolean;
 }
 
 interface NetWorthStatCellProps extends NetWorthStat {
@@ -52,7 +58,10 @@ function NetWorthStatCell({
   valueClassName,
   to,
   linkDescription,
+  recordedAt,
+  isLive,
 }: NetWorthStatCellProps) {
+  const dateLabel = formatMilestoneDate(recordedAt);
   const valueContent = (
     <span
       className={cn(
@@ -80,6 +89,17 @@ function NetWorthStatCell({
       ) : (
         <p>{valueContent}</p>
       )}
+      {(dateLabel || isLive) && (
+        <p className="mt-1 whitespace-nowrap text-[11px] text-muted-foreground 2xl:text-xs">
+          {isLive ? (
+            'Today (Live)'
+          ) : (
+            <>
+              (<time dateTime={recordedAt!}>{dateLabel}</time>)
+            </>
+          )}
+        </p>
+      )}
     </div>
   );
 }
@@ -89,9 +109,12 @@ export function NetWorthCard({
   currency,
   stakeMultiplier = 1,
   ytdAthUsd,
+  ytdAthDate,
   drawdownFromAthPct,
   maxDrawdownPct,
+  maxDrawdownDate,
   maxDailyDrawdownPct,
+  maxDailyDrawdownDate,
   exposurePct,
   positionCount = 0,
   closedTrades = 0,
@@ -142,24 +165,28 @@ export function NetWorthCard({
     },
     {
       label: 'YTD Start',
-      help: 'Total cost basis of your portfolio as of January 1',
+      help: 'First recorded portfolio value this year. The date below shows the actual starting snapshot.',
       value: formatCurrency(animatedCostBasis, currency, 0),
+      recordedAt: summary.ytdStartDate,
     },
     {
       label: 'YTD ATH',
-      help: 'Highest portfolio value in the year-to-date history, including the current value',
+      help: 'Highest USD portfolio value this year, including the current value. Displayed in your selected currency.',
       value: ytdAthUsd == null ? 'N/A' : formatCurrency(animatedYtdAth, currency, 0),
+      recordedAt: ytdAthDate,
     },
     {
       label: 'MDD',
-      help: 'Largest peak-to-trough decline in your portfolio since January 1',
+      help: 'Largest peak-to-trough decline in USD this year. The date below marks the trough.',
       value: formatDrawdown(maxDrawdownPct),
+      recordedAt: maxDrawdownDate,
       valueClassName: maxDrawdownPct && maxDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground',
     },
     {
       label: 'MDD (1D)',
-      help: 'Largest day-over-day decline in your portfolio since January 1',
+      help: 'Largest USD decline between consecutive calendar-day closing values this year. Today uses the live value. The date below marks the lower close. Gaps are excluded.',
       value: formatDrawdown(maxDailyDrawdownPct),
+      recordedAt: maxDailyDrawdownDate,
       valueClassName:
         maxDailyDrawdownPct && maxDailyDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground',
     },
@@ -167,6 +194,7 @@ export function NetWorthCard({
       label: 'DD from ATH',
       help: 'How far your portfolio is currently below its year-to-date high',
       value: formatDrawdown(drawdownFromAthPct),
+      isLive: true,
       valueClassName:
         drawdownFromAthPct && drawdownFromAthPct > 0 ? 'text-loss' : 'text-muted-foreground',
     },

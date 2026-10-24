@@ -9,7 +9,6 @@ export interface DateRange {
 
 export function getDateRange(period: TimePeriod): DateRange {
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   switch (period) {
     case '7D':
@@ -21,8 +20,11 @@ export function getDateRange(period: TimePeriod): DateRange {
     case '1Y':
       return { days: 365 };
     case 'YTD': {
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      return { from: startOfYear.toISOString(), to: today.toISOString() };
+      const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+      const endOfToday = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999)
+      );
+      return { from: startOfYear.toISOString(), to: endOfToday.toISOString() };
     }
     case 'Max':
       return { all: true };
@@ -93,15 +95,19 @@ export interface PortfolioDrawdownStats {
  * for all-time-high and peak-to-trough calculations, but break consecutive-day
  * comparisons so MDD (1D) never bridges a missing record.
  */
-export function calculatePortfolioDrawdownStats(values: number[]): PortfolioDrawdownStats {
+function summarizeDrawdowns(values: number[], days?: number[]) {
   let athValue: number | null = null;
   let currentValue: number | null = null;
   let maxDrawdownPct: number | null = null;
   let maxDailyDrawdownPct: number | null = null;
   let previousValue: number | null = null;
   let validValueCount = 0;
+  let athIndex: number | null = null;
+  let maxDrawdownIndex: number | null = null;
+  let maxDailyDrawdownIndex: number | null = null;
+  let previousDay: number | null = null;
 
-  for (const value of values) {
+  for (const [index, value] of values.entries()) {
     if (!Number.isFinite(value) || value <= 0) {
       previousValue = null;
       continue;
@@ -109,17 +115,27 @@ export function calculatePortfolioDrawdownStats(values: number[]): PortfolioDraw
 
     validValueCount += 1;
     currentValue = value;
-    athValue = athValue === null ? value : Math.max(athValue, value);
+    if (athValue === null || value > athValue) {
+      athValue = value;
+      athIndex = index;
+    }
 
     const drawdownFromPeak = ((athValue - value) / athValue) * 100;
+    if (drawdownFromPeak > (maxDrawdownPct ?? 0)) maxDrawdownIndex = index;
     maxDrawdownPct = Math.max(maxDrawdownPct ?? 0, drawdownFromPeak);
 
-    if (previousValue !== null) {
+    // With timestamps, only the final observation of each local calendar day
+    // participates. Intraday snapshots and missing days are not one-day returns.
+    const day = days?.[index] ?? index;
+    if (days && day === days[index + 1]) continue;
+    if (previousValue !== null && (previousDay === null || day === previousDay + 1)) {
       const dailyDrawdown = ((previousValue - value) / previousValue) * 100;
+      if (dailyDrawdown > (maxDailyDrawdownPct ?? 0)) maxDailyDrawdownIndex = index;
       maxDailyDrawdownPct = Math.max(maxDailyDrawdownPct ?? 0, dailyDrawdown);
     }
 
     previousValue = value;
+    previousDay = day;
   }
 
   return {
@@ -130,6 +146,39 @@ export function calculatePortfolioDrawdownStats(values: number[]): PortfolioDraw
         : null,
     maxDrawdownPct: validValueCount >= 2 ? maxDrawdownPct : null,
     maxDailyDrawdownPct,
+    athIndex,
+    maxDrawdownIndex,
+    maxDailyDrawdownIndex,
+  };
+}
+
+export function calculatePortfolioDrawdownStats(values: number[]): PortfolioDrawdownStats {
+  const { athValue, currentDrawdownPct, maxDrawdownPct, maxDailyDrawdownPct } =
+    summarizeDrawdowns(values);
+  return { athValue, currentDrawdownPct, maxDrawdownPct, maxDailyDrawdownPct };
+}
+
+export interface DatedPortfolioValue {
+  timestamp: string;
+  totalValueUsd: number;
+}
+
+/** Dates identify the earliest high or trough when values tie. */
+export function calculateDatedDrawdownStats(points: DatedPortfolioValue[]) {
+  const days = points.map(({ timestamp }) => {
+    const date = new Date(timestamp);
+    // Calendar-day arithmetic remains correct across daylight-saving changes.
+    return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000;
+  });
+  const { athIndex, maxDrawdownIndex, maxDailyDrawdownIndex, ...stats } = summarizeDrawdowns(
+    points.map((point) => point.totalValueUsd),
+    days
+  );
+  return {
+    ...stats,
+    athPoint: athIndex === null ? null : points[athIndex],
+    maxDrawdownPoint: maxDrawdownIndex === null ? null : points[maxDrawdownIndex],
+    maxDailyDrawdownPoint: maxDailyDrawdownIndex === null ? null : points[maxDailyDrawdownIndex],
   };
 }
 

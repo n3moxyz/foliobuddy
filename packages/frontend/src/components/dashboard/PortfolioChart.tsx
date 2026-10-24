@@ -14,16 +14,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ChartCopyButton } from '@/components/dashboard/ChartCopyButton';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
-import { formatPercent } from '@/lib/utils';
-import {
-  getDateRange,
-  formatXAxisDate,
-  formatTooltipDate,
-  downsampleLTTB,
-  normalizeToPercentChange,
-} from '@/lib/chartUtils';
+import { formatDrawdown, formatPercent } from '@/lib/utils';
+import { getDateRange } from '@/lib/chartUtils';
 import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 import type { TimePeriod } from '@/lib/types';
+import {
+  buildPortfolioChartData,
+  formatMilestoneDate,
+  PORTFOLIO_MILESTONE_LABELS,
+  type PortfolioMilestone,
+} from '@/lib/portfolioHistory';
+import { PortfolioMilestoneGlyph } from './PortfolioMilestoneGlyph';
 import { DollarSign, Percent } from 'lucide-react';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
@@ -32,6 +33,8 @@ interface PortfolioChartProps {
   fxRate?: number;
   stakeMultiplier?: number;
   liveValueUsd?: number;
+  liveTimestamp?: string;
+  milestones?: PortfolioMilestone[];
 }
 
 /** Recharts injects these at runtime into the dot render callback; the library types it as `any`. */
@@ -41,6 +44,7 @@ interface RechartsAreaDotProps {
   index: number;
 }
 
+const EMPTY_MILESTONES: PortfolioMilestone[] = [];
 const CHART_SKELETON_TICKS = ['start', 'early', 'middle', 'late', 'end'] as const;
 type ChartMode = 'value' | 'percent';
 
@@ -49,9 +53,12 @@ export function PortfolioChart({
   fxRate = 1,
   stakeMultiplier = 1,
   liveValueUsd,
+  liveTimestamp,
+  milestones = EMPTY_MILESTONES,
 }: PortfolioChartProps) {
   const [period, setPeriod] = useState<TimePeriod>('YTD');
   const [chartMode, setChartMode] = useState<ChartMode>('value');
+  const [chartWidth, setChartWidth] = useState(0);
   const chartRef = useRef<HTMLDivElement>(null);
   const { formatCurrency, formatSignedCurrency } = useMoneyFormatter();
 
@@ -80,6 +87,21 @@ export function PortfolioChart({
               {formatCurrency(data.value, currency, 0)}
             </p>
           )}
+          {data.milestones.length > 0 && (
+            <ul className="mt-2 space-y-1 border-t pt-2 text-xs text-muted-foreground">
+              {data.milestones.map((event: PortfolioMilestone) => (
+                <li key={event.kind}>
+                  {event.kind === 'live'
+                    ? 'DD from YTD ATH'
+                    : PORTFOLIO_MILESTONE_LABELS[event.kind]}
+                  {event.drawdownPct != null && ` · ${formatDrawdown(event.drawdownPct)}`}
+                </li>
+              ))}
+            </ul>
+          )}
+          {currency === 'SGD' && data.milestones.length > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">Milestones use USD history.</p>
+          )}
           {stakeMultiplier < 1 && (
             <p className="text-xs text-muted-foreground mt-1">
               Full portfolio: {formatCurrency(data.fullValue, currency, 0)}
@@ -91,82 +113,32 @@ export function PortfolioChart({
     [chartMode, currency, formatCurrency, stakeMultiplier]
   );
 
-  // Calculate the date range span in days
-  const dataSpanDays = useMemo(() => {
-    if (!performanceData || performanceData.length < 2) return 30;
-    const firstDate = new Date(performanceData[0].timestamp);
-    const lastDate = new Date(performanceData[performanceData.length - 1].timestamp);
-    return Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
-  }, [performanceData]);
-
-  // Calculate chart data with stake multiplier from parent
-  const chartData = useMemo(() => {
-    if (!performanceData || performanceData.length === 0) return [];
-
-    const data = performanceData.map((point) => {
-      const baseValue =
-        currency === 'SGD'
-          ? (point.totalValueSgd ?? point.totalValueUsd * fxRate)
-          : point.totalValueUsd;
-
-      return {
-        date: formatXAxisDate(point.timestamp, dataSpanDays),
-        tooltipDate: formatTooltipDate(point.timestamp),
-        timestamp: point.timestamp,
-        value: baseValue * stakeMultiplier,
-        fullValue: baseValue,
-        isLive: false,
-      };
-    });
-
-    // Downsample for very long (Max) periods only — keeps 1Y (365 pts) untouched
-    if (data.length > 400) {
-      const downsampled = downsampleLTTB(
-        data,
-        300,
-        (d) => new Date(d.timestamp).getTime(),
-        (d) => d.value
-      );
-      data.splice(0, data.length, ...downsampled);
+  const chartData = useMemo(
+    () =>
+      buildPortfolioChartData({
+        history: performanceData ?? [],
+        liveValueUsd,
+        asOf: liveTimestamp ?? new Date().toISOString(),
+        milestones,
+        currency,
+        fxRate,
+        stakeMultiplier,
+      }),
+    [performanceData, liveValueUsd, liveTimestamp, milestones, currency, fxRate, stakeMultiplier]
+  );
+  const visibleMilestones = useMemo(() => {
+    const visible = new Set(
+      chartData.flatMap((point) => point.milestones.map((event) => event.kind))
+    );
+    const groups = new Map<number, PortfolioMilestone[]>();
+    for (const event of milestones.filter((item) => visible.has(item.kind))) {
+      const time = Date.parse(event.timestamp);
+      const group = groups.get(time) ?? [];
+      group.push(event);
+      groups.set(time, group);
     }
-
-    // Handle live data: either append or replace today's $0 snapshot
-    if (liveValueUsd && data.length > 0) {
-      const lastPoint = data[data.length - 1];
-      const lastDate = new Date(lastPoint.timestamp);
-      const today = new Date();
-      const isSameDay = lastDate.toDateString() === today.toDateString();
-      const liveBaseValue = currency === 'SGD' ? liveValueUsd * fxRate : liveValueUsd;
-
-      if (isSameDay && lastPoint.value === 0) {
-        // Replace today's $0 snapshot with live value
-        data[data.length - 1] = {
-          date: formatXAxisDate(today.toISOString(), dataSpanDays),
-          tooltipDate: formatTooltipDate(today.toISOString()),
-          timestamp: today.toISOString(),
-          value: liveBaseValue * stakeMultiplier,
-          fullValue: liveBaseValue,
-          isLive: true,
-        };
-      } else if (!isSameDay) {
-        // Append live data point if no snapshot for today
-        data.push({
-          date: formatXAxisDate(today.toISOString(), dataSpanDays),
-          tooltipDate: formatTooltipDate(today.toISOString()),
-          timestamp: today.toISOString(),
-          value: liveBaseValue * stakeMultiplier,
-          fullValue: liveBaseValue,
-          isLive: true,
-        });
-      }
-    }
-
-    const percentChanges = normalizeToPercentChange(data.map((point) => point.value));
-    return data.map((point, index) => ({
-      ...point,
-      percentChange: percentChanges[index],
-    }));
-  }, [performanceData, stakeMultiplier, currency, fxRate, liveValueUsd, dataSpanDays]);
+    return [...groups.values()];
+  }, [chartData, milestones]);
 
   // Calculate change from first to last point
   const valueChange = useMemo(() => {
@@ -202,9 +174,9 @@ export function PortfolioChart({
     const dataLength = chartData.length;
     if (dataLength <= 6) return 0; // Show all ticks for very short data
     // Calculate interval to show approximately 5-6 ticks
-    const targetTicks = 5;
+    const targetTicks = Math.max(1, Math.min(5, Math.floor((chartWidth - 112) / 80)));
     return Math.max(1, Math.floor((dataLength - 1) / targetTicks));
-  }, [chartData.length]);
+  }, [chartData.length, chartWidth]);
 
   const periods: TimePeriod[] = ['7D', '1M', '3M', '1Y', 'YTD', 'Max'];
   const lastChartPoint = chartData[chartData.length - 1];
@@ -320,8 +292,13 @@ export function PortfolioChart({
                 <span className="text-sm text-muted-foreground animate-pulse">Loading...</span>
               </div>
             )}
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 56, left: 0, bottom: 5 }}>
+            <ResponsiveContainer width="100%" height={300} onResize={setChartWidth}>
+              <AreaChart
+                accessibilityLayer
+                aria-label="Portfolio value history. Use arrow keys to inspect dates and milestones."
+                data={chartData}
+                margin={{ top: 5, right: 56, left: 0, bottom: 5 }}
+              >
                 <defs>
                   <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={PORTFOLIO_LINE_COLOR} stopOpacity={0.3} />
@@ -368,24 +345,56 @@ export function PortfolioChart({
                   dot={(props: RechartsAreaDotProps) => {
                     const { cx, cy, index } = props;
                     const dotKey = chartData[index]?.timestamp ?? `${cx}-${cy}`;
-                    if (index !== chartData.length - 1)
+                    const point = chartData[index];
+                    const isLast = index === chartData.length - 1;
+                    if (!point || (!isLast && point.milestones.length === 0))
                       return <g key={`portfolio-dot-${dotKey}`} />;
+                    const event =
+                      point.milestones.find((item) => item.kind === 'mdd') ?? point.milestones[0];
                     return (
                       <g key={`portfolio-dot-${dotKey}`}>
-                        <circle cx={cx} cy={cy} r={3} fill={PORTFOLIO_LINE_COLOR} />
-                        <text
-                          x={cx + 8}
-                          y={cy}
-                          fontSize={11}
-                          dominantBaseline="middle"
-                          fontWeight={500}
-                          fill="currentColor"
-                          opacity={0.7}
+                        <g
+                          transform={`translate(${cx}, ${cy})`}
+                          data-portfolio-milestone={point.milestones
+                            .map((item) => item.kind)
+                            .join(' ')}
                         >
-                          {chartMode === 'percent'
-                            ? formatPercent(chartData[index].percentChange)
-                            : formatCurrency(chartData[index].value, currency, true)}
-                        </text>
+                          <title>
+                            {point.milestones
+                              .map((item) => PORTFOLIO_MILESTONE_LABELS[item.kind])
+                              .join(' · ')}{' '}
+                            — {point.tooltipDate}
+                          </title>
+                          <PortfolioMilestoneGlyph kind={event?.kind ?? 'live'} />
+                        </g>
+                        {isLast && (
+                          <>
+                            <text
+                              x={cx + 8}
+                              y={cy}
+                              fontSize={11}
+                              dominantBaseline="middle"
+                              fontWeight={500}
+                              fill="currentColor"
+                              opacity={0.7}
+                            >
+                              {chartMode === 'percent'
+                                ? formatPercent(chartData[index].percentChange)
+                                : formatCurrency(chartData[index].value, currency, true)}
+                            </text>
+                            {point.isLive && (
+                              <text
+                                x={cx + 8}
+                                y={cy + 15}
+                                fontSize={10}
+                                fill="currentColor"
+                                className="text-muted-foreground"
+                              >
+                                Live
+                              </text>
+                            )}
+                          </>
+                        )}
                       </g>
                     );
                   }}
@@ -393,6 +402,35 @@ export function PortfolioChart({
                 />
               </AreaChart>
             </ResponsiveContainer>
+            {visibleMilestones.length > 0 && (
+              <ul
+                aria-label="Portfolio chart milestones"
+                className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground sm:text-xs"
+              >
+                {visibleMilestones.map((events) => (
+                  <li key={events[0].timestamp} className="flex items-center gap-1.5">
+                    <svg width="12" height="12" viewBox="-6 -6 12 12" aria-hidden="true">
+                      <PortfolioMilestoneGlyph
+                        kind={(events.find((event) => event.kind === 'mdd') ?? events[0]).kind}
+                      />
+                    </svg>
+                    <span>
+                      {events.map((event) => PORTFOLIO_MILESTONE_LABELS[event.kind]).join(' · ')}
+                    </span>
+                    <span className="sr-only">
+                      : {formatMilestoneDate(events[0].timestamp)}
+                      {events
+                        .map((event) =>
+                          event.drawdownPct != null
+                            ? `, ${PORTFOLIO_MILESTONE_LABELS[event.kind]} ${formatDrawdown(event.drawdownPct)}`
+                            : ''
+                        )
+                        .join('')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </CardContent>

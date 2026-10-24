@@ -1,5 +1,16 @@
 # FOR[ET].md - FolioBuddy
 
+## Dashboard milestone dates (25 October 2026)
+
+The net worth rail now shows the actual start, high, and drawdown trough dates below its figures.
+DD from ATH reads `Today (Live)`. The portfolio chart marks those same observations with small shapes and a muted legend.
+Coincident events share a legend entry. Hover or arrow-key navigation reveals the event details.
+
+Dates and values come from one chronological timeline. A current quote follows today's snapshot, so the chart includes intraday changes.
+Long charts retain milestone observations during downsampling. Short ranges omit events outside the displayed history.
+Daily drawdown uses consecutive calendar-day closes. Intraday changes and missing days cannot masquerade as one-day losses.
+Zero declines have no invented trough date. YTD queries include today's snapshots and match the summary's UTC year boundary.
+
 ## Private CI administration (25 October 2026)
 
 Closing public administration ports also closes the route used by deployment jobs.
