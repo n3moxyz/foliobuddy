@@ -419,7 +419,7 @@ function TradeEdgeRow({
     >
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <AssetLabel asset={trade.asset} />
+        <AssetLabel asset={trade.asset} alwaysShowName />
         <p className="truncate text-xs text-muted-foreground">
           {trade.notes || formatDate(trade.exitDate)}
         </p>
@@ -462,7 +462,7 @@ function TradeMiniButton({
       onClick={onClick}
     >
       <div className="flex items-center justify-between gap-3">
-        <AssetLabel asset={trade.asset} />
+        <AssetLabel asset={trade.asset} alwaysShowName />
         <span
           className={`shrink-0 text-sm font-semibold tabular-nums ${getPnLColorClass(trade.realizedPnL)}`}
         >

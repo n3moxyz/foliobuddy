@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { SnapshotScheduleSection } from '@/components/settings/SnapshotScheduleSection';
 import { IbkrDeviceSettings } from '@/components/settings/IbkrDeviceSettings';
+import { TradeSortSelect } from '@/components/trades/TradeSortSelect';
 import { RefreshCw, Download, Camera } from 'lucide-react';
 
 export default function Settings() {
@@ -135,6 +136,19 @@ export default function Settings() {
               </p>
             </div>
           )}
+
+          <Separator />
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Label htmlFor="default-trade-sort">Default trade order</Label>
+              <p className="text-sm text-muted-foreground">
+                Saved in this browser for all trade tables. Open trades sort last by exit date.
+                Column headers temporarily override this order.
+              </p>
+            </div>
+            <TradeSortSelect id="default-trade-sort" />
+          </div>
 
           <Separator />
 

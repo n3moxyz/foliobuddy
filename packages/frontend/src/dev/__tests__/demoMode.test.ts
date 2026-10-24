@@ -461,9 +461,7 @@ describe('demo mode API mock', () => {
 
     expect(importResponse.results).toEqual([{ success: true, symbol: 'QA1' }]);
 
-    const afterTrades = await readJson<
-      Array<{ asset: { symbol: string }; fundingCost: number; realizedPnL: number }>
-    >(await demoRequest('/trades'));
+    const afterTrades = await readJson<Trade[]>(await demoRequest('/trades'));
     const afterAnalytics = await readJson<{
       totalTrades: number;
       totalPnL: number;
@@ -475,6 +473,11 @@ describe('demo mode API mock', () => {
     expect(afterTrades[0].realizedPnL).toBe(475);
     expect(afterAnalytics.totalTrades).toBe(beforeAnalytics.totalTrades + 1);
     expect(afterAnalytics.totalPnL).toBe(beforeAnalytics.totalPnL + 475);
+    expect(Number.isFinite(Date.parse(afterTrades[0].createdAt!))).toBe(true);
+    const edited = await readJson<Trade>(
+      await demoRequest(`/trades/${afterTrades[0].id}`, 'PUT', { fundingCost: 30 })
+    );
+    expect(edited.createdAt).toBe(afterTrades[0].createdAt);
   });
 
   it('bulk-imports snapshots and exposes them in performance history', async () => {
