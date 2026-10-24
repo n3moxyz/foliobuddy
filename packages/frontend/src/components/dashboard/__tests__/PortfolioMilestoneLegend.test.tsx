@@ -61,4 +61,17 @@ describe('portfolio milestone explanations', () => {
     fireEvent.pointerMove(document.body, { pointerType: 'mouse', clientX: 1000, clientY: 1000 });
     await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
   });
+
+  it('keeps an open explanation visible when the live quote refreshes', () => {
+    const live = { ...events[0], kind: 'live' as const };
+    const { rerender } = render(<PortfolioMilestoneLegend groups={[[live]]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Explain Today (Live)' }));
+    rerender(
+      <PortfolioMilestoneLegend
+        groups={[[{ ...live, timestamp: '2026-07-31T12:00:00Z', drawdownPct: 25 }]]}
+      />
+    );
+    expect(screen.getByRole('tooltip')).toHaveTextContent('31 Jul 2026');
+    expect(screen.getByRole('tooltip')).toHaveTextContent('-25.00%');
+  });
 });

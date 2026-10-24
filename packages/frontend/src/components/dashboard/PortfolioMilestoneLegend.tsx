@@ -76,7 +76,7 @@ export function PortfolioMilestoneLegend({ groups }: { groups: PortfolioMileston
         className="mt-2 flex flex-wrap items-center gap-x-4 text-[11px] sm:text-xs"
       >
         {groups.map((events) => (
-          <MilestoneLegendItem key={events[0].timestamp} events={events} />
+          <MilestoneLegendItem key={events.map((event) => event.kind).join('-')} events={events} />
         ))}
       </ul>
     </TooltipProvider>
