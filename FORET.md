@@ -3,8 +3,10 @@
 ## Dashboard milestone dates (25 October 2026)
 
 The net worth rail now shows the actual start, high, and drawdown trough dates below its figures.
-DD from ATH reads `Today (Live)`. The portfolio chart marks those same observations with small shapes and a muted legend.
-Coincident events share a legend entry. Hover or arrow-key navigation reveals the event details.
+DD from ATH reads `Today (Live)`. The portfolio chart marks highs, drawdown troughs, and the live value with small shapes and a muted legend.
+YTD Start keeps its banner date without a chart marker. Coincident events share a legend entry.
+Hover or arrow-key navigation reveals each marker's meaning. Legend controls also open explanations by keyboard focus or tap.
+The UI sweep also fixed tooltip edge spacing, pointer clicks resetting the selected date, and percentage ticks rounding small moves to zero.
 
 Dates and values come from one chronological timeline. A current quote follows today's snapshot, so the chart includes intraday changes.
 Long charts retain milestone observations during downsampling. Short ranges omit events outside the displayed history.

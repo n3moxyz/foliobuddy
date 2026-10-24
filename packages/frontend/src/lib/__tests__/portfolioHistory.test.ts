@@ -99,7 +99,7 @@ describe('portfolio chart milestone data', () => {
 
   it('shares coincident milestone observations and omits events outside the selected history', () => {
     const milestones: PortfolioMilestone[] = [
-      { ...point(1, 100), kind: 'start' },
+      { ...point(1, 100), kind: 'ath' },
       { ...point(3, 80), kind: 'mdd', drawdownPct: 20 },
       { ...point(3, 80), kind: 'daily', drawdownPct: 20 },
     ];
