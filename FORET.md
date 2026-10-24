@@ -2747,3 +2747,9 @@ before treating a missing subtitle as a styling defect. Also distinguish the
 event date from the date a journal entry was recorded.
 
 See [the repair and sorting contract](docs/solutions/2026-10-25-trade-labels-default-sort.md).
+
+Edward also authorized routine publication for requested FolioBuddy implementation
+work. The project instructions now cover commit, push, PR, merge after checks,
+and deployment verification without another publication confirmation. Explicit
+release holds still apply. Detailed UI contracts moved into a linked document
+to keep both project instruction files below their size limit.

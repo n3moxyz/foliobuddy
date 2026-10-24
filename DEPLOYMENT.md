@@ -13,6 +13,10 @@
 
 Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `main` (touching `packages/backend/**`). Frontend via Vercel's GitHub integration on every push.
 
+Requested implementation work includes publication through this existing release process.
+Follow the publication authorization in [AGENTS.md](AGENTS.md). Required checks,
+review resolution, and deployment verification still apply. Honor explicit release holds.
+
 ## Production env vars
 
 ### Vercel (frontend)

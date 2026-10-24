@@ -25,4 +25,4 @@ patterns. Do not change prices, quantities, dates, P&L, or provider identities.
 
 Verified in the real sandbox at desktop, 768px, and 390px widths. All 487
 frontend tests passed. Backend, frontend, and shared builds passed. The live
-metadata repair changed only five asset names. The frontend code awaits release.
+metadata repair changed only five asset names. Frontend publication follows the project release policy.
