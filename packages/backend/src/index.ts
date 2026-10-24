@@ -42,6 +42,7 @@ import {
   RATE_LIMIT_MAX_REQUESTS,
 } from './lib/constants.js';
 import { warnOnMissingProductionConfig } from './lib/startupChecks.js';
+import { configureProxyTrust } from './lib/proxyTrust.js';
 
 import { initSentry } from './lib/sentry.js';
 
@@ -53,6 +54,7 @@ initSentry();
 warnOnMissingProductionConfig();
 
 const app = express();
+configureProxyTrust(app, process.env.TRUSTED_PROXY_CIDRS);
 const server = createServer(app);
 const port = process.env.PORT || 4001;
 

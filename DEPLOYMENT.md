@@ -187,3 +187,9 @@ On the backend host: `./scripts/backup-db.sh daily|weekly|monthly` and `./script
 ## Incident postmortems
 
 - `docs/solutions/` — historical fixes and lessons, written when a non-trivial bug is resolved.
+
+## Client addresses behind a tunnel
+
+Set `TRUSTED_PROXY_CIDRS` to the actual private networks used by Traefik and the tunnel connector. The backend uses Express address validation, then stops at the first untrusted address. An unset value keeps proxy trust disabled. Do not use a fixed hop count, `true`, or a global `/0` range.
+
+Traefik must trust forwarded headers only from the connector's exact local source address. Keep public clients outside that trust list. Verify direct and tunneled requests, forged prefixes, IPv6 visitors, and separate rate-limit budgets before changing production DNS. See [the proxy trust runbook](docs/solutions/2026-10-25-tunnel-proxy-trust.md).

@@ -2728,3 +2728,7 @@ Both Docker stages now pin npm 11.19.1. The root workspace keeps npm 10.8.2.
 CI also builds the standalone image, including Prisma generation and TypeScript
 compilation. The lesson is to test the actual deployment context before relying
 on a green workspace build during infrastructure changes.
+
+## Tunnel client addresses (25 October 2026)
+
+A tunnel adds a proxy before Traefik. Trusting a fixed number of hops can either hide visitors behind one rate-limit bucket or trust forged addresses on shorter routes. `TRUSTED_PROXY_CIDRS` now lets the deployment name its actual private proxy networks. Express stops at the first untrusted address. Live forwarding and forged-header checks remain part of DNS cutover.
