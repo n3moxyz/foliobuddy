@@ -27,7 +27,10 @@ They reject manual runs on feature branches and never run on pull-request events
 Production Check also rejects failed upstream runs and upstream runs outside this repository's `main` branch.
 
 The action creates an ephemeral node, stores its state in memory, and logs out during job cleanup.
-Keep subnet-route acceptance, DNS replacement, and Tailscale SSH disabled.
+The pinned action adds `--accept-routes` itself. Passing `--accept-routes=false` in its `args` repeats the flag and Tailscale 1.104.2 rejects startup.
+Keep DNS replacement and Tailscale SSH disabled in `args`. Immediately after the action, use `tailscale set --accept-routes=false`.
+Before any production step, verify route acceptance, DNS replacement, and Tailscale SSH are all disabled.
+The CI tag remains limited to VPS TCP 22/443 throughout enrollment. No subnet route is granted.
 The VPS uses ordinary OpenSSH so its forced command and host-key checks remain effective.
 
 ## Prepare and cut over

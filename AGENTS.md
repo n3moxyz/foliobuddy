@@ -377,3 +377,7 @@ See `PRODUCT.md` — source of truth for users, brand, aesthetic, design princip
 - Backend Dockerfile package-isolated: `src/lib/constants.ts`/`domain.ts` duplicate shared enums/helpers; `npm run domain:check` enforces parity.
 - Backend Docker stages pin npm 11.19.1 to avoid npm 10's dependency resolver crash. Root lockfile stays on npm 10.8.2.
 - Prod WebSocket needs `VITE_WS_BACKEND_URL`: `DEPLOYMENT.md`.
+
+### Reverse proxy trust
+
+When changing ingress, set `TRUSTED_PROXY_CIDRS` only to verified proxy networks. Preserve direct-route spoof protection. Check client IPs and rate limits through the actual deployed route before DNS cutover.

@@ -2739,6 +2739,7 @@ Both Docker stages now pin npm 11.19.1. The root workspace keeps npm 10.8.2.
 CI also builds the standalone image, including Prisma generation and TypeScript
 compilation. The lesson is to test the actual deployment context before relying
 on a green workspace build during infrastructure changes.
+
 # Trade names and a saved default order (25 October 2026)
 
 Some imported trades had the ticker saved as the asset name. The shared label
@@ -2764,3 +2765,11 @@ work. The project instructions now cover commit, push, PR, merge after checks,
 and deployment verification without another publication confirmation. Explicit
 release holds still apply. Detailed UI contracts moved into a linked document
 to keep both project instruction files below their size limit.
+
+## Tunnel client addresses (25 October 2026)
+
+A tunnel adds a proxy before Traefik. Trusting a fixed number of hops can either hide visitors behind one rate-limit bucket or trust forged addresses on shorter routes. `TRUSTED_PROXY_CIDRS` now lets the deployment name its actual private proxy networks. Express stops at the first untrusted address. Live forwarding and forged-header checks remain part of DNS cutover.
+
+## CI action defaults can override intent (25 October 2026)
+
+The first private CI run stopped before deployment because the official action already adds `--accept-routes`. Our duplicate flag made Tailscale reject startup. The workflows now disable route acceptance with `tailscale set` immediately after enrollment, then check all three network preferences before production access. The restricted tailnet policy applies throughout enrollment. Review the pinned action's generated command, not only its documented inputs.
