@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   formatMilestoneDate,
@@ -36,6 +36,7 @@ export function PortfolioMilestoneDetails({
 
 function MilestoneLegendItem({ events }: { events: PortfolioMilestone[] }) {
   const [open, setOpen] = useState(false);
+  const pointerStartOpen = useRef<boolean | null>(null);
   const label = events.map((event) => PORTFOLIO_MILESTONE_LABELS[event.kind]).join(' · ');
   const marker = events.find((event) => event.kind === 'mdd') ?? events[0];
   return (
@@ -46,7 +47,22 @@ function MilestoneLegendItem({ events }: { events: PortfolioMilestone[] }) {
             type="button"
             aria-label={`Explain ${label}`}
             className="inline-flex min-h-11 cursor-help items-center gap-1.5 rounded-sm text-left text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
-            onClick={() => setOpen((previous) => !previous)}
+            // Radix closes on pointer-down. Toggle from the state before that close.
+            onPointerDownCapture={() => {
+              pointerStartOpen.current = open;
+            }}
+            onPointerCancel={() => {
+              pointerStartOpen.current = null;
+            }}
+            onKeyDown={() => {
+              pointerStartOpen.current = null;
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              const wasOpen = pointerStartOpen.current;
+              pointerStartOpen.current = null;
+              setOpen((previous) => !(wasOpen ?? previous));
+            }}
           >
             <svg
               width="12"

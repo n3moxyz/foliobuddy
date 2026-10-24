@@ -20,6 +20,15 @@ const events: PortfolioMilestone[] = [
   { kind: 'daily', timestamp: '2026-07-30T12:00:00Z', totalValueUsd: 80, drawdownPct: 10 },
 ];
 
+function tap(trigger: HTMLElement) {
+  fireEvent.pointerDown(trigger, { pointerType: 'touch', pointerId: 1, button: 0 });
+  fireEvent.mouseDown(trigger);
+  fireEvent.focus(trigger);
+  fireEvent.pointerUp(trigger, { pointerType: 'touch', pointerId: 1, button: 0 });
+  fireEvent.mouseUp(trigger);
+  fireEvent.click(trigger);
+}
+
 describe('portfolio milestone explanations', () => {
   it('explains both events at a shared point without exposing account amounts', () => {
     render(<PortfolioMilestoneDetails events={events} />);
@@ -35,12 +44,14 @@ describe('portfolio milestone explanations', () => {
     const { container } = render(<PortfolioMilestoneLegend groups={[events]} />);
     const trigger = screen.getByRole('button', { name: 'Explain MDD · MDD (1D)' });
     expect(trigger).toHaveClass('min-h-11');
-    fireEvent.click(trigger);
+    tap(trigger);
     const tooltip = screen.getByRole('tooltip');
     expect(within(tooltip).getByText(/consecutive calendar days/)).toBeInTheDocument();
     expect(container).not.toContainElement(tooltip);
-    fireEvent.click(trigger);
+    tap(trigger);
     await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+    tap(trigger);
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
   });
 
   it('opens on keyboard focus and dismisses with Escape', async () => {
