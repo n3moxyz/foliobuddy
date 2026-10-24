@@ -39,6 +39,8 @@ jobs:
       APP_URL: https://foliobuddy.xyz
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Resolve production credentials from Coolify
         id: creds
         timeout-minutes: 2
@@ -47,7 +49,7 @@ jobs:
           env_json=$(curl --fail-with-body -sS \
             "${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
-          for key in DATABASE_URL AGENT_API_KEY; do
+          for key in AGENT_API_KEY; do
             value=$(jq -r --arg key "$key" \
               '[.. | objects | select(.key? == $key and (.is_preview? != true)) | .value][0] // empty' \
               <<<"$env_json")
@@ -81,53 +83,35 @@ jobs:
               sys.exit(1)
           PY
 
-      - name: X posts are being collected (database)
+      - name: X posts are being collected (private database check)
         if: ${{ !cancelled() && steps.creds.outcome == 'success' }}
         timeout-minutes: 3
+        env:
+          DB_SSH_HOST: ${{ secrets.DB_SSH_HOST }}
+          DB_SSH_PRIVATE_KEY: ${{ secrets.DB_SSH_PRIVATE_KEY }}
+          DB_SSH_KNOWN_HOSTS: ${{ secrets.DB_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
-          python3 -m pip install --quiet 'psycopg[binary]>=3.2,<4'
-          python3 - <<'PY'
-          import os, sys
-          import psycopg
-
-          # The roster posts ~120 times a day and the longest quiet spell seen
-          # was 1.5 h, so 6 h with nothing new means the collector has stalled.
-          STALE_MINUTES = 6 * 60
+          bash scripts/check-private-db.sh x-health > x-health.json
+          python3 - <<'PYTHON'
+          import json, sys
 
           def fail(message):
               print(f'::error::{message}')
               sys.exit(1)
 
-          with psycopg.connect(os.environ['DATABASE_URL']) as conn:
-              conn.read_only = True
-              migrated = conn.execute(
-                  'SELECT COUNT(*) FROM _prisma_migrations '
-                  'WHERE migration_name = %s AND finished_at IS NOT NULL',
-                  ('20260927000000_add_x_posts',),
-              ).fetchone()[0]
-              if not migrated:
-                  fail('The XPost migration has not been applied')
-              total, last_hour, last_day, accounts, collected_min, posted_min = conn.execute(
-                  '''
-                  SELECT COUNT(*)::int,
-                         COUNT(*) FILTER (WHERE "collectedAt" > now() - interval '1 hour')::int,
-                         COUNT(*) FILTER (WHERE "collectedAt" > now() - interval '24 hours')::int,
-                         COUNT(DISTINCT "authorKey")::int,
-                         (EXTRACT(EPOCH FROM now() - MAX("collectedAt")) / 60)::int,
-                         (EXTRACT(EPOCH FROM now() - MAX("postedAt")) / 60)::int
-                  FROM "XPost"
-                  '''
-              ).fetchone()
-
-          print(f'Stored X posts: {total} from {accounts} accounts '
-                f'({last_hour} collected in the last hour, {last_day} in the last 24 h)')
-          if total == 0:
+          with open('x-health.json') as source:
+              stats = json.load(source)
+          if not stats['migrated']:
+              fail('The XPost migration has not been applied')
+          print(f"Stored X posts: {stats['total']} from {stats['accounts']} accounts "
+                f"({stats['last_hour']} collected in the last hour, {stats['last_day']} in the last 24 h)")
+          if stats['total'] == 0:
               fail('No X posts stored: the collector has never stored anything')
-          print(f'Newest collected {collected_min} min ago; newest posted {posted_min} min ago')
-          if collected_min > STALE_MINUTES:
-              fail(f'Nothing collected for {collected_min} min: the collector has stalled (see its log)')
-          PY
+          print(f"Newest collected {stats['collected_min']} min ago; newest posted {stats['posted_min']} min ago")
+          if stats['collected_min'] is None or stats['collected_min'] > 360:
+              fail('Nothing collected for over 6 hours: the collector has stalled (see its log)')
+          PYTHON
 
       - name: X collector log (Coolify)
         # Informational: the database and feed checks decide pass or fail.

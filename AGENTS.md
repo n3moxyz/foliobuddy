@@ -64,14 +64,24 @@ cd ../frontend && cp .env.example .env
 npm install · npm audit (0 vulns) · npm test · npm run build
 npm run format · npm run format:check # Prettier + scripts:check (bash -n, skips Windows) + domain:check (backend↔shared parity)
 npm test --workspace=@foliobuddy/backend -- --coverage # full V8; same for frontend
-# DB: Docker Desktop, Postgres 5433; db:sync uses backend .env PRODUCTION_DATABASE_URL (prod→local, re-runnable, prod untouched)
+# DB: Docker Desktop, Postgres 5433; db:sync uses SSH settings in backend .env.local (prod→local, prod untouched)
 npm run db:local · npm run db:local:stop · npm run db:sync · npm run db:seed:scale # sanitized scale data
+npm run db:sync -- --check # read-only connection checks, no data copy
+npm run test:private-db # SSH restrictions and safe local restore regression checks
 # packages/backend: dev 4001; packages/frontend: dev 4000
 npm run dev · npm run build # both packages
 npm run test · npx prisma migrate dev · npx prisma studio # backend only
 npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none # optional advisory a11y/quality scan
 npm run sandbox # signed-in real app, no Clerk: http://localhost:4100
 ```
+
+## Private production database access
+
+Keep the database on the backend's private Docker network, without host port mappings.
+The Coolify public-access switch and Docker port mappings are separate controls.
+Developer sync uses existing SSH access. GitHub checks use a separate restricted key
+and fixed read-only commands. Never give that key shell or forwarding access.
+See [the private database runbook](docs/solutions/2026-10-24-private-postgres-access.md).
 
 ## Architecture
 

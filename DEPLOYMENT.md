@@ -137,6 +137,41 @@ printf "https://api.foliobuddy.xyz" | vercel env add VITE_WS_BACKEND_URL product
 echo "https://api.foliobuddy.xyz" | vercel env add VITE_WS_BACKEND_URL production
 ```
 
+## Private database access
+
+The backend `DATABASE_URL` must use the database's internal Docker name.
+Leave **Ports Mappings** empty in Coolify. Keep **Public access** disabled.
+These settings are independent. A disabled public switch does not cancel a port mapping.
+Apply the mapping through Coolify, then restart the database and verify public port closure.
+Keep the same volume and image digest during this repair.
+
+Developer sync uses SSH. Set these values in `packages/backend/.env.local`:
+
+```dotenv
+DB_SSH_HOST=db-host.example
+DB_SSH_USER=maintainer
+DB_SSH_IDENTITY_FILE=/absolute/path/to/private/ssh-key
+DB_REMOTE_CONTAINER=production-postgres
+```
+
+The account needs permission to run Docker on the database host.
+Verify the server's SSH host key through an existing trusted connection first.
+`npm run db:sync -- --check` tests both connections without copying data.
+`npm run db:sync` downloads a complete dump before replacing the local database in one transaction.
+It does not use `PRODUCTION_DATABASE_URL` or a public PostgreSQL connection.
+
+GitHub database checks use a separate restricted SSH key and these repository secrets:
+
+- `DB_SSH_HOST`: the SSH server address.
+- `DB_SSH_PRIVATE_KEY`: the dedicated key for fixed read-only checks.
+- `DB_SSH_KNOWN_HOSTS`: the server's verified SSH host key entry.
+
+The forced command in `scripts/private-db-read.sh` permits only `health`, `x-health`, and `owner`.
+It rejects shell commands, arbitrary SQL, and forwarding. Install it before updating the workflows.
+The production check no longer uses database credentials.
+The manual owner repair still requires its existing Coolify credentials to update the app.
+See the [installation, verification, and rollback runbook](docs/solutions/2026-10-24-private-postgres-access.md).
+
 ## DB backups
 
 On the backend host: `./scripts/backup-db.sh daily|weekly|monthly` and `./scripts/restore-db.sh [path]`. Rotations land in private object storage (bucket names in private ops notes).
