@@ -19,6 +19,7 @@ See [Coolify's database settings](https://coolify.io/docs/databases/configuratio
 - The database keeps its volume and exact image digest.
 - Developer sync uses existing SSH access.
 - GitHub checks use a separate SSH key with a forced command.
+- GitHub reaches that SSH endpoint through its scoped private network identity on `main`.
 - Host backups continue to use `docker exec`.
 
 ## Prepare remote access
@@ -47,6 +48,8 @@ Do not trust a fresh unauthenticated `ssh-keyscan` result by itself.
 With explicit approval, store the dedicated private key and connection settings
 in the GitHub secrets listed in [DEPLOYMENT.md](../../DEPLOYMENT.md).
 Never reuse an administrator's private key for CI.
+The private network migration preserves this key and helper.
+Its separate destination secrets and identity restrictions are in the [private CI runbook](2026-10-25-private-ci-access.md).
 
 Test every allowed operation. Confirm that a shell command and a forwarding request fail.
 Treat the `owner` response as sensitive. Print only whether a unique owner was found.

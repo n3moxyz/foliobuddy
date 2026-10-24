@@ -43,7 +43,10 @@ In the Claude desktop app, `preview_start` with the `sandbox` configuration (`.c
 
 It runs by itself after every successful **Deploy Backend** or **Sync Backend Env to Coolify** run and daily at 09:17 Singapore time. A failed scheduled run emails the owner, which is how a stalled collector (for example, out of twitterapi.io credits) gets noticed.
 
-It never runs on pull requests: that would hand production credentials to a pull request's unreviewed copy of the workflow. To try a change to the check, review the branch first, then run it by hand with `gh workflow run prod-check.yml --ref <branch>`.
+It never runs on pull requests. Production access requires this repository's `main` branch and the workflow's exact federated identity.
+Review and merge workflow changes before running the live check. Feature-branch dispatches are skipped.
+The workflow joins the private administration network before reading Coolify credentials or using restricted SSH.
+See the [private CI runbook](solutions/2026-10-25-private-ci-access.md) for identity and cutover requirements.
 
 ```bash
 gh run list --workflow prod-check.yml --limit 5   # latest results

@@ -1,5 +1,16 @@
 # FOR[ET].md - FolioBuddy
 
+## Private CI administration (25 October 2026)
+
+Closing public administration ports also closes the route used by deployment jobs.
+The four production workflows now connect through ephemeral Tailscale nodes first.
+Each workflow has a separate GitHub OIDC identity restricted to this repository and `main`.
+The network permits only VPS SSH and HTTPS, with no access to personal devices.
+OpenSSH still enforces the existing database key's fixed read-only commands.
+
+New destination secrets keep the old workflows usable while private routes are prepared.
+Merge only after those routes and identities exist. Then verify deployment and production checks before closing public administration.
+The [runbook](docs/solutions/2026-10-25-private-ci-access.md) separates preparation from live verification.
 
 ## Private database access (24 October 2026)
 
