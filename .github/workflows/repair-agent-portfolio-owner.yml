@@ -12,20 +12,38 @@ permissions:
 jobs:
   repair:
     name: Find owner, remap agent, redeploy
+    if: github.repository == 'n3moxyz/foliobuddy' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Connect to private administration network
+        id: tailscale
+        uses: tailscale/github-action@99a8333667fff04fdd6cffb46dfd409f8329a7bf # v4
+        timeout-minutes: 5
+        with:
+          oauth-client-id: ${{ secrets.TS_OWNER_REPAIR_CLIENT_ID }}
+          audience: ${{ secrets.TS_OWNER_REPAIR_AUDIENCE }}
+          tags: tag:ci-foliobuddy
+          version: 1.104.2
+          args: --accept-routes=false --accept-dns=false --ssh=false
+          ping: ${{ secrets.DB_PRIVATE_SSH_HOST }}
+          use-cache: 'false'
+          log-mode: quiet
+
       - name: Resolve unique portfolio owner and update Coolify
         timeout-minutes: 5
         env:
-          DB_SSH_HOST: ${{ secrets.DB_SSH_HOST }}
+          DB_SSH_HOST: ${{ secrets.DB_PRIVATE_SSH_HOST }}
           DB_SSH_PRIVATE_KEY: ${{ secrets.DB_SSH_PRIVATE_KEY }}
-          DB_SSH_KNOWN_HOSTS: ${{ secrets.DB_SSH_KNOWN_HOSTS }}
+          DB_SSH_KNOWN_HOSTS: ${{ secrets.DB_PRIVATE_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
-          base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
+          base="${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
           auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
           bash scripts/check-private-db.sh owner > /tmp/agent-owner-check.json
           python3 - <<'PYTHON'
@@ -63,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           response=$(curl -sS -w "\n%{http_code}" -X POST \
-            "${{ secrets.COOLIFY_URL }}/api/v1/deploy" \
+            "${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/deploy" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"uuid":"${{ secrets.COOLIFY_APP_UUID }}","force":true}')
@@ -87,7 +105,7 @@ jobs:
           deployment_uuid="${{ steps.deploy.outputs.deployment_uuid }}"
           for i in $(seq 1 60); do
             body=$(curl --fail-with-body -sS \
-              "${{ secrets.COOLIFY_URL }}/api/v1/deployments/${deployment_uuid}" \
+              "${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/deployments/${deployment_uuid}" \
               -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
             status=$(jq -r '.status // empty' <<<"$body")
             echo "Attempt $i: deployment status=${status:-unknown}"
@@ -104,7 +122,7 @@ jobs:
         timeout-minutes: 3
         run: |
           set -euo pipefail
-          base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
+          base="${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
           auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
           env_json=$(curl --fail-with-body -sS "$base" -H "$auth")
           api_key=$(jq -r '[.. | objects | select(.key? == "AGENT_API_KEY" and (.is_preview? != true)) | .value][0] // empty' <<<"$env_json")

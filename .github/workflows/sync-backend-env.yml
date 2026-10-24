@@ -15,9 +15,27 @@ on:
 jobs:
   sync-env:
     name: Upsert env + redeploy
+    if: github.repository == 'n3moxyz/foliobuddy' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
+      - name: Connect to private administration network
+        id: tailscale
+        uses: tailscale/github-action@99a8333667fff04fdd6cffb46dfd409f8329a7bf # v4
+        timeout-minutes: 5
+        with:
+          oauth-client-id: ${{ secrets.TS_ENV_SYNC_CLIENT_ID }}
+          audience: ${{ secrets.TS_ENV_SYNC_AUDIENCE }}
+          tags: tag:ci-foliobuddy
+          version: 1.104.2
+          args: --accept-routes=false --accept-dns=false --ssh=false
+          ping: ${{ secrets.DB_PRIVATE_SSH_HOST }}
+          use-cache: 'false'
+          log-mode: quiet
+
       - name: Validate owner user ID
         timeout-minutes: 1
         run: |
@@ -42,7 +60,7 @@ jobs:
           TWITTERAPI_IO_KEY: ${{ secrets.TWITTERAPI_IO_KEY }}
           X_NEWS_SOURCES: ${{ secrets.X_NEWS_SOURCES }}
         run: |
-          base="${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
+          base="${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs"
           auth="Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
 
           upsert() {
@@ -82,7 +100,7 @@ jobs:
         timeout-minutes: 2
         run: |
           response=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.COOLIFY_URL }}/api/v1/deploy" \
+            "${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/deploy" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"uuid":"${{ secrets.COOLIFY_APP_UUID }}","force":true}')
@@ -110,7 +128,7 @@ jobs:
           deployment_uuid="${{ steps.deploy.outputs.deployment_uuid }}"
           for i in $(seq 1 60); do
             body=$(curl --fail-with-body -sS \
-              "${{ secrets.COOLIFY_URL }}/api/v1/deployments/${deployment_uuid}" \
+              "${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/deployments/${deployment_uuid}" \
               -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
             status=$(jq -r '.status // empty' <<<"$body")
             echo "Attempt $i: deployment status=${status:-unknown}"

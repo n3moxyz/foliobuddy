@@ -11,16 +11,34 @@ on:
 jobs:
   deploy:
     name: Deploy to Coolify
+    if: github.repository == 'n3moxyz/foliobuddy' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
+      - name: Connect to private administration network
+        id: tailscale
+        uses: tailscale/github-action@99a8333667fff04fdd6cffb46dfd409f8329a7bf # v4
+        timeout-minutes: 5
+        with:
+          oauth-client-id: ${{ secrets.TS_DEPLOY_CLIENT_ID }}
+          audience: ${{ secrets.TS_DEPLOY_AUDIENCE }}
+          tags: tag:ci-foliobuddy
+          version: 1.104.2
+          args: --accept-routes=false --accept-dns=false --ssh=false
+          ping: ${{ secrets.DB_PRIVATE_SSH_HOST }}
+          use-cache: 'false'
+          log-mode: quiet
+
       - name: Trigger Coolify Deploy
         id: deploy
         timeout-minutes: 2
         run: |
           # Requires COOLIFY_API_TOKEN secret to be configured in GitHub Actions
           response=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.COOLIFY_URL }}/api/v1/deploy" \
+            "${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/deploy" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"uuid":"${{ secrets.COOLIFY_APP_UUID }}","force":true}')
@@ -44,7 +62,7 @@ jobs:
           deployment_uuid="${{ steps.deploy.outputs.deployment_uuid }}"
           for i in $(seq 1 60); do
             response=$(curl -s -w "\n%{http_code}" \
-              "${{ secrets.COOLIFY_URL }}/api/v1/deployments/${deployment_uuid}" \
+              "${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/deployments/${deployment_uuid}" \
               -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
             http_code=$(echo "$response" | tail -1)
             body=$(echo "$response" | head -n -1)

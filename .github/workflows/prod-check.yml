@@ -9,8 +9,8 @@ name: Production Check
 # and masked. This repo is public, so every step prints counts and ages only:
 # never handles, post text, holdings, values, or secret values.
 # No pull_request trigger, ever: it would run a PR's edited copy of this file
-# with production credentials before review. To try a change, review the
-# branch, then run it by hand: `gh workflow run prod-check.yml --ref <branch>`.
+# with production credentials before review. Production access is restricted
+# to this workflow on main. Review and merge changes before a live check.
 on:
   workflow_dispatch:
   workflow_run:
@@ -31,15 +31,37 @@ concurrency:
 jobs:
   check:
     name: Portfolio, X collection, news
-    # A failed deploy or env sync has nothing new to check.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    # Only successful production runs can trigger a follow-up check.
+    if: >-
+      github.repository == 'n3moxyz/foliobuddy' && github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == 'n3moxyz/foliobuddy'))
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    timeout-minutes: 15
     env:
       APP_URL: https://foliobuddy.xyz
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Connect to private administration network
+        id: tailscale
+        uses: tailscale/github-action@99a8333667fff04fdd6cffb46dfd409f8329a7bf # v4
+        timeout-minutes: 5
+        with:
+          oauth-client-id: ${{ secrets.TS_PROD_CHECK_CLIENT_ID }}
+          audience: ${{ secrets.TS_PROD_CHECK_AUDIENCE }}
+          tags: tag:ci-foliobuddy
+          version: 1.104.2
+          args: --accept-routes=false --accept-dns=false --ssh=false
+          ping: ${{ secrets.DB_PRIVATE_SSH_HOST }}
+          use-cache: 'false'
+          log-mode: quiet
 
       - name: Resolve production credentials from Coolify
         id: creds
@@ -47,7 +69,7 @@ jobs:
         run: |
           set -euo pipefail
           env_json=$(curl --fail-with-body -sS \
-            "${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs" \
+            "${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/envs" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
           for key in AGENT_API_KEY; do
             value=$(jq -r --arg key "$key" \
@@ -87,9 +109,9 @@ jobs:
         if: ${{ !cancelled() && steps.creds.outcome == 'success' }}
         timeout-minutes: 3
         env:
-          DB_SSH_HOST: ${{ secrets.DB_SSH_HOST }}
+          DB_SSH_HOST: ${{ secrets.DB_PRIVATE_SSH_HOST }}
           DB_SSH_PRIVATE_KEY: ${{ secrets.DB_SSH_PRIVATE_KEY }}
-          DB_SSH_KNOWN_HOSTS: ${{ secrets.DB_SSH_KNOWN_HOSTS }}
+          DB_SSH_KNOWN_HOSTS: ${{ secrets.DB_PRIVATE_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           bash scripts/check-private-db.sh x-health > x-health.json
@@ -115,13 +137,13 @@ jobs:
 
       - name: X collector log (Coolify)
         # Informational: the database and feed checks decide pass or fail.
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.tailscale.outcome == 'success' }}
         continue-on-error: true
         timeout-minutes: 2
         run: |
           set -euo pipefail
           curl --fail -sS --max-time 60 \
-            "${{ secrets.COOLIFY_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/logs?lines=5000" \
+            "${{ secrets.COOLIFY_PRIVATE_URL }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/logs?lines=5000" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" | jq -r '.logs // empty' > app.log
           python3 - <<'PY'
           import re
