@@ -1,7 +1,8 @@
 # Stage 1: Build
 FROM node:20-alpine AS builder
 
-RUN apk add --no-cache openssl
+# npm 10 crashes while resolving this standalone dependency graph.
+RUN apk add --no-cache openssl && npm install --global npm@11.19.1
 
 WORKDIR /app
 
@@ -24,7 +25,8 @@ RUN npm run build
 # Stage 2: Production
 FROM node:20-alpine
 
-RUN apk add --no-cache openssl
+# Keep the installer consistent with the builder stage.
+RUN apk add --no-cache openssl && npm install --global npm@11.19.1
 
 WORKDIR /app
 

@@ -46,6 +46,9 @@ jobs:
         run: npx tsc --noEmit
         working-directory: packages/backend
 
+      - name: Build standalone backend image
+        run: docker build --tag foliobuddy-backend:ci packages/backend
+
       - name: Type check frontend
         run: npx tsc --noEmit
         working-directory: packages/frontend
