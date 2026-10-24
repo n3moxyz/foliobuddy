@@ -1,5 +1,21 @@
 # FOR[ET].md - FolioBuddy
 
+
+## Private database access (24 October 2026)
+
+A disabled Coolify public-access switch did not remove Docker's host port mapping.
+The backend and GitHub checks still used that public database route.
+The focused repair moves backend traffic to Docker's private network.
+Developer sync now reads through SSH. GitHub checks use a separate key that permits
+only three fixed read-only operations. Host backups already use Docker directly.
+
+Sync now completes its dump before changing local data. A failed dump cannot start
+a restore. A failed restore rolls back its transaction. The connection-only mode
+checks both databases without copying production data.
+
+Live configuration changes and verification are tracked in private operations notes.
+See the [runbook](docs/solutions/2026-10-24-private-postgres-access.md) before deployment.
+
 _Building a personal finance command center from scratch_
 
 ---
