@@ -104,3 +104,28 @@ Other administrators may have added keys since that snapshot.
 
 This repair does not change other applications, shared routing, SSH recovery access,
 provider firewalls, or database records. It does not establish whether past misuse occurred.
+
+## Verified rollout: 25 October 2026
+
+PRs #65 and #66 merged with explicit approval. Backend commit `1871c60` deployed
+successfully before the database restarted. External IPv4 connections to PostgreSQL
+now fail. The saved mapping is empty, public access is disabled, and both the
+generated Compose file and running container have no host port binding.
+
+The database kept its image, volume, system identifier, and expected relation count.
+The backend uses the private Docker hostname. All three HTTP health routes returned
+`200` with `status: "ok"`. Developer sync passed its connection-only check. All three
+restricted SSH operations and a discarded schema-only backup check passed.
+The [production check after closure](https://github.com/n3moxyz/foliobuddy/actions/runs/40111407205)
+passed on the deployed commit.
+
+The host has no public IPv6 address. Its PostgreSQL IPv6 wildcard listener is gone,
+but an external IPv6 check was not possible. Coolify still shows a pending-change
+badge after restart. Saved settings, generated Compose, and live Docker state were
+checked directly instead of treating that badge as deployment evidence. Gray port
+numbers in the empty UI fields are placeholders.
+
+The standalone image's separate dependency audit findings remain recorded in the
+[build repair PR](https://github.com/n3moxyz/foliobuddy/pull/66). This database repair
+does not change those dependency ranges. Private operations notes retain the
+configuration snapshots, exact resource identifiers, and rollback evidence.
