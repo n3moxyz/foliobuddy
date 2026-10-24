@@ -3,6 +3,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X } from 'lucide-react';
 import type { Trade } from '@/lib/types';
 import { TradeTable } from '@/components/trades/TradeTable';
+import { TradeSortSelect } from '@/components/trades/TradeSortSelect';
+import { Label } from '@/components/ui/label';
+import { useTradeSortStore } from '@/stores/tradeSortStore';
+import { useId } from 'react';
 
 interface TradeTapeSectionProps {
   title?: string;
@@ -39,14 +43,16 @@ export function TradeTapeSection({
   highlightTradeId,
   onHighlightComplete,
 }: TradeTapeSectionProps) {
+  const defaultSort = useTradeSortStore((state) => state.defaultSort);
+  const sortSelectId = useId();
   return (
     <Tabs value={filter} onValueChange={(v) => onFilterChange(v as 'all' | 'OPEN' | 'CLOSED')}>
       <section className="space-y-3">
         <div
           className={
             title
-              ? 'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'
-              : 'flex items-center gap-2 flex-wrap'
+              ? 'flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between'
+              : 'flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between'
           }
         >
           {title && (
@@ -74,11 +80,19 @@ export function TradeTapeSection({
               </Button>
             )}
           </div>
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <Label htmlFor={sortSelectId} className="text-xs text-muted-foreground">
+              Default trade order
+            </Label>
+            <TradeSortSelect id={sortSelectId} />
+          </div>
         </div>
 
         <TabsContent value={filter}>
           <TradeTable
+            key={defaultSort}
             trades={trades}
+            defaultSort={defaultSort}
             isLoading={isLoading}
             onEdit={onEdit}
             onDelete={onDelete}

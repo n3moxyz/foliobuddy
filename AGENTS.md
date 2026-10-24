@@ -6,6 +6,16 @@
 > - **Sync with CLAUDE.md**: Mirror changes to both files (only title + agent name differ); keep each under 35,000 characters.
 > - **FORET.md**: after significant changes, add features/fixes/lessons/tech changes (keep conversational tone).
 
+## Publication authorization
+
+A request to implement or fix FolioBuddy includes authorization for the normal publication sequence:
+commit, push, open or update a PR, resolve review findings, merge after checks pass, and verify deployment.
+Do not require a separate publication confirmation or a `/ship` invocation for that requested work.
+This project authorization overrides the workspace's explicit publication gate for FolioBuddy implementation work.
+
+Review-only requests do not authorize publication. Honor explicit release holds and requests to keep work local.
+Separate approval rules for auth, access, payments, migrations, destructive changes, and unexpected live configuration changes still apply.
+
 ## Project Overview
 
 **FolioBuddy** — personal portfolio dashboard tracking positions + net worth across crypto, equities, NFTs, + alts. Multi-user support with investor stake tracking.
@@ -150,7 +160,7 @@ All pages lazy-loaded (`React.lazy()` + `Suspense`); Vite `manualChunks` splits 
 
 ### Public Landing Page
 
-Signed-out: `/` → lazy `pages/Landing.tsx` (`components/landing/` sections), else `pages/SignInPage.tsx`; signed-in `/sign-in` → `/`. `dark` wrapper forces dark; only deterministic local `landingData.ts` (no API calls); hand-rolled SVG (never recharts); `landing-*` `index.css` utils (reduced-motion covered); never grow the signed-in bundle. **Key-feature rule**: each major user-facing feature (new tab/page, headline capability) → assess landing fit; if yes, usually a `CapabilityBento` on local data (mirror real UI, never fetch); News = reference.
+Signed-out visitors use the local-data landing page. Follow the [landing page contract](docs/UI-CONTRACTS.md#public-landing-page) before changing its routing, bundles, content, or motion.
 
 ### Dev Demo Route
 
@@ -191,16 +201,7 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 
 ### Responsive Mobile Design
 
-iOS HIG, all pages:
-
-- **Tables → cards**: `PositionTable` → `renderMobilePositionRow` below `md`; full table only on "All columns" (`showMobileColumnToggle`). `mobileVariant` `focus` (symbol+name, value, P&L pill, meta) / `compact` (value + P&L); row actions → 44px `⋮` menu; Trades column-hides (`hidden md:table-cell`).
-- **Dialogs**: content-heavy dock full-width to mobile's bottom (`!bottom-0`, rounded top, safe-area bottom padding), centered modal `sm+`; all `w-[calc(100%-2rem)]` + `max-h-[85vh] overflow-y-auto`.
-- **Touch**: 44px, compacting `sm+`/`md+`; `Input`/`SelectTrigger`/`DropdownMenuItem`/asset-search options/creatable-select row actions bake `h-11`/`min-h-11` → `sm:`; never redo per-call-site heights; dense row actions need `shrink-0`.
-- **Headers**: `flex-col gap-3 sm:flex-row`; secondary actions → `DropdownMenu` overflow.
-- Mobile navigation uses a modal Radix dialog. Closed navigation has no hidden focus targets. App shortcuts pause while overlays are open.
-- `DialogContent` restores its opener and lets an open asset search consume Escape first. `DialogHeader` reserves close-button space.
-- Mobile text inputs use 16px text. Keep import textareas at 16px below `sm`. `SelectItem` has a 44px mobile target.
-- `PageActionHeader` measures its sticky height for focus scroll offsets. Dashboard charts use container queries for layout and larger text.
+Follow the [mobile contract](docs/UI-CONTRACTS.md#responsive-mobile-design) before changing tables, dialogs, touch targets, navigation, focus, or chart responsiveness.
 
 ### Smart Price Formatting
 
@@ -288,10 +289,7 @@ Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/soluti
 
 ### Dashboard Charts
 
-- **Portfolio Value**: AreaChart, `$`/`%` lens (`%` rebases to range's first positive point); 7D/1M/3M/1Y/YTD/Max; loading `isFetching`. `getDateRange('Max')` MUST send `all=true` to `/snapshots/performance` (empty query defaults to 30 days).
-- **Portfolio % vs Benchmarks**: normalized % vs BTC/ETH/SPX/custom. Keep `provider` + `providerAssetId` (crypto→CoinGecko, TradFi→Yahoo); SPX = `SPY`, not `^GSPC`, via `yahooFinance.chart()`. Failed `priceService.getAssetHistory()` falls back to stored `PriceHistory` (1 point/UTC day; needed for local QA). Baseline = price at first portfolio timestamp. Tooltip renderer `useCallback`'d; inline arrows break memoization.
-- **4 donuts**, `AllocationCharts.tsx`; filter custody first: **By Asset** Crypto/Equities/Cash (`bucketFor()`), carve Perps from Cash (`allocationMath.ts`, clamp to cash), slice-click drills detail; **Detailed** Auto=dominant bucket, <2%→Other (`groupSmallDetailedSlices`); **By Storage** CEX splits Cash/Crypto, <3%→Other (`groupSmallStorageSlices`), protect CEX/Onchain; **Cash Breakdown** by symbol. Titles/totals separate header rows; center=top item's %; no Recharts Tooltip (legend overlap); legends 44px targets.
-- **Image copy**: every chart card `ChartCopyButton` + `chartCopy.ts` → high-res PNG, exclude button; disable Recharts draw animations (immediate copies must not capture partial SVG). Needs `ClipboardItem` + `navigator.clipboard.write`; toast failures.
+Follow the [dashboard chart contract](docs/UI-CONTRACTS.md#dashboard-charts) before changing ranges, benchmarks, allocations, privacy, or image copy.
 
 ### Dashboard Investor Default
 
@@ -299,7 +297,7 @@ Dashboard investor filter defaults to primary owner (`isOwner = true`), not "all
 
 ### Net Worth Card
 
-Borderless hero, investor title (`Net Worth (Nemo)`). Ordered 9-metric rail: YTD P&L, YTD Start, YTD ATH, MDD, MDD (1D), DD from ATH, Exposure, Positions, Trades. A container at least 60rem wide shares width; narrower containers use: one horizontal snap-scroll rail, 9rem cells, never wrap; visible scrollbar, keyboard-focusable region. Compact footer: alternate USD/SGD total. `useDrawdownStats()` (`usePortfolio.ts`, shared Portfolio hero) → `calculatePortfolioDrawdownStats()` on YTD snapshots + live value: 4 metrics/one pass, positive magnitudes displayed as negative %. `HelpTooltip` labels need distinct accessible `label`; buttons OUTSIDE `<Link>`s, never nest interactive content in links. Key values share `useAnimatedNumbers()` loop.
+Follow the [net worth contract](docs/UI-CONTRACTS.md#net-worth-card) before changing the metric rail, drawdown statistics, tooltips, or value animation.
 
 ### Performers Card
 
@@ -368,7 +366,7 @@ See `PRODUCT.md` — source of truth for users, brand, aesthetic, design princip
 - Wrong ports/"DB Down": check `.env.local` first; it overrides Vite `.env`.
 - Always Prisma `onDelete: Cascade` (avoids FK errors); snapshots need unique constraint + check-before-create.
 - Position P&L displays as %; bulk import `skipPriceFetch: true`, scheduler fetches in 1 min.
-- Push/PR CI: typecheck, standalone backend Docker build, tests, NAV Postgres verify, frontend build, `npm run format:check`. Every PR you open: turn on CI auto-fix (Claude app: `ccd_pr` `set_monitor`, `auto_fix` + `address_comments`); never auto-merge unless asked.
+- Push/PR CI: typecheck, standalone backend Docker build, tests, NAV Postgres verify, frontend build, `npm run format:check`. Follow the publication authorization above. Enable Claude CI auto-fix when available (`ccd_pr` `set_monitor`, `auto_fix` + `address_comments`). Otherwise monitor CI and address findings directly.
 - npm 10.8.2/`uuid` override/ExcelJS rules: `docs/DEPENDENCIES.md`.
 - Sentry: unexpected 500s only, skip Zod 400s + AppErrors <500. Node `console.error` crashes on ZodError: integration tests MUST mock logger.
 - vitest `exclude: ['dist/**']` prevents duplicate runs after `npm run build`.

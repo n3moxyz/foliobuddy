@@ -8,11 +8,13 @@ export function AssetLabel({
   badge,
   nameOverride,
   className,
+  alwaysShowName = false,
 }: {
   asset: AssetIdentity;
   badge?: ReactNode;
   nameOverride?: string;
   className?: string;
+  alwaysShowName?: boolean;
 }) {
   const name = nameOverride ?? assetDisplayName(asset);
   return (
@@ -21,7 +23,7 @@ export function AssetLabel({
         <p className="break-words text-sm font-medium [overflow-wrap:anywhere]">{asset.symbol}</p>
         {badge}
       </div>
-      {name !== asset.symbol && (
+      {(alwaysShowName || name !== asset.symbol) && (
         <p
           className="whitespace-normal break-words text-xs font-normal leading-snug text-muted-foreground [overflow-wrap:anywhere]"
           title={asset.name}

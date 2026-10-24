@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +30,12 @@ import { toast } from 'sonner';
 import { TradeDetailDialog } from '@/components/trades/TradeDetailDialog';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { AssetLabel } from '@/components/ui/asset-label';
+import {
+  DEFAULT_TRADE_SORT,
+  sortTradesByDefault,
+  tradeSortOption,
+  type TradeSortOrder,
+} from '@/lib/tradeSort';
 
 const TRADE_TABLE_HEADER_SKELETON_KEYS = ['asset', 'side', 'entry', 'exit', 'pnl'] as const;
 const TRADE_TABLE_ROW_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth'] as const;
@@ -53,6 +59,7 @@ interface TradeTableProps {
   onDelete: (trade: Trade) => void;
   highlightTradeId?: string | null;
   onHighlightComplete?: () => void;
+  defaultSort?: TradeSortOrder;
 }
 
 export function TradeTable({
@@ -62,6 +69,7 @@ export function TradeTable({
   onDelete,
   highlightTradeId,
   onHighlightComplete,
+  defaultSort = DEFAULT_TRADE_SORT,
 }: TradeTableProps) {
   const { formatCurrency, formatPrice } = useMoneyFormatter();
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -69,7 +77,17 @@ export function TradeTable({
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [flashId, setFlashId] = useState<string | null>(null);
   const highlightRef = useRef<HTMLTableRowElement>(null);
-  const { sortedItems, sortKey, sortDirection, onSort } = useTableSort(trades, TRADE_COLUMNS);
+  const defaultOrderedTrades = useMemo(
+    () => sortTradesByDefault(trades, defaultSort),
+    [trades, defaultSort]
+  );
+  const { sortedItems, sortKey, sortDirection, onSort } = useTableSort(
+    defaultOrderedTrades,
+    TRADE_COLUMNS
+  );
+  const selectedDefault = tradeSortOption(defaultSort);
+  const activeSortKey = sortKey ?? selectedDefault.key;
+  const activeSortDirection = sortDirection ?? selectedDefault.direction;
 
   // Scroll to and flash-highlight the target trade row
   useEffect(() => {
@@ -176,38 +194,38 @@ export function TradeTable({
                   <SortableHeader
                     label="Asset"
                     sortKey="asset"
-                    activeSortKey={sortKey}
-                    sortDirection={sortDirection}
+                    activeSortKey={activeSortKey}
+                    sortDirection={activeSortDirection}
                     onSort={onSort}
                   />
                   <SortableHeader
                     label="Side"
                     sortKey="direction"
-                    activeSortKey={sortKey}
-                    sortDirection={sortDirection}
+                    activeSortKey={activeSortKey}
+                    sortDirection={activeSortDirection}
                     onSort={onSort}
                   />
                   <SortableHeader
                     label="Entry Date"
                     sortKey="entryDate"
-                    activeSortKey={sortKey}
-                    sortDirection={sortDirection}
+                    activeSortKey={activeSortKey}
+                    sortDirection={activeSortDirection}
                     onSort={onSort}
                     className={HIDDEN_MD}
                   />
                   <SortableHeader
                     label="Exit Date"
                     sortKey="exitDate"
-                    activeSortKey={sortKey}
-                    sortDirection={sortDirection}
+                    activeSortKey={activeSortKey}
+                    sortDirection={activeSortDirection}
                     onSort={onSort}
                     className={HIDDEN_MD}
                   />
                   <SortableHeader
                     label="Entry"
                     sortKey="entryPrice"
-                    activeSortKey={sortKey}
-                    sortDirection={sortDirection}
+                    activeSortKey={activeSortKey}
+                    sortDirection={activeSortDirection}
                     onSort={onSort}
                     align="right"
                     className={HIDDEN_MD}
@@ -215,8 +233,8 @@ export function TradeTable({
                   <SortableHeader
                     label="Exit"
                     sortKey="exitPrice"
-                    activeSortKey={sortKey}
-                    sortDirection={sortDirection}
+                    activeSortKey={activeSortKey}
+                    sortDirection={activeSortDirection}
                     onSort={onSort}
                     align="right"
                     className={HIDDEN_MD}
@@ -224,8 +242,8 @@ export function TradeTable({
                   <SortableHeader
                     label="Size"
                     sortKey="size"
-                    activeSortKey={sortKey}
-                    sortDirection={sortDirection}
+                    activeSortKey={activeSortKey}
+                    sortDirection={activeSortDirection}
                     onSort={onSort}
                     align="right"
                     className={HIDDEN_SM}
@@ -233,16 +251,16 @@ export function TradeTable({
                   <SortableHeader
                     label="P&L"
                     sortKey="pnl"
-                    activeSortKey={sortKey}
-                    sortDirection={sortDirection}
+                    activeSortKey={activeSortKey}
+                    sortDirection={activeSortDirection}
                     onSort={onSort}
                     align="right"
                   />
                   <SortableHeader
                     label="Status"
                     sortKey="status"
-                    activeSortKey={sortKey}
-                    sortDirection={sortDirection}
+                    activeSortKey={activeSortKey}
+                    sortDirection={activeSortDirection}
                     onSort={onSort}
                   />
                   <TableHead className={HIDDEN_LG}>Notes</TableHead>
@@ -268,7 +286,7 @@ export function TradeTable({
                     }}
                   >
                     <TableCell className="min-w-[10rem]">
-                      <AssetLabel asset={trade.asset} />
+                      <AssetLabel asset={trade.asset} alwaysShowName />
                     </TableCell>
                     <TableCell>
                       <span
