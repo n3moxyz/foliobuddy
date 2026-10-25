@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { PortfolioMilestone } from '@/lib/portfolioHistory';
-import { PortfolioMilestoneDetails, PortfolioMilestoneLegend } from '../PortfolioMilestoneLegend';
+import {
+  PortfolioMilestoneDetails,
+  PortfolioMilestoneLegend as ControlledLegend,
+} from '../PortfolioMilestoneLegend';
 
 beforeAll(() => {
   vi.stubGlobal(
@@ -19,6 +23,19 @@ const events: PortfolioMilestone[] = [
   { kind: 'mdd', timestamp: '2026-07-30T12:00:00Z', totalValueUsd: 80, drawdownPct: 20 },
   { kind: 'daily', timestamp: '2026-07-30T12:00:00Z', totalValueUsd: 80, drawdownPct: 10 },
 ];
+
+function LegendHarness({ groups }: { groups: PortfolioMilestone[][] }) {
+  const [activeKind, setActiveKind] = useState<PortfolioMilestone['kind'] | null>(null);
+  return (
+    <ControlledLegend
+      groups={groups}
+      activeKind={activeKind}
+      onActiveChange={(kind, active) => {
+        setActiveKind((current) => (active ? kind : current === kind ? null : current));
+      }}
+    />
+  );
+}
 
 function tap(trigger: HTMLElement) {
   fireEvent.pointerDown(trigger, { pointerType: 'touch', pointerId: 1, button: 0 });
@@ -41,7 +58,7 @@ describe('portfolio milestone explanations', () => {
   });
 
   it('opens a portaled explanation by tap and closes it on a second tap', async () => {
-    const { container } = render(<PortfolioMilestoneLegend groups={[events]} />);
+    const { container } = render(<LegendHarness groups={[events]} />);
     const trigger = screen.getByRole('button', { name: 'Explain MDD · MDD (1D)' });
     expect(trigger).toHaveClass('min-h-11');
     tap(trigger);
@@ -55,7 +72,7 @@ describe('portfolio milestone explanations', () => {
   });
 
   it('opens on keyboard focus and dismisses with Escape', async () => {
-    render(<PortfolioMilestoneLegend groups={[events]} />);
+    render(<LegendHarness groups={[events]} />);
     const trigger = screen.getByRole('button', { name: 'Explain MDD · MDD (1D)' });
     fireEvent.focus(trigger);
     expect(await screen.findByRole('tooltip')).toHaveTextContent('30 Jul 2026');
@@ -64,7 +81,7 @@ describe('portfolio milestone explanations', () => {
   });
 
   it('opens on mouse hover after the short delay', async () => {
-    render(<PortfolioMilestoneLegend groups={[events]} />);
+    render(<LegendHarness groups={[events]} />);
     const trigger = screen.getByRole('button', { name: 'Explain MDD · MDD (1D)' });
     fireEvent.pointerMove(trigger, { pointerType: 'mouse' });
     expect(await screen.findByRole('tooltip')).toHaveTextContent('MDD · -20.00%');
@@ -75,12 +92,10 @@ describe('portfolio milestone explanations', () => {
 
   it('keeps an open explanation visible when the live quote refreshes', () => {
     const live = { ...events[0], kind: 'live' as const };
-    const { rerender } = render(<PortfolioMilestoneLegend groups={[[live]]} />);
+    const { rerender } = render(<LegendHarness groups={[[live]]} />);
     fireEvent.click(screen.getByRole('button', { name: 'Explain Today (Live)' }));
     rerender(
-      <PortfolioMilestoneLegend
-        groups={[[{ ...live, timestamp: '2026-07-31T12:00:00Z', drawdownPct: 25 }]]}
-      />
+      <LegendHarness groups={[[{ ...live, timestamp: '2026-07-31T12:00:00Z', drawdownPct: 25 }]]} />
     );
     expect(screen.getByRole('tooltip')).toHaveTextContent('31 Jul 2026');
     expect(screen.getByRole('tooltip')).toHaveTextContent('-25.00%');
