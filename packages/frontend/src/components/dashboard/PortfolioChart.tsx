@@ -141,6 +141,14 @@ export function PortfolioChart({
     return [...groups.values()];
   }, [chartData, milestones]);
 
+  // A live-only drawdown can disappear on recovery. Do not retain its selection.
+  if (
+    activeMilestone !== null &&
+    !visibleMilestones.some((events) => events.some((event) => event.kind === activeMilestone))
+  ) {
+    setActiveMilestone(null);
+  }
+
   // Calculate change from first to last point
   const valueChange = useMemo(() => {
     if (chartData.length < 2) return null;

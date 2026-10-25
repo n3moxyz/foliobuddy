@@ -5,7 +5,7 @@
 Hovering or focusing a portfolio chart legend item now highlights its matching point.
 The explanation and marker share one active milestone kind. A static ring makes the point easy to locate.
 Grouped events use one ring. Dismissal and range changes clear the highlight.
-Live quotes retain the selection even when the current value becomes a new high.
+Live quotes move valid selections to their current observation. Selections clear when their milestone disappears.
 
 ## Dashboard milestone dates (25 October 2026)
 

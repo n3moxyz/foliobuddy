@@ -27,7 +27,7 @@ iOS HIG, all pages:
 - **4 donuts**, `AllocationCharts.tsx`; filter custody first: **By Asset** Crypto/Equities/Cash (`bucketFor()`), carve Perps from Cash (`allocationMath.ts`, clamp to cash), slice-click drills detail; **Detailed** Auto=dominant bucket, <2%→Other (`groupSmallDetailedSlices`); **By Storage** CEX splits Cash/Crypto, <3%→Other (`groupSmallStorageSlices`), protect CEX/Onchain; **Cash Breakdown** by symbol. Titles/totals separate header rows; center=top item's %; no Recharts Tooltip (legend overlap); legends 44px targets.
 - **Image copy**: every chart card `ChartCopyButton` + `chartCopy.ts` → high-res PNG, exclude button; disable Recharts draw animations (immediate copies must not capture partial SVG). Needs `ClipboardItem` + `navigator.clipboard.write`; toast failures.
 
-The portfolio legend and plot share one active milestone kind. Hover, keyboard focus, and tap open its explanation and highlight the matching point with a static ring. Dismissal clears both. Grouped events highlight their shared point. Live updates retain the selected kind and move its highlight to the current observation. Range and value-mode changes clear the selection. Hide the chart's pointer tooltip while a legend explanation is active.
+The portfolio legend and plot share one active milestone kind. Hover, keyboard focus, and tap open its explanation and highlight the matching point with a static ring. Dismissal or a removed milestone clears both. Grouped events highlight their shared point. Live updates retain the selected kind and move its highlight to the current observation. Range and value-mode changes clear the selection. Hide the chart's pointer tooltip while a legend explanation is active.
 
 ## Net Worth Card
 

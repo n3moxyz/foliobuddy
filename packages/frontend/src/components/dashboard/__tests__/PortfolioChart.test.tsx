@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PerformancePoint } from '@/lib/types';
 import type { PortfolioMilestone } from '@/lib/portfolioHistory';
 import { PortfolioChart } from '../PortfolioChart';
@@ -19,7 +19,7 @@ vi.mock('recharts', async (importOriginal) => {
   };
 });
 vi.mock('@/hooks/usePortfolio', () => ({
-  usePerformanceHistory: () => ({ data: history, isLoading: false, isFetching: false }),
+  usePerformanceHistory: () => ({ data: performanceHistory, isLoading: false, isFetching: false }),
 }));
 vi.mock('../ChartCopyButton', () => ({ ChartCopyButton: () => null }));
 
@@ -50,6 +50,10 @@ const milestones: PortfolioMilestone[] = [
   { ...history[3], kind: 'live', drawdownPct: 8.33 },
 ];
 const props = { liveValueUsd: 110, liveTimestamp: history[3].timestamp, milestones };
+let performanceHistory = history;
+beforeEach(() => {
+  performanceHistory = history;
+});
 
 describe('legend-linked chart highlights', () => {
   it('highlights only the matching point on hover and clears it on leave', async () => {
@@ -125,5 +129,51 @@ describe('legend-linked chart highlights', () => {
     );
     expect(container.querySelectorAll('[data-milestone-highlight]')).toHaveLength(1);
     expect(screen.getByRole('tooltip')).toHaveTextContent('5 Jan 2026');
+  });
+  it('clears a vanished drawdown selection and does not revive it on another dip', async () => {
+    performanceHistory = history.slice(0, 2);
+    const dip = { timestamp: '2026-01-03T12:00:00Z', totalValueUsd: 110 };
+    const dipMilestones: PortfolioMilestone[] = [
+      { ...history[1], kind: 'ath' },
+      { ...dip, kind: 'mdd', drawdownPct: 8.33 },
+      { ...dip, kind: 'live', drawdownPct: 8.33 },
+    ];
+    const { container, rerender } = render(
+      <PortfolioChart liveValueUsd={110} liveTimestamp={dip.timestamp} milestones={dipMilestones} />
+    );
+    fireEvent.focus(screen.getByRole('button', { name: 'Explain MDD · Today (Live)' }));
+    await waitFor(() =>
+      expect(container.querySelector('[data-portfolio-milestone="mdd live"]')).toHaveAttribute(
+        'data-highlighted',
+        'true'
+      )
+    );
+    const recovery = { timestamp: '2026-01-03T13:00:00Z', totalValueUsd: 130 };
+    rerender(
+      <PortfolioChart
+        liveValueUsd={130}
+        liveTimestamp={recovery.timestamp}
+        milestones={[
+          { ...recovery, kind: 'ath' },
+          { ...recovery, kind: 'live', drawdownPct: 0 },
+        ]}
+      />
+    );
+    await waitFor(() =>
+      expect(container.querySelector('[data-highlighted="true"]')).not.toBeInTheDocument()
+    );
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    const nextDipTime = '2026-01-03T14:00:00Z';
+    rerender(
+      <PortfolioChart
+        liveValueUsd={110}
+        liveTimestamp={nextDipTime}
+        milestones={dipMilestones.map((event) =>
+          event.kind === 'ath' ? event : { ...event, timestamp: nextDipTime }
+        )}
+      />
+    );
+    expect(container.querySelector('[data-highlighted="true"]')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 });
