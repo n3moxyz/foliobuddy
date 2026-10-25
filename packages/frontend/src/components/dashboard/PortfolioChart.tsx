@@ -60,6 +60,13 @@ export function PortfolioChart({
   const [period, setPeriod] = useState<TimePeriod>('YTD');
   const [chartMode, setChartMode] = useState<ChartMode>('value');
   const [chartWidth, setChartWidth] = useState(0);
+  const [activeMilestone, setActiveMilestone] = useState<PortfolioMilestone['kind'] | null>(null);
+  const handleMilestoneActiveChange = useCallback(
+    (kind: PortfolioMilestone['kind'], active: boolean) => {
+      setActiveMilestone((current) => (active ? kind : current === kind ? null : current));
+    },
+    []
+  );
   const chartRef = useRef<HTMLDivElement>(null);
   const { formatCurrency, formatSignedCurrency } = useMoneyFormatter();
 
@@ -213,7 +220,10 @@ export function PortfolioChart({
                   variant={chartMode === 'value' ? 'secondary' : 'ghost'}
                   size="icon"
                   className="h-11 w-11 rounded-r-none sm:h-8 sm:w-8"
-                  onClick={() => setChartMode('value')}
+                  onClick={() => {
+                    setActiveMilestone(null);
+                    setChartMode('value');
+                  }}
                   aria-label="Show portfolio value in currency"
                   aria-pressed={chartMode === 'value'}
                   title="Currency value"
@@ -225,7 +235,10 @@ export function PortfolioChart({
                   variant={chartMode === 'percent' ? 'secondary' : 'ghost'}
                   size="icon"
                   className="h-11 w-11 rounded-l-none sm:h-8 sm:w-8"
-                  onClick={() => setChartMode('percent')}
+                  onClick={() => {
+                    setActiveMilestone(null);
+                    setChartMode('percent');
+                  }}
                   aria-label="Show portfolio value as percentage change"
                   aria-pressed={chartMode === 'percent'}
                   title="Percentage change"
@@ -243,7 +256,10 @@ export function PortfolioChart({
                     className={`h-11 px-3 rounded-none transition-colors duration-200 first:rounded-l-md last:rounded-r-md sm:h-8 ${
                       period === p ? '' : 'hover:bg-muted'
                     }`}
-                    onClick={() => setPeriod(p)}
+                    onClick={() => {
+                      setActiveMilestone(null);
+                      setPeriod(p);
+                    }}
                     aria-pressed={period === p}
                   >
                     {p}
@@ -333,7 +349,11 @@ export function PortfolioChart({
                   className="text-muted-foreground"
                   width={56}
                 />
-                <Tooltip content={renderTooltip} />
+                <Tooltip
+                  content={renderTooltip}
+                  active={activeMilestone ? false : undefined}
+                  cursor={activeMilestone ? false : undefined}
+                />
                 {chartData.length > 0 && (
                   <ReferenceLine
                     y={chartMode === 'percent' ? 0 : chartData[0].value}
@@ -358,6 +378,9 @@ export function PortfolioChart({
                       return <g key={`portfolio-dot-${dotKey}`} />;
                     const event =
                       point.milestones.find((item) => item.kind === 'mdd') ?? point.milestones[0];
+                    const highlighted = point.milestones.some(
+                      (item) => item.kind === activeMilestone
+                    );
                     return (
                       <g key={`portfolio-dot-${dotKey}`}>
                         <g
@@ -366,6 +389,7 @@ export function PortfolioChart({
                           data-portfolio-milestone={point.milestones
                             .map((item) => item.kind)
                             .join(' ')}
+                          data-highlighted={highlighted ? 'true' : undefined}
                         >
                           <title>
                             {point.milestones
@@ -376,7 +400,10 @@ export function PortfolioChart({
                               .join(' ')}{' '}
                             — {point.tooltipDate}
                           </title>
-                          <PortfolioMilestoneGlyph kind={event?.kind ?? 'live'} />
+                          <PortfolioMilestoneGlyph
+                            kind={event?.kind ?? 'live'}
+                            highlighted={highlighted}
+                          />
                         </g>
                         {isLast && (
                           <>
@@ -409,12 +436,16 @@ export function PortfolioChart({
                       </g>
                     );
                   }}
-                  activeDot={{ r: 4, strokeWidth: 0 }}
+                  activeDot={activeMilestone ? false : { r: 4, strokeWidth: 0 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
             {visibleMilestones.length > 0 && (
-              <PortfolioMilestoneLegend groups={visibleMilestones} />
+              <PortfolioMilestoneLegend
+                groups={visibleMilestones}
+                activeKind={activeMilestone}
+                onActiveChange={handleMilestoneActiveChange}
+              />
             )}
           </div>
         )}

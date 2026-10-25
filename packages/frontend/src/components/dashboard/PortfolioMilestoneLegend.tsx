@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   formatMilestoneDate,
@@ -34,14 +34,25 @@ export function PortfolioMilestoneDetails({
   );
 }
 
-function MilestoneLegendItem({ events }: { events: PortfolioMilestone[] }) {
-  const [open, setOpen] = useState(false);
+interface MilestoneInteraction {
+  activeKind: PortfolioMilestone['kind'] | null;
+  onActiveChange: (kind: PortfolioMilestone['kind'], active: boolean) => void;
+}
+
+function MilestoneLegendItem({
+  events,
+  activeKind,
+  onActiveChange,
+}: { events: PortfolioMilestone[] } & MilestoneInteraction) {
   const pointerStartOpen = useRef<boolean | null>(null);
   const label = events.map((event) => PORTFOLIO_MILESTONE_LABELS[event.kind]).join(' · ');
   const marker = events.find((event) => event.kind === 'mdd') ?? events[0];
+  const activeEvent = events.find((event) => event.kind === activeKind);
+  const open = activeEvent !== undefined;
+  const interactionKind = activeEvent?.kind ?? marker.kind;
   return (
     <li>
-      <Tooltip open={open} onOpenChange={setOpen}>
+      <Tooltip open={open} onOpenChange={(nextOpen) => onActiveChange(interactionKind, nextOpen)}>
         <TooltipTrigger asChild>
           <button
             type="button"
@@ -61,7 +72,7 @@ function MilestoneLegendItem({ events }: { events: PortfolioMilestone[] }) {
               event.preventDefault();
               const wasOpen = pointerStartOpen.current;
               pointerStartOpen.current = null;
-              setOpen((previous) => !(wasOpen ?? previous));
+              onActiveChange(interactionKind, !(wasOpen ?? open));
             }}
           >
             <svg
@@ -76,7 +87,7 @@ function MilestoneLegendItem({ events }: { events: PortfolioMilestone[] }) {
             <span>{label}</span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="top" align="start" collisionPadding={12} className="max-w-[280px]">
+        <TooltipContent side="bottom" align="start" collisionPadding={12} className="max-w-[280px]">
           <PortfolioMilestoneDetails events={events} />
         </TooltipContent>
       </Tooltip>
@@ -84,7 +95,11 @@ function MilestoneLegendItem({ events }: { events: PortfolioMilestone[] }) {
   );
 }
 
-export function PortfolioMilestoneLegend({ groups }: { groups: PortfolioMilestone[][] }) {
+export function PortfolioMilestoneLegend({
+  groups,
+  activeKind,
+  onActiveChange,
+}: { groups: PortfolioMilestone[][] } & MilestoneInteraction) {
   return (
     <TooltipProvider delayDuration={200}>
       <ul
@@ -92,7 +107,12 @@ export function PortfolioMilestoneLegend({ groups }: { groups: PortfolioMileston
         className="mt-2 flex flex-wrap items-center gap-x-4 text-[11px] sm:text-xs"
       >
         {groups.map((events) => (
-          <MilestoneLegendItem key={events.map((event) => event.kind).join('-')} events={events} />
+          <MilestoneLegendItem
+            key={events.map((event) => event.kind).join('-')}
+            events={events}
+            activeKind={activeKind}
+            onActiveChange={onActiveChange}
+          />
         ))}
       </ul>
     </TooltipProvider>

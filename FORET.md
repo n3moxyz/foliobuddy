@@ -1,5 +1,12 @@
 # FOR[ET].md - FolioBuddy
 
+## Legend-linked chart highlights (26 October 2026)
+
+Hovering or focusing a portfolio chart legend item now highlights its matching point.
+The explanation and marker share one active milestone kind. A static ring makes the point easy to locate.
+Grouped events use one ring. Dismissal and range changes clear the highlight.
+Live quotes retain the selection even when the current value becomes a new high.
+
 ## Dashboard milestone dates (25 October 2026)
 
 The net worth rail now shows the actual start, high, and drawdown trough dates below its figures.
