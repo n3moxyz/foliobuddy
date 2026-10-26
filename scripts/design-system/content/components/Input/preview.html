@@ -1,0 +1,59 @@
+<!-- @dsCard group="Forms" height=292 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Input — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      mount(
+        h(
+          'div',
+          { className: 'grid max-w-sm gap-4' },
+          h(
+            'div',
+            { className: 'grid gap-2' },
+            h(FB.Label, { htmlFor: 'symbol' }, 'Symbol'),
+            h(FB.Input, { id: 'symbol', placeholder: 'Search BTC, AAPL, D05.SI…' })
+          ),
+          h(
+            'div',
+            { className: 'grid gap-2' },
+            h(FB.Label, { htmlFor: 'quantity' }, 'Quantity'),
+            h(FB.Input, {
+              id: 'quantity',
+              defaultValue: '0',
+              'aria-invalid': true,
+              'aria-describedby': 'quantity-error',
+            }),
+            h(
+              'p',
+              { id: 'quantity-error', role: 'alert', className: 'text-sm text-destructive' },
+              'Enter a quantity greater than 0.'
+            )
+          ),
+          h(
+            'div',
+            { className: 'grid gap-2' },
+            h(FB.Label, { htmlFor: 'exchange' }, 'Exchange'),
+            h(FB.Input, { id: 'exchange', value: 'Binance', readOnly: true, disabled: true })
+          )
+        )
+      );
+    </script>
+  </body>
+</html>

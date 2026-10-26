@@ -1,0 +1,73 @@
+<!-- @dsCard group="Navigation" height=248 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DropdownMenu — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      function icon(C) {
+        return h(C, { className: 'mr-2 h-4 w-4', 'aria-hidden': true });
+      }
+      mount(
+        h(
+          'div',
+          { className: 'flex justify-end' },
+          h(
+            FB.DropdownMenu,
+            { defaultOpen: true, modal: false },
+            h(
+              FB.DropdownMenuTrigger,
+              { asChild: true },
+              h(
+                FB.Button,
+                { variant: 'outline', size: 'icon', 'aria-label': 'More actions' },
+                h(I.MoreVertical, { className: 'h-4 w-4' })
+              )
+            ),
+            h(
+              FB.DropdownMenuContent,
+              {
+                align: 'end',
+                className: 'w-56',
+                onOpenAutoFocus: function (e) {
+                  e.preventDefault();
+                },
+              },
+              h(FB.DropdownMenuLabel, null, 'Positions'),
+              h(FB.DropdownMenuItem, null, icon(I.RefreshCw), 'Refresh Prices'),
+              h(
+                FB.DropdownMenuItem,
+                null,
+                icon(I.Download),
+                'Export Data',
+                h(FB.DropdownMenuShortcut, null, 'E')
+              ),
+              h(FB.DropdownMenuSeparator, null),
+              h(
+                FB.DropdownMenuItem,
+                { className: 'text-destructive' },
+                icon(I.Trash2),
+                'Delete All Positions'
+              )
+            )
+          )
+        )
+      );
+    </script>
+  </body>
+</html>

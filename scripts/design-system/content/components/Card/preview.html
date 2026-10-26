@@ -1,0 +1,72 @@
+<!-- @dsCard group="Layout" height=268 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Card — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      var rows = [
+        ['1', 'BTC', '+$11,705'],
+        ['2', 'ETH', '+$4,776'],
+        ['3', 'D05.SI', '+$3,468'],
+      ];
+      mount(
+        h(
+          FB.Card,
+          { className: 'max-w-sm' },
+          h(
+            FB.CardHeader,
+            null,
+            h(
+              FB.CardTitle,
+              { className: 'flex items-center gap-2 text-base' },
+              h(I.TrendingUp, { className: 'h-4 w-4 text-profit', 'aria-hidden': true }),
+              'Top performers'
+            ),
+            h(FB.CardDescription, null, 'By unrealized P&L in USD')
+          ),
+          h(
+            FB.CardContent,
+            null,
+            h(
+              'div',
+              { className: 'divide-y' },
+              rows.map(function (r) {
+                return h(
+                  'div',
+                  { key: r[1], className: 'flex items-center justify-between py-2 text-sm' },
+                  h(
+                    'span',
+                    { className: 'flex items-center gap-3' },
+                    h(
+                      'span',
+                      { className: 'w-4 text-xs tabular-nums text-muted-foreground' },
+                      r[0]
+                    ),
+                    h('span', { className: 'font-medium' }, r[1])
+                  ),
+                  h('span', { className: 'font-mono text-profit' }, r[2])
+                );
+              })
+            )
+          )
+        )
+      );
+    </script>
+  </body>
+</html>

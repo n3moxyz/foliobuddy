@@ -1,0 +1,164 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FolioBuddy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        overflow: hidden;
+      }
+      .cover {
+        position: relative;
+        width: 960px;
+        height: 288px;
+        overflow: hidden;
+      }
+      .art {
+        position: absolute;
+        top: 0;
+        left: 480px;
+        width: 480px;
+        height: 288px;
+        overflow: hidden;
+      }
+      .art svg {
+        display: block;
+        width: 480px;
+        height: 288px;
+      }
+      .violet {
+        fill: var(--mark-violet);
+      }
+      .cream {
+        fill: var(--mark-cream);
+      }
+      .panel {
+        fill: var(--accent);
+      }
+      .gain {
+        fill: var(--profit);
+      }
+      .dot {
+        fill: var(--muted-foreground);
+      }
+      .blk {
+        rx: var(--radius-lg);
+      }
+      .pill {
+        rx: 12px;
+      }
+      .words {
+        position: absolute;
+        left: var(--space-6);
+        bottom: var(--space-6);
+        max-width: 440px;
+      }
+      .name {
+        margin: 0;
+        font-size: 72px;
+        line-height: 0.95;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        color: var(--foreground);
+      }
+      .tag {
+        margin: var(--space-2) 0 0 2px;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--muted-foreground);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="cover">
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 480 288" width="480" height="288">
+          <!--
+  blocks      mark-violet 144x272 slab bled off the top (identity, largest) · mark-cream 72x96 leaf nested in its foot, as in the logo · accent 296x232 panel bled off top and right (the quiet relief tint, a chart card) · profit 96x24 pill once (the gain chip) — about 38% of 960x288
+  arrangement one tall slab with satellites; bottoms on one line space-6 above the edge; space-6 gutters
+  pattern     dot grid, from the landing's chart-paper backdrop (24px pitch, 1px dots, faded at the edges): space-6-pitch dots in muted-foreground on the panel, cut to the landing mask's ellipse at 65% / 40% — 55 dots
+  scales      sides in space-6 multiples (144, 72, 96, 24); gutters space-6; pitch space-6; corners radius-lg; pill rx = half of 24 (radius-full)
+-->
+          <rect class="violet blk" x="24" y="-8" width="144" height="272" rx="6" />
+          <rect class="cream blk" x="96" y="168" width="72" height="96" rx="6" />
+          <rect class="panel blk" x="192" y="-8" width="296" height="232" rx="6" />
+          <circle class="dot" cx="264" cy="72" r="1" />
+          <circle class="dot" cx="264" cy="96" r="1" />
+          <circle class="dot" cx="264" cy="120" r="1" />
+          <circle class="dot" cx="288" cy="48" r="1" />
+          <circle class="dot" cx="288" cy="72" r="1" />
+          <circle class="dot" cx="288" cy="96" r="1" />
+          <circle class="dot" cx="288" cy="120" r="1" />
+          <circle class="dot" cx="288" cy="144" r="1" />
+          <circle class="dot" cx="312" cy="24" r="1" />
+          <circle class="dot" cx="312" cy="48" r="1" />
+          <circle class="dot" cx="312" cy="72" r="1" />
+          <circle class="dot" cx="312" cy="96" r="1" />
+          <circle class="dot" cx="312" cy="120" r="1" />
+          <circle class="dot" cx="312" cy="144" r="1" />
+          <circle class="dot" cx="336" cy="24" r="1" />
+          <circle class="dot" cx="336" cy="48" r="1" />
+          <circle class="dot" cx="336" cy="72" r="1" />
+          <circle class="dot" cx="336" cy="96" r="1" />
+          <circle class="dot" cx="336" cy="120" r="1" />
+          <circle class="dot" cx="336" cy="144" r="1" />
+          <circle class="dot" cx="336" cy="168" r="1" />
+          <circle class="dot" cx="360" cy="24" r="1" />
+          <circle class="dot" cx="360" cy="48" r="1" />
+          <circle class="dot" cx="360" cy="72" r="1" />
+          <circle class="dot" cx="360" cy="96" r="1" />
+          <circle class="dot" cx="360" cy="120" r="1" />
+          <circle class="dot" cx="360" cy="144" r="1" />
+          <circle class="dot" cx="360" cy="168" r="1" />
+          <circle class="dot" cx="384" cy="24" r="1" />
+          <circle class="dot" cx="384" cy="48" r="1" />
+          <circle class="dot" cx="384" cy="72" r="1" />
+          <circle class="dot" cx="384" cy="96" r="1" />
+          <circle class="dot" cx="384" cy="120" r="1" />
+          <circle class="dot" cx="384" cy="144" r="1" />
+          <circle class="dot" cx="384" cy="168" r="1" />
+          <circle class="dot" cx="408" cy="24" r="1" />
+          <circle class="dot" cx="408" cy="48" r="1" />
+          <circle class="dot" cx="408" cy="72" r="1" />
+          <circle class="dot" cx="408" cy="96" r="1" />
+          <circle class="dot" cx="408" cy="120" r="1" />
+          <circle class="dot" cx="408" cy="144" r="1" />
+          <circle class="dot" cx="408" cy="168" r="1" />
+          <circle class="dot" cx="432" cy="24" r="1" />
+          <circle class="dot" cx="432" cy="48" r="1" />
+          <circle class="dot" cx="432" cy="72" r="1" />
+          <circle class="dot" cx="432" cy="96" r="1" />
+          <circle class="dot" cx="432" cy="120" r="1" />
+          <circle class="dot" cx="432" cy="144" r="1" />
+          <circle class="dot" cx="432" cy="168" r="1" />
+          <circle class="dot" cx="456" cy="24" r="1" />
+          <circle class="dot" cx="456" cy="48" r="1" />
+          <circle class="dot" cx="456" cy="72" r="1" />
+          <circle class="dot" cx="456" cy="96" r="1" />
+          <circle class="dot" cx="456" cy="120" r="1" />
+          <circle class="dot" cx="456" cy="144" r="1" />
+          <rect class="gain pill" x="192" y="240" width="96" height="24" rx="12" />
+        </svg>
+      </div>
+      <div class="words">
+        <h1 class="name">FolioBuddy</h1>
+        <p class="tag">Every asset, one quiet dashboard.</p>
+      </div>
+    </div>
+  </body>
+</html>

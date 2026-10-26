@@ -1,0 +1,47 @@
+<!-- @dsCard group="Layout" height=140 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Separator — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      mount(
+        h(
+          'div',
+          { className: 'max-w-md space-y-4' },
+          h(
+            'div',
+            null,
+            h('h2', { className: 'text-base font-semibold' }, 'Appearance'),
+            h('p', { className: 'text-sm text-muted-foreground' }, 'Theme and currency.')
+          ),
+          h(FB.Separator, null),
+          h(
+            'div',
+            { className: 'flex h-6 items-center gap-3 text-sm' },
+            h('span', null, 'USD'),
+            h(FB.Separator, { orientation: 'vertical' }),
+            h('span', { className: 'text-muted-foreground' }, 'Dark'),
+            h(FB.Separator, { orientation: 'vertical' }),
+            h('span', { className: 'text-muted-foreground' }, 'Values shown')
+          )
+        )
+      );
+    </script>
+  </body>
+</html>

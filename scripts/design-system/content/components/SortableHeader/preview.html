@@ -1,0 +1,141 @@
+<!-- @dsCard group="Data" height=272 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SortableHeader — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="px-2 py-1"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      var ROWS = [
+        {
+          asset: { symbol: 'BTC', name: 'Bitcoin', category: 'LIQUID_CRYPTO' },
+          qty: '0.45',
+          price: '$64,210',
+          value: 28895,
+          pnl: '$11,705',
+          pct: 68.09,
+        },
+        {
+          asset: { symbol: 'ETH', name: 'Ethereum', category: 'LIQUID_CRYPTO' },
+          qty: '6.2',
+          price: '$3,180',
+          value: 19718,
+          pnl: '$4,776',
+          pct: 31.97,
+        },
+        {
+          asset: { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'EQUITY' },
+          qty: '1,200',
+          price: '$31.04',
+          value: 37248,
+          pnl: '$3,468',
+          pct: 10.27,
+        },
+        {
+          asset: { symbol: 'SOL', name: 'Solana', category: 'LIQUID_CRYPTO' },
+          qty: '140',
+          price: '$146.25',
+          value: 20475,
+          pnl: '-$5,089',
+          pct: -19.91,
+        },
+      ];
+      function usd(n) {
+        return '$' + n.toLocaleString('en-US');
+      }
+      function pct(n) {
+        return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+      }
+      function pnlCell(r) {
+        return h(
+          FB.TableCell,
+          { className: 'whitespace-nowrap text-right' },
+          h(
+            'div',
+            { className: r.pct >= 0 ? 'text-profit' : 'text-loss' },
+            h('p', { className: 'font-mono text-sm' }, r.pnl),
+            h('p', { className: 'text-xs' }, pct(r.pct))
+          )
+        );
+      }
+
+      function Demo() {
+        var k = React.useState('value'),
+          d = React.useState('desc');
+        function onSort(key) {
+          if (key === k[0]) d[1](d[0] === 'asc' ? 'desc' : 'asc');
+          else {
+            k[1](key);
+            d[1]('desc');
+          }
+        }
+        var rows = ROWS.slice().sort(function (a, b) {
+          var x =
+            k[0] === 'symbol'
+              ? a.asset.symbol.localeCompare(b.asset.symbol)
+              : k[0] === 'pct'
+                ? a.pct - b.pct
+                : a.value - b.value;
+          return d[0] === 'asc' ? x : -x;
+        });
+        function head(label, key, align) {
+          return h(FB.SortableHeader, {
+            label: label,
+            sortKey: key,
+            activeSortKey: k[0],
+            sortDirection: d[0],
+            onSort: onSort,
+            align: align,
+          });
+        }
+        return h(
+          FB.Table,
+          null,
+          h(
+            FB.TableHeader,
+            null,
+            h(
+              FB.TableRow,
+              null,
+              head('Asset', 'symbol'),
+              head('Value', 'value', 'right'),
+              head('P&L %', 'pct', 'right')
+            )
+          ),
+          h(
+            FB.TableBody,
+            null,
+            rows.map(function (r) {
+              return h(
+                FB.TableRow,
+                { key: r.asset.symbol },
+                h(FB.TableCell, { className: 'text-sm font-medium' }, r.asset.symbol),
+                h(FB.TableCell, { className: 'text-right font-mono text-sm' }, usd(r.value)),
+                h(
+                  FB.TableCell,
+                  { className: 'text-right text-sm ' + (r.pct >= 0 ? 'text-profit' : 'text-loss') },
+                  pct(r.pct)
+                )
+              );
+            })
+          )
+        );
+      }
+      mount(h(Demo));
+    </script>
+  </body>
+</html>

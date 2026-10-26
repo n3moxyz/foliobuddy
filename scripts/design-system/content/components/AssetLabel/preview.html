@@ -1,0 +1,56 @@
+<!-- @dsCard group="Data" height=264 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>AssetLabel — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      var badge = h(
+        'span',
+        {
+          className:
+            'inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning',
+          'aria-label': 'Unit Trust',
+        },
+        'UT'
+      );
+      var assets = [
+        { asset: { symbol: 'BTC', name: 'Bitcoin', category: 'LIQUID_CRYPTO' } },
+        { asset: { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'EQUITY' } },
+        {
+          asset: {
+            symbol: 'SGXZ81514606',
+            name: 'LionGlobal Singapore Dividend Equity SGD',
+            category: 'UNIT_TRUST',
+          },
+          badge: badge,
+        },
+        { asset: { symbol: 'USDC', name: 'USD Coin', category: 'STABLECOIN' } },
+      ];
+      mount(
+        h(
+          'div',
+          { className: 'max-w-xs divide-y' },
+          assets.map(function (a) {
+            return h('div', { key: a.asset.symbol, className: 'py-2.5' }, h(FB.AssetLabel, a));
+          })
+        )
+      );
+    </script>
+  </body>
+</html>
