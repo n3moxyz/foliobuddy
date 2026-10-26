@@ -83,6 +83,7 @@ npm run dev · npm run build # both packages
 npm run test · npx prisma migrate dev · npx prisma studio # backend only
 npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none # optional advisory a11y/quality scan
 npm run sandbox # signed-in real app, no Clerk: http://localhost:4100
+npm run design-system && npm run design-system:check # claude.ai design-system artifact: scripts/design-system/README.md
 ```
 
 ## Private production database access
