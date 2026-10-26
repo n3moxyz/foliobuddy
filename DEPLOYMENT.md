@@ -60,6 +60,7 @@ Configure these repository secrets before merging the workflow migration:
 | `COOLIFY_PRIVATE_URL` | Private HTTPS dashboard URL with a valid certificate |
 | `DB_PRIVATE_SSH_HOST` | VPS Tailscale address, also used for the connection check |
 | `DB_PRIVATE_SSH_KNOWN_HOSTS` | Verified SSH host key entry for that private address |
+| `CI_ISOLATION_TARGETS` | JSON array of the two protected computers' Tailscale IPv4 addresses. Production Check must not reach their SSH ports. |
 | `TS_DEPLOY_CLIENT_ID`, `TS_DEPLOY_AUDIENCE` | Identity for `deploy-backend.yml` |
 | `TS_ENV_SYNC_CLIENT_ID`, `TS_ENV_SYNC_AUDIENCE` | Identity for `sync-backend-env.yml` |
 | `TS_PROD_CHECK_CLIENT_ID`, `TS_PROD_CHECK_AUDIENCE` | Identity for `prod-check.yml` |

@@ -1,5 +1,12 @@
 # FOR[ET].md - FolioBuddy
 
+## CI privacy and isolation checks (26 October 2026)
+
+Owner repair checked the portfolio correctly but also printed its total value in public workflow logs.
+The success message now reports only the position count. The positive-value check stays in place.
+Production Check also verifies an allowed VPS SSH connection and blocked SSH connections to both protected computers.
+The target addresses stay in a repository secret. A live audit must confirm both computers are online independently.
+
 ## Legend-linked chart highlights (26 October 2026)
 
 Hovering or focusing a portfolio chart legend item now highlights its matching point.
