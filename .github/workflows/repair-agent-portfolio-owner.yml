@@ -152,7 +152,7 @@ jobs:
           total = (payload.get('summary') or {}).get('totalValueUsd') or 0
           if not positions or total <= 0:
               raise SystemExit(1)
-          print(f"position_count={len(positions)} total_value_usd={total:.2f}")
+          print(f"position_count={len(positions)}")
           PY
               ) && {
                 echo "Agent portfolio verified: $result"

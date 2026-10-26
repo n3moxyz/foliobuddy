@@ -60,6 +60,16 @@ Verify SSH still rejects shell commands and forwarding with the database key.
 Record live checks and provider settings in private operations notes, without secret values or customer data.
 Repository CI cannot prove private routing before the infrastructure and identities exist.
 
+Production Check first connects to the allowed VPS SSH port, then tests both protected computers' SSH ports.
+Store their two Tailscale IPv4 addresses as a JSON array in `CI_ISOLATION_TARGETS` before merging this check.
+A successful connection or unexpected network response fails the job. Only a timeout passes the blocked-route check.
+For a live isolation audit, independently confirm both computers are online and their SSH ports work from an approved computer.
+An offline computer can also time out, so scheduled runs alone do not prove isolation.
+Keep addresses in the repository secret. Public logs identify devices by number only.
+
+Owner repair still checks for positions and a positive portfolio value, but prints only the position count.
+Never print account values in this public repository's workflow logs.
+
 If a private route fails, keep public recovery access until the defect is fixed.
 Before final firewall closure, an approved workflow revert can use the preserved old destination secrets.
 After closure, repair through the verified administrator path or the provider recovery procedure.

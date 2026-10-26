@@ -71,6 +71,44 @@ jobs:
           sudo tailscale debug prefs | jq -e \
             '.RouteAll == false and .CorpDNS == false and .RunSSH == false' >/dev/null
 
+      - name: Verify personal devices remain isolated
+        timeout-minutes: 1
+        env:
+          CI_ISOLATION_TARGETS: ${{ secrets.CI_ISOLATION_TARGETS }}
+          DB_PRIVATE_SSH_HOST: ${{ secrets.DB_PRIVATE_SSH_HOST }}
+        run: |
+          python3 - <<'PY'
+          import ipaddress, json, os, socket
+
+          try:
+              targets = json.loads(os.environ['CI_ISOLATION_TARGETS'])
+              assert isinstance(targets, list) and len(targets) == 2
+              assert all(isinstance(target, str) for target in targets)
+              assert len(set(targets)) == 2
+              assert all(ipaddress.ip_address(target) in ipaddress.ip_network('100.64.0.0/10') for target in targets)
+              assert os.environ['DB_PRIVATE_SSH_HOST'] not in targets
+          except (KeyError, ValueError, AssertionError):
+              raise SystemExit('Configure two distinct protected Tailscale addresses in CI_ISOLATION_TARGETS')
+
+          # A working allowed route prevents a broken runner network from passing.
+          try:
+              with socket.create_connection((os.environ['DB_PRIVATE_SSH_HOST'], 22), timeout=5):
+                  pass
+          except OSError:
+              raise SystemExit('The allowed private SSH route is unavailable')
+
+          for index, target in enumerate(targets, start=1):
+              try:
+                  with socket.create_connection((target, 22), timeout=5):
+                      pass
+              except TimeoutError:
+                  print(f'Protected device {index}: SSH blocked')
+                  continue
+              except OSError:
+                  raise SystemExit(f'Protected device {index}: unexpected network response')
+              raise SystemExit(f'Protected device {index}: CI reached private SSH')
+          PY
+
       - name: Resolve production credentials from Coolify
         id: creds
         timeout-minutes: 2
