@@ -34,3 +34,20 @@ The portfolio legend and plot share one active milestone kind. Hover, keyboard f
 Borderless hero, investor title (`Net Worth (Nemo)`). Ordered 9-metric rail: YTD P&L, YTD Start, YTD ATH, MDD, MDD (1D), DD from ATH, Exposure, Positions, Trades. A container at least 60rem wide shares width; narrower containers use: one horizontal snap-scroll rail, 9rem cells, never wrap; visible scrollbar, keyboard-focusable region. Compact footer: alternate USD/SGD total. `useDrawdownStats()` (`usePortfolio.ts`, shared Portfolio hero) → `calculatePortfolioDrawdownStats()` on YTD snapshots + live value: 4 metrics/one pass, positive magnitudes displayed as negative %. `HelpTooltip` labels need distinct accessible `label`; buttons OUTSIDE `<Link>`s, never nest interactive content in links. Key values share `useAnimatedNumbers()` loop.
 
 `useDrawdownStats()` uses `calculateDatedDrawdownStats()` to retain the actual event timestamps. YTD Start uses the summary's `ytdStartDate`. ATH ties retain the first high. MDD dates mark the first deepest trough. Daily MDD compares the final observations of consecutive local calendar days, including today's live value. Missing or invalid days break daily comparisons. Zero declines have no invented trough date. Recorded dates appear in parentheses beneath the four figures. DD from ATH reads `Today (Live)`. YTD history uses the summary's UTC year boundary and includes today's snapshots.
+
+## Portfolio Hero Summary
+
+Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD trend arrow, then 5-col `divide-x` grid (YTD Start, DD from ATH, Exposure, Positions, YTD P&L — drawdown via shared `useDrawdownStats()`), `HelpTooltip` on every label. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add". Exposure = owned non-stable/non-cash + server-backed perp ÷ total; custody excluded.
+
+## Portfolio Section Headers
+
+2-level, all breakpoints: **Crypto/Equities/Cash** (`Portfolio.tsx` via `CollapsibleCard`, `icon` + `accentColor`) → **CEX/Broker account/Bank/Onchain** (`PositionTable`, trigger $ totals). Equities: persisted By Broker/By Type. Accent tokens `crypto`/`equities`/`cash`/`custody` in `index.css`/`tailwind.config.js`, never raw `-500`; custody accent `CUSTODY_CONFIG`. Heading wraps trigger (`<h2><button>`), never reversed: invalid HTML hides headings from SR nav. Desktop `hidden sm:block` full table rows; mobile `sm:hidden` `mobileVariant="compact"`, no column toggle; custody own section on both.
+
+## Creatable Storage Location Dropdowns
+
+Only free-text location dropdowns (CEX/wallet/broker/bank) use `CreatableSelect`: no "Others", "+ Add new ..." row; Category/storage type/fiat currency/direction/theme stay fixed.
+
+- Customs: popover pencil/trash pointer-only, Rename/Remove under trigger keyboard; keep both.
+- Defaults protected; customs → `foliobuddy-storage-location-options` by storage type (`positionOptions.ts`); delete drops only the option, positions keep value (edit forms re-add one-off).
+- `onValueChange` must ignore empties Radix emits on create-row close.
+- `SelectContent` sizes to content, above dialogs (`z-[60]`); never force `h-[var(--radix-select-trigger-height)]` or reuse dialog `z-50` (menus open but clipped).
