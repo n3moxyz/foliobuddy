@@ -1,0 +1,50 @@
+<!-- @dsCard group="Layout" height=104 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PageActionHeader — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      mount(
+        h(FB.PageActionHeader, {
+          title: 'Portfolio',
+          subtitle: '12 positions · prices updated 2 min ago',
+          actions: [
+            h(
+              FB.Button,
+              { key: 'copy', variant: 'outline', size: 'sm' },
+              h(I.Copy, { className: 'mr-1 h-4 w-4', 'aria-hidden': true }),
+              'Copy All'
+            ),
+            h(
+              FB.Button,
+              { key: 'add', size: 'sm' },
+              h(I.Plus, { className: 'mr-1 h-4 w-4', 'aria-hidden': true }),
+              'Add Position'
+            ),
+            h(
+              FB.Button,
+              { key: 'more', variant: 'ghost', size: 'icon', 'aria-label': 'More actions' },
+              h(I.MoreVertical, { className: 'h-4 w-4' })
+            ),
+          ],
+        })
+      );
+    </script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+<!-- @dsCard group="Overlays" height=150 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>HelpTooltip — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      mount(
+        h(
+          'div',
+          { className: 'pt-20' },
+          h(
+            'div',
+            { className: 'flex items-center gap-1 whitespace-nowrap' },
+            h('p', { className: 'text-xs text-muted-foreground' }, 'Exposure'),
+            h(FB.HelpTooltip, {
+              label: 'Exposure',
+              content:
+                'Percentage of portfolio in market-risk assets, excluding stablecoins and cash, including perps',
+            })
+          ),
+          h('p', { className: 'text-sm font-medium tabular-nums' }, '68.42%')
+        )
+      );
+      setTimeout(function () {
+        var b = document.querySelector('[aria-label="Help: Exposure"]');
+        if (b) b.click();
+      }, 60);
+    </script>
+  </body>
+</html>

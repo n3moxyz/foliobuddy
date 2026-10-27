@@ -1,5 +1,16 @@
 # FOR[ET].md - FolioBuddy
 
+## Design system artifact (26 October 2026)
+
+FolioBuddy now has a design system on claude.ai, extracted from the code: tokens, a brand book, and the 26 shared components as live previews.
+`npm run design-system` rebuilds its files from `index.css`, `components/ui` and `scripts/design-system/content/`. `npm run design-system:check` renders every preview in both themes.
+
+Three lessons came out of the build:
+
+- **Bare channels need a translation layer.** `index.css` stores `234 89% 55%`, and Tailwind wraps it in `hsl()`. The artifact stores full colours, so the bundle's Tailwind config reads `var(--primary)` and applies alpha with `color-mix()`.
+- **A bundle that borrows React must lend it to CommonJS too.** rolldown kept `require("react")` inside `use-sync-external-store`, and every preview crashed. Serving React as a CommonJS module that returns `window.React` fixed both import styles.
+- **Previews must not grab focus.** An overlay that opens by default moves keyboard focus into its frame, so the host page can jump. Radix Select also closes on window blur and resize. Previews now open overlays without focus, Select shows closed states, and the check fails when a preview takes focus.
+
 ## CI privacy and isolation checks (26 October 2026)
 
 Owner repair checked the portfolio correctly but also printed its total value in public workflow logs.

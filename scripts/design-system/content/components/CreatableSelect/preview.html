@@ -1,0 +1,87 @@
+<!-- @dsCard group="Forms" height=176 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CreatableSelect — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      var DEFAULTS = ['FSMOne', 'IBKR', 'Tiger', 'UOB KH'];
+      function Demo() {
+        var o = React.useState(DEFAULTS.concat(['Moomoo'])),
+          v = React.useState('Moomoo');
+        var a = React.useState(false),
+          t = React.useState('');
+        return h(
+          'div',
+          { className: 'grid max-w-xs gap-2' },
+          h(FB.Label, { htmlFor: 'broker' }, 'Broker'),
+          h(FB.CreatableSelect, {
+            id: 'broker',
+            value: v[0],
+            options: o[0],
+            placeholder: 'Select broker',
+            addLabel: '+ Add new broker',
+            inputPlaceholder: 'Enter broker name...',
+            inputLabel: 'New broker name',
+            adding: a[0],
+            inputValue: t[0],
+            onValueChange: v[1],
+            onStartAdding: function () {
+              a[1](true);
+            },
+            onInputChange: t[1],
+            onAdd: function () {
+              var n = t[0].trim();
+              if (!n) return null;
+              o[1](o[0].concat([n]));
+              a[1](false);
+              t[1]('');
+              return n;
+            },
+            onCancel: function () {
+              a[1](false);
+              t[1]('');
+            },
+            onEditOption: function (cur, next) {
+              o[1](
+                o[0].map(function (x) {
+                  return x === cur ? next : x;
+                })
+              );
+              return next;
+            },
+            onDeleteOption: function (x) {
+              o[1](
+                o[0].filter(function (y) {
+                  return y !== x;
+                })
+              );
+            },
+            onClearValue: function () {
+              v[1]('');
+            },
+            isOptionEditable: function (x) {
+              return DEFAULTS.indexOf(x) === -1;
+            },
+          })
+        );
+      }
+      mount(h(Demo));
+    </script>
+  </body>
+</html>

@@ -1,0 +1,127 @@
+<!-- @dsCard group="Data" height=344 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Table — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="px-2 py-1"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      var ROWS = [
+        {
+          asset: { symbol: 'BTC', name: 'Bitcoin', category: 'LIQUID_CRYPTO' },
+          qty: '0.45',
+          price: '$64,210',
+          value: 28895,
+          pnl: '$11,705',
+          pct: 68.09,
+        },
+        {
+          asset: { symbol: 'ETH', name: 'Ethereum', category: 'LIQUID_CRYPTO' },
+          qty: '6.2',
+          price: '$3,180',
+          value: 19718,
+          pnl: '$4,776',
+          pct: 31.97,
+        },
+        {
+          asset: { symbol: 'D05.SI', name: 'DBS Group Holdings Ltd', category: 'EQUITY' },
+          qty: '1,200',
+          price: '$31.04',
+          value: 37248,
+          pnl: '$3,468',
+          pct: 10.27,
+        },
+        {
+          asset: { symbol: 'SOL', name: 'Solana', category: 'LIQUID_CRYPTO' },
+          qty: '140',
+          price: '$146.25',
+          value: 20475,
+          pnl: '-$5,089',
+          pct: -19.91,
+        },
+      ];
+      function usd(n) {
+        return '$' + n.toLocaleString('en-US');
+      }
+      function pct(n) {
+        return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+      }
+      function pnlCell(r) {
+        return h(
+          FB.TableCell,
+          { className: 'whitespace-nowrap text-right' },
+          h(
+            'div',
+            { className: r.pct >= 0 ? 'text-profit' : 'text-loss' },
+            h('p', { className: 'font-mono text-sm' }, r.pnl),
+            h('p', { className: 'text-xs' }, pct(r.pct))
+          )
+        );
+      }
+
+      mount(
+        h(
+          FB.Table,
+          null,
+          h(
+            FB.TableHeader,
+            null,
+            h(
+              FB.TableRow,
+              null,
+              h(FB.TableHead, null, 'Asset'),
+              h(FB.TableHead, { className: 'text-right' }, 'Quantity'),
+              h(FB.TableHead, { className: 'text-right' }, 'Price'),
+              h(FB.TableHead, { className: 'text-right' }, 'Value'),
+              h(FB.TableHead, { className: 'text-right' }, 'P&L')
+            )
+          ),
+          h(
+            FB.TableBody,
+            null,
+            ROWS.map(function (r) {
+              return h(
+                FB.TableRow,
+                { key: r.asset.symbol },
+                h(FB.TableCell, null, h(FB.AssetLabel, { asset: r.asset })),
+                h(
+                  FB.TableCell,
+                  { className: 'whitespace-nowrap text-right font-mono text-sm' },
+                  r.qty
+                ),
+                h(
+                  FB.TableCell,
+                  {
+                    className:
+                      'whitespace-nowrap text-right font-mono text-sm text-muted-foreground',
+                  },
+                  r.price
+                ),
+                h(
+                  FB.TableCell,
+                  { className: 'whitespace-nowrap text-right font-mono text-sm font-medium' },
+                  usd(r.value)
+                ),
+                pnlCell(r)
+              );
+            })
+          )
+        )
+      );
+    </script>
+  </body>
+</html>

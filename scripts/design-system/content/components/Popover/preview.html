@@ -1,0 +1,60 @@
+<!-- @dsCard group="Overlays" height=220 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Popover — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      mount(
+        h(
+          FB.Popover,
+          { defaultOpen: true },
+          h(
+            FB.PopoverTrigger,
+            { asChild: true },
+            h(
+              FB.Button,
+              { variant: 'outline', size: 'sm' },
+              h(I.CalendarDays, { className: 'mr-1 h-4 w-4', 'aria-hidden': true }),
+              'Snapshot schedule'
+            )
+          ),
+          h(
+            FB.PopoverContent,
+            {
+              align: 'start',
+              onOpenAutoFocus: function (e) {
+                e.preventDefault();
+              },
+            },
+            h(
+              'div',
+              { className: 'space-y-1' },
+              h('p', { className: 'text-sm font-medium' }, 'Daily at 05:00'),
+              h(
+                'p',
+                { className: 'text-sm text-muted-foreground' },
+                'Asia/Singapore. Weekly snapshots on Sundays, monthly on the 1st.'
+              )
+            )
+          )
+        )
+      );
+    </script>
+  </body>
+</html>

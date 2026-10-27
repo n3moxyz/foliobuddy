@@ -1,0 +1,55 @@
+<!-- @dsCard group="Forms" height=252 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Select — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      function field(id, label, props, placeholder) {
+        return h(
+          'div',
+          { className: 'grid gap-2' },
+          h(FB.Label, { htmlFor: id }, label),
+          h(
+            FB.Select,
+            props,
+            h(FB.SelectTrigger, { id: id }, h(FB.SelectValue, { placeholder: placeholder })),
+            h(
+              FB.SelectContent,
+              null,
+              h(FB.SelectItem, { value: 'CEX' }, 'CEX'),
+              h(FB.SelectItem, { value: 'ONCHAIN' }, 'Onchain'),
+              h(FB.SelectSeparator, null),
+              h(FB.SelectItem, { value: 'BROKERAGE' }, 'Broker account'),
+              h(FB.SelectItem, { value: 'BANK' }, 'Bank')
+            )
+          )
+        );
+      }
+      mount(
+        h(
+          'div',
+          { className: 'grid max-w-xs gap-4' },
+          field('storage', 'Storage type', { defaultValue: 'CEX' }),
+          field('storage-empty', 'Storage type (empty)', {}, 'Select storage type'),
+          field('storage-off', 'Storage type (disabled)', { defaultValue: 'BANK', disabled: true })
+        )
+      );
+    </script>
+  </body>
+</html>

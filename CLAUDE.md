@@ -83,6 +83,7 @@ npm run dev · npm run build # both packages
 npm run test · npx prisma migrate dev · npx prisma studio # backend only
 npx -y react-doctor@0.1.4 packages/frontend --offline --full --fail-on none # optional advisory a11y/quality scan
 npm run sandbox # signed-in real app, no Clerk: http://localhost:4100
+npm run design-system && npm run design-system:check # claude.ai design-system artifact: scripts/design-system/README.md
 ```
 
 ## Private production database access
@@ -236,7 +237,7 @@ Use `FormattedNumberInput` for editable amounts — renders `10,000` over raw-st
 
 ### Portfolio Hero Summary
 
-Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD trend arrow, then 5-col `divide-x` grid (YTD Start, DD from ATH, Exposure, Positions, YTD P&L — drawdown via shared `useDrawdownStats()`), `HelpTooltip` on every label. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add". Exposure = owned non-stable/non-cash + server-backed perp ÷ total; custody excluded.
+Follow the [portfolio hero contract](docs/UI-CONTRACTS.md#portfolio-hero-summary) before changing its desktop or mobile layout, metrics, or the Exposure formula.
 
 ### Perp Exposure Persistence
 
@@ -244,7 +245,7 @@ Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tab
 
 ### Portfolio Section Headers
 
-2-level, all breakpoints: **Crypto/Equities/Cash** (`Portfolio.tsx` via `CollapsibleCard`, `icon` + `accentColor`) → **CEX/Broker account/Bank/Onchain** (`PositionTable`, trigger $ totals). Equities: persisted By Broker/By Type. Accent tokens `crypto`/`equities`/`cash`/`custody` in `index.css`/`tailwind.config.js`, never raw `-500`; custody accent `CUSTODY_CONFIG`. Heading wraps trigger (`<h2><button>`), never reversed: invalid HTML hides headings from SR nav. Desktop `hidden sm:block` full table rows; mobile `sm:hidden` `mobileVariant="compact"`, no column toggle; custody own section on both.
+Follow the [portfolio sections contract](docs/UI-CONTRACTS.md#portfolio-section-headers) before changing section levels, accent tokens, heading markup, or responsive variants.
 
 ### Custody Positions ("Held for Others")
 
@@ -252,12 +253,7 @@ Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tab
 
 ### Creatable Storage Location Dropdowns
 
-Only free-text location dropdowns (CEX/wallet/broker/bank) use `CreatableSelect`: no "Others", "+ Add new ..." row; Category/storage type/fiat currency/direction/theme stay fixed.
-
-- Customs: popover pencil/trash pointer-only, Rename/Remove under trigger keyboard; keep both.
-- Defaults protected; customs → `foliobuddy-storage-location-options` by storage type (`positionOptions.ts`); delete drops only the option, positions keep value (edit forms re-add one-off).
-- `onValueChange` must ignore empties Radix emits on create-row close.
-- `SelectContent` sizes to content, above dialogs (`z-[60]`); never force `h-[var(--radix-select-trigger-height)]` or reuse dialog `z-50` (menus open but clipped).
+Follow the [location dropdown contract](docs/UI-CONTRACTS.md#creatable-storage-location-dropdowns) before changing which dropdowns accept custom values, custom-option storage, empty values, or select layering.
 
 ### Cash Positions (Stablecoins + Fiat)
 

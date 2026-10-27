@@ -1,0 +1,40 @@
+<!-- @dsCard group="Feedback" height=384 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ImportResultsList — preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root" class="p-4"></div>
+    <script>
+      var FB = window.FolioBuddy,
+        I = FB.Icons,
+        h = React.createElement;
+      function mount(el) {
+        ReactDOM.createRoot(document.getElementById('root')).render(el);
+      }
+      mount(
+        h(
+          'div',
+          { className: 'max-w-md' },
+          h(FB.ImportResultsList, {
+            results: [
+              { success: true, label: 'BTC' },
+              { success: true, label: 'ETH' },
+              { success: true, label: 'D05.SI' },
+              { success: false, label: 'XYZ', error: 'Asset not found' },
+            ],
+            onDone: function () {},
+          })
+        )
+      );
+    </script>
+  </body>
+</html>

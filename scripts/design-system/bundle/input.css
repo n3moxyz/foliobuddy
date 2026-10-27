@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  :where(button, a, input, textarea, select, [tabindex]) {
+    scroll-margin-block: 1rem 2rem;
+    touch-action: manipulation;
+  }
+  [role='dialog'] :where(button, a, input, textarea, select, [tabindex]) {
+    scroll-margin-block: 1rem;
+  }
+}
+
+@media (forced-colors: active) {
+  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/40;
+}
+
+/* Fill tokens used as text are remapped to their legible partners. */
+.text-profit {
+  color: var(--profit-foreground);
+}
+.text-loss {
+  color: var(--loss-foreground);
+}
+.text-warning {
+  color: var(--warning-foreground);
+}
+.text-info {
+  color: var(--info-foreground);
+}
+.text-destructive,
+.hover\:text-destructive:hover,
+.focus\:text-destructive:focus {
+  color: var(--loss-foreground);
+}
+.text-primary,
+.hover\:text-primary:hover {
+  color: var(--primary-text);
+}
+.bg-profit {
+  background-color: color-mix(in srgb, var(--profit) 12%, transparent);
+}
+.bg-loss {
+  background-color: color-mix(in srgb, var(--loss) 12%, transparent);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  @apply rounded-md;
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    color-mix(in srgb, var(--muted-foreground) 8%, transparent) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes highlight-flash {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  20%,
+  60% {
+    background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+}
+.animate-highlight-flash {
+  animation: highlight-flash 2s ease-in-out;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes chart-period-change {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-chart-period-change {
+  animation: chart-period-change 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .animate-chart-period-change,
+  .animate-highlight-flash,
+  .animate-ping {
+    animation: none !important;
+  }
+  [class*='animate-in'],
+  [class*='animate-out'],
+  [class*='animate-collapsible'] {
+    animation-duration: 0.01ms !important;
+  }
+}
