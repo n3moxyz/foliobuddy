@@ -64,6 +64,8 @@ policy change, or live configuration change forms part of these repairs.
 - A fresh API process replayed a committed batch without adding a row.
 - Lost committed response, dialog closure, reopening, and retry retained one holding.
 - A real partial batch retained its successful row through retries. Editing retained only the failed row by index.
+- A later retry committed the previously failed row, then lost its response. Stale failed-row editing stayed blocked until same-ID replay confirmed success.
+- That uncertain partial-retry check changed row counts from 22 to 23 to 24. Replay retained 24 rows and preserved native decimals.
 - Overlap test: old dialog A committed, B reused its identity, A replied after unmount, B lost its reply, and B retried safely.
 - Explicit acknowledgement released a successful attempt. A deliberate new identical import then received a fresh identity.
 - Account changes during capability checking or response decoding could not complete the previous account's client operation.
@@ -95,7 +97,7 @@ received a speculative code repair.
 ## Validation
 
 - Backend: 807 tests passed across 62 files.
-- Frontend: 571 tests passed across 74 files. Simple wording received rendered checks.
+- Frontend: 574 tests passed across 74 files. Simple wording received rendered checks.
 - Workspace build/typechecks and helper tests passed.
 - Formatting, shell syntax, shared-domain checks, and whitespace checks passed.
 - Frontend ESLint passed with six existing warnings and no errors.

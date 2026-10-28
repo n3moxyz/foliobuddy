@@ -13,6 +13,7 @@ interface ImportResultsListProps {
   onRetry?: () => void;
   onEditFailed?: () => void;
   retrying?: boolean;
+  outcomeKnown?: boolean;
   error?: string | null;
 }
 
@@ -26,20 +27,23 @@ export function ImportResultsList({
   onRetry,
   onEditFailed,
   retrying = false,
+  outcomeKnown = true,
   error,
 }: ImportResultsListProps) {
   const successCount = results.filter((r) => r.success).length;
   const failCount = results.filter((r) => !r.success).length;
+  const canRetry = !!onRetry && (failCount > 0 || !outcomeKnown);
 
   return (
     <div className="space-y-4" aria-busy={retrying}>
       <div className="text-center py-4">
-        {failCount === 0 ? (
+        {failCount === 0 && outcomeKnown ? (
           <CheckCircle2 className="h-12 w-12 text-profit mx-auto mb-2" />
         ) : (
           <AlertCircle className="h-12 w-12 text-warning mx-auto mb-2" />
         )}
         <p className="font-medium">
+          {!outcomeKnown && 'Last confirmed result: '}
           {successCount} imported successfully
           {failCount > 0 && `, ${failCount} failed`}
         </p>
@@ -72,27 +76,41 @@ export function ImportResultsList({
         </p>
       )}
 
+      {!outcomeKnown && !retrying && (
+        <p role="status" className="text-sm text-warning break-words">
+          Some rows may already be saved. Retry the original batch to check the latest result before
+          editing.
+        </p>
+      )}
+
       <div className="flex flex-wrap justify-end gap-2">
         {failCount > 0 && onEditFailed && (
-          <Button type="button" variant="outline" onClick={onEditFailed} disabled={retrying}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onEditFailed}
+            disabled={retrying || !outcomeKnown}
+          >
             Edit failed rows
           </Button>
         )}
-        {failCount > 0 && onRetry && (
+        {canRetry && (
           <Button type="button" onClick={onRetry} disabled={retrying}>
             {retrying ? (
               <>
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                 Retrying...
               </>
-            ) : (
+            ) : outcomeKnown ? (
               'Retry failed import'
+            ) : (
+              'Retry original batch'
             )}
           </Button>
         )}
         <Button
           type="button"
-          variant={failCount > 0 && onRetry ? 'outline' : 'default'}
+          variant={canRetry ? 'outline' : 'default'}
           onClick={onDone}
           disabled={retrying}
         >

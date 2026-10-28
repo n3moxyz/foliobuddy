@@ -10,6 +10,8 @@ The import UI now keeps uncertain attempts through dialog closure. Partial resul
 offer a safe retry or an editor containing only failed rows. A late response from
 an old dialog cannot release another dialog's retry identity. Explicit acknowledgement
 finishes a successful attempt, so a later identical import can still be intentional.
+If a retry loses its response, earlier failed rows remain locked until the same
+batch confirms its latest outcome. Otherwise a stale failed-row editor could create duplicates.
 
 The smaller fixes remove false ownership badges, clarify performer empty states,
 restore the mobile custody heading, and enlarge the investor touch target.

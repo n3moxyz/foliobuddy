@@ -271,6 +271,9 @@ export function PositionForm({
   const [parsedPositions, setParsedPositions] = useState<ImportedPosition[] | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<ImportResultItem[] | null>(null);
+  const [importOutcomeKnown, setImportOutcomeKnown] = useState(false);
+  // Displayed rows can outlive a lost response. Handlers require the latest acknowledged result.
+  const acknowledgedImportResults = useRef<ImportResultItem[] | null>(null);
   const importAttempt = useRef<{
     identity: PositionImportAttempt;
     positions: ImportedPosition[];
@@ -633,6 +636,8 @@ export function PositionForm({
 
   const parseJson = (text: string) => {
     if (importInFlight.current) return;
+    acknowledgedImportResults.current = null;
+    setImportOutcomeKnown(false);
     setParseError(null);
     setParsedPositions(null);
     setImportResults(null);
@@ -684,13 +689,35 @@ export function PositionForm({
         : beginPositionImport(input);
     importAttempt.current = { identity, positions: positionsToImport };
     importInFlight.current = true;
+    acknowledgedImportResults.current = null;
+    setImportOutcomeKnown(false);
     setImporting(true);
     setParseError(null);
 
     try {
       const response = await api.bulkImportPositions(positionsToImport, identity.requestId);
+      if (
+        !Array.isArray(response?.results) ||
+        response.totalCount !== positionsToImport.length ||
+        response.results.length !== positionsToImport.length ||
+        response.results.some(
+          (result) =>
+            !result ||
+            typeof result.success !== 'boolean' ||
+            typeof result.symbol !== 'string' ||
+            (result.error !== undefined && typeof result.error !== 'string')
+        ) ||
+        response.successCount !== response.results.filter((result) => result.success).length
+      ) {
+        throw new Error(
+          'The import response was incomplete. Retry the original batch to check saved rows.'
+        );
+      }
       if (formMounted.current && isAuthSessionCurrent(identity.session)) {
-        setImportResults(response.results.map((r) => ({ ...r, label: r.symbol })));
+        const results = response.results.map((result) => ({ ...result, label: result.symbol }));
+        acknowledgedImportResults.current = results;
+        setImportResults(results);
+        setImportOutcomeKnown(true);
       }
     } catch (e) {
       if (formMounted.current && isAuthSessionCurrent(identity.session)) {
@@ -709,9 +736,10 @@ export function PositionForm({
   };
 
   const handleEditFailedImportRows = () => {
-    if (importInFlight.current || !importResults || !importAttempt.current) return;
+    const results = acknowledgedImportResults.current;
+    if (importInFlight.current || !results || !importAttempt.current) return;
     const failedPositions = importAttempt.current.positions.filter(
-      (_, index) => importResults[index]?.success === false
+      (_, index) => results[index]?.success === false
     );
     if (!failedPositions.length) return;
     const failedInput = JSON.stringify(failedPositions, null, 2);
@@ -722,11 +750,13 @@ export function PositionForm({
   const handleImportDone = () => {
     if (!formMounted.current || importInFlight.current) return;
     const attempt = importAttempt.current;
+    const results = acknowledgedImportResults.current;
     if (
       attempt &&
+      results &&
       isAuthSessionCurrent(attempt.identity.session) &&
-      importResults?.length === attempt.positions.length &&
-      importResults.every((result) => result.success)
+      results.length === attempt.positions.length &&
+      results.every((result) => result.success)
     ) {
       // Another dialog can still have an uncertain reply. Release only acknowledged results.
       confirmPositionImport(attempt.identity);
@@ -736,6 +766,8 @@ export function PositionForm({
 
   const resetImportState = () => {
     importAttempt.current = null;
+    acknowledgedImportResults.current = null;
+    setImportOutcomeKnown(false);
     setJsonInput('');
     setParseError(null);
     setParsedPositions(null);
@@ -1708,6 +1740,7 @@ export function PositionForm({
         results={importResults}
         error={parseError}
         retrying={importing}
+        outcomeKnown={importOutcomeKnown}
         onRetry={() => handleImport(true)}
         onEditFailed={handleEditFailedImportRows}
         onDone={handleImportDone}

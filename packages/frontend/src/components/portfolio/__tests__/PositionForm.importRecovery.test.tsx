@@ -7,6 +7,18 @@ import type { BulkImportPosition, BulkImportResult } from '@/lib/types';
 import { usePrivacyStore } from '@/stores/privacyStore';
 import { PositionForm } from '../PositionForm';
 
+const resultActions = vi.hoisted(() => ({ editFailed: undefined as (() => void) | undefined }));
+
+vi.mock('@/components/ui/ImportResultsList', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/components/ui/ImportResultsList')>();
+  return {
+    ...actual,
+    ImportResultsList: (props: Parameters<typeof actual.ImportResultsList>[0]) => {
+      resultActions.editFailed = props.onEditFailed;
+      return <actual.ImportResultsList {...props} />;
+    },
+  };
+});
 vi.mock('@/lib/api', () => ({ api: { bulkImportPositions: vi.fn() } }));
 vi.mock('@/hooks/useAssets', () => ({
   useAssets: () => ({ data: [] }),
@@ -111,6 +123,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.mocked(api.bulkImportPositions).mockReset();
+  resultActions.editFailed = undefined;
   usePrivacyStore.setState({ valuesHidden: false });
   installAuthSession('import-recovery-user', 'import-recovery-session', async () => null, 'local');
 });
@@ -364,12 +377,89 @@ describe('PositionForm import recovery', () => {
     await act(async () => pending.reject(new Error('Retry connection lost')));
     expect(screen.getByRole('alert')).toHaveTextContent('Retry connection lost');
     expect(retry).toBeEnabled();
-    expect(edit).toBeEnabled();
+    expect(edit).toBeDisabled();
     expect(done).toBeEnabled();
     fireEvent.click(retry);
 
     await screen.findByText('3 imported successfully');
     expect(importPositions.mock.calls[1]).toEqual(importPositions.mock.calls[0]);
+    expect(importPositions.mock.calls[2]).toEqual(importPositions.mock.calls[0]);
+  });
+
+  it('blocks stale failed-row editing after a committed retry loses its response until same-ID replay is confirmed', async () => {
+    const importPositions = vi.mocked(api.bulkImportPositions);
+    const rows = [nativePosition, secondPosition];
+    const partial: BulkImportResult = {
+      results: [
+        { symbol: nativePosition.asset.symbol, success: true },
+        { symbol: secondPosition.asset.symbol, success: false, error: 'Initial row failure' },
+      ],
+      successCount: 1,
+      totalCount: 2,
+    };
+    importPositions
+      .mockResolvedValueOnce(partial)
+      .mockRejectedValueOnce(new Error('Committed retry response lost'))
+      .mockResolvedValue(success(rows));
+    const rendered = openImport(rows);
+    submitImport();
+    await screen.findByText('1 imported successfully, 1 failed');
+    const edit = screen.getByRole('button', { name: 'Edit failed rows' });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry failed import' }));
+    await screen.findByText('Committed retry response lost');
+
+    expect(edit).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Some rows may already be saved. Retry the original batch to check the latest result before editing.'
+    );
+    expect(
+      screen.getByText('Last confirmed result: 1 imported successfully, 1 failed')
+    ).toBeInTheDocument();
+    fireEvent.click(edit);
+    // The parent must also refuse a direct callback from a child with stale controls.
+    act(() => resultActions.editFailed?.());
+    expect(
+      screen.queryByRole('textbox', { name: 'Position JSON to import' })
+    ).not.toBeInTheDocument();
+    expect(importPositions).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry original batch' }));
+
+    await screen.findByText('2 imported successfully');
+    expect(importPositions.mock.calls[1]).toEqual(importPositions.mock.calls[0]);
+    expect(importPositions.mock.calls[2]).toEqual(importPositions.mock.calls[0]);
+    expect(rendered.onSuccess).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Close Import' }));
+    expect(rendered.onSuccess).toHaveBeenCalledTimes(1);
+    rendered.unmount();
+    openImport(rows);
+    submitImport();
+
+    await screen.findByText('2 imported successfully');
+    expect(importPositions.mock.calls[3][1]).not.toBe(importPositions.mock.calls[0][1]);
+  });
+
+  it('keeps failed-row editing blocked when a retry response does not account for the full original batch', async () => {
+    const importPositions = vi.mocked(api.bulkImportPositions);
+    importPositions
+      .mockResolvedValueOnce(partialResult)
+      .mockResolvedValueOnce({
+        results: [{ symbol: nativePosition.asset.symbol, success: true }],
+        successCount: 1,
+        totalCount: batch.length,
+      })
+      .mockResolvedValueOnce(success(batch));
+    openImport(batch);
+    submitImport();
+    await screen.findByText('1 imported successfully, 2 failed');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry failed import' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The import response was incomplete'
+    );
+    expect(screen.getByRole('button', { name: 'Edit failed rows' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry original batch' }));
+
+    await screen.findByText('3 imported successfully');
     expect(importPositions.mock.calls[2]).toEqual(importPositions.mock.calls[0]);
   });
 
