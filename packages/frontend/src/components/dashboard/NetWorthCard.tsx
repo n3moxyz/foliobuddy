@@ -191,7 +191,7 @@ export function NetWorthCard({
         maxDailyDrawdownPct && maxDailyDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground',
     },
     {
-      label: 'DD from ATH',
+      label: 'Current ATH DD',
       help: 'How far your portfolio is currently below its year-to-date high',
       value: formatDrawdown(drawdownFromAthPct),
       isLive: true,

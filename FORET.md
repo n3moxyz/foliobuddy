@@ -1,5 +1,12 @@
 # FOR[ET].md - FolioBuddy
 
+## Portfolio drawdown summary (28 October 2026)
+
+The live drawdown metric now reads `Current ATH DD` on Dashboard and Portfolio.
+Portfolio also shows MDD directly after YTD Start, with its recorded trough date.
+Both pages use the same YTD drawdown calculation. The mobile summary keeps YTD Start and MDD together.
+The desktop statistics row scrolls on narrow screens so labels remain readable.
+
 ## Consistent chart milestone markers (28 October 2026)
 
 Portfolio chart milestones now use one circle shape in the legend and plot.

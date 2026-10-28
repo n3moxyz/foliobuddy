@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Position } from '@/lib/types';
+import type { PortfolioSummary, Position } from '@/lib/types';
 import Portfolio from '../Portfolio';
 
 const perpMocks = vi.hoisted(() => ({
@@ -13,6 +13,13 @@ const navMocks = vi.hoisted(() => ({
   positions: undefined as Position[] | undefined,
   refresh: vi.fn(),
   update: vi.fn(),
+}));
+
+const summaryMocks = vi.hoisted(() => ({
+  data: undefined as PortfolioSummary | undefined,
+  currentDrawdownPct: null as number | null,
+  maxDrawdownPct: null as number | null,
+  maxDrawdownDate: null as string | null,
 }));
 
 const positions = [
@@ -74,12 +81,13 @@ const positions = [
 
 vi.mock('@/hooks/usePortfolio', () => ({
   usePositions: () => ({ data: navMocks.positions ?? positions, isLoading: false }),
-  usePortfolioSummary: () => ({ data: undefined }),
+  usePortfolioSummary: () => ({ data: summaryMocks.data }),
   useFxRates: () => ({ data: [] }),
   useDrawdownStats: () => ({
     ytdAthUsd: null,
-    currentDrawdownPct: null,
-    maxDrawdownPct: null,
+    currentDrawdownPct: summaryMocks.currentDrawdownPct,
+    maxDrawdownPct: summaryMocks.maxDrawdownPct,
+    maxDrawdownDate: summaryMocks.maxDrawdownDate,
     maxDailyDrawdownPct: null,
   }),
   useDeleteAllPositions: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -192,6 +200,51 @@ describe('Portfolio responsive grouping', () => {
     navMocks.positions = undefined;
     navMocks.refresh.mockReset();
     navMocks.update.mockReset();
+    summaryMocks.data = undefined;
+    summaryMocks.currentDrawdownPct = null;
+    summaryMocks.maxDrawdownPct = null;
+    summaryMocks.maxDrawdownDate = null;
+  });
+
+  it('shows historical MDD after YTD Start, distinct from the current drawdown', () => {
+    summaryMocks.data = {
+      totalValueUsd: 74_000,
+      totalValueSgd: 94_720,
+      totalCostBasis: 63_000,
+      unrealizedPnL: 11_000,
+      unrealizedPnLPct: 17.46,
+      positionCount: 3,
+      lastUpdated: '2026-10-28T00:00:00Z',
+      ytdStartDate: '2026-01-01T00:00:00Z',
+    };
+    summaryMocks.maxDrawdownPct = 24.66;
+    summaryMocks.maxDrawdownDate = '2026-07-30T12:00:00Z';
+    summaryMocks.currentDrawdownPct = 3.25;
+    render(<Portfolio />);
+
+    const stats = screen.getByRole('region', { name: 'Portfolio statistics' });
+    expect(
+      within(stats)
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label'))
+    ).toEqual([
+      'Help: YTD Start',
+      'Help: MDD',
+      'Help: Current ATH DD',
+      'Help: Exposure',
+      'Help: Positions',
+      'Help: YTD P&L',
+    ]);
+    expect(within(stats).getByText('-24.66%')).toHaveClass('text-loss');
+    expect(within(stats).getByText('-3.25%')).toBeInTheDocument();
+    expect(within(stats).getByText('30 Jul 2026')).toHaveAttribute(
+      'datetime',
+      summaryMocks.maxDrawdownDate
+    );
+    // The compact mobile summary includes the same historical result and date.
+    expect(screen.getAllByText('-24.66%')).toHaveLength(2);
+    expect(screen.getAllByText('30 Jul 2026')).toHaveLength(2);
+    expect(screen.queryByText('DD from ATH')).not.toBeInTheDocument();
   });
 
   it('keeps desktop asset categories on mobile while using compact rows', () => {
