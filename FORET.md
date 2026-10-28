@@ -1,5 +1,11 @@
 # FOR[ET].md - FolioBuddy
 
+## Consistent chart milestone markers (28 October 2026)
+
+Portfolio chart milestones now use one circle shape in the legend and plot.
+Theme-aware colours distinguish ATH, MDD, daily MDD, and Live. Labels and explanations still identify each event.
+The matching point keeps its coloured highlight ring on hover, keyboard focus, and tap.
+
 ## Design system artifact (26 October 2026)
 
 FolioBuddy now has a design system on claude.ai, extracted from the code: tokens, a brand book, and the 26 shared components as live previews.
