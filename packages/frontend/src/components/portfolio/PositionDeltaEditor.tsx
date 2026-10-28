@@ -72,9 +72,38 @@ export function PositionDeltaEditor({
             <p className="font-medium">{position.asset.symbol}</p>
             <p className="text-sm text-muted-foreground">{position.asset.name}</p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">Current quantity</p>
-            <p className="font-mono text-sm">{formatPositionQuantity(position.quantity)}</p>
+          <div className="min-w-0 text-right">
+            <p className="text-xs text-muted-foreground">
+              {isAdd ? 'Current quantity' : 'Available to reduce'}
+            </p>
+            {isAdd ? (
+              <p className="font-mono text-sm">{formatPositionQuantity(position.quantity)}</p>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-auto min-h-11 max-w-full flex-wrap justify-end gap-x-2 px-2 py-1 text-primary sm:min-h-9"
+                aria-label={`Reduce max ${position.asset.symbol}`}
+                disabled={
+                  isLoading || !Number.isFinite(position.quantity) || position.quantity <= 0
+                }
+                onClick={() =>
+                  onAdditionalQuantityChange(
+                    // Keep the full balance in decimal form, including tiny token amounts.
+                    position.quantity.toLocaleString('en-US', {
+                      useGrouping: false,
+                      maximumSignificantDigits: 21,
+                    })
+                  )
+                }
+              >
+                <span className="break-all font-mono text-sm underline decoration-dotted underline-offset-4">
+                  {formatPositionQuantity(position.quantity)} {position.asset.symbol}
+                </span>
+                <span className="text-xs">Reduce max</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>

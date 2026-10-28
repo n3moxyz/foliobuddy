@@ -1,9 +1,10 @@
 import type { ComponentProps } from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Position } from '@/lib/types';
 import { PositionDeltaEditor } from '../PositionDeltaEditor';
 import { MASKED_MONEY_VALUE, usePrivacyStore } from '@/stores/privacyStore';
+import { applyPositionDelta } from '@foliobuddy/shared';
 
 afterEach(() => act(() => usePrivacyStore.getState().setValuesHidden(false)));
 
@@ -56,6 +57,65 @@ function renderEditor(overrides: Partial<ComponentProps<typeof PositionDeltaEdit
 }
 
 describe('PositionDeltaEditor', () => {
+  it.each([12.3456789012345, 1.2345678901234567e-8, 1e21])(
+    'fills the complete balance without rounding or exponent notation (%s)',
+    (quantity) => {
+      const onChange = vi.fn();
+      renderEditor({
+        deltaMode: 'reduce',
+        position: { ...position, quantity },
+        onAdditionalQuantityChange: onChange,
+      });
+      const reduceMax = screen.getByRole('button', { name: 'Reduce max SOL' });
+      expect(reduceMax).toHaveAttribute('type', 'button');
+      expect(reduceMax).toHaveTextContent('SOL');
+      fireEvent.click(reduceMax);
+      const value = onChange.mock.calls[0][0] as string;
+      expect(value).not.toMatch(/[eE,]/);
+      expect(Number(value)).toBe(quantity);
+      expect(
+        applyPositionDelta({
+          currentQuantity: quantity,
+          currentAvgCostUsd: position.avgCostUsd,
+          deltaQuantity: Number(value),
+          mode: 'reduce',
+        }).nextQuantity
+      ).toBe(0);
+    }
+  );
+
+  it('keeps the available balance masked when values are hidden', () => {
+    act(() => usePrivacyStore.getState().setValuesHidden(true));
+    renderEditor({ deltaMode: 'reduce' });
+    const reduceMax = screen.getByRole('button', { name: 'Reduce max SOL' });
+    expect(reduceMax).toHaveTextContent(MASKED_MONEY_VALUE);
+    expect(reduceMax).not.toHaveTextContent('10');
+  });
+
+  it.each([0, -10, Number.NaN, Number.POSITIVE_INFINITY])(
+    'disables Reduce max for a non-positive or invalid balance (%s)',
+    (quantity) => {
+      const onChange = vi.fn();
+      renderEditor({
+        deltaMode: 'reduce',
+        position: { ...position, quantity },
+        onAdditionalQuantityChange: onChange,
+      });
+      const reduceMax = screen.getByRole('button', { name: 'Reduce max SOL' });
+      expect(reduceMax).toBeDisabled();
+      fireEvent.click(reduceMax);
+      expect(onChange).not.toHaveBeenCalled();
+    }
+  );
+
+  it('disables Reduce max while saving and omits it in Add mode', () => {
+    const { unmount } = renderEditor({ deltaMode: 'reduce', isLoading: true });
+    expect(screen.getByRole('button', { name: 'Reduce max SOL' })).toBeDisabled();
+    unmount();
+    renderEditor({ deltaMode: 'add' });
+    expect(screen.queryByRole('button', { name: 'Reduce max SOL' })).not.toBeInTheDocument();
+  });
+
   it('masks read-only quantities and previews while keeping the entered quantity editable', () => {
     act(() => usePrivacyStore.getState().setValuesHidden(true));
     renderEditor({
