@@ -1,5 +1,25 @@
 # FOR[ET].md - FolioBuddy
 
+## Five-perspective journey QA (29 October 2026)
+
+The audit followed complete journeys with separate synthetic users and real APIs.
+It found that a rapid second submit could log a trade twice. A synchronous guard
+now protects create and edit, while failed saves retain input and show inline feedback.
+
+The import UI now keeps uncertain attempts through dialog closure. Partial results
+offer a safe retry or an editor containing only failed rows. A late response from
+an old dialog cannot release another dialog's retry identity. Explicit acknowledgement
+finishes a successful attempt, so a later identical import can still be intentional.
+
+The smaller fixes remove false ownership badges, clarify performer empty states,
+restore the mobile custody heading, and enlarge the investor touch target.
+Derived cost fields are readable without rounding the saved input. Sign-in uses
+FolioBuddy's name, and the one-holding header uses the singular label.
+
+The [journey report](docs/qa/2026-10-29-journey-qa.md) records reproductions, checks,
+rejected observations, and untested surfaces. Frozen fiat-cash FX, USD trade rows,
+and snapshot-only benchmark returns remain the existing product contracts.
+
 ## Position import retries (29 October 2026)
 
 The browser can lose a reply after the database saves an import. A second click

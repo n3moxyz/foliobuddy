@@ -95,7 +95,13 @@ For each route above, capture:
 The goal is not complete until this inventory has been run against the sanitized local database, all
 bugs found during that pass are fixed with regression tests, and the inventory rerun is clean.
 
-## Latest Rerun Status
+## Bounded journey audit
+
+The [29 October 2026 journey audit](2026-10-29-journey-qa.md) records five independent
+browser perspectives, nine repaired defects, financial recovery checks, and coverage
+limits. It does not claim a fresh pass of every production-scale workbook story.
+
+## Production-scale Rerun Status
 
 2026-06-24 final cleanup rerun evidence:
 

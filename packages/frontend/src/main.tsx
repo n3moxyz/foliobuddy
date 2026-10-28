@@ -40,6 +40,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   localAuthBypassEnabled ? (
     app
   ) : (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>{app}</ClerkProvider>
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      localization={{
+        signIn: {
+          start: { title: 'Sign in to FolioBuddy', titleCombined: 'Sign in to FolioBuddy' },
+        },
+      }}
+    >
+      {app}
+    </ClerkProvider>
   )
 );

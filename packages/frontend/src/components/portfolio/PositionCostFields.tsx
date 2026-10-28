@@ -1,5 +1,6 @@
 import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
+import { currencyDecimals, priceDecimals } from '@/lib/utils';
 import type { CostCurrency, CostInputMode } from './positionFormMath';
 
 interface PositionCostFieldsProps {
@@ -27,6 +28,12 @@ interface PositionCostFieldsProps {
 
 function formatUsdPerNative(value: number): string {
   return value < 0.01 ? value.toFixed(6) : value.toFixed(4);
+}
+
+function formatDerivedCost(value: string, currency: CostCurrency, perUnit = false): string {
+  const amount = Number(value);
+  if (value.trim() === '' || !Number.isFinite(amount)) return value;
+  return amount.toFixed(perUnit ? priceDecimals(amount, currency) : currencyDecimals(currency));
 }
 
 export function PositionCostFields({
@@ -97,7 +104,11 @@ export function PositionCostFields({
             </Label>
             <FormattedNumberInput
               id={totalId}
-              value={costInputMode === 'total' ? totalCost : calculatedTotalCost}
+              value={
+                costInputMode === 'total'
+                  ? totalCost
+                  : formatDerivedCost(calculatedTotalCost, costCurrency)
+              }
               onValueChange={onTotalCostChange}
               placeholder="0.00"
               disabled={disabled || costInputMode !== 'total'}
@@ -112,7 +123,11 @@ export function PositionCostFields({
             </Label>
             <FormattedNumberInput
               id={averageId}
-              value={costInputMode === 'avg' ? avgCostInput : calculatedAvgCost}
+              value={
+                costInputMode === 'avg'
+                  ? avgCostInput
+                  : formatDerivedCost(calculatedAvgCost, costCurrency, true)
+              }
               onValueChange={onAvgCostChange}
               placeholder="0.00"
               disabled={disabled || costInputMode !== 'avg'}

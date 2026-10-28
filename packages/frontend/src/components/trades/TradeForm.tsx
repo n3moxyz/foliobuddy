@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -58,6 +58,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
   });
   const [notes, setNotes] = useState(trade?.notes || '');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const submissionInFlight = useRef(false);
 
   // Hooks
   const createTrade = useCreateTrade();
@@ -80,6 +81,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submissionInFlight.current) return;
     setValidationError(null);
 
     if (!isFormValid) {
@@ -111,13 +113,20 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
       notes: notes || undefined,
     };
 
-    if (isEditing) {
-      await updateTrade.mutateAsync({ id: trade.id, data });
-    } else {
-      await createTrade.mutateAsync(data);
+    // React's pending state can lag behind a second submit event in the same tick.
+    submissionInFlight.current = true;
+    try {
+      if (isEditing) {
+        await updateTrade.mutateAsync({ id: trade.id, data });
+      } else {
+        await createTrade.mutateAsync(data);
+      }
+      onSuccess();
+    } catch (error) {
+      setValidationError(error instanceof Error ? error.message : 'Failed to save trade');
+    } finally {
+      submissionInFlight.current = false;
     }
-
-    onSuccess();
   };
 
   return (

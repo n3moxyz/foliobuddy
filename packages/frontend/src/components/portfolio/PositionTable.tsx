@@ -958,7 +958,7 @@ export function PositionTable({
             </span>
           </button>
         </CollapsibleTrigger>
-        {!isCompactMobile && <HelpTooltip content={helpContent} />}
+        {!isCompactMobile && <HelpTooltip label={label} content={helpContent} />}
         {syncPosition && (
           <div className="ml-auto pb-1 sm:pb-0">
             <IbkrSyncButton position={syncPosition} />

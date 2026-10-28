@@ -28,6 +28,20 @@ const btcEtf: Asset = {
 };
 
 describe('AssetSearchDropdown', () => {
+  it('selects catalog assets without claiming the user holds them', () => {
+    catalog.assets = [btcEtf];
+    catalog.coins = [];
+    const onSelectAsset = vi.fn();
+
+    render(<AssetSearchDropdown selectedAsset={null} onSelectAsset={onSelectAsset} />);
+    fireEvent.focus(screen.getByRole('combobox'));
+
+    expect(screen.queryByText('In portfolio')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('option', { name: /Grayscale Bitcoin Mini Trust ETF/ }));
+
+    expect(onSelectAsset).toHaveBeenCalledWith(btcEtf.id, btcEtf);
+  });
+
   it('offers the bitcoin coin although a BTC spot ETF is already in the catalog', () => {
     catalog.assets = [btcEtf];
     catalog.coins = [{ id: 'bitcoin', symbol: 'btc', name: 'Bitcoin', rank: 1 }];

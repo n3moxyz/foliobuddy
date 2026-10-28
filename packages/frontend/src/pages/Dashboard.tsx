@@ -181,11 +181,7 @@ export default function Dashboard() {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="min-w-0 flex-1 justify-between sm:flex-none"
-            >
+            <Button variant="outline" size="sm" className="min-w-0 justify-between sm:flex-none">
               <Users className="h-4 w-4 mr-2" />
               <span className="truncate">{getInvestorLabel()}</span>
               <ChevronDown className="h-3 w-3 ml-2" />
@@ -289,6 +285,7 @@ export default function Dashboard() {
             title="Top Performers"
             performers={topPerformers}
             type="top"
+            hasOwnedPositions={(summary?.positionCount ?? 0) > 0}
             currency={currency}
             fxRate={fxRate}
             stakeMultiplier={stakeMultiplier}
@@ -299,6 +296,7 @@ export default function Dashboard() {
             title="Worst Performers"
             performers={worstPerformers}
             type="worst"
+            hasOwnedPositions={(summary?.positionCount ?? 0) > 0}
             currency={currency}
             fxRate={fxRate}
             stakeMultiplier={stakeMultiplier}

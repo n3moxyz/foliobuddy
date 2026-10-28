@@ -172,9 +172,6 @@ export function AssetSearchDropdown({
                     #{result.coin!.rank}
                   </span>
                 )}
-                {result.type === 'existing' && (
-                  <span className="shrink-0 text-xs text-profit">In portfolio</span>
-                )}
               </button>
             ))
           ) : searchQuery.length >= 1 ? (

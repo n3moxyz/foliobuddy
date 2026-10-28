@@ -8,6 +8,7 @@ interface PerformersCardProps {
   title: string;
   performers: Performer[];
   type: 'top' | 'worst';
+  hasOwnedPositions: boolean;
   currency?: 'USD' | 'SGD';
   fxRate?: number;
   stakeMultiplier?: number;
@@ -17,6 +18,7 @@ export function PerformersCard({
   title,
   performers,
   type,
+  hasOwnedPositions,
   currency = 'USD',
   fxRate = 1,
   stakeMultiplier = 1,
@@ -40,7 +42,13 @@ export function PerformersCard({
           )}
           {title}
         </h2>
-        <p className="text-muted-foreground text-sm">No positions yet</p>
+        <p className="text-muted-foreground text-sm">
+          {!hasOwnedPositions
+            ? 'No owned positions yet'
+            : type === 'top'
+              ? 'No positions with unrealized gains'
+              : 'No positions with unrealized losses'}
+        </p>
       </div>
     );
   }

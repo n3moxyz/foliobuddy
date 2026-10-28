@@ -121,34 +121,43 @@ async function request<T>(
 async function writePosition<T>(
   endpoint: string,
   method: 'POST' | 'PUT',
-  data: CreatePositionData | UpdatePositionData | { positions: BulkImportPosition[] }
+  data:
+    | CreatePositionData
+    | UpdatePositionData
+    | { positions: BulkImportPosition[]; requestId: string }
 ) {
   const session = captureAuthSession();
   const rows = 'positions' in data ? data.positions : [data];
-  if (
-    rows.some(
-      (row) =>
-        row.avgCostNative !== undefined ||
-        row.costCurrency !== undefined ||
-        ('positionDelta' in row && row.positionDelta?.nativeAmount !== undefined)
-    )
-  ) {
+  const isImport = 'positions' in data;
+  const hasNativeCosts = rows.some(
+    (row) =>
+      row.avgCostNative !== undefined ||
+      row.costCurrency !== undefined ||
+      ('positionDelta' in row && row.positionDelta?.nativeAmount !== undefined)
+  );
+  if (hasNativeCosts || isImport) {
     // A frontend can finish deploying before the backend. Older servers silently
     // strip unknown fields, so prove support before submitting a native write.
-    let supported: boolean;
+    let capabilities: { supported: boolean; bulkImportIdempotency?: boolean };
     try {
-      supported = (
-        await request<{ supported: boolean }>(
-          '/positions/native-cost-capabilities',
-          undefined,
-          session
-        )
-      ).supported;
+      capabilities = await request<{ supported: boolean; bulkImportIdempotency?: boolean }>(
+        '/positions/native-cost-capabilities',
+        undefined,
+        session
+      );
     } catch {
       assertAuthSession(session);
+      if (isImport) {
+        throw new Error('Position import is temporarily unavailable. Refresh and try again.');
+      }
       throw new Error('Native cost support could not be verified. Refresh and try again.');
     }
-    if (!supported) throw new Error('Native cost support is not ready. Refresh and try again.');
+    if (isImport && !capabilities.bulkImportIdempotency) {
+      throw new Error('Position import is temporarily unavailable. Refresh and try again.');
+    }
+    if (hasNativeCosts && !capabilities.supported) {
+      throw new Error('Native cost support is not ready. Refresh and try again.');
+    }
   }
   return request<T>(endpoint, { method, body: JSON.stringify(data) }, session);
 }
@@ -223,8 +232,8 @@ export const api = {
     writePosition<Position>(`/positions/${id}`, 'PUT', data),
   deletePosition: (id: string) => request<void>(`/positions/${id}`, { method: 'DELETE' }),
   deleteAllPositions: () => request<{ count: number }>('/positions', { method: 'DELETE' }),
-  bulkImportPositions: (positions: BulkImportPosition[]) =>
-    writePosition<BulkImportResult>('/positions/bulk', 'POST', { positions }),
+  bulkImportPositions: (positions: BulkImportPosition[], requestId: string = crypto.randomUUID()) =>
+    writePosition<BulkImportResult>('/positions/bulk', 'POST', { positions, requestId }),
 
   // Assets
   getAssets: (params?: { category?: string; search?: string }) =>

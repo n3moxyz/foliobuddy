@@ -55,6 +55,43 @@ describe('demo mode API mock', () => {
     resetDemoDataForTests();
   });
 
+  it('retains retry identity, intentional rows and reset behavior for position imports', async () => {
+    expect(await readJson(await demoRequest('/positions/native-cost-capabilities'))).toMatchObject({
+      bulkImportIdempotency: true,
+    });
+    const before = (await seedPositions()).length;
+    const row = {
+      asset: { symbol: 'BTC', name: 'Bitcoin', category: 'LIQUID_CRYPTO' },
+      quantity: 0.001,
+      avgCostUsd: 90000,
+    };
+    const requestId = '6a063ff8-c834-4eb2-98df-3234a6b66918';
+    const payload = { positions: [row, row], requestId };
+    for (let repeat = 0; repeat < 2; repeat++) {
+      expect(await readJson(await demoRequest('/positions/bulk', 'POST', payload))).toMatchObject({
+        successCount: 2,
+      });
+    }
+    expect((await seedPositions()).length).toBe(before + 2);
+    expect(
+      (
+        await demoRequest('/positions/bulk', 'POST', {
+          positions: [{ ...row, quantity: 2 }],
+          requestId,
+        })
+      ).status
+    ).toBe(409);
+    expect((await seedPositions()).length).toBe(before + 2);
+    await demoRequest('/positions/bulk', 'POST', {
+      ...payload,
+      requestId: 'a9da4298-2cee-40e0-93fd-a3e9e1488268',
+    });
+    expect((await seedPositions()).length).toBe(before + 4);
+    resetDemoDataForTests();
+    await demoRequest('/positions/bulk', 'POST', payload);
+    expect((await seedPositions()).length).toBe(before + 2);
+  });
+
   it('keeps daily device enrollment scoped, revocable and disposable in the demo', async () => {
     const positions = await seedPositions();
     const cashPositionId = 'pos-cash-usd';

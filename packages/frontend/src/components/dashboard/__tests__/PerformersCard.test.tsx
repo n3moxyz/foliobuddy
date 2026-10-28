@@ -5,6 +5,27 @@ import type { Performer } from '@/lib/types';
 import { usePrivacyStore } from '@/stores/privacyStore';
 
 describe('PerformersCard', () => {
+  it.each([
+    ['top', false, 'No owned positions yet'],
+    ['worst', false, 'No owned positions yet'],
+    ['top', true, 'No positions with unrealized gains'],
+    ['worst', true, 'No positions with unrealized losses'],
+  ] as const)(
+    'explains an empty %s list with owned positions=%s',
+    (type, hasOwnedPositions, message) => {
+      render(
+        <PerformersCard
+          title={type === 'top' ? 'Top Performers' : 'Worst Performers'}
+          performers={[]}
+          type={type}
+          hasOwnedPositions={hasOwnedPositions}
+        />
+      );
+
+      expect(screen.getByText(message)).toBeVisible();
+    }
+  );
+
   it('renders multiple positions for the same asset without duplicate React keys', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const performers = [
@@ -26,7 +47,9 @@ describe('PerformersCard', () => {
       },
     ] satisfies Performer[];
 
-    render(<PerformersCard title="Top Performers" performers={performers} type="top" />);
+    render(
+      <PerformersCard title="Top Performers" performers={performers} type="top" hasOwnedPositions />
+    );
 
     expect(screen.getByText('Cash SGD - DBS')).toBeInTheDocument();
     expect(screen.getByText('Cash SGD - UOB')).toBeInTheDocument();
@@ -52,7 +75,9 @@ describe('PerformersCard', () => {
       },
     ] satisfies Performer[];
 
-    render(<PerformersCard title="Top Performers" performers={performers} type="top" />);
+    render(
+      <PerformersCard title="Top Performers" performers={performers} type="top" hasOwnedPositions />
+    );
 
     expect(screen.getByText('••••')).toBeInTheDocument();
     expect(screen.queryByText('$1,234')).not.toBeInTheDocument();

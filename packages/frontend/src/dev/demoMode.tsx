@@ -1499,6 +1499,7 @@ let demoSnapshots: Snapshot[] = [...initialSnapshots];
 let demoSnapshotPositions: Record<string, SnapshotPosition[]> = { ...initialSnapshotPositions };
 let demoPerformance: PerformancePoint[] = [...initialPerformance];
 let demoIdCounter = 0;
+const demoPositionImports = new Map<string, { input: string; rows: Map<number, string> }>();
 
 export function resetDemoDataForTests() {
   resetDemoIbkr();
@@ -1512,6 +1513,7 @@ export function resetDemoDataForTests() {
   demoSnapshotPositions = { ...initialSnapshotPositions };
   demoPerformance = [...initialPerformance];
   demoIdCounter = 0;
+  demoPositionImports.clear();
 }
 
 function round(value: number, decimals = 2) {
@@ -2376,7 +2378,7 @@ function createImportedPosition(position: BulkImportPosition) {
     );
   }
 
-  createDemoPosition({
+  return createDemoPosition({
     assetId: asset.id,
     quantity: position.quantity,
     avgCostUsd: position.avgCostUsd,
@@ -2925,7 +2927,7 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
     });
 
   if (path === '/api/positions/native-cost-capabilities' && method === 'GET')
-    return json({ supported: true });
+    return json({ supported: true, bulkImportIdempotency: true });
 
   if (path === '/api/positions/native-cost-reconciliation' && method === 'POST') {
     const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
@@ -3086,13 +3088,37 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
   if (path === '/api/positions/bulk' && method === 'POST') {
     const body = JSON.parse((init?.body as string | undefined) ?? '{}') as {
       positions?: BulkImportPosition[];
+      requestId?: string;
     };
     const imports = body.positions ?? [];
-    const results = imports.map((position) => {
+    if (body.requestId && !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(body.requestId)) {
+      return json({ error: 'Invalid import request ID' }, 400);
+    }
+    const input = JSON.stringify(imports);
+    const requestId = body.requestId?.toLowerCase();
+    let attempt = requestId ? demoPositionImports.get(requestId) : undefined;
+    if (requestId && !attempt) {
+      attempt = { input, rows: new Map() };
+      demoPositionImports.set(requestId, attempt);
+    }
+    if (attempt && attempt.input !== input) {
+      return json(
+        { error: 'This import request already contains different data. Start a new import.' },
+        409
+      );
+    }
+    const results = imports.map((position, index) => {
       try {
+        if (
+          attempt?.rows.has(index) &&
+          demoPositions.some((row) => row.id === attempt?.rows.get(index))
+        ) {
+          return { success: true, symbol: position.asset.symbol };
+        }
         if ('ibkrCash' in position)
           throw new Error('Use the IBKR reconciliation controls to import currency balances');
-        createImportedPosition(position);
+        const created = createImportedPosition(position);
+        attempt?.rows.set(index, created.id);
         return { success: true, symbol: position.asset.symbol };
       } catch (error) {
         return {

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 export interface ImportResultItem {
   success: boolean;
@@ -10,18 +10,29 @@ export interface ImportResultItem {
 interface ImportResultsListProps {
   results: ImportResultItem[];
   onDone: () => void;
+  onRetry?: () => void;
+  onEditFailed?: () => void;
+  retrying?: boolean;
+  error?: string | null;
 }
 
 /**
  * Generic import results view used by PositionImportTab, TradeImportTab, and SnapshotImportTab.
  * Shows success/fail summary icon, per-item status rows, and a "Done" button.
  */
-export function ImportResultsList({ results, onDone }: ImportResultsListProps) {
+export function ImportResultsList({
+  results,
+  onDone,
+  onRetry,
+  onEditFailed,
+  retrying = false,
+  error,
+}: ImportResultsListProps) {
   const successCount = results.filter((r) => r.success).length;
   const failCount = results.filter((r) => !r.success).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={retrying}>
       <div className="text-center py-4">
         {failCount === 0 ? (
           <CheckCircle2 className="h-12 w-12 text-profit mx-auto mb-2" />
@@ -35,9 +46,9 @@ export function ImportResultsList({ results, onDone }: ImportResultsListProps) {
       </div>
 
       <div className="max-h-60 overflow-y-auto space-y-1">
-        {results.map((result) => (
+        {results.map((result, index) => (
           <div
-            key={`${result.label}-${result.success ? 'success' : 'fail'}-${result.error ?? ''}`}
+            key={index}
             className={`text-sm px-3 py-2 rounded-md flex items-start gap-2 ${
               result.success ? 'bg-profit' : 'bg-loss'
             }`}
@@ -55,8 +66,38 @@ export function ImportResultsList({ results, onDone }: ImportResultsListProps) {
         ))}
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={onDone}>Close Import</Button>
+      {error && (
+        <p role="alert" className="text-sm text-destructive break-words">
+          {error}
+        </p>
+      )}
+
+      <div className="flex flex-wrap justify-end gap-2">
+        {failCount > 0 && onEditFailed && (
+          <Button type="button" variant="outline" onClick={onEditFailed} disabled={retrying}>
+            Edit failed rows
+          </Button>
+        )}
+        {failCount > 0 && onRetry && (
+          <Button type="button" onClick={onRetry} disabled={retrying}>
+            {retrying ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Retrying...
+              </>
+            ) : (
+              'Retry failed import'
+            )}
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant={failCount > 0 && onRetry ? 'outline' : 'default'}
+          onClick={onDone}
+          disabled={retrying}
+        >
+          Close Import
+        </Button>
       </div>
     </div>
   );

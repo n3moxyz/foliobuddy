@@ -33,7 +33,7 @@ export function PositionImportTab({
 }: PositionImportTabProps) {
   const { formatPrice, formatQuantity, maskMoney } = useMoneyFormatter();
   return (
-    <div className="space-y-4">
+    <fieldset disabled={importing} className="min-w-0 space-y-4">
       <div className="flex gap-2">
         <Button type="button" variant="outline" size="sm" onClick={onPaste}>
           <Upload className="h-4 w-4 mr-1" />
@@ -76,11 +76,8 @@ export function PositionImportTab({
             {parsedPositions.length !== 1 ? 's' : ''}:
           </p>
           <div className="max-h-40 overflow-y-auto space-y-1">
-            {parsedPositions.map((pos) => (
-              <div
-                key={`${pos.asset.symbol}-${pos.quantity}-${pos.avgCostUsd}-${pos.storageType}-${pos.storageLocation ?? ''}-${pos.custodyOf ?? ''}`}
-                className="text-sm bg-muted/50 px-3 py-2 rounded-md"
-              >
+            {parsedPositions.map((pos, index) => (
+              <div key={index} className="text-sm bg-muted/50 px-3 py-2 rounded-md">
                 <span className="font-medium">{pos.asset.symbol}</span>
                 <span className="text-muted-foreground ml-2">
                   {formatQuantity(pos.quantity, pos.asset.category)} @{' '}
@@ -102,7 +99,7 @@ export function PositionImportTab({
       {footerSlot && <div className="pt-2 border-t border-border/60">{footerSlot}</div>}
 
       <div className="flex justify-end">
-        <Button type="button" onClick={onImport} disabled={!parsedPositions || importing}>
+        <Button type="button" onClick={onImport} disabled={!parsedPositions?.length || importing}>
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -116,6 +113,6 @@ export function PositionImportTab({
           )}
         </Button>
       </div>
-    </div>
+    </fieldset>
   );
 }
