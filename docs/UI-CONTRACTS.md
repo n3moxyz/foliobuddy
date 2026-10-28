@@ -37,7 +37,7 @@ Borderless hero, investor title (`Net Worth (Nemo)`). Ordered 9-metric rail: YTD
 
 ## Portfolio Hero Summary
 
-Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD trend arrow, then a 6-col `divide-x` grid (YTD Start, MDD, Current ATH DD, Exposure, Positions, YTD P&L). Keep the grid at least 64rem wide inside a keyboard-focusable horizontal scroll region. Drawdowns use shared `useDrawdownStats()` with the summary's value and timestamp. MDD includes its recorded trough date beneath the percentage. Every label has a `HelpTooltip`. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add", then YTD Start and MDD side by side. Exposure = owned non-stable/non-cash + server-backed perp ÷ total; custody excluded.
+Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tabular Total Value + inline YTD trend arrow, then a 6-col `divide-x` grid (YTD Start, MDD, Current ATH DD, Exposure, Positions, YTD P&L). Keep the grid at least 64rem wide inside a keyboard-focusable horizontal scroll region. Drawdowns use shared `useDrawdownStats()` with the summary's value and timestamp. MDD includes its recorded trough date beneath the percentage. Current ATH DD reads `Today (Live)` beneath its percentage, matching Dashboard. Every label has a `HelpTooltip`. **Mobile** (`sm:hidden`): compact bordered card — Total Value, YTD P&L, inline "Add", then YTD Start and MDD side by side. Exposure = owned non-stable/non-cash + server-backed perp ÷ total; custody excluded.
 
 ## Portfolio Section Headers
 

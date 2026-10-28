@@ -237,6 +237,7 @@ describe('Portfolio responsive grouping', () => {
     ]);
     expect(within(stats).getByText('-24.66%')).toHaveClass('text-loss');
     expect(within(stats).getByText('-3.25%')).toBeInTheDocument();
+    expect(within(stats).getByText('-3.25%').nextElementSibling).toHaveTextContent('Today (Live)');
     expect(within(stats).getByText('30 Jul 2026')).toHaveAttribute(
       'datetime',
       summaryMocks.maxDrawdownDate
