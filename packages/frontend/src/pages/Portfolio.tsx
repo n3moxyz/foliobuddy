@@ -370,7 +370,7 @@ export default function Portfolio() {
     <div className="space-y-6">
       <PageActionHeader
         title="Portfolio"
-        subtitle={`${positions?.length ?? 0} positions`}
+        subtitle={`${positions?.length ?? 0} position${positions?.length === 1 ? '' : 's'}`}
         stickyOnMobile={false}
         actions={
           <>
@@ -807,8 +807,11 @@ export default function Portfolio() {
         <div className="mt-6 sm:hidden">
           <div className="mb-2 flex items-center gap-2 px-1">
             <Users className={CUSTODY_CONFIG.iconClass} />
-            <span className="text-sm font-semibold">Held for Others</span>
-            <HelpTooltip content="Positions you're holding on behalf of other people. Excluded from your net worth and P&L" />
+            <h2 className="text-sm font-semibold">Held for Others</h2>
+            <HelpTooltip
+              label="Held for Others"
+              content="Positions you're holding on behalf of other people. Excluded from your net worth and P&L"
+            />
             <span className="ml-auto flex shrink-0 flex-col items-end gap-0.5 font-mono text-xs leading-tight tabular-nums">
               {custodyGroupPnL.pnlUsd !== null && (
                 <span className={getPnLColorClass(custodyGroupPnL.pnlUsd)}>
@@ -900,7 +903,10 @@ export default function Portfolio() {
                       </span>
                       <div className="flex min-h-10 items-center gap-1 text-xs text-muted-foreground">
                         <span>Perp:</span>
-                        <HelpTooltip content="Open perpetual futures position size: adds to your crypto exposure calculation" />{' '}
+                        <HelpTooltip
+                          label="Perp exposure"
+                          content="Open perpetual futures position size: adds to your crypto exposure calculation"
+                        />{' '}
                         {editingPerpInline ? (
                           <FormattedNumberInput
                             id={PERP_EXPOSURE_INLINE_INPUT_ID}
@@ -988,7 +994,10 @@ export default function Portfolio() {
           <CollapsibleCard
             title={`Held for Others (${custodyPositions.length})`}
             titleHelp={
-              <HelpTooltip content="Positions you're holding on behalf of other people. These are excluded from your personal net worth and P&L" />
+              <HelpTooltip
+                label="Held for Others"
+                content="Positions you're holding on behalf of other people. These are excluded from your personal net worth and P&L"
+              />
             }
             icon={<Users className={CUSTODY_CONFIG.iconClass} />}
             accentColor={CUSTODY_CONFIG.accentColor}

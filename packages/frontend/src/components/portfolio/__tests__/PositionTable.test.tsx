@@ -42,6 +42,21 @@ const privatePosition = {
   },
 } as Position;
 
+it('names group help for its storage topic', () => {
+  render(
+    <PositionTable
+      positions={[
+        { ...privatePosition, storageType: 'CEX', storageLocation: 'Binance' },
+        { ...privatePosition, id: 'bank-position', storageType: 'BANK', storageLocation: 'DBS' },
+      ]}
+    />
+  );
+
+  expect(screen.getByRole('button', { name: 'Help: CEX' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Help: Bank' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Help' })).not.toBeInTheDocument();
+});
+
 it.each(['CASH', 'STABLECOIN', 'LIQUID_CRYPTO', 'EQUITY', 'UNIT_TRUST'])(
   'masks %s quantities in desktop/mobile rows and details while showing current quotes',
   (category) => {

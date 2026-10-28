@@ -52,12 +52,12 @@ export function AssetSearchDropdown({
     const results: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: CoinSearchResult }> =
       [];
 
-    // Add existing portfolio assets first
+    // Add catalog assets first
     filteredAssets.forEach((asset) => {
       results.push({ type: 'existing', asset });
     });
 
-    // Add CoinGecko search results that aren't already in portfolio
+    // Add CoinGecko search results that aren't already in the catalog
     if (searchResults && searchQuery.length >= 1) {
       searchResults.forEach((coin) => {
         if (!isListedCoinCandidate(assets, coin)) {
@@ -248,9 +248,6 @@ export function AssetSearchDropdown({
                   <span className="shrink-0 text-xs text-muted-foreground">
                     #{result.coin!.rank}
                   </span>
-                )}
-                {result.type === 'existing' && (
-                  <span className="shrink-0 text-xs text-profit">In portfolio</span>
                 )}
               </button>
             ))

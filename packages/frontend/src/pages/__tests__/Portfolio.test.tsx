@@ -138,15 +138,18 @@ vi.mock('@/components/portfolio/PositionTable', () => ({
 vi.mock('@/components/portfolio/CollapsibleCard', () => ({
   CollapsibleCard: ({
     title,
+    titleHelp,
     headerExtra,
     children,
   }: {
     title: string;
+    titleHelp?: ReactNode;
     headerExtra?: ReactNode;
     children: ReactNode;
   }) => (
     <section>
       <h2>{title}</h2>
+      {titleHelp}
       {headerExtra}
       {children}
     </section>
@@ -271,6 +274,21 @@ describe('Portfolio responsive grouping', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'By Type' })[0]);
     expect(equities).toHaveAttribute('data-group-by', 'equityType');
+  });
+
+  it('keeps custody discoverable as a heading with named help in both layouts', () => {
+    navMocks.positions = [
+      ...positions,
+      { ...positions[0], id: 'custody-position', custodyOf: 'Family' },
+    ];
+    render(<Portfolio />);
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Held for Others' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Held for Others (1)' })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Help: Held for Others' })).toHaveLength(2);
+    expect(screen.getByTestId('position-table-mobile-custody')).toHaveTextContent('BTC');
   });
 
   it('does not save an invalid perp dialog value', async () => {

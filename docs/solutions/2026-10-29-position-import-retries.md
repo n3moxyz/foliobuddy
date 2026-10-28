@@ -40,7 +40,12 @@ Keep uncertain attempts across dialog closure within the same auth session.
 Release an attempt only after visible acknowledgement of complete success.
 An unmounted form's late response must not erase another form's retry identity.
 
-To correct a partial import, retain only failed rows by their result indexes.
+Clear acknowledged results before every retry. A lost or incomplete response
+leaves the outcome unknown, even when earlier results remain visible. Keep
+failed-row editing disabled until same-ID replay confirms the latest outcome.
+An unknown outcome must not release the pending identity through Close Import.
+
+To correct a confirmed partial import, retain only failed rows by their result indexes.
 Start a new request ID for that corrected batch. Do not identify rows by ticker,
 because a batch can contain several holdings of the same asset.
 

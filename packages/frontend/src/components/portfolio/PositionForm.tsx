@@ -38,6 +38,12 @@ import {
   applyPositionDelta,
 } from '@foliobuddy/shared';
 import { api } from '@/lib/api';
+import { isAuthSessionCurrent } from '@/lib/authSession';
+import {
+  beginPositionImport,
+  confirmPositionImport,
+  type PositionImportAttempt,
+} from '@/lib/positionImportAttempt';
 import type {
   Asset,
   AssetCategory,
@@ -265,6 +271,22 @@ export function PositionForm({
   const [parsedPositions, setParsedPositions] = useState<ImportedPosition[] | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<ImportResultItem[] | null>(null);
+  const [importOutcomeKnown, setImportOutcomeKnown] = useState(false);
+  // Displayed rows can outlive a lost response. Handlers require the latest acknowledged result.
+  const acknowledgedImportResults = useRef<ImportResultItem[] | null>(null);
+  const importAttempt = useRef<{
+    identity: PositionImportAttempt;
+    positions: ImportedPosition[];
+  } | null>(null);
+  const importInFlight = useRef(false);
+  const formMounted = useRef(true);
+
+  useEffect(() => {
+    formMounted.current = true;
+    return () => {
+      formMounted.current = false;
+    };
+  }, []);
 
   // Category state (Equities covers both single stocks and fund-level holdings)
   const [category, setCategory] = useState<CategoryType>(() => {
@@ -599,16 +621,23 @@ export function PositionForm({
   }, [additionalQuantity, deltaMode, additionalAmountEntered]);
 
   const handlePaste = async () => {
+    if (importInFlight.current) return;
     try {
       const text = await navigator.clipboard.readText();
+      if (importInFlight.current) return;
       setJsonInput(text);
       parseJson(text);
     } catch {
-      setParseError('Failed to read clipboard. Please paste manually.');
+      if (!importInFlight.current) {
+        setParseError('Failed to read clipboard. Please paste manually.');
+      }
     }
   };
 
   const parseJson = (text: string) => {
+    if (importInFlight.current) return;
+    acknowledgedImportResults.current = null;
+    setImportOutcomeKnown(false);
     setParseError(null);
     setParsedPositions(null);
     setImportResults(null);
@@ -642,31 +671,103 @@ export function PositionForm({
     }
   };
 
-  const handleImport = async () => {
-    if (!parsedPositions) return;
-
-    setImporting(true);
+  const handleImport = async (retryAttempt = false) => {
+    if (importInFlight.current) return;
 
     // Stamp custodyOf on all positions if custody checkbox is checked
-    const positionsToImport = isCustody
-      ? parsedPositions.map((p) => ({ ...p, custodyOf: custodyOf.trim() || 'Someone' }))
-      : parsedPositions;
+    const positionsToImport = retryAttempt
+      ? importAttempt.current?.positions
+      : isCustody
+        ? parsedPositions?.map((p) => ({ ...p, custodyOf: custodyOf.trim() || 'Someone' }))
+        : parsedPositions;
+    if (!positionsToImport?.length) return;
+    const input = JSON.stringify(positionsToImport);
+    const previousIdentity = importAttempt.current?.identity;
+    const identity =
+      previousIdentity?.input === input && isAuthSessionCurrent(previousIdentity.session)
+        ? previousIdentity
+        : beginPositionImport(input);
+    importAttempt.current = { identity, positions: positionsToImport };
+    importInFlight.current = true;
+    acknowledgedImportResults.current = null;
+    setImportOutcomeKnown(false);
+    setImporting(true);
+    setParseError(null);
 
     try {
-      const response = await api.bulkImportPositions(positionsToImport);
-      setImportResults(response.results.map((r) => ({ ...r, label: r.symbol })));
+      const response = await api.bulkImportPositions(positionsToImport, identity.requestId);
+      if (
+        !Array.isArray(response?.results) ||
+        response.totalCount !== positionsToImport.length ||
+        response.results.length !== positionsToImport.length ||
+        response.results.some(
+          (result) =>
+            !result ||
+            typeof result.success !== 'boolean' ||
+            typeof result.symbol !== 'string' ||
+            (result.error !== undefined && typeof result.error !== 'string')
+        ) ||
+        response.successCount !== response.results.filter((result) => result.success).length
+      ) {
+        throw new Error(
+          'The import response was incomplete. Retry the original batch to check saved rows.'
+        );
+      }
+      if (formMounted.current && isAuthSessionCurrent(identity.session)) {
+        const results = response.results.map((result) => ({ ...result, label: result.symbol }));
+        acknowledgedImportResults.current = results;
+        setImportResults(results);
+        setImportOutcomeKnown(true);
+      }
     } catch (e) {
-      setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
+      if (formMounted.current && isAuthSessionCurrent(identity.session)) {
+        setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
+      }
     } finally {
-      setImporting(false);
+      importInFlight.current = false;
+      if (formMounted.current) setImporting(false);
     }
 
     // Refresh positions data
-    queryClient.invalidateQueries({ queryKey: ['positions'] });
-    queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+    if (isAuthSessionCurrent(identity.session)) {
+      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+    }
+  };
+
+  const handleEditFailedImportRows = () => {
+    const results = acknowledgedImportResults.current;
+    if (importInFlight.current || !results || !importAttempt.current) return;
+    const failedPositions = importAttempt.current.positions.filter(
+      (_, index) => results[index]?.success === false
+    );
+    if (!failedPositions.length) return;
+    const failedInput = JSON.stringify(failedPositions, null, 2);
+    setJsonInput(failedInput);
+    parseJson(failedInput);
+  };
+
+  const handleImportDone = () => {
+    if (!formMounted.current || importInFlight.current) return;
+    const attempt = importAttempt.current;
+    const results = acknowledgedImportResults.current;
+    if (
+      attempt &&
+      results &&
+      isAuthSessionCurrent(attempt.identity.session) &&
+      results.length === attempt.positions.length &&
+      results.every((result) => result.success)
+    ) {
+      // Another dialog can still have an uncertain reply. Release only acknowledged results.
+      confirmPositionImport(attempt.identity);
+    }
+    onSuccess();
   };
 
   const resetImportState = () => {
+    importAttempt.current = null;
+    acknowledgedImportResults.current = null;
+    setImportOutcomeKnown(false);
     setJsonInput('');
     setParseError(null);
     setParsedPositions(null);
@@ -1634,7 +1735,17 @@ export function PositionForm({
     return <IbkrCashPanel position={position} onSuccess={onSuccess} />;
 
   if (mode === 'import' && importResults) {
-    return <ImportResultsList results={importResults} onDone={onSuccess} />;
+    return (
+      <ImportResultsList
+        results={importResults}
+        error={parseError}
+        retrying={importing}
+        outcomeKnown={importOutcomeKnown}
+        onRetry={() => handleImport(true)}
+        onEditFailed={handleEditFailedImportRows}
+        onDone={handleImportDone}
+      />
+    );
   }
 
   if (fundingConfirmation) {
@@ -1788,7 +1899,10 @@ export function PositionForm({
           <button
             type="button"
             aria-pressed={mode === 'add'}
-            onClick={() => setMode('add')}
+            disabled={importing}
+            onClick={() => {
+              if (!importInFlight.current) setMode('add');
+            }}
             className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'add'
                 ? 'border-primary text-primary'
@@ -1800,7 +1914,10 @@ export function PositionForm({
           <button
             type="button"
             aria-pressed={mode === 'import'}
-            onClick={() => setMode('import')}
+            disabled={importing}
+            onClick={() => {
+              if (!importInFlight.current) setMode('import');
+            }}
             className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'import'
                 ? 'border-primary text-primary'
@@ -1822,6 +1939,7 @@ export function PositionForm({
           custodyOf={custodyOf}
           footerSlot={custodyCheckbox}
           onJsonChange={(value) => {
+            if (importInFlight.current) return;
             setJsonInput(value);
             parseJson(value);
           }}
