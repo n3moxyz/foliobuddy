@@ -1,5 +1,12 @@
 # FOR[ET].md - FolioBuddy
 
+## Consistent position forms (29 October 2026)
+
+Add New, Edit Totals, and Add/Reduce now share the same amount panel, asset summary, and cost fields.
+The large quantity and ticker keep their place across modes. Existing holdings show their current quantity inside the amount panel.
+Only Reduce adds Max and the percentage slider. Add accepts amounts above the current holding without applying Reduce's balance limit.
+The shared cost fields retain native currencies, calculated values, and optional sale proceeds. Asset selection and Change still use the existing identity checks.
+
 ## Reduce amount panel (28 October 2026)
 
 The Reduce Quantity field now contains the balance, Max action, and a percentage slider in one panel.

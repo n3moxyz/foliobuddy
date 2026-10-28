@@ -1,9 +1,8 @@
 import type { CSSProperties, KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
-import { Label } from '@/components/ui/label';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import type { Position } from '@/lib/types';
+import { PositionAmountInput } from './PositionAmountInput';
 
 const PERCENTAGE_STOPS = [0, 25, 50, 75, 100];
 
@@ -67,32 +66,18 @@ export function ReduceQuantityInput({
   };
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor="additionalQuantity" className="text-sm">
-        Reduce Quantity
-      </Label>
-      <div
-        role="group"
-        aria-label="Reduce quantity controls"
-        className="rounded-xl border border-border/80 bg-muted/20 px-4 pb-3 pt-2"
-      >
-        <div className="flex items-center gap-3">
-          <FormattedNumberInput
-            id="additionalQuantity"
-            value={value}
-            onValueChange={onValueChange}
-            placeholder="0.00"
-            required
-            disabled={disabled}
-            aria-invalid={exceedsBalance || undefined}
-            aria-describedby="reduce-quantity-status"
-            className="h-16 flex-1 border-0 bg-transparent px-0 font-mono text-2xl font-medium tabular-nums focus-visible:ring-offset-0 sm:h-20 sm:text-3xl"
-          />
-          <span className="max-w-[40%] shrink-0 break-all rounded-full bg-muted px-3 py-2 text-sm font-semibold">
-            {position.asset.symbol}
-          </span>
-        </div>
-
+    <PositionAmountInput
+      id="additionalQuantity"
+      label="Reduce Quantity"
+      groupLabel="Reduce quantity controls"
+      symbol={position.asset.symbol}
+      value={value}
+      onValueChange={onValueChange}
+      required
+      disabled={disabled}
+      aria-invalid={exceedsBalance || undefined}
+      aria-describedby="reduce-quantity-status"
+      footer={
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <span
             key={exceedsBalance ? 'balance-error' : 'percentage'}
@@ -120,43 +105,43 @@ export function ReduceQuantityInput({
             </span>
           </Button>
         </div>
-
-        <div className="relative">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-2 top-1/2 flex -translate-y-1/2 justify-between"
-          >
-            {PERCENTAGE_STOPS.map((stop) => (
-              <span
-                key={stop}
-                className={`h-2 w-2 rounded-full ${stop <= percentage ? 'bg-primary' : 'bg-muted-foreground'}`}
-              />
-            ))}
-          </div>
-          <input
-            type="range"
-            aria-label="Percentage to reduce"
-            aria-valuetext={`${percentageLabel} of balance`}
-            min={0}
-            max={100}
-            step="any"
-            value={percentage}
-            disabled={controlsDisabled}
-            onChange={(event) => selectPercentage(Math.round(Number(event.target.value)))}
-            onKeyDown={handleSliderKey}
-            className="reduce-amount-range relative block h-11 w-full cursor-pointer rounded-sm bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-40"
-            style={{ '--reduce-percentage': `${percentage}%` } as CSSProperties}
-          />
-        </div>
+      }
+    >
+      <div className="relative">
         <div
           aria-hidden="true"
-          className="flex justify-between px-1 text-[10px] tabular-nums text-muted-foreground"
+          className="pointer-events-none absolute inset-x-2 top-1/2 flex -translate-y-1/2 justify-between"
         >
           {PERCENTAGE_STOPS.map((stop) => (
-            <span key={stop}>{stop}%</span>
+            <span
+              key={stop}
+              className={`h-2 w-2 rounded-full ${stop <= percentage ? 'bg-primary' : 'bg-muted-foreground'}`}
+            />
           ))}
         </div>
+        <input
+          type="range"
+          aria-label="Percentage to reduce"
+          aria-valuetext={`${percentageLabel} of balance`}
+          min={0}
+          max={100}
+          step="any"
+          value={percentage}
+          disabled={controlsDisabled}
+          onChange={(event) => selectPercentage(Math.round(Number(event.target.value)))}
+          onKeyDown={handleSliderKey}
+          className="reduce-amount-range relative block h-11 w-full cursor-pointer rounded-sm bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ '--reduce-percentage': `${percentage}%` } as CSSProperties}
+        />
       </div>
-    </div>
+      <div
+        aria-hidden="true"
+        className="flex justify-between px-1 text-[10px] tabular-nums text-muted-foreground"
+      >
+        {PERCENTAGE_STOPS.map((stop) => (
+          <span key={stop}>{stop}%</span>
+        ))}
+      </div>
+    </PositionAmountInput>
   );
 }
