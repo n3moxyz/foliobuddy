@@ -167,7 +167,7 @@ export function usePerformanceHistory(params?: {
 
 /**
  * Value and drawdown stats over YTD snapshots plus the live portfolio value.
- * MDD is the largest peak-to-trough decline, DD from ATH is the current
+ * MDD is the largest peak-to-trough decline, Current ATH DD is the current
  * decline from the YTD high, and MDD (1D) is the largest day-over-day decline.
  * Percentages are scale-invariant, so the same values apply whether the page
  * shows net worth or portfolio totals.

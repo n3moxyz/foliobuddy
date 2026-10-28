@@ -54,7 +54,7 @@ describe('NetWorthCard', () => {
       'YTD ATH',
       'MDD',
       'MDD (1D)',
-      'DD from ATH',
+      'Current ATH DD',
       'Exposure',
       'Positions',
       'Trades',

@@ -68,6 +68,7 @@ import { usePerpExposure } from '@/hooks/usePerpExposure';
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { isNonNegativeNumberInput } from '@/lib/formValidation';
+import { formatMilestoneDate } from '@/lib/portfolioHistory';
 
 const PERP_EXPOSURE_INPUT_ID = 'perp-exposure-input';
 const PERP_EXPOSURE_INLINE_INPUT_ID = 'perp-exposure-inline-input';
@@ -151,7 +152,11 @@ export default function Portfolio() {
   } = usePositions();
   const { data: summary } = usePortfolioSummary();
   const { data: fxRates } = useFxRates();
-  const { currentDrawdownPct } = useDrawdownStats(summary?.totalValueUsd ?? 0);
+  const { currentDrawdownPct, maxDrawdownPct, maxDrawdownDate } = useDrawdownStats(
+    summary?.totalValueUsd ?? 0,
+    summary?.lastUpdated
+  );
+  const maxDrawdownDateLabel = formatMilestoneDate(maxDrawdownDate);
   const {
     perpExposure,
     savePerpExposure,
@@ -538,6 +543,39 @@ export default function Portfolio() {
                 <Plus className="h-4 w-4 mr-1" />
                 Add
               </Button>
+              <div className="col-span-3 grid grid-cols-2 divide-x divide-border border-t pt-3">
+                <div className="pr-3">
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground">YTD Start</p>
+                    <HelpTooltip
+                      label="YTD Start"
+                      content="First recorded portfolio value this year"
+                    />
+                  </div>
+                  <p className="font-mono text-sm font-medium tabular-nums">
+                    {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
+                  </p>
+                </div>
+                <div className="pl-3">
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground">MDD</p>
+                    <HelpTooltip
+                      label="MDD"
+                      content="Largest peak-to-trough decline in USD this year. The date below marks the trough."
+                    />
+                  </div>
+                  <p
+                    className={`font-mono text-sm font-medium tabular-nums ${maxDrawdownPct && maxDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'}`}
+                  >
+                    {formatDrawdown(maxDrawdownPct)}
+                  </p>
+                  {maxDrawdownDateLabel && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      (<time dateTime={maxDrawdownDate!}>{maxDrawdownDateLabel}</time>)
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="hidden sm:block">
@@ -560,68 +598,99 @@ export default function Portfolio() {
                 )}
               </div>
 
-              <div className="mt-4 grid grid-cols-5 divide-x divide-border">
-                <div className="pr-4">
-                  <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground text-sm">YTD Start</p>
-                    <HelpTooltip
-                      label="YTD Start"
-                      content="Your total cost basis: how much you invested"
-                    />
+              <div
+                role="region"
+                aria-label="Portfolio statistics"
+                tabIndex={0}
+                className="mt-4 overflow-x-auto pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <div className="grid min-w-[64rem] grid-cols-6 divide-x divide-border">
+                  <div className="pr-4">
+                    <div className="flex items-center gap-1">
+                      <p className="text-muted-foreground text-sm">YTD Start</p>
+                      <HelpTooltip
+                        label="YTD Start"
+                        content="First recorded portfolio value this year"
+                      />
+                    </div>
+                    <p className="font-medium tabular-nums">
+                      {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
+                    </p>
                   </div>
-                  <p className="font-medium tabular-nums">
-                    {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
-                  </p>
-                </div>
-                <div className="px-4">
-                  <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground text-sm">DD from ATH</p>
-                    <HelpTooltip
-                      label="DD from ATH"
-                      content="How far your portfolio is currently below its year-to-date high"
-                    />
+                  <div className="px-4">
+                    <div className="flex items-center gap-1">
+                      <p className="text-muted-foreground text-sm">MDD</p>
+                      <HelpTooltip
+                        label="MDD"
+                        content="Largest peak-to-trough decline in USD this year. The date below marks the trough."
+                      />
+                    </div>
+                    <p
+                      className={`font-medium tabular-nums ${maxDrawdownPct && maxDrawdownPct > 0 ? 'text-loss' : 'text-muted-foreground'}`}
+                    >
+                      {formatDrawdown(maxDrawdownPct)}
+                    </p>
+                    {maxDrawdownDateLabel && (
+                      <p className="mt-1 whitespace-nowrap text-[11px] text-muted-foreground">
+                        (<time dateTime={maxDrawdownDate!}>{maxDrawdownDateLabel}</time>)
+                      </p>
+                    )}
                   </div>
-                  <p
-                    className={`font-medium tabular-nums ${
-                      currentDrawdownPct && currentDrawdownPct > 0
-                        ? 'text-loss'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    {formatDrawdown(currentDrawdownPct)}
-                  </p>
-                </div>
-                <div className="px-4">
-                  <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground text-sm">Exposure</p>
-                    <HelpTooltip
-                      label="Exposure"
-                      content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash"
-                    />
+                  <div className="px-4">
+                    <div className="flex items-center gap-1">
+                      <p className="text-muted-foreground text-sm whitespace-nowrap">
+                        Current ATH DD
+                      </p>
+                      <HelpTooltip
+                        label="Current ATH DD"
+                        content="How far your portfolio is currently below its year-to-date high"
+                      />
+                    </div>
+                    <p
+                      className={`font-medium tabular-nums ${
+                        currentDrawdownPct && currentDrawdownPct > 0
+                          ? 'text-loss'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {formatDrawdown(currentDrawdownPct)}
+                    </p>
                   </div>
-                  <p className="font-medium tabular-nums">{exposurePct}</p>
-                </div>
-                <div className="px-4">
-                  <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground text-sm">Positions</p>
-                    <HelpTooltip label="Positions" content="Number of assets you currently hold" />
+                  <div className="px-4">
+                    <div className="flex items-center gap-1">
+                      <p className="text-muted-foreground text-sm">Exposure</p>
+                      <HelpTooltip
+                        label="Exposure"
+                        content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash"
+                      />
+                    </div>
+                    <p className="font-medium tabular-nums">{exposurePct}</p>
                   </div>
-                  <p className="font-medium tabular-nums">{summary.positionCount}</p>
-                </div>
-                <div className="pl-4">
-                  <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground text-sm">YTD P&L</p>
-                    <HelpTooltip
-                      label="YTD P&L"
-                      content="Unrealized profit or loss since the start of the year"
-                    />
+                  <div className="px-4">
+                    <div className="flex items-center gap-1">
+                      <p className="text-muted-foreground text-sm">Positions</p>
+                      <HelpTooltip
+                        label="Positions"
+                        content="Number of assets you currently hold"
+                      />
+                    </div>
+                    <p className="font-medium tabular-nums">{summary.positionCount}</p>
                   </div>
-                  <p
-                    className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
-                  >
-                    {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
-                    <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
-                  </p>
+                  <div className="pl-4">
+                    <div className="flex items-center gap-1">
+                      <p className="text-muted-foreground text-sm">YTD P&L</p>
+                      <HelpTooltip
+                        label="YTD P&L"
+                        content="Unrealized profit or loss since the start of the year"
+                      />
+                    </div>
+                    <p
+                      className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
+                    >
+                      {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
+                      <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
