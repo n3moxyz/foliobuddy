@@ -655,6 +655,9 @@ export default function Portfolio() {
                     >
                       {formatDrawdown(currentDrawdownPct)}
                     </p>
+                    <p className="mt-1 whitespace-nowrap text-[11px] text-muted-foreground">
+                      Today (Live)
+                    </p>
                   </div>
                   <div className="px-4">
                     <div className="flex items-center gap-1">
