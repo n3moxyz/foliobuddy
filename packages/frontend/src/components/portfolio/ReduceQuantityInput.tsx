@@ -95,7 +95,9 @@ export function ReduceQuantityInput({
 
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <span
+            key={exceedsBalance ? 'balance-error' : 'percentage'}
             id="reduce-quantity-status"
+            role={exceedsBalance ? 'alert' : undefined}
             className={`text-xs tabular-nums ${exceedsBalance ? 'text-loss' : 'text-muted-foreground'}`}
           >
             {exceedsBalance ? 'Exceeds balance' : percentageLabel}

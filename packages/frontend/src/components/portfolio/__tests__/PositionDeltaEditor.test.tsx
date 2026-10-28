@@ -146,10 +146,17 @@ describe('PositionDeltaEditor', () => {
   });
 
   it('keeps an over-balance typed quantity for validation without silently capping it', () => {
-    renderEditor({ deltaMode: 'reduce', additionalQuantity: '12' });
-    expect(screen.getByLabelText('Reduce Quantity')).toHaveValue('12');
-    expect(screen.getByText('Exceeds balance')).toBeInTheDocument();
+    renderEditor({ deltaMode: 'reduce' });
+    const input = screen.getByLabelText('Reduce Quantity');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '12' } });
+    expect(input).toHaveValue('12');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent('Exceeds balance');
     expect(screen.getByRole('slider', { name: 'Percentage to reduce' })).toHaveValue('100');
+    fireEvent.change(input, { target: { value: '5' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute('aria-invalid');
   });
 
   it('keeps the available balance masked when values are hidden', () => {
