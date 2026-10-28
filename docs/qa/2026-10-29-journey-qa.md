@@ -116,8 +116,8 @@ accounts, and production data mutations were not tested. No owner credentials we
 Local Vite loading does not establish production performance under field networks.
 
 Trade-create/import response loss, failed trade deletion, and browser Back with
-unsaved inputs remain untested. Position funding/history recovery was covered by
-the reconciler, while these additional breaker cases were not completed.
+unsaved inputs remain untested. The reconciler covered funded-addition history
+cancellation. Funded-reduction failure recovery was not tested.
 
 Pending client import identities do not survive a full page reload or a new
 auth session. Deleting an imported row removes its durable receipt. Check saved
