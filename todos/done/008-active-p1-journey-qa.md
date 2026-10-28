@@ -1,5 +1,5 @@
 ---
-status: active
+status: complete
 priority: p1
 complexity: complex
 depends-on: []
@@ -17,12 +17,14 @@ sandbox account and production data. Keep product code unchanged during discover
 - [x] Repair confirmed findings and add meaningful regression coverage.
 - [x] Rerun failed and adjacent journeys, then complete project checks.
 - [x] Document coverage, evidence, and blocked or untested surfaces.
-- [ ] Complete the authorized PR, review, merge, and deployment verification.
+- [x] Complete the authorized PR, review, merge, and deployment verification.
 
 Acceptance: confirmed in-scope findings pass their reproductions. Financial and
 persistence checks use real API results. The final report states the remaining
 limits without treating blocked journeys as passed.
 
-Nine confirmed defects are repaired. Backend support merged in PR #82. Client
-publication follows verified backend deployment. The dated journey report lists
-local results and limits. Publication and production verification remain in progress.
+Nine confirmed defects are repaired. Backend PR #82 deployed before client PR #83.
+Both merged releases passed their production checks. The hosted sign-in name was
+verified after the exact client deployment. The dated journey report records
+coverage, release evidence, and remaining limits. Synthetic QA data and servers
+were removed after preserving evidence and verifying the original sandbox.
