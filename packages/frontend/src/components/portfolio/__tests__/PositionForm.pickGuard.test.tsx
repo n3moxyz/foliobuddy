@@ -212,7 +212,7 @@ describe('PositionForm: server returns a different asset than was picked', () =>
       })
     );
     expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue(/Ethena USDe/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Selected asset' })).not.toBeInTheDocument();
   });
 
   it('selects the stock when the server returns it', async () => {
@@ -221,8 +221,20 @@ describe('PositionForm: server returns a different asset than was picked', () =>
     await pickStablecoinXFromEquitySearch();
 
     expect(await screen.findByRole('button', { name: 'Change' })).toBeInTheDocument();
-    expect(screen.getByDisplayValue('USDE - StablecoinX Inc.')).toBeInTheDocument();
+    const summary = screen.getByRole('group', { name: 'Selected asset' });
+    expect(within(summary).getByText('USDE')).toBeInTheDocument();
+    expect(within(summary).getByText('StablecoinX Inc.')).toBeInTheDocument();
+    const amount = screen.getByRole('group', { name: 'Shares controls' });
+    expect(amount).toContainElement(screen.getByLabelText('Shares'));
+    expect(within(amount).getByText('USDE')).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Reduce max/ })).not.toBeInTheDocument();
     expect(toast.error).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    expect(screen.getByRole('combobox', { name: 'Asset' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Selected asset' })).not.toBeInTheDocument();
+    expect(within(amount).queryByText('USDE')).not.toBeInTheDocument();
   });
 
   it('refuses a Cash stablecoin resolved to a same-ticker stock and clears the type', async () => {
@@ -256,6 +268,10 @@ describe('PositionForm: server returns a different asset than was picked', () =>
     await waitFor(() =>
       expect(screen.getByRole('combobox', { name: 'Type' })).toHaveTextContent('USDe')
     );
+    const amount = screen.getByRole('group', { name: 'Amount controls' });
+    expect(amount).toContainElement(screen.getByLabelText('Amount'));
+    expect(within(amount).getByText(ethenaRow.symbol)).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
     expect(toast.error).not.toHaveBeenCalled();
   });
 });
@@ -301,7 +317,9 @@ describe('PositionForm: picking an unpriced equity', () => {
       name: 'Nebius Group',
       category: 'EQUITY',
     });
-    expect(await screen.findByDisplayValue('NBIS - Nebius Group N.V.')).toBeInTheDocument();
+    const summary = await screen.findByRole('group', { name: 'Selected asset' });
+    expect(within(summary).getByText('NBIS')).toBeInTheDocument();
+    expect(within(summary).getByText('Nebius Group N.V.')).toBeInTheDocument();
   });
 
   it('keeps the picked row when the repair returns an unrelated asset', async () => {
@@ -310,7 +328,24 @@ describe('PositionForm: picking an unpriced equity', () => {
     await pickDeadNbis();
 
     await waitFor(() => expect(providerMutate).toHaveBeenCalledTimes(1));
-    expect(screen.getByDisplayValue('NBIS - Nebius Group')).toBeInTheDocument();
-    expect(screen.queryByDisplayValue(/Ethena/)).not.toBeInTheDocument();
+    const summary = screen.getByRole('group', { name: 'Selected asset' });
+    expect(within(summary).getByText('NBIS')).toBeInTheDocument();
+    expect(within(summary).getByText('Nebius Group')).toBeInTheDocument();
+    expect(summary).not.toHaveTextContent('Ethena');
+  });
+});
+
+describe('PositionForm: amount panels', () => {
+  it('shows a unit trust code beside its editable units without reduction controls', async () => {
+    renderForm();
+    await chooseSelectOption('Category', 'Equities');
+    fireEvent.click(screen.getByRole('button', { name: 'Unit Trust' }));
+    fireEvent.change(screen.getByLabelText('Symbol / Code'), { target: { value: 'fund123' } });
+    const amount = screen.getByRole('group', { name: 'Units controls' });
+    expect(within(amount).getByText('FUND123')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Units'), { target: { value: '1234.56789' } });
+    expect(screen.getByLabelText('Units')).toHaveValue('1,234.56789');
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Reduce max/ })).not.toBeInTheDocument();
   });
 });

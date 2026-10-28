@@ -192,6 +192,21 @@ describe('PositionDeltaEditor', () => {
     expect(screen.queryByRole('button', { name: 'Reduce max SOL' })).not.toBeInTheDocument();
   });
 
+  it('keeps the current balance in the Add amount panel without limiting the addition', () => {
+    renderEditor({ deltaMode: 'add' });
+    const amount = screen.getByRole('group', { name: 'Additional Quantity controls' });
+    const input = screen.getByLabelText('Additional Quantity');
+    expect(amount).toContainElement(input);
+    expect(within(amount).getByText('SOL')).toBeInTheDocument();
+    expect(within(amount).getByText('Current quantity:')).toBeInTheDocument();
+    expect(within(amount).getByText('10')).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    fireEvent.change(input, { target: { value: '50' } });
+    expect(input).toHaveValue('50');
+    expect(input).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('masks read-only quantities and previews while keeping the entered quantity editable', () => {
     act(() => usePrivacyStore.getState().setValuesHidden(true));
     renderEditor({

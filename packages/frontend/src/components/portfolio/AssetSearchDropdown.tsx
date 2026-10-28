@@ -2,6 +2,7 @@ import { useRef, useEffect, useId } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import type { Asset, CoinSearchResult, ProviderSearchResult } from '@/lib/types';
+import { PositionAssetSummary } from './PositionAssetSummary';
 
 type SearchCandidate = CoinSearchResult | ProviderSearchResult;
 
@@ -69,28 +70,28 @@ export function AssetSearchDropdown({
 
   if (isEditing) {
     return (
-      <Input
-        id={id}
-        value={`${positionAssetSymbol} - ${positionAssetName}`}
-        disabled
-        className="bg-muted"
+      <PositionAssetSummary
+        asset={{ symbol: positionAssetSymbol ?? '', name: positionAssetName ?? '' }}
       />
     );
   }
 
   if (selectedAsset) {
     return (
-      <div className="flex items-center gap-2">
-        <Input
-          id={id}
-          value={`${selectedAsset.symbol} - ${selectedAsset.name}`}
-          disabled
-          className="bg-muted min-w-0 flex-1"
-        />
-        <Button type="button" variant="outline" size="sm" onClick={onClearSelection}>
-          Change
-        </Button>
-      </div>
+      <PositionAssetSummary
+        asset={selectedAsset}
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={onClearSelection}
+          >
+            Change
+          </Button>
+        }
+      />
     );
   }
 

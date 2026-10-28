@@ -65,6 +65,8 @@ import { formatNumber, isStablecoinCategory, currencyDecimals } from '@/lib/util
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
 import { PositionCostFields } from './PositionCostFields';
+import { PositionAmountInput } from './PositionAmountInput';
+import { PositionAssetSummary } from './PositionAssetSummary';
 import { PositionDeltaEditor } from './PositionDeltaEditor';
 import { PositionStorageFields } from './PositionStorageFields';
 import {
@@ -249,7 +251,7 @@ export function PositionForm({
   cashCount = 0,
   existingCustodyNames = EMPTY_CUSTODY_NAMES,
 }: PositionFormProps) {
-  const { formatCurrency } = useMoneyFormatter();
+  const { formatCurrency, formatQuantity } = useMoneyFormatter();
   const [mode, setMode] = useState<FormMode>('add');
   const [editMode, setEditMode] = useState<'edit' | 'delta'>('edit');
   const [deltaMode, setDeltaMode] = useState<PositionDeltaMode>('add');
@@ -2247,7 +2249,10 @@ export function PositionForm({
                 </div>
               ) : category !== 'cash' ? (
                 <div className="space-y-1">
-                  <Label htmlFor="pos-asset" className="text-sm">
+                  <Label
+                    htmlFor={isEditing || selectedAsset ? undefined : 'pos-asset'}
+                    className="text-sm"
+                  >
                     Asset
                   </Label>
                   <AssetSearchDropdown
@@ -2286,15 +2291,11 @@ export function PositionForm({
                 /* Cash type selection */
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <Label htmlFor="pos-cash-type" className="text-sm">
+                    <Label htmlFor={isEditing ? undefined : 'pos-cash-type'} className="text-sm">
                       Type
                     </Label>
                     {isEditing ? (
-                      <Input
-                        value={`${position.asset.symbol} - ${position.asset.name}`}
-                        disabled
-                        className="bg-muted"
-                      />
+                      <PositionAssetSummary asset={position.asset} />
                     ) : (
                       <Select
                         value={selectedCashTypeId}
@@ -2349,27 +2350,40 @@ export function PositionForm({
               )}
 
               {/* Quantity / Amount */}
-              <div className="space-y-1">
-                <Label htmlFor="quantity" className="text-sm">
-                  {category === 'cash'
+              <PositionAmountInput
+                id="quantity"
+                label={
+                  category === 'cash'
                     ? 'Amount'
                     : category === 'equity'
                       ? equityMode === 'fund'
                         ? 'Units'
                         : 'Shares'
-                      : 'Quantity'}
-                </Label>
-                <FormattedNumberInput
-                  id="quantity"
-                  value={quantity}
-                  onValueChange={(value) => {
-                    setQuantity(value);
-                    setValidationError(null);
-                  }}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
+                      : 'Quantity'
+                }
+                symbol={
+                  category === 'equity' && equityMode === 'fund' && !isEditing
+                    ? utSymbol.trim().toUpperCase()
+                    : selectedAsset?.symbol
+                }
+                value={quantity}
+                onValueChange={(value) => {
+                  setQuantity(value);
+                  setValidationError(null);
+                }}
+                required
+                disabled={isLoading}
+                footer={
+                  isEditing && position ? (
+                    <div className="flex min-h-11 flex-wrap items-center justify-end gap-x-2 text-xs text-muted-foreground sm:min-h-9">
+                      <span>Current quantity:</span>
+                      <span className="break-all font-mono tabular-nums sm:text-sm">
+                        {formatQuantity(position.quantity, position.asset.category)}
+                      </span>
+                    </div>
+                  ) : undefined
+                }
+              />
 
               {/* Total Cost & Average Cost (Crypto + Equity) */}
               {isEditing && category === 'equity' && costCurrency !== 'USD' && (
@@ -2381,6 +2395,7 @@ export function PositionForm({
               )}
               {category !== 'cash' && (
                 <PositionCostFields
+                  disabled={isLoading}
                   costInputMode={costInputMode}
                   onCostInputModeChange={setCostInputMode}
                   totalCost={totalCost}
