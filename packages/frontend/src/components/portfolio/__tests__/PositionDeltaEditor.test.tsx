@@ -1,5 +1,5 @@
-import type { ComponentProps } from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useState, type ComponentProps } from 'react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Position } from '@/lib/types';
 import { PositionDeltaEditor } from '../PositionDeltaEditor';
@@ -28,32 +28,44 @@ const position = {
 } as Position;
 
 function renderEditor(overrides: Partial<ComponentProps<typeof PositionDeltaEditor>> = {}) {
-  return render(
-    <PositionDeltaEditor
-      position={position}
-      deltaMode="add"
-      onDeltaModeChange={vi.fn()}
-      additionalQuantity=""
-      onAdditionalQuantityChange={vi.fn()}
-      additionalCostInputMode="total"
-      onAdditionalCostInputModeChange={vi.fn()}
-      additionalTotalCost=""
-      calculatedAdditionalTotalCost=""
-      onAdditionalTotalCostChange={vi.fn()}
-      additionalAvgCostInput=""
-      calculatedAdditionalAvgCost=""
-      onAdditionalAvgCostChange={vi.fn()}
-      costCurrency="USD"
-      preview={null}
-      error={null}
-      validationError={null}
-      fundingSlot={<div data-testid="fund-slot" />}
-      custodySlot={null}
-      isLoading={false}
-      canSubmit
-      {...overrides}
-    />
-  );
+  const {
+    additionalQuantity: initialQuantity = '',
+    onAdditionalQuantityChange = vi.fn(),
+    ...props
+  } = overrides;
+  function EditorHarness() {
+    const [quantity, setQuantity] = useState(initialQuantity);
+    return (
+      <PositionDeltaEditor
+        position={position}
+        deltaMode="add"
+        onDeltaModeChange={vi.fn()}
+        additionalQuantity={quantity}
+        onAdditionalQuantityChange={(value) => {
+          setQuantity(value);
+          onAdditionalQuantityChange(value);
+        }}
+        additionalCostInputMode="total"
+        onAdditionalCostInputModeChange={vi.fn()}
+        additionalTotalCost=""
+        calculatedAdditionalTotalCost=""
+        onAdditionalTotalCostChange={vi.fn()}
+        additionalAvgCostInput=""
+        calculatedAdditionalAvgCost=""
+        onAdditionalAvgCostChange={vi.fn()}
+        costCurrency="USD"
+        preview={null}
+        error={null}
+        validationError={null}
+        fundingSlot={<div data-testid="fund-slot" />}
+        custodySlot={null}
+        isLoading={false}
+        canSubmit
+        {...props}
+      />
+    );
+  }
+  return render(<EditorHarness />);
 }
 
 describe('PositionDeltaEditor', () => {
@@ -68,7 +80,9 @@ describe('PositionDeltaEditor', () => {
       });
       const reduceMax = screen.getByRole('button', { name: 'Reduce max SOL' });
       expect(reduceMax).toHaveAttribute('type', 'button');
-      expect(reduceMax).toHaveTextContent('SOL');
+      expect(
+        within(screen.getByRole('group', { name: 'Reduce quantity controls' })).getByText('SOL')
+      ).toBeInTheDocument();
       fireEvent.click(reduceMax);
       const value = onChange.mock.calls[0][0] as string;
       expect(value).not.toMatch(/[eE,]/);
@@ -81,8 +95,69 @@ describe('PositionDeltaEditor', () => {
           mode: 'reduce',
         }).nextQuantity
       ).toBe(0);
+      const slider = screen.getByRole('slider', { name: 'Percentage to reduce' });
+      fireEvent.keyDown(slider, { key: 'Home' });
+      fireEvent.keyDown(slider, { key: 'End' });
+      expect(onChange.mock.calls.at(-1)?.[0]).toBe(value);
     }
   );
+
+  it('groups the amount, balance, Max action, and slider together', () => {
+    renderEditor({ deltaMode: 'reduce' });
+    const amountPanel = screen.getByRole('group', { name: 'Reduce quantity controls' });
+    expect(amountPanel).toContainElement(screen.getByLabelText('Reduce Quantity'));
+    expect(within(amountPanel).getByRole('button', { name: 'Reduce max SOL' })).toHaveTextContent(
+      'MAX'
+    );
+    expect(within(amountPanel).getByRole('slider', { name: 'Percentage to reduce' })).toHaveValue(
+      '0'
+    );
+    expect(screen.queryByText('Current quantity')).not.toBeInTheDocument();
+  });
+
+  it('keeps the slider in sync with typed quantities and the Max button', () => {
+    renderEditor({ deltaMode: 'reduce' });
+    const slider = screen.getByRole('slider', { name: 'Percentage to reduce' });
+    const input = screen.getByLabelText('Reduce Quantity');
+    fireEvent.change(slider, { target: { value: '33' } });
+    expect(input).toHaveValue('3.3');
+    expect(slider).toHaveAttribute('aria-valuetext', '33% of balance');
+    fireEvent.change(slider, { target: { value: '26.7' } });
+    expect(input).toHaveValue('2.7');
+    fireEvent.change(input, { target: { value: '6.25' } });
+    expect(slider).toHaveValue('62.5');
+    fireEvent.click(screen.getByRole('button', { name: 'Reduce max SOL' }));
+    expect(input).toHaveValue('10');
+    expect(slider).toHaveValue('100');
+  });
+
+  it('supports precise keyboard adjustments and full-balance endpoints', () => {
+    renderEditor({ deltaMode: 'reduce', additionalQuantity: '5' });
+    const slider = screen.getByRole('slider', { name: 'Percentage to reduce' });
+    const input = screen.getByLabelText('Reduce Quantity');
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    expect(input).toHaveValue('5.1');
+    fireEvent.keyDown(slider, { key: 'PageDown' });
+    expect(input).toHaveValue('4.1');
+    fireEvent.keyDown(slider, { key: 'Home' });
+    expect(input).toHaveValue('0');
+    fireEvent.keyDown(slider, { key: 'End' });
+    expect(input).toHaveValue('10');
+  });
+
+  it('keeps an over-balance typed quantity for validation without silently capping it', () => {
+    renderEditor({ deltaMode: 'reduce' });
+    const input = screen.getByLabelText('Reduce Quantity');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '12' } });
+    expect(input).toHaveValue('12');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent('Exceeds balance');
+    expect(screen.getByRole('slider', { name: 'Percentage to reduce' })).toHaveValue('100');
+    fireEvent.change(input, { target: { value: '5' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute('aria-invalid');
+  });
 
   it('keeps the available balance masked when values are hidden', () => {
     act(() => usePrivacyStore.getState().setValuesHidden(true));
@@ -103,6 +178,7 @@ describe('PositionDeltaEditor', () => {
       });
       const reduceMax = screen.getByRole('button', { name: 'Reduce max SOL' });
       expect(reduceMax).toBeDisabled();
+      expect(screen.getByRole('slider', { name: 'Percentage to reduce' })).toBeDisabled();
       fireEvent.click(reduceMax);
       expect(onChange).not.toHaveBeenCalled();
     }

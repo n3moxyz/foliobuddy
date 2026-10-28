@@ -1,5 +1,11 @@
 # FOR[ET].md - FolioBuddy
 
+## Reduce amount panel (28 October 2026)
+
+The Reduce Quantity field now contains the balance, Max action, and a percentage slider in one panel.
+The amount stays prominent beside its ticker. Slider stops mark quarters of the holding, and keyboard controls adjust the selection.
+Typing an amount updates the slider. Max and the 100% endpoint preserve the complete balance, including fractional units.
+
 ## Reduce the full position (28 October 2026)
 
 Reduce mode now makes the available balance clickable. `Reduce max` fills the quantity field with the complete held amount.
