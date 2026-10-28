@@ -276,6 +276,7 @@ Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/soluti
 `PositionForm.tsx`: `Edit Totals` (corrections) + `Add/Reduce Position` tabs.
 
 - `Add`: extra quantity + required total/avg cost → weighted avg. `Reduce`: quantity + same pair as optional sale proceeds (`Total Proceeds`/`Avg Price`); basis removed at current avg; proceeds never alter avg/basis. Quantity 0 deletes unlinked positions; linked IBKR holdings retain history.
+- Reduce's clickable balance (`Reduce max`) fills the exact held quantity as a decimal string, without display rounding or exponent notation. It does not submit. Keep the balance masked with value privacy.
 - Optional `Fund From` (Add: debit pile, balance ≥ cost) / `Fund To` (Reduce: credit proceeds >0, empty piles allowed). Tab switch clears amounts + pile; direction-aware confirmation.
 - Both tabs persist custody. `applyPositionDelta()` drives preview (qty/avg/total) and submit; never duplicate math. UI/math/submit: `PositionDeltaEditor.tsx`/`positionFormMath.ts`/`PositionForm.tsx`.
 

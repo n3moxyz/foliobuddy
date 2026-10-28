@@ -1,5 +1,11 @@
 # FOR[ET].md - FolioBuddy
 
+## Reduce the full position (28 October 2026)
+
+Reduce mode now makes the available balance clickable. `Reduce max` fills the quantity field with the complete held amount.
+The display still follows quantity privacy and normal decimal formatting. The input keeps full precision, including small token balances.
+The existing preview shows the resulting zero balance. The user still submits the reduction with `Reduce Position`.
+
 ## Portfolio drawdown summary (28 October 2026)
 
 The live drawdown metric now reads `Current ATH DD` on Dashboard and Portfolio.
