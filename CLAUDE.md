@@ -348,6 +348,11 @@ No owner password, ever: [docs/TESTING.md](docs/TESTING.md). **Any change**: `np
 
 Portfolio/Trades/History share 1 pattern: per-row clipboard icon, Copy All header button, Import tab in Add/Log dialog — 1 JSON format for copy + import. Bulk row errors: `userSafeErrorMessage()`, never raw Prisma text.
 
+Position bulk imports accept a UUID `requestId`. Reuse it for the unchanged batch
+after a lost response. Check `bulkImportIdempotency` before client submission.
+Row IDs retain retry identity until those positions are deleted.
+See [the import retry runbook](docs/solutions/2026-10-29-position-import-retries.md).
+
 ### Branding
 
 - **FolioBuddy**, flat Embrace master `packages/frontend/public/logo.svg`; app identity uses `components/layout/BrandMark.tsx`, never recreate retired growth-chart mark.

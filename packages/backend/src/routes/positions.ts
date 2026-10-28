@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { portfolioService } from '../services/portfolioService.js';
@@ -271,7 +271,7 @@ const nativeReconciliationRequest = z.discriminatedUnion('action', [
   z.object({ action: z.literal('restore'), backup: z.unknown() }),
 ]);
 router.get('/native-cost-capabilities', (_req, res) => {
-  res.json({ supported: true });
+  res.json({ supported: true, bulkImportIdempotency: true });
 });
 router.post('/native-cost-reconciliation', async (req, res, next) => {
   try {
@@ -404,6 +404,7 @@ function findBulkSymbolMatch<T extends { symbol: string; category: string; price
 }
 
 const bulkImportSchema = z.object({
+  requestId: z.string().uuid().optional(),
   positions: z.array(
     bulkImportPositionSchema.transform((pos) => ({
       ...pos,
@@ -418,12 +419,32 @@ const bulkImportSchema = z.object({
 
 router.post('/bulk', async (req, res, next) => {
   try {
-    logger.info(
-      'Bulk position import request received:',
-      JSON.stringify(req.body).substring(0, 200)
-    );
     const userId = req.userId!;
-    const { positions } = bulkImportSchema.parse(req.body);
+    const { positions, requestId } = bulkImportSchema.parse(req.body);
+    logger.info('Bulk position import request received:', { positionCount: positions.length });
+
+    // Row IDs retain the request identity across lost replies and server restarts.
+    // The user scope prevents cross-account replays. Row indexes preserve intentional
+    // duplicate rows within a batch, while a new request ID starts a separate import.
+    const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+    const batchPrefix = requestId
+      ? `import_${digest(JSON.stringify([userId, requestId.toLowerCase()]))}_`
+      : null;
+    const rowPrefix = batchPrefix ? `${batchPrefix}${digest(JSON.stringify(positions))}_` : null;
+    let batchChecked = false;
+
+    if (batchPrefix && rowPrefix) {
+      const priorRows = await prisma.position.findMany({
+        where: { userId, id: { startsWith: batchPrefix } },
+        select: { id: true },
+      });
+      if (priorRows.some((row) => !row.id.startsWith(rowPrefix))) {
+        throw new AppError(
+          'This import request already contains different data. Start a new import.',
+          409
+        );
+      }
+    }
 
     const results: Array<{ success: boolean; symbol: string; error?: string }> = [];
 
@@ -445,7 +466,7 @@ router.post('/bulk', async (req, res, next) => {
         .map((a) => [providerKey(a.priceProvider, a.providerAssetId!), a])
     );
 
-    for (const pos of positions) {
+    for (const [rowIndex, pos] of positions.entries()) {
       try {
         const nativeCurrency = pos.asset.nativeCurrency?.trim().toUpperCase() || 'USD';
         const isin =
@@ -543,6 +564,25 @@ router.post('/bulk', async (req, res, next) => {
         }
 
         await navTransaction(async (tx) => {
+          if (batchPrefix && rowPrefix) {
+            if (!batchChecked) {
+              const batchRows = await tx.position.findMany({
+                where: { userId, id: { startsWith: batchPrefix } },
+                select: { id: true },
+              });
+              if (batchRows.some((row) => !row.id.startsWith(rowPrefix))) {
+                throw new AppError(
+                  'This import request already contains different data. Start a new import.',
+                  409
+                );
+              }
+            }
+            const imported = await tx.position.findFirst({
+              where: { id: `${rowPrefix}${rowIndex}`, userId },
+              select: { id: true },
+            });
+            if (imported) return;
+          }
           const pricedAsset =
             asset.category === 'UNIT_TRUST'
               ? await tx.asset.findUnique({ where: { id: asset.id } })
@@ -558,6 +598,7 @@ router.post('/bulk', async (req, res, next) => {
 
           await tx.position.create({
             data: {
+              ...(rowPrefix ? { id: `${rowPrefix}${rowIndex}` } : {}),
               userId,
               assetId: asset.id,
               quantity: pos.quantity,
@@ -572,6 +613,8 @@ router.post('/bulk', async (req, res, next) => {
             },
           });
         });
+
+        batchChecked = true;
 
         results.push({ success: true, symbol: pos.asset.symbol });
       } catch (e) {

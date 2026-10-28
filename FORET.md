@@ -1,5 +1,20 @@
 # FOR[ET].md - FolioBuddy
 
+## Position import retries (29 October 2026)
+
+The browser can lose a reply after the database saves an import. A second click
+used to create another holding. Imports can now carry a request ID. The backend
+uses it to retain each row's identity in its existing primary key, without a schema migration.
+
+The identity includes the user, batch contents, and row index. Retries keep saved
+rows. Different batches and intentional repeated rows still work. Real PostgreSQL
+checks covered concurrent requests, user isolation, payload conflicts, and replay
+through a fresh API process.
+
+The row is also its receipt, so deletion removes that protection. Client rollout
+must follow the backend capability check. The [retry runbook](docs/solutions/2026-10-29-position-import-retries.md)
+records the protocol, rollout order, and remaining limits.
+
 ## Consistent position forms (29 October 2026)
 
 Add New, Edit Totals, and Add/Reduce now share the same amount panel, asset summary, and cost fields.

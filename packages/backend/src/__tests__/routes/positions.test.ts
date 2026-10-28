@@ -4,6 +4,7 @@ import { mockAsset, mockPosition } from '../helpers/fixtures.js';
 import { createTestApp } from '../helpers/createTestApp.js';
 import { Prisma } from '@prisma/client';
 import { ETHENA_USDE, STABLECOINX } from '../helpers/catalog.js';
+import { Router } from 'express';
 
 // Mock Prisma
 const mockPrisma = {
@@ -62,6 +63,133 @@ vi.mock('../../services/portfolioService.js', () => ({
 // Import route after mocks are set up
 const { default: positionsRouter } = await import('../../routes/positions.js');
 const app = createTestApp(positionsRouter, '/api/positions');
+
+describe('position import retries', () => {
+  let stored: Map<string, ReturnType<typeof mockPosition>>;
+  const requestId = '6a063ff8-c834-4eb2-98df-3234a6b66918';
+  const row = {
+    asset: { symbol: 'BTC', name: 'Bitcoin', category: 'LIQUID_CRYPTO', coingeckoId: 'bitcoin' },
+    quantity: 0.001,
+    avgCostUsd: 90000,
+    storageType: 'CEX',
+    storageLocation: 'Retry test',
+  };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    stored = new Map();
+    mockPrisma.$transaction.mockImplementation(async (work) => work(mockPrisma));
+    mockPrisma.asset.findMany.mockResolvedValue([
+      mockAsset({ id: 'btc-import', symbol: 'BTC', coingeckoId: 'bitcoin' }),
+    ]);
+    mockPrisma.position.findMany.mockImplementation(async ({ where }) =>
+      [...stored.values()].filter(
+        (position) =>
+          position.userId === where.userId && position.id.startsWith(where.id.startsWith)
+      )
+    );
+    mockPrisma.position.findFirst.mockImplementation(async ({ where }) => {
+      const position = stored.get(where.id);
+      return position?.userId === where.userId ? position : null;
+    });
+    mockPrisma.position.create.mockImplementation(async ({ data }) => {
+      if (stored.has(data.id)) {
+        throw new Prisma.PrismaClientKnownRequestError('duplicate import row', {
+          code: 'P2002',
+          clientVersion: 'test',
+        });
+      }
+      const position = mockPosition(data);
+      stored.set(position.id, position);
+      return position;
+    });
+  });
+
+  const submit = (positions = [row], id = requestId) =>
+    request(app).post('/api/positions/bulk').send({ positions, requestId: id });
+
+  it('replays a committed batch without adding positions or changing its saved amounts', async () => {
+    const first = await submit();
+    const saved = [...stored.values()];
+    const retry = await submit();
+    expect(first.status).toBe(201);
+    expect(retry.body).toEqual(first.body);
+    expect(retry.body.successCount).toBe(1);
+    expect([...stored.values()]).toEqual(saved);
+    expect(mockPrisma.position.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('serializes duplicate concurrent requests through the same persisted row identity', async () => {
+    const responses = await Promise.all([submit(), submit()]);
+    expect(responses.map((response) => response.body.successCount)).toEqual([1, 1]);
+    expect(stored.size).toBe(1);
+    expect(mockPrisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: 'Serializable',
+    });
+  });
+
+  it('retains intentional identical rows and separate import attempts', async () => {
+    await submit([row, row]);
+    await submit([row, row]);
+    expect(stored.size).toBe(2);
+    await submit([row], 'a9da4298-2cee-40e0-93fd-a3e9e1488268');
+    expect(stored.size).toBe(3);
+  });
+
+  it('retries failed rows while retaining successful rows from a partial batch', async () => {
+    const create = mockPrisma.position.create.getMockImplementation()!;
+    let failed = false;
+    mockPrisma.position.create.mockImplementation(async (args) => {
+      if (args.data.storageLocation === 'Second row' && !failed) {
+        failed = true;
+        throw new Error('temporary database failure');
+      }
+      return create(args);
+    });
+    const rows = [row, { ...row, storageLocation: 'Second row' }];
+    expect((await submit(rows)).body.successCount).toBe(1);
+    expect((await submit(rows)).body.successCount).toBe(2);
+    expect(stored.size).toBe(2);
+  });
+
+  it('rejects changed data for a committed request ID', async () => {
+    await submit();
+    const changed = await submit([{ ...row, quantity: 2 }]);
+    expect(changed.status).toBe(409);
+    expect(changed.body.error).toContain('different data');
+    expect(stored.size).toBe(1);
+    const changedAsset = await submit([
+      { ...row, asset: { ...row.asset, symbol: 'NEW', coingeckoId: 'new-import-asset' } },
+    ]);
+    expect(changedAsset.status).toBe(409);
+    expect(mockPrisma.asset.create).not.toHaveBeenCalled();
+  });
+
+  it('scopes the same request ID to its authenticated user', async () => {
+    const otherRouter = Router();
+    otherRouter.use((req, _res, next) => {
+      req.userId = 'other-user';
+      next();
+    });
+    otherRouter.use(positionsRouter);
+    const otherApp = createTestApp(otherRouter, '/api/positions');
+    await submit();
+    const response = await request(otherApp)
+      .post('/api/positions/bulk')
+      .send({ positions: [row], requestId });
+    expect(response.body.successCount).toBe(1);
+    expect(stored.size).toBe(2);
+    expect(new Set([...stored.values()].map((position) => position.userId))).toEqual(
+      new Set(['test-user-id', 'other-user'])
+    );
+  });
+
+  it('rejects invalid request IDs before any catalog or position access', async () => {
+    expect((await submit([row], 'not-a-request-id')).status).toBe(400);
+    expect(mockPrisma.asset.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.position.create).not.toHaveBeenCalled();
+  });
+});
 
 describe('IBKR reconciliation guards', () => {
   beforeEach(() => vi.clearAllMocks());
