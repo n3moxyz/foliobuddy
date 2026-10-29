@@ -71,5 +71,21 @@ does not reconstruct historical FX or rewrite past snapshots.
 
 Local validation passed: 826 backend tests, 590 frontend tests, both builds,
 frontend lint, formatting, shell checks, and domain parity. Lint has six existing
-warnings and no errors. Production release verification follows the PR checks.
-The task record tracks completion.
+warnings and no errors.
+
+[PR #85](https://github.com/n3moxyz/foliobuddy/pull/85) released commit
+`dfe4acd520ffe896e1f079877013bd48f4693e05`.
+[Main CI](https://github.com/n3moxyz/foliobuddy/actions/runs/40823310988) passed.
+The [backend deployment](https://github.com/n3moxyz/foliobuddy/actions/runs/40823310992)
+confirmed that exact commit and passed its health check. Vercel promoted the same
+commit to `foliobuddy.xyz`.
+
+The [Production Check](https://github.com/n3moxyz/foliobuddy/actions/runs/40824455635)
+passed the portfolio, private X collection, news feed, and holding-page checks.
+SGD and GBP rates through the frontend API were positive and under one minute old.
+The backend health route and frontend database health route both returned HTTP 200.
+A fresh 375px browser confirmed signed-out startup clears synthetic expired recovery.
+Protected links showed sign-in, with no page errors or financial API requests.
+
+The disposable QA servers, database container, and its volume were removed after
+saving the synthetic database and evidence. The original sandbox was not changed.
