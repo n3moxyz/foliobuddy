@@ -1,5 +1,24 @@
 # FOR[ET].md - FolioBuddy
 
+## Reload recovery and current cash FX (29 October 2026)
+
+Pending imports now survive a full reload in the same tab and sign-in session.
+The browser saves the original payload and request ID before dispatch. Resume
+requires a click and replays that identity. Unknown outcomes lock editing. A
+confirmed partial result saves a correction draft and seals the original batch
+atomically. Logout removes recovery data even if Import was not reopened after reload.
+
+Manual USD, SGD and GBP cash now follow validated current FX. Existing cash
+reads are corrected immediately. FX refresh updates stored quotes and current
+values together. Native units and recorded USD basis stay intact. Same-currency
+funding and proceeds use native amounts, so SGD400 stays SGD400 after FX moves.
+Snapshots capture one stored FX view. Fresh fallback quotes retain their source dates.
+
+The real isolated PostgreSQL checks cover response loss followed by reload,
+partial correction recovery, exact funding and cancellation, FX rollback, and
+cash imports and snapshots with one database connection. The [cash FX runbook](docs/solutions/2026-10-29-fiat-cash-fx.md)
+and [import runbook](docs/solutions/2026-10-29-position-import-retries.md) define the changed contracts and limits.
+
 ## Five-perspective journey QA (29 October 2026)
 
 The audit followed complete journeys with separate synthetic users and real APIs.
@@ -2463,7 +2482,7 @@ Recently completed:
   - The picker reuses `fundingCashPositionId` in both directions (debit on add, credit on reduce) instead of adding a second field; the backend derives direction from `positionDelta.mode`, rejects proceeds on add and a pile on reduce without positive proceeds, and treats empty piles as valid destinations.
   - The adversarial review pass earned its keep. It caught that a custody ("held for others") position could deposit proceeds into an owned pile — minting net worth with nothing offsetting it, because custody rows are excluded from totals — so both the API and the picker now refuse to link a pile to a custody row. It also flagged that the pile was read outside the transaction and written back as an absolute total (a lost-update race that the original funded-add path already had), so `PUT /positions/:id` now runs `Serializable` with the pile read inside it, and a `P2034` collision maps to a retryable 409. And it found that a full exit (reduce to exactly zero) had always been rejected by the update schema's `positive()` quantity, which would have made the headline "sold everything" case fail; the update path now allows zero.
   - Lesson: a "sell" is two ledger moves (position down, cash up) plus one fact (what it fetched). Keeping the average-cost math untouched and recording the fact separately gave honest realized P&L without rewriting the basis engine.
-  - Known limit: fiat cash piles are valued at the FX rate frozen on the asset when the pile was created (manual provider, no NAV rows), so deposits use that same rate to stay internally consistent rather than the live `/fx/rates` value.
+  - Former limit, resolved 29 October 2026: fiat cash used its creation-time FX quote. See the current cash FX contract above.
   - Follow-up: a reduce that lands on zero used to leave a `0 · $0 · $0` row behind. An explicit quantity of 0 on `PUT /positions/:id` now deletes the position inside the same transaction (its ledger cascades away; the linked cash deposit stays), the demo mirrors it, and the Old/New preview warns before you commit. Trade-off accepted: closing a position forgets its sale record, because the only place that ledger was reachable from was the row itself.
 - [x] **Local-currency equity search + local price hints:**
   - Yahoo search was technically working, but only inside a too-small USD/SGD worldview. Kioxia was the obvious failure: searching by name surfaced OTC tickers and European cross-listings while the Tokyo listing (`285A.T`) was filtered out because `.T` was treated as unsupported instead of Japan/JPY.

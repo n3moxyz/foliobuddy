@@ -33,8 +33,10 @@ const REQUEST_TIMEOUT_MS = 8000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SEARCH_REGIONS = ['US', 'JP', 'TW', 'KR', 'NO'] as const;
 const SUPPORTED_NATIVE_CURRENCIES = new Set(['USD', 'SGD', 'JPY', 'TWD', 'KRW', 'NOK']);
+const SUPPORTED_FX_CURRENCIES = new Set([...SUPPORTED_NATIVE_CURRENCIES, 'GBP']);
 const USD_FX_SYMBOLS: Record<string, string> = {
   SGD: 'SGD=X',
+  GBP: 'GBP=X',
   JPY: 'JPY=X',
   TWD: 'TWD=X',
   KRW: 'KRW=X',
@@ -241,14 +243,24 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     return currency === 'SGD' ? USD_SGD_FALLBACK_RATE : null;
   }
 
-  private async getYahooUsdRateToCurrency(currency: string): Promise<number | null> {
+  private async getYahooUsdRateToCurrency(
+    currency: string,
+    requireRecent = false,
+    sourceTimes?: Map<string, Date>
+  ): Promise<number | null> {
     const symbol = USD_FX_SYMBOLS[currency];
     if (!symbol) return null;
 
     try {
       const q = (await yahooFinance.quote(symbol)) as YahooQuoteLike | null;
       const rate = q?.regularMarketPrice;
-      if (rate && rate > 0) return rate;
+      const asOf = newsTimestampToIso(q?.regularMarketTime);
+      const age = asOf ? Date.now() - Date.parse(asOf) : Infinity;
+      if (requireRecent && (age > 48 * 3600000 || age < -300000)) return null;
+      if (Number.isFinite(rate) && rate! > 0) {
+        if (asOf) sourceTimes?.set(currency, new Date(asOf));
+        return rate!;
+      }
     } catch (err) {
       logger.warn(
         `[Yahoo] FX quote lookup for USD/${currency} failed:`,
@@ -259,7 +271,10 @@ export class YahooFinanceProvider implements AssetPriceProvider {
     return null;
   }
 
-  async getUsdExchangeRates(currencies: string[]): Promise<Map<string, number>> {
+  async getUsdExchangeRates(
+    currencies: string[],
+    options: { fresh?: boolean; sourceTimes?: Map<string, Date> } = {}
+  ): Promise<Map<string, number>> {
     const rates = new Map<string, number>();
 
     for (const rawCurrency of currencies) {
@@ -268,7 +283,13 @@ export class YahooFinanceProvider implements AssetPriceProvider {
         rates.set(currency, 1);
         continue;
       }
-      if (!this.isSupportedCurrency(currency)) continue;
+      if (!SUPPORTED_FX_CURRENCIES.has(currency)) continue;
+      // FX publication must not relabel an old database/cache value as fresh.
+      if (options.fresh) {
+        const rate = await this.getYahooUsdRateToCurrency(currency, true, options.sourceTimes);
+        if (rate !== null) rates.set(currency, rate);
+        continue;
+      }
 
       const cached = this.usdFxCache.get(currency);
       if (cached !== undefined) {

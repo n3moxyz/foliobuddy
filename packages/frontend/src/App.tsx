@@ -4,7 +4,11 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { SignedIn, SignedOut } from '@clerk/clerk-react';
 import { AppShell } from './components/layout/AppShell';
 import { Skeleton } from './components/ui/skeleton';
-import { useAuthSetup, useLocalAuthBypassSetup } from './hooks/useAuthSetup';
+import {
+  useAuthSetup,
+  useLocalAuthBypassSetup,
+  useSignedOutImportCleanup,
+} from './hooks/useAuthSetup';
 import { useThemeEffect } from './hooks/useThemeEffect';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelpModal } from './components/layout/ShortcutsHelpModal';
@@ -106,6 +110,7 @@ function LocalDemoApp() {
 // Signed-out surface: the public landing at /, Clerk sign-in everywhere else
 // (deep links from returning users go straight to sign-in, not marketing).
 function PublicApp() {
+  useSignedOutImportCleanup();
   return (
     <Suspense
       fallback={

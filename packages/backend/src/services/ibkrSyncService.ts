@@ -374,7 +374,8 @@ export async function reconcileIbkrInTransaction(
   );
   const state = hash({ before, after });
   const projected = await projectNativeCosts(
-    rows.map((p) => ({ ...p, ...patches.find((patch) => patch.id === p.id), asset: p.asset }))
+    rows.map((p) => ({ ...p, ...patches.find((patch) => patch.id === p.id), asset: p.asset })),
+    tx
   );
   const review = patches.map((patch) => {
     const old = rows.find((p) => p.id === patch.id)!;

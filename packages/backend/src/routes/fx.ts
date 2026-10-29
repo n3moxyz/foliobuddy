@@ -8,9 +8,20 @@ import { upsertUsdRates } from '../services/fxRateService.js';
 
 const router = Router();
 
-function hasRequiredUsdRates(rates: Array<{ fromCcy: string; toCcy: string }>) {
+function hasRequiredUsdRates(
+  rates: Array<{ fromCcy: string; toCcy: string; rate: number; timestamp: Date }>
+) {
   return USD_RATE_FIELDS.every(({ currency }) =>
-    rates.some((rate) => rate.fromCcy === 'USD' && rate.toCcy === currency)
+    rates.some(
+      (rate) =>
+        rate.fromCcy === 'USD' &&
+        rate.toCcy === currency &&
+        Number.isFinite(rate.rate) &&
+        rate.rate > 0 &&
+        Number.isFinite(rate.timestamp.getTime()) &&
+        Date.now() - rate.timestamp.getTime() <= 48 * 3600000 &&
+        rate.timestamp.getTime() - Date.now() <= 300000
+    )
   );
 }
 

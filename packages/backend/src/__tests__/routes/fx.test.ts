@@ -41,6 +41,19 @@ const { default: fxRouter } = await import('../../routes/fx.js');
 const app = createTestApp(fxRouter, '/api/fx');
 
 describe('FX routes', () => {
+  it('preserves a fallback quote source timestamp when publishing GBP', async () => {
+    const source = new Date(Date.now() - 3600000);
+    mocks.getExchangeRates.mockResolvedValue({
+      usdSgd: 1.25,
+      usdGbp: 0.8,
+      sourceTimes: { GBP: source },
+    });
+    const response = await request(app).get('/api/fx/rates');
+    expect(response.status).toBe(200);
+    const gbp = mocks.fxRateUpsert.mock.calls.find(([args]) => args.create.toCcy === 'GBP');
+    expect(gbp?.[0].create.timestamp).toEqual(source);
+    expect(gbp?.[0].update.timestamp).toEqual(source);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.fxRateFindMany.mockResolvedValue([]);

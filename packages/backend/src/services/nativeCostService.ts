@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { calculatePositionValue } from '../lib/domain.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { projectFiatCashPositions, type FxDb } from './fiatCashService.js';
 
 type PositionData = {
   quantity: number;
@@ -10,7 +11,12 @@ type PositionData = {
   recordedAvgCostUsd?: number;
   costFxRateToUsd?: number;
   costFxAsOf?: string;
-  asset: { currentPriceUsd: number | null };
+  asset: {
+    currentPriceUsd: number | null;
+    category?: string;
+    symbol?: string;
+    priceProvider?: string;
+  };
 };
 
 export function nativeAverage(position: Pick<PositionData, 'avgCostNative' | 'costCurrency'>) {
@@ -19,7 +25,8 @@ export function nativeAverage(position: Pick<PositionData, 'avgCostNative' | 'co
 
 /** Leave stored USD costs and history intact; only the response is projected. */
 export async function projectNativeCosts<T extends PositionData>(
-  positions: T[]
+  positions: T[],
+  db: FxDb = prisma
 ): Promise<
   Array<
     T &
@@ -30,6 +37,7 @@ export async function projectNativeCosts<T extends PositionData>(
       }
   >
 > {
+  positions = await projectFiatCashPositions(positions, db);
   const currencies = [
     ...new Set(
       positions
@@ -40,7 +48,7 @@ export async function projectNativeCosts<T extends PositionData>(
   ];
   if (!positions.some((p) => nativeAverage(p) != null)) return positions;
   const rates = currencies.length
-    ? await prisma.fxRate.findMany({
+    ? await db.fxRate.findMany({
         where: { fromCcy: 'USD', toCcy: { in: currencies } },
       })
     : [];

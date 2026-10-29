@@ -234,7 +234,7 @@ export function startSnapshotJob(): void {
 export function startFxRateJob(): void {
   logger.info('💱 Starting FX rate scheduler');
 
-  cron.schedule('0 * * * *', async () => {
+  const refresh = async () => {
     try {
       logger.info('[FX Rates] Fetching rates...');
       const rates = await priceService.getExchangeRates();
@@ -249,7 +249,10 @@ export function startFxRateJob(): void {
     } catch (error) {
       logger.error('[FX Rates] Error:', error);
     }
-  });
+  };
+  // Populate newly supported pairs and revalue existing cash after deployment.
+  void refresh();
+  cron.schedule('0 * * * *', refresh);
 }
 
 async function runXPostCollection(): Promise<void> {

@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { FIAT_CASH_CURRENCIES } from './fiatCashService.js';
 import { logger } from '../lib/logger.js';
 import { CoinGeckoProvider, type ExchangeRates } from './providers/CoinGeckoProvider.js';
 import { YahooFinanceProvider } from './providers/YahooFinanceProvider.js';
@@ -79,13 +80,16 @@ class PriceService {
     const missingCurrencies = USD_RATE_FIELDS.filter(
       ({ currency, field }) => currency !== 'SGD' && !coingeckoRates[field]
     ).map(({ currency }) => currency);
+    const sourceTimes = new Map<string, Date>();
     const yahooRates =
       missingCurrencies.length > 0
-        ? await this.yahoo.getUsdExchangeRates(missingCurrencies)
+        ? await this.yahoo.getUsdExchangeRates(missingCurrencies, { fresh: true, sourceTimes })
         : new Map<string, number>();
 
     const rates: ExchangeRates = {
       usdSgd: coingeckoRates.usdSgd,
+      usdGbp: coingeckoRates.usdGbp ?? yahooRates.get('GBP'),
+      sourceTimes: Object.fromEntries(sourceTimes),
       usdJpy: coingeckoRates.usdJpy ?? yahooRates.get('JPY'),
       usdTwd: coingeckoRates.usdTwd ?? yahooRates.get('TWD'),
       usdKrw: coingeckoRates.usdKrw ?? yahooRates.get('KRW'),
@@ -324,7 +328,14 @@ class PriceService {
       // could race a newer FX transaction and put old USD values back.
       where: {
         ...(changedAssetIds ? { assetId: { in: changedAssetIds } } : {}),
-        asset: { category: { not: 'UNIT_TRUST' } },
+        asset: {
+          category: { not: 'UNIT_TRUST' },
+          NOT: {
+            category: 'CASH',
+            priceProvider: 'manual',
+            symbol: { in: [...FIAT_CASH_CURRENCIES], mode: 'insensitive' },
+          },
+        },
       },
       select: {
         id: true,

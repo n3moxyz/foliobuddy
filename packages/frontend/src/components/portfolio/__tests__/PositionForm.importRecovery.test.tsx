@@ -107,7 +107,9 @@ function openImport(rows = [nativePosition]) {
 }
 
 function submitImport() {
-  fireEvent.click(screen.getByRole('button', { name: /^Import \d+ Positions?$/ }));
+  fireEvent.click(
+    screen.getByRole('button', { name: /^(Import \d+ Positions?|Retry interrupted import)$/ })
+  );
 }
 
 beforeAll(() => {
@@ -122,15 +124,101 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  sessionStorage.clear();
   vi.mocked(api.bulkImportPositions).mockReset();
   resultActions.editFailed = undefined;
   usePrivacyStore.setState({ valuesHidden: false });
   installAuthSession('import-recovery-user', 'import-recovery-session', async () => null, 'local');
 });
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('PositionForm import recovery', () => {
+  it('offers an explicit recovery after the runtime identity reinstalls and preserves the saved payload', async () => {
+    const importPositions = vi.mocked(api.bulkImportPositions);
+    importPositions
+      .mockRejectedValueOnce(new Error('Response lost'))
+      .mockResolvedValueOnce(success([nativePosition]));
+    const first = openImport();
+    submitImport();
+    await screen.findByText('Response lost');
+    const [rows, requestId] = importPositions.mock.calls[0];
+    first.unmount();
+    installAuthSession(
+      'import-recovery-user',
+      'import-recovery-session',
+      async () => null,
+      'local'
+    );
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PositionForm onSuccess={vi.fn()} />
+      </QueryClientProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }));
+    expect(importPositions).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Resume interrupted import' }));
+    const editor = screen.getByRole('textbox', { name: 'Position JSON to import' });
+    expect(editor).toHaveAttribute('readonly');
+    expect(JSON.parse((editor as HTMLTextAreaElement).value)).toEqual(rows);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry interrupted import' }));
+    await screen.findByText('1 imported successfully');
+    expect(importPositions.mock.calls[1]).toEqual([rows, requestId]);
+    fireEvent.click(screen.getByRole('button', { name: 'Close Import' }));
+    expect(sessionStorage.getItem('foliobuddy-pending-position-imports-v1')).toBeNull();
+  });
+  it('does not dispatch when a recovery record cannot be saved', async () => {
+    openImport();
+    vi.stubGlobal('sessionStorage', {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error('Quota');
+      },
+    });
+    submitImport();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Import recovery could not be saved'
+    );
+    expect(api.bulkImportPositions).not.toHaveBeenCalled();
+  });
+  it('ignores a clipboard read completed after choosing an interrupted import', async () => {
+    const importPositions = vi.mocked(api.bulkImportPositions);
+    importPositions.mockRejectedValueOnce(new Error('Response lost'));
+    const first = openImport();
+    submitImport();
+    await screen.findByText('Response lost');
+    first.unmount();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PositionForm onSuccess={vi.fn()} />
+      </QueryClientProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }));
+    let resolve!: (text: string) => void;
+    vi.stubGlobal('navigator', {
+      clipboard: {
+        readText: () =>
+          new Promise<string>((done) => {
+            resolve = done;
+          }),
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Paste from Clipboard' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resume interrupted import' }));
+    await act(async () => resolve(JSON.stringify([secondPosition])));
+    const editor = screen.getByRole('textbox', { name: 'Position JSON to import' });
+    expect(JSON.parse((editor as HTMLTextAreaElement).value)).toEqual([nativePosition]);
+    act(() => usePrivacyStore.setState({ valuesHidden: true }));
+    expect(editor).toHaveValue(
+      'Import data hidden. Show monetary values to review the original JSON.'
+    );
+    expect(editor).not.toHaveValue(expect.stringContaining(String(nativePosition.quantity)));
+  });
   it('retries an unchanged network failure with the same request ID and exact native/custody values', async () => {
     const importPositions = vi.mocked(api.bulkImportPositions);
     importPositions
@@ -154,7 +242,7 @@ describe('PositionForm import recovery', () => {
     expect(onSuccess).toHaveBeenCalledTimes(1);
   });
 
-  it('starts a new request ID after the failed input changes', async () => {
+  it('keeps uncertain input locked and replays its original identity until acknowledged', async () => {
     const importPositions = vi.mocked(api.bulkImportPositions);
     const corrected = { ...nativePosition, avgCostNative: 42000.987654321 };
     importPositions
@@ -168,8 +256,9 @@ describe('PositionForm import recovery', () => {
     submitImport();
 
     await screen.findByText('1 imported successfully');
-    expect(importPositions.mock.calls[1][0]).toEqual([corrected]);
-    expect(importPositions.mock.calls[1][1]).not.toBe(importPositions.mock.calls[0][1]);
+    expect(editor).toHaveAttribute('readonly');
+    expect(importPositions.mock.calls[1][0]).toEqual([nativePosition]);
+    expect(importPositions.mock.calls[1][1]).toBe(importPositions.mock.calls[0][1]);
   });
 
   it('retains an uncertain import ID through dialog unmount and reopening', async () => {
@@ -259,11 +348,9 @@ describe('PositionForm import recovery', () => {
     expect(importPositions.mock.calls[3][1]).not.toBe(originalId);
   });
 
-  it('does not reuse a mounted attempt ID after the authenticated session changes', async () => {
+  it('blocks a mounted import attempt after the authenticated session changes', async () => {
     const importPositions = vi.mocked(api.bulkImportPositions);
-    importPositions
-      .mockRejectedValueOnce(new Error('Connection lost'))
-      .mockResolvedValueOnce(success([nativePosition]));
+    importPositions.mockRejectedValueOnce(new Error('Connection lost'));
     openImport();
     submitImport();
     await screen.findByRole('alert');
@@ -271,8 +358,10 @@ describe('PositionForm import recovery', () => {
 
     submitImport();
 
-    await screen.findByText('1 imported successfully');
-    expect(importPositions.mock.calls[1][1]).not.toBe(importPositions.mock.calls[0][1]);
+    await screen.findByText(
+      'The signed-in account changed. Reopen Import from the current account.'
+    );
+    expect(importPositions).toHaveBeenCalledTimes(1);
   });
 
   it('retries partial results with the unchanged full batch and its original ID', async () => {
@@ -338,7 +427,9 @@ describe('PositionForm import recovery', () => {
     expect(paste).toBeDisabled();
     expect(addNew).toBeDisabled();
     expect(submit).toBeDisabled();
-    expect(screen.getByRole('checkbox', { name: 'Custody: held for someone else' })).toBeDisabled();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Custody: held for someone else' })
+    ).not.toBeInTheDocument();
 
     await act(async () => pending.resolve(success([nativePosition])));
     expect(screen.getByText('1 imported successfully')).toBeInTheDocument();

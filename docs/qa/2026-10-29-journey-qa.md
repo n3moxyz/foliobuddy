@@ -1,5 +1,8 @@
 # Five-perspective journey QA
 
+Follow-up: [reload recovery and cash FX repairs](2026-10-29-reload-fx-followup.md)
+address the two implementation limits recorded by this earlier audit.
+
 Date: 29 October 2026, Singapore time.
 
 Five independent browser explorations found eight confirmed defects. A final

@@ -6,6 +6,7 @@ import type { ExchangeRates } from '../services/providers/CoinGeckoProvider.js';
  */
 export const USD_RATE_FIELDS = [
   { currency: 'SGD', field: 'usdSgd' },
+  { currency: 'GBP', field: 'usdGbp' },
   { currency: 'JPY', field: 'usdJpy' },
   { currency: 'TWD', field: 'usdTwd' },
   { currency: 'KRW', field: 'usdKrw' },

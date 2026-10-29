@@ -4,6 +4,8 @@ import { portfolioService } from './portfolioService.js';
 import { priceService } from './priceService.js';
 import { logger } from '../lib/logger.js';
 import { USD_SGD_FALLBACK_RATE } from '../lib/constants.js';
+import { projectNativeCosts } from './nativeCostService.js';
+import { navTransaction } from './unitTrustNavService.js';
 
 interface PerformanceMetrics {
   dailyReturn: number | null;
@@ -47,18 +49,24 @@ class SnapshotService {
     snapshotType: string = 'DAILY',
     scheduledLocalDate?: string
   ): Promise<string> {
-    const [summary, fxRates, btcPrice, ethPrice, positions] = await Promise.all([
-      portfolioService.getSummary(userId),
-      priceService.getExchangeRates(),
+    const [btcPrice, ethPrice] = await Promise.all([
       priceService.getPrice('bitcoin'),
       priceService.getPrice('ethereum'),
-      prisma.position.findMany({
-        where: { userId, custodyOf: null },
-        include: { asset: true },
-      }),
     ]);
-
-    const usdSgdRate = fxRates?.usdSgd ?? USD_SGD_FALLBACK_RATE;
+    // Capture one database/FX view. Network lookups and historical metrics stay
+    // outside this short transaction so a single-connection pool remains usable.
+    const { summary, positions, usdSgdRate } = await navTransaction(async (tx) => {
+      const [summary, storedPositions, fx] = await Promise.all([
+        portfolioService.getSummary(userId, tx),
+        tx.position.findMany({ where: { userId, custodyOf: null }, include: { asset: true } }),
+        tx.fxRate.findUnique({ where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: 'SGD' } } }),
+      ]);
+      return {
+        summary,
+        positions: await projectNativeCosts(storedPositions, tx),
+        usdSgdRate: fx?.rate ?? USD_SGD_FALLBACK_RATE,
+      };
+    });
     const metrics = await this.calculatePerformanceMetrics(
       userId,
       summary.totalValueUsd,
