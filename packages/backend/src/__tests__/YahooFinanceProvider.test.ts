@@ -31,6 +31,34 @@ vi.mock('../lib/logger.js', () => ({
 const { YahooFinanceProvider } = await import('../services/providers/YahooFinanceProvider.js');
 
 describe('YahooFinanceProvider', () => {
+  it('fetches a real GBP quote for publication and preserves its source timestamp', async () => {
+    mockPrisma.fxRate.findUnique.mockResolvedValue({
+      rate: 0.7,
+      timestamp: new Date('2000-01-01'),
+    });
+    const asOf = new Date(Date.now() - 3600000);
+    quoteMock.mockResolvedValue({ regularMarketPrice: 0.8, regularMarketTime: asOf });
+    const sourceTimes = new Map<string, Date>();
+    const rates = await new YahooFinanceProvider().getUsdExchangeRates(['GBP'], {
+      fresh: true,
+      sourceTimes,
+    });
+    expect(quoteMock).toHaveBeenCalledWith('GBP=X');
+    expect(mockPrisma.fxRate.findUnique).not.toHaveBeenCalled();
+    expect(rates.get('GBP')).toBe(0.8);
+    expect(sourceTimes.get('GBP')).toEqual(asOf);
+  });
+  it('does not publish a cached or stored GBP rate when the provider quote is stale', async () => {
+    mockPrisma.fxRate.findUnique.mockResolvedValue({ rate: 0.7 });
+    quoteMock.mockResolvedValue({
+      regularMarketPrice: 0.8,
+      regularMarketTime: new Date(Date.now() - 49 * 3600000),
+    });
+    expect(await new YahooFinanceProvider().getUsdExchangeRates(['GBP'], { fresh: true })).toEqual(
+      new Map()
+    );
+    expect(mockPrisma.fxRate.findUnique).not.toHaveBeenCalled();
+  });
   it('preserves the quote valuation date instead of substituting fetch time', async () => {
     const quoteDay = new Date('2026-09-08T00:00:00Z');
     quoteMock.mockResolvedValue([

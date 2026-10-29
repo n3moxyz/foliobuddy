@@ -14,6 +14,24 @@ const response = (body: unknown, status = 200) =>
   }) as unknown as Response;
 
 describe('CoinGeckoProvider adversarial behavior', () => {
+  it('derives GBP and SGD from the same validated exchange-rate response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response({
+          rates: {
+            usd: { value: 100000 },
+            sgd: { value: 125000 },
+            gbp: { value: 80000 },
+          },
+        })
+      )
+    );
+    expect(await new CoinGeckoProvider().getExchangeRates()).toMatchObject({
+      usdSgd: 1.25,
+      usdGbp: 0.8,
+    });
+  });
   beforeEach(() => vi.restoreAllMocks());
   afterEach(() => {
     vi.unstubAllGlobals();

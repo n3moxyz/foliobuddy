@@ -1,6 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import {
+  clearPositionImportRecovery,
+  watchPositionImportSession,
+} from '@/lib/positionImportAttempt';
+import {
   endAuthSession,
   installAuthSession,
   isAuthSessionCurrent,
@@ -15,6 +19,14 @@ import {
 export function useAuthSetup() {
   const { getToken, userId, sessionId } = useAuth();
   return useSessionSetup(userId ?? null, sessionId ?? null, getToken, 'clerk');
+}
+
+/** The prior session may have ended elsewhere before this runtime loaded. */
+export function useSignedOutImportCleanup() {
+  const { isLoaded, isSignedIn } = useAuth();
+  useLayoutEffect(() => {
+    if (isLoaded && isSignedIn === false) clearPositionImportRecovery();
+  }, [isLoaded, isSignedIn]);
 }
 
 const noToken = async () => null;
@@ -42,6 +54,7 @@ function useSessionSetup(
   useLayoutEffect(() => {
     if (!ownerId || !sessionId) return;
     const installed = installAuthSession(ownerId, sessionId, tokenGetter.current, mode);
+    watchPositionImportSession(installed);
     setSession(installed);
     return () => endAuthSession(installed);
   }, [ownerId, sessionId, mode]);

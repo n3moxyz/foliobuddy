@@ -13,7 +13,7 @@ const mockPrisma = {
     update: vi.fn(),
     delete: vi.fn(),
   },
-  fxRate: { findUnique: vi.fn() },
+  fxRate: { findUnique: vi.fn(), findMany: vi.fn() },
   position: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
   $transaction: vi.fn(async (work) => work(mockPrisma)),
   priceHistory: {
@@ -103,6 +103,9 @@ function mockManualAsset(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockPrisma.fxRate.findMany.mockResolvedValue([
+    { toCcy: 'SGD', rate: 1.25, timestamp: new Date() },
+  ]);
   delete process.env.ADMIN_USER_IDS;
   mockPriceService.updatePositionValues.mockResolvedValue(undefined);
   mockPrisma.asset.findUniqueOrThrow.mockImplementation((args) =>
@@ -114,7 +117,7 @@ beforeEach(() => {
 });
 
 describe('POST /api/assets', () => {
-  it('creates a manually-priced fiat cash asset with an initial USD price', async () => {
+  it('creates fiat cash with validated FX instead of trusting its client-supplied quote', async () => {
     mockPrisma.asset.findFirst.mockResolvedValue(null);
     mockPrisma.asset.create.mockImplementation(async ({ data }) => ({
       id: 'asset-cash',
@@ -152,7 +155,7 @@ describe('POST /api/assets', () => {
         category: 'CASH',
         priceProvider: 'manual',
         nativeCurrency: 'SGD',
-        currentPriceUsd: 0.742,
+        currentPriceUsd: 0.8,
         priceUpdatedAt: expect.any(Date),
       }),
     });

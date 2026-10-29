@@ -45,34 +45,42 @@ type PositionWithAsset = Awaited<
     }>
   >
 >[number];
+type PortfolioDb = Pick<
+  Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  'position' | 'fxRate' | 'snapshot'
+>;
 
 function positionValueUsd(position: PositionWithAsset): number {
   return position.marketValueUsd ?? position.quantity * (position.asset.currentPriceUsd ?? 0);
 }
 
 class PortfolioService {
-  private async getOwnedPositions(userId: string): Promise<PositionWithAsset[]> {
+  private async getOwnedPositions(
+    userId: string,
+    db: PortfolioDb = prisma
+  ): Promise<PositionWithAsset[]> {
     return (
       await projectNativeCosts(
-        await prisma.position.findMany({
+        await db.position.findMany({
           where: { userId, custodyOf: null },
           include: { asset: true },
-        })
+        }),
+        db
       )
     ).filter(isActiveIbkrPosition);
   }
 
-  async getSummary(userId: string): Promise<PortfolioSummary> {
+  async getSummary(userId: string, db: PortfolioDb = prisma): Promise<PortfolioSummary> {
     // YTD anchor = first snapshot of the *current* calendar year. Scoping by
     // year prevents a pre-2026 snapshot from being used as the YTD baseline
     // next January, which would silently pin YTD to a stale value.
     const startOfYearUtc = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1, 0, 0, 0, 0));
     const [positions, fxRate, ytdSnapshot] = await Promise.all([
-      this.getOwnedPositions(userId),
-      prisma.fxRate.findUnique({
+      this.getOwnedPositions(userId, db),
+      db.fxRate.findUnique({
         where: { fromCcy_toCcy: { fromCcy: 'USD', toCcy: 'SGD' } },
       }),
-      prisma.snapshot.findFirst({
+      db.snapshot.findFirst({
         where: { userId, timestamp: { gte: startOfYearUtc } },
         orderBy: { timestamp: 'asc' },
         select: { timestamp: true, totalValueUsd: true },

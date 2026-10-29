@@ -64,6 +64,103 @@ vi.mock('../../services/portfolioService.js', () => ({
 const { default: positionsRouter } = await import('../../routes/positions.js');
 const app = createTestApp(positionsRouter, '/api/positions');
 
+describe('fiat cash transfers after FX moves', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockPrisma.$transaction.mockImplementation(async (work) => work(mockPrisma));
+    mockPrisma.fxRate.findMany.mockResolvedValue([
+      { toCcy: 'SGD', rate: 1.5, timestamp: new Date() },
+    ]);
+    const equity = mockPosition({
+      id: 'equity-position',
+      quantity: 10,
+      avgCostUsd: 20,
+      avgCostNative: 25,
+      costCurrency: 'SGD',
+      asset: mockAsset({
+        id: 'equity',
+        category: 'EQUITY',
+        nativeCurrency: 'SGD',
+        currentPriceUsd: 32,
+      }),
+    });
+    const cash = mockPosition({
+      id: 'cash-position',
+      assetId: 'sgd',
+      quantity: 25000,
+      avgCostUsd: 1 / 1.35,
+      asset: mockAsset({
+        id: 'sgd',
+        category: 'CASH',
+        symbol: 'SGD',
+        nativeCurrency: 'SGD',
+        priceProvider: 'manual',
+        currentPriceUsd: 1 / 1.35,
+      }),
+    });
+    mockPrisma.position.findFirst.mockImplementation(async ({ where }) =>
+      where.id === cash.id ? cash : equity
+    );
+    mockPrisma.position.update.mockImplementation(async ({ where, data }) => ({
+      ...(where.id === cash.id ? cash : equity),
+      ...data,
+    }));
+    mockPrisma.positionHistory.create.mockResolvedValue({ id: 'history' });
+  });
+  it.each([
+    [
+      'add',
+      {
+        quantity: 20,
+        avgCostUsd: 26,
+        avgCostNative: 32.5,
+        positionDelta: {
+          mode: 'add',
+          quantity: 10,
+          totalCostUsd: 320,
+          nativeAmount: 400,
+          fxRateToUsd: 0.8,
+        },
+      },
+      24600,
+    ],
+    [
+      'reduce',
+      {
+        quantity: 8,
+        avgCostUsd: 20,
+        avgCostNative: 25,
+        positionDelta: {
+          mode: 'reduce',
+          quantity: 2,
+          proceedsUsd: 80,
+          nativeAmount: 100,
+          fxRateToUsd: 0.8,
+        },
+      },
+      25100,
+    ],
+  ])(
+    'uses exact native units for a same-currency %s after the USD rate changed',
+    async (_, data, quantity) => {
+      const response = await request(app)
+        .put('/api/positions/equity-position')
+        .send({
+          ...data,
+          costCurrency: 'SGD',
+          fundingCashPositionId: 'cash-position',
+        });
+      expect(response.status).toBe(200);
+      expect(mockPrisma.position.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'cash-position' },
+          data: expect.objectContaining({ quantity }),
+        })
+      );
+    }
+  );
+});
+
 describe('position import retries', () => {
   let stored: Map<string, ReturnType<typeof mockPosition>>;
   const requestId = '6a063ff8-c834-4eb2-98df-3234a6b66918';

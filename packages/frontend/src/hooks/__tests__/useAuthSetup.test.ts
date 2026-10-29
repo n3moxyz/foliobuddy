@@ -1,9 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useAuthSetup, useLocalAuthBypassSetup } from '../useAuthSetup';
+import { useAuthSetup, useLocalAuthBypassSetup, useSignedOutImportCleanup } from '../useAuthSetup';
 import { captureAuthSession, isAuthSessionCurrent } from '@/lib/authSession';
 
 const clerk = vi.hoisted(() => ({
+  isLoaded: true,
+  isSignedIn: true as boolean | undefined,
   userId: 'user-a',
   sessionId: 'session-a',
   getToken: vi.fn(async () => 'clerk-token'),
@@ -12,9 +14,30 @@ vi.mock('@clerk/clerk-react', () => ({ useAuth: () => clerk }));
 
 describe('useAuthSetup', () => {
   beforeEach(() => {
+    sessionStorage.clear();
+    clerk.isLoaded = true;
+    clerk.isSignedIn = true;
     clerk.userId = 'user-a';
     clerk.sessionId = 'session-a';
     clerk.getToken = vi.fn(async () => 'clerk-token');
+  });
+  it('clears a prior runtime journal only after Clerk confirms sign-out', () => {
+    const storageKey = 'foliobuddy-pending-position-imports-v1';
+    sessionStorage.setItem(storageKey, 'prior-session-financial-payload');
+    const hook = renderHook(() => useSignedOutImportCleanup());
+    expect(sessionStorage.getItem(storageKey)).not.toBeNull();
+    act(() => {
+      clerk.isLoaded = false;
+      clerk.isSignedIn = undefined;
+      hook.rerender();
+    });
+    expect(sessionStorage.getItem(storageKey)).not.toBeNull();
+    act(() => {
+      clerk.isLoaded = true;
+      clerk.isSignedIn = false;
+      hook.rerender();
+    });
+    expect(sessionStorage.getItem(storageKey)).toBeNull();
   });
   it('installs the owner and token context before exposing a ready session', async () => {
     const hook = renderHook(() => useAuthSetup());

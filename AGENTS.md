@@ -100,7 +100,7 @@ See [the private CI runbook](docs/solutions/2026-10-25-private-ci-access.md) bef
 
 ## Architecture
 
-Static frontend (React + Vite) → HTTP + Clerk JWT → Express backend → Prisma → Postgres 17 (private network). Background jobs (node-cron): price refresh (every min), manager NAVs (startup + hourly :05), snapshots (daily 5am SGT / weekly Sun / monthly 1st), FX rates (hourly).
+Static frontend (React + Vite) → HTTP + Clerk JWT → Express backend → Prisma → Postgres 17 (private network). Background jobs (node-cron): price refresh (every min), manager NAVs (startup + hourly :05), snapshots (daily 5am SGT / weekly Sun / monthly 1st), FX rates (startup/hourly).
 
 ## Key Patterns
 
@@ -257,7 +257,7 @@ Follow the [location dropdown contract](docs/UI-CONTRACTS.md#creatable-storage-l
 
 ### Cash Positions (Stablecoins + Fiat)
 
-Former Stables category is now **Cash**. `PositionForm.tsx` Cash shows a **Type** dropdown (USDT, USDC, USDe, FDUSD, DAI, **Cash (fiat)**); Cash (fiat) reveals a **Currency** dropdown (`USD`/`SGD`/`GBP`), creates/reuses a `CASH` asset (SGD priced from summary rate at creation; fiat cash is `priceProvider='manual'`). Storage by Type: stablecoins → CEX/Onchain; fiat → Broker account/Bank. Broker defaults `BROKER_LOCATIONS` (`FSMOne`, `IBKR`, `Tiger`, `UOB KH` — never `DBS`); bank defaults `Citi`, `DBS`, `SCB`, `Trust+`, `UOB`. `PositionForm` guards storage-type validity when Type changes.
+`PositionForm` Cash Type = USDT/USDC/USDe/FDUSD/DAI or **Cash (fiat)**. Fiat USD/SGD/GBP uses manual `CASH` assets with validated FX (48h maximum). Preserve native units and recorded basis. Same-currency funding/proceeds use native amounts. Other transfers use current FX. Refresh quotes and current values atomically. Storage: stablecoins CEX/Onchain; fiat Broker account/Bank. Brokers: `FSMOne`, `IBKR`, `Tiger`, `UOB KH` (never `DBS`). Banks: `Citi`, `DBS`, `SCB`, `Trust+`, `UOB`. Check storage type on Type changes. [Cash FX](docs/solutions/2026-10-29-fiat-cash-fx.md).
 
 ### Equity Positions (Stock/ETF + Unit Trust)
 
@@ -282,7 +282,7 @@ Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/soluti
 
 ### Position Add/Reduce History
 
-`PUT /positions/:id` + `positionDelta` writes `PositionHistory`; validate next quantity/basis against delta, update position + history in one `Serializable` transaction (pile read inside; P2034 → 409). `fundingCashPositionId` needs `positionDelta`, never custody rows (hide picker). Funded add ↔ cash `reduce`; reduce-only `positionDelta.proceedsUsd` → `PositionHistory.proceedsUsd` (>0 with pile) ↔ cash `add` (quantity = proceeds ÷ pile USD price, basis = proceeds). Shared `operationId`: cancel restores both. Proceeds ledger: `Sold for … · Realized …`. `Edit Totals`: `mode='reset'`, collapse old rows, never delete history. `DELETE .../history/:historyId`: only newest add/reduce, totals must match. Demo mirrors; story: FORET.md.
+`PUT /positions/:id` + `positionDelta` writes `PositionHistory`; validate next quantity/basis against delta, update position + history in one `Serializable` transaction (pile read inside; P2034 → 409). `fundingCashPositionId` needs `positionDelta`, never custody rows (hide picker). Funded add ↔ cash `reduce`; reduce-only `positionDelta.proceedsUsd` → `PositionHistory.proceedsUsd` (>0 with pile) ↔ cash `add` (quantity = supplied native amount for matching fiat, else proceeds ÷ pile USD price, basis = proceeds). Shared `operationId`: cancel restores both. Proceeds ledger: `Sold for … · Realized …`. `Edit Totals`: `mode='reset'`, collapse old rows, never delete history. `DELETE .../history/:historyId`: only newest add/reduce, totals must match. Demo mirrors; story: FORET.md.
 
 ### Global Value Privacy
 
@@ -348,9 +348,10 @@ No owner password, ever: [docs/TESTING.md](docs/TESTING.md). **Any change**: `np
 
 Portfolio/Trades/History share 1 pattern: per-row clipboard icon, Copy All header button, Import tab in Add/Log dialog — 1 JSON format for copy + import. Bulk row errors: `userSafeErrorMessage()`, never raw Prisma text.
 
-Position bulk imports accept a UUID `requestId`. Reuse it for the unchanged batch
-after a lost response. Check `bulkImportIdempotency` before client submission.
-Row IDs retain retry identity until those positions are deleted.
+Position imports reuse one UUID `requestId` for unchanged retries. Check `bulkImportIdempotency` first.
+Save payload/ID in tab session storage, scoped to API, owner and sign-in session, before dispatch.
+Clear on acknowledgement or logout. Partial corrections retain a sealed original receipt.
+Row deletion removes the backend receipt.
 See [the import retry runbook](docs/solutions/2026-10-29-position-import-retries.md).
 
 ### Branding

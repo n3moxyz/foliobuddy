@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   snapshotFindFirst: vi.fn(),
   snapshotFindMany: vi.fn(),
   snapshotCreate: vi.fn(),
+  fxRateFindUnique: vi.fn(),
+  fxRateFindMany: vi.fn(),
 }));
 
 vi.mock('../services/portfolioService.js', () => ({
@@ -21,6 +23,11 @@ vi.mock('../services/priceService.js', () => ({
 }));
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
+    $transaction: (work: (tx: unknown) => unknown) =>
+      work({
+        position: { findMany: mocks.positionFindMany },
+        fxRate: { findUnique: mocks.fxRateFindUnique, findMany: mocks.fxRateFindMany },
+      }),
     position: { findMany: mocks.positionFindMany },
     snapshot: {
       findFirst: mocks.snapshotFindFirst,
@@ -46,6 +53,8 @@ describe('snapshotService', () => {
       unrealizedPnL: 100,
     });
     mocks.getExchangeRates.mockResolvedValue({ usdSgd: 1.4 });
+    mocks.fxRateFindUnique.mockResolvedValue({ rate: 1.4 });
+    mocks.fxRateFindMany.mockResolvedValue([]);
     mocks.positionFindMany.mockResolvedValue([
       {
         assetId: 'abc-row',
@@ -58,6 +67,37 @@ describe('snapshotService', () => {
   });
 
   afterEach(() => vi.useRealTimers());
+
+  it('uses one stored FX view for cash rows and snapshot conversion even when the provider has moved', async () => {
+    mocks.portfolioGetSummary.mockResolvedValue({
+      totalValueUsd: 80,
+      totalValueSgd: 100,
+      totalCostBasis: 80,
+      unrealizedPnL: 0,
+    });
+    mocks.getExchangeRates.mockResolvedValue({ usdSgd: 1.3 });
+    mocks.fxRateFindUnique.mockResolvedValue({ rate: 1.25 });
+    mocks.fxRateFindMany.mockResolvedValue([{ toCcy: 'SGD', rate: 1.25, timestamp: new Date() }]);
+    mocks.positionFindMany.mockResolvedValue([
+      {
+        assetId: 'sgd',
+        quantity: 100,
+        avgCostUsd: 0.74,
+        asset: { symbol: 'SGD', category: 'CASH', priceProvider: 'manual', currentPriceUsd: 0.74 },
+      },
+    ]);
+    mocks.getPrice.mockResolvedValue(100);
+    mocks.snapshotFindFirst.mockResolvedValue(null);
+    await snapshotService.createSnapshot('user-1');
+    const data = mocks.snapshotCreate.mock.calls[0][0].data;
+    expect(data).toMatchObject({ totalValueUsd: 80, totalValueSgd: 100, usdSgdRate: 1.25 });
+    expect(data.positions.create[0]).toMatchObject({
+      priceUsd: 0.8,
+      valueUsd: 80,
+      allocation: 100,
+    });
+    expect(mocks.getExchangeRates).not.toHaveBeenCalled();
+  });
 
   it('uses one coherent benchmark price state and never divides by zero baselines', async () => {
     mocks.getPrice

@@ -871,7 +871,9 @@ describe('demo catalog matching with tickers shared across classes', () => {
     const usd = await cash('USD');
 
     expect(gbp.status).toBe(201);
-    expect((await readJson<Asset>(gbp)).category).toBe('CASH');
+    const gbpAsset = await readJson<Asset>(gbp);
+    expect(gbpAsset.category).toBe('CASH');
+    expect(gbpAsset.currentPriceUsd).toBeCloseTo(1 / 0.76, 10);
     expect(usd.status).toBe(409);
   });
 

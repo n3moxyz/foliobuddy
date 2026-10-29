@@ -28,6 +28,7 @@ import {
 import { parseBoundedIntegerQuery } from '../lib/queryParams.js';
 import { navTransaction } from '../services/unitTrustNavService.js';
 import { projectNativeCosts } from '../services/nativeCostService.js';
+import { currentFiatCashAsset, fiatCashCurrency } from '../services/fiatCashService.js';
 import { requireUnmanagedCash, isActiveIbkrPosition } from '../lib/ibkrCashGuard.js';
 import { nativeCostFields, nativeCostChange, validateNativeCost } from '../lib/nativeCost.js';
 import {
@@ -94,20 +95,24 @@ interface LinkedCashDelta {
   quantity: number;
   result: ReturnType<typeof applyPositionDelta>;
 }
+type NativeTransfer = { amount: number; currency: string } | undefined;
 
 function numbersClose(a: number, b: number) {
   return Math.abs(a - b) <= FLOAT_TOLERANCE * Math.max(1, Math.abs(a), Math.abs(b));
 }
 
-function buildFundingCashDelta(
+async function buildFundingCashDelta(
   fundingCashPosition: FundingCashPosition,
-  purchaseCostUsd: number
-): LinkedCashDelta {
+  purchaseCostUsd: number,
+  tx: TransactionClient,
+  nativeTransfer?: NativeTransfer
+): Promise<LinkedCashDelta> {
   requireUnmanagedCash(fundingCashPosition);
   if (categoryGroup(fundingCashPosition.asset.category) !== CategoryGroup.STABLES) {
     throw new AppError('Funding position must be a cash position', 400);
   }
 
+  fundingCashPosition.asset = await currentFiatCashAsset(fundingCashPosition.asset, tx);
   const fundingPriceUsd =
     fundingCashPosition.asset.currentPriceUsd ?? fundingCashPosition.avgCostUsd;
 
@@ -120,7 +125,10 @@ function buildFundingCashDelta(
   }
 
   try {
-    const quantityToReduce = purchaseCostUsd / fundingPriceUsd;
+    const quantityToReduce =
+      nativeTransfer && nativeTransfer.currency === fiatCashCurrency(fundingCashPosition.asset)
+        ? nativeTransfer.amount
+        : purchaseCostUsd / fundingPriceUsd;
     const result = applyPositionDelta({
       currentQuantity: fundingCashPosition.quantity,
       currentAvgCostUsd: fundingCashPosition.avgCostUsd,
@@ -139,15 +147,18 @@ function buildFundingCashDelta(
 // Mirror of buildFundingCashDelta for a reduce: the sale proceeds are deposited
 // into the cash pile at its current USD price, so a $100 sale adds ~135 units to
 // an SGD pile but 100 units to a USDC pile. Proceeds carry their own cost basis.
-function buildProceedsCashDelta(
+async function buildProceedsCashDelta(
   cashPosition: FundingCashPosition,
-  proceedsUsd: number
-): LinkedCashDelta {
+  proceedsUsd: number,
+  tx: TransactionClient,
+  nativeTransfer?: NativeTransfer
+): Promise<LinkedCashDelta> {
   requireUnmanagedCash(cashPosition);
   if (categoryGroup(cashPosition.asset.category) !== CategoryGroup.STABLES) {
     throw new AppError('Proceeds destination must be a cash position', 400);
   }
 
+  cashPosition.asset = await currentFiatCashAsset(cashPosition.asset, tx);
   const cashPriceUsd = cashPosition.asset.currentPriceUsd ?? cashPosition.avgCostUsd;
 
   if (!(proceedsUsd > 0)) {
@@ -159,7 +170,10 @@ function buildProceedsCashDelta(
   }
 
   try {
-    const quantityToAdd = proceedsUsd / cashPriceUsd;
+    const quantityToAdd =
+      nativeTransfer && nativeTransfer.currency === fiatCashCurrency(cashPosition.asset)
+        ? nativeTransfer.amount
+        : proceedsUsd / cashPriceUsd;
     const result = applyPositionDelta({
       currentQuantity: cashPosition.quantity,
       currentAvgCostUsd: cashPosition.avgCostUsd,
@@ -583,13 +597,14 @@ router.post('/bulk', async (req, res, next) => {
             });
             if (imported) return;
           }
-          const pricedAsset =
-            asset.category === 'UNIT_TRUST'
+          const storedAsset =
+            asset.category === 'UNIT_TRUST' || fiatCashCurrency(asset)
               ? await tx.asset.findUnique({ where: { id: asset.id } })
               : asset;
-          if (!pricedAsset) throw new AppError('Asset not found', 404);
+          if (!storedAsset) throw new AppError('Asset not found', 404);
+          const pricedAsset = await currentFiatCashAsset(storedAsset, tx);
           validateNativeCost(pos, pricedAsset);
-          await projectNativeCosts([{ ...pos, asset: pricedAsset }]);
+          await projectNativeCosts([{ ...pos, asset: pricedAsset }], tx);
           const valueFields = calculatePositionValue({
             quantity: pos.quantity,
             avgCostUsd: pos.avgCostUsd,
@@ -758,10 +773,11 @@ router.delete('/:id/history/:historyId', async (req, res, next) => {
       let updatedRequestedPosition = null;
 
       for (const entryToCancel of entriesToCancel) {
+        const pricedAsset = await currentFiatCashAsset(entryToCancel.position.asset, tx);
         const valueFields = calculatePositionValue({
           quantity: entryToCancel.history.previousQuantity,
           avgCostUsd: entryToCancel.history.previousAvgCostUsd,
-          currentPriceUsd: entryToCancel.position.asset.currentPriceUsd,
+          currentPriceUsd: pricedAsset.currentPriceUsd,
         });
 
         const updatedPosition = await tx.position.update({
@@ -870,11 +886,12 @@ router.post('/', async (req, res, next) => {
     }
 
     const position = await navTransaction(async (tx) => {
-      const pricedAsset =
-        asset.category === 'UNIT_TRUST'
+      const storedAsset =
+        asset.category === 'UNIT_TRUST' || fiatCashCurrency(asset)
           ? await tx.asset.findUnique({ where: { id: asset.id } })
           : asset;
-      if (!pricedAsset) throw new AppError('Asset not found', 404);
+      if (!storedAsset) throw new AppError('Asset not found', 404);
+      const pricedAsset = await currentFiatCashAsset(storedAsset, tx);
       const valueFields = calculatePositionValue({
         quantity: data.quantity,
         avgCostUsd: data.avgCostUsd,
@@ -901,7 +918,16 @@ router.post('/', async (req, res, next) => {
       }
 
       const fundingDelta = fundingCashPosition
-        ? buildFundingCashDelta(fundingCashPosition, purchaseCostUsd)
+        ? await buildFundingCashDelta(
+            fundingCashPosition,
+            purchaseCostUsd,
+            tx,
+            fiatCashCurrency(pricedAsset)
+              ? { amount: data.quantity, currency: fiatCashCurrency(pricedAsset)! }
+              : data.avgCostNative != null && data.costCurrency
+                ? { amount: data.quantity * data.avgCostNative, currency: data.costCurrency }
+                : undefined
+          )
         : null;
       const initialOperationId = data.avgCostNative != null && fundingDelta ? randomUUID() : null;
 
@@ -1167,6 +1193,8 @@ router.put('/:id', async (req, res, next) => {
         if (
           valueAsset.category === 'UNIT_TRUST' ||
           existing.asset.category === 'UNIT_TRUST' ||
+          fiatCashCurrency(valueAsset) ||
+          fiatCashCurrency(existing.asset) ||
           (existing.storageType === 'BROKERAGE' && existing.storageLocation === 'IBKR') ||
           existing.avgCostNative != null ||
           positionData.avgCostNative != null
@@ -1191,10 +1219,11 @@ router.put('/:id', async (req, res, next) => {
           ) {
             throw new AppError('Position changed while saving; refresh and try again', 409);
           }
-          const pricedAsset = assetChanged
+          const storedAsset = assetChanged
             ? await tx.asset.findUnique({ where: { id: valueAsset.id } })
             : current.asset;
-          if (!pricedAsset) throw new AppError('Asset not found', 404);
+          if (!storedAsset) throw new AppError('Asset not found', 404);
+          const pricedAsset = await currentFiatCashAsset(storedAsset, tx);
           valueFields = calculatePositionValue({
             quantity,
             avgCostUsd,
@@ -1216,10 +1245,24 @@ router.put('/:id', async (req, res, next) => {
           throw new AppError('Funding cash position not found', 404);
         }
 
+        const nativeTransfer =
+          positionDelta?.nativeAmount != null && existing.costCurrency
+            ? { amount: positionDelta.nativeAmount, currency: existing.costCurrency }
+            : undefined;
         const linkedCashDelta = fundingCashPosition
           ? positionDelta?.mode === 'add'
-            ? buildFundingCashDelta(fundingCashPosition, positionDelta.totalCostUsd!)
-            : buildProceedsCashDelta(fundingCashPosition, positionDelta!.proceedsUsd!)
+            ? await buildFundingCashDelta(
+                fundingCashPosition,
+                positionDelta.totalCostUsd!,
+                tx,
+                nativeTransfer
+              )
+            : await buildProceedsCashDelta(
+                fundingCashPosition,
+                positionDelta!.proceedsUsd!,
+                tx,
+                nativeTransfer
+              )
           : null;
         const operationId = linkedCashDelta ? randomUUID() : null;
 

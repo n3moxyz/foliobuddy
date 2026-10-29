@@ -30,6 +30,7 @@ import {
   parseManualNavDate,
 } from '../services/unitTrustNavService.js';
 import { findFundManagerSource } from '../services/providers/fundManagerSources.js';
+import { currentFiatCashAsset, projectFiatCashAssets } from '../services/fiatCashService.js';
 
 function slugifyUtId(symbol: string, isin?: string | null): string {
   if (isin && isin.trim()) return isin.trim().toUpperCase();
@@ -104,7 +105,7 @@ router.get('/', async (req, res, next) => {
       take: 500,
     });
 
-    res.json(assets);
+    res.json(await projectFiatCashAssets(assets));
   } catch (error) {
     next(error);
   }
@@ -163,7 +164,7 @@ router.get('/:id', async (req, res, next) => {
       throw new AppError('Asset not found', 404);
     }
 
-    res.json(asset);
+    res.json((await projectFiatCashAssets([asset]))[0]);
   } catch (error) {
     next(error);
   }
@@ -188,19 +189,22 @@ router.post('/', async (req, res, next) => {
       currentPriceUsd = await priceService.getDirectPrice(data.coingeckoId);
     }
 
-    const asset = await prisma.asset.create({
-      data: {
-        coingeckoId: data.coingeckoId,
-        priceProvider: data.priceProvider,
-        providerAssetId: data.providerAssetId,
-        nativeCurrency: data.nativeCurrency,
-        exchange: data.exchange,
-        symbol: data.symbol.toUpperCase(),
-        name: data.name,
-        category: data.category,
-        currentPriceUsd,
-        priceUpdatedAt: currentPriceUsd !== null ? new Date() : null,
-      },
+    const asset = await navTransaction(async (tx) => {
+      const priced = await currentFiatCashAsset({ ...data, currentPriceUsd }, tx);
+      return tx.asset.create({
+        data: {
+          coingeckoId: data.coingeckoId,
+          priceProvider: data.priceProvider,
+          providerAssetId: data.providerAssetId,
+          nativeCurrency: priced.nativeCurrency,
+          exchange: data.exchange,
+          symbol: data.symbol.toUpperCase(),
+          name: data.name,
+          category: data.category,
+          currentPriceUsd: priced.currentPriceUsd,
+          priceUpdatedAt: priced.currentPriceUsd !== null ? new Date() : null,
+        },
+      });
     });
 
     res.status(201).json(asset);

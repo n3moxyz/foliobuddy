@@ -150,13 +150,14 @@ const initialAssets: Asset[] = [
   {
     ...ASSET_DEFAULTS,
     id: 'cash-sgd',
+    priceProvider: 'manual',
     coingeckoId: null,
     providerAssetId: null,
     nativeCurrency: 'SGD',
     symbol: 'SGD',
     name: 'Cash SGD',
     category: 'CASH',
-    currentPriceUsd: 0.74,
+    currentPriceUsd: 1 / 1.3471,
   },
   demoManualAsset('cash-usd', 'USD', 'Cash USD', 1, 'CASH'),
   demoEquity('voo', 'VOO', 'Vanguard S&P 500 ETF', 510.0, 'USD', 'NYSEARCA'),
@@ -1491,7 +1492,7 @@ const fxRates: FxRate[] = [
   { id: 'usd-gbp', fromCcy: 'USD', toCcy: 'GBP', rate: 0.76, timestamp: NOW },
 ];
 let demoAssets: Asset[] = [...initialAssets];
-let demoPositions: Position[] = [...initialPositions];
+let demoPositions: Position[] = initialPositions.map(currentDemoCashPosition);
 let demoPositionHistory: PositionHistoryEntry[] = [...initialPositionHistory];
 let demoInvestors: Investor[] = [...initialInvestors];
 let demoTrades: Trade[] = [...initialTrades];
@@ -1505,7 +1506,7 @@ export function resetDemoDataForTests() {
   resetDemoIbkr();
   demoPreferences = { ...INITIAL_DEMO_PREFERENCES };
   demoAssets = [...initialAssets];
-  demoPositions = [...initialPositions];
+  demoPositions = initialPositions.map(currentDemoCashPosition);
   demoPositionHistory = [...initialPositionHistory];
   demoInvestors = [...initialInvestors];
   demoTrades = [...initialTrades];
@@ -1559,6 +1560,22 @@ function seedDemoPrice(coingeckoId: string | null, category: Asset['category']) 
   return 25;
 }
 
+function demoFiatCashPrice(asset: Pick<Asset, 'category' | 'symbol' | 'priceProvider'>) {
+  if (asset.category !== 'CASH' || asset.priceProvider !== 'manual') return null;
+  if (asset.symbol === 'USD') return 1;
+  if (!['SGD', 'GBP'].includes(asset.symbol)) return null;
+  const rate = fxRates.find((rate) => rate.fromCcy === 'USD' && rate.toCcy === asset.symbol)?.rate;
+  if (!rate || !Number.isFinite(rate))
+    throw new Error('A recent exchange rate is required to value fiat cash');
+  return 1 / rate;
+}
+
+function currentDemoCashPosition(position: Position) {
+  return !position.ibkrCash && demoFiatCashPrice(position.asset) != null
+    ? computePosition(position.asset, position)
+    : position;
+}
+
 function computePosition(
   asset: Asset,
   data: {
@@ -1576,6 +1593,8 @@ function computePosition(
     updatedAt: string;
   }
 ): Position {
+  const cashPrice = demoFiatCashPrice(asset);
+  if (cashPrice != null) asset = { ...asset, currentPriceUsd: cashPrice };
   const price = asset.currentPriceUsd ?? 0;
   const marketValueUsd = round(data.quantity * price);
   const rate =
@@ -1837,7 +1856,12 @@ function createDemoPosition(data: CreatePositionData): Position {
     data.fundingCashPositionId,
     data.quantity * (data.avgCostUsd ?? 0),
     timestamp,
-    operationId
+    operationId,
+    demoFiatCashPrice(asset) != null
+      ? { amount: data.quantity, currency: asset.symbol }
+      : data.avgCostNative != null && data.costCurrency
+        ? { amount: data.quantity * data.avgCostNative, currency: data.costCurrency }
+        : undefined
   );
   const position = computePosition(asset, {
     id: nextDemoId('pos'),
@@ -1910,7 +1934,8 @@ function applyDemoLinkedCashDelta(
   mode: 'add' | 'reduce',
   amountUsd: number,
   timestamp: string,
-  operationId?: string
+  operationId?: string,
+  nativeTransfer?: { amount: number; currency: string }
 ) {
   const cashPositionId = cashPositionIdInput?.trim();
   if (!cashPositionId) return;
@@ -1925,7 +1950,10 @@ function applyDemoLinkedCashDelta(
     );
   }
 
-  const cashPriceUsd = cashPosition.asset.currentPriceUsd ?? cashPosition.avgCostUsd;
+  const cashPriceUsd =
+    demoFiatCashPrice(cashPosition.asset) ??
+    cashPosition.asset.currentPriceUsd ??
+    cashPosition.avgCostUsd;
   if (!(cashPriceUsd > 0)) {
     throw new Error(
       isFunding
@@ -1934,7 +1962,11 @@ function applyDemoLinkedCashDelta(
     );
   }
 
-  const quantity = amountUsd / cashPriceUsd;
+  const quantity =
+    nativeTransfer?.currency === cashPosition.asset.symbol &&
+    demoFiatCashPrice(cashPosition.asset) != null
+      ? nativeTransfer!.amount
+      : amountUsd / cashPriceUsd;
   const delta = applyPositionDelta({
     currentQuantity: cashPosition.quantity,
     currentAvgCostUsd: cashPosition.avgCostUsd,
@@ -1984,14 +2016,16 @@ function reduceDemoFundingCashPositionByCost(
   fundingCashPositionIdInput: string | null | undefined,
   purchaseCostUsd: number,
   timestamp: string,
-  operationId?: string
+  operationId?: string,
+  nativeTransfer?: { amount: number; currency: string }
 ) {
   applyDemoLinkedCashDelta(
     fundingCashPositionIdInput,
     'reduce',
     purchaseCostUsd,
     timestamp,
-    operationId
+    operationId,
+    nativeTransfer
   );
 }
 
@@ -2062,12 +2096,17 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
     nextNativeAverage = nativeDelta.nextAvgCostUsd;
   }
   if (data.fundingCashPositionId && data.positionDelta) {
+    const nativeTransfer =
+      data.positionDelta.nativeAmount != null && existing.costCurrency
+        ? { amount: data.positionDelta.nativeAmount, currency: existing.costCurrency }
+        : undefined;
     if (data.positionDelta.mode === 'add') {
       reduceDemoFundingCashPositionByCost(
         data.fundingCashPositionId,
         data.positionDelta.totalCostUsd ?? 0,
         timestamp,
-        operationId
+        operationId,
+        nativeTransfer
       );
     } else {
       applyDemoLinkedCashDelta(
@@ -2075,7 +2114,8 @@ function updateDemoPosition(id: string, data: UpdatePositionData) {
         'add',
         data.positionDelta.proceedsUsd ?? 0,
         timestamp,
-        operationId
+        operationId,
+        nativeTransfer
       );
     }
   }
@@ -3310,6 +3350,11 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
     }
 
     const currentPriceUsd =
+      demoFiatCashPrice({
+        category,
+        symbol: body.symbol.toUpperCase(),
+        priceProvider: body.priceProvider ?? 'coingecko',
+      }) ??
       body.currentPriceUsd ??
       seedDemoPrice(body.coingeckoId ?? null, body.category ?? 'LIQUID_CRYPTO');
     const asset: Asset = {

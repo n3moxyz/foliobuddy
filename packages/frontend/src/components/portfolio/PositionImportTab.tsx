@@ -10,6 +10,7 @@ interface PositionImportTabProps {
   parseError: string | null;
   parsedPositions: BulkImportPosition[] | null;
   importing: boolean;
+  recovering?: boolean;
   isCustody?: boolean;
   custodyOf?: string;
   /** Rendered above the Import button — used to slot the custody checkbox */
@@ -24,6 +25,7 @@ export function PositionImportTab({
   parseError,
   parsedPositions,
   importing,
+  recovering = false,
   isCustody,
   custodyOf,
   footerSlot,
@@ -31,11 +33,11 @@ export function PositionImportTab({
   onPaste,
   onImport,
 }: PositionImportTabProps) {
-  const { formatPrice, formatQuantity, maskMoney } = useMoneyFormatter();
+  const { formatPrice, formatQuantity, maskMoney, valuesHidden } = useMoneyFormatter();
   return (
     <fieldset disabled={importing} className="min-w-0 space-y-4">
       <div className="flex gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onPaste}>
+        <Button type="button" variant="outline" size="sm" onClick={onPaste} disabled={recovering}>
           <Upload className="h-4 w-4 mr-1" />
           Paste from Clipboard
         </Button>
@@ -46,11 +48,23 @@ export function PositionImportTab({
         aria-invalid={!!parseError}
         aria-describedby={parseError ? 'position-import-error' : undefined}
         placeholder='[{"asset": {"symbol": "BTC", ...}, "quantity": 1, ...}]'
-        value={jsonInput}
+        value={
+          recovering && valuesHidden
+            ? 'Import data hidden. Show monetary values to review the original JSON.'
+            : jsonInput
+        }
+        readOnly={recovering}
         onChange={(e) => onJsonChange(e.target.value)}
         rows={6}
         className="font-mono text-base sm:text-xs"
       />
+
+      {recovering && (
+        <p role="status" className="text-sm text-muted-foreground">
+          This import was interrupted. Retry the original batch to check which rows were saved. Rows
+          already saved will not be added again.
+        </p>
+      )}
 
       {parseError && (
         <div
@@ -107,8 +121,9 @@ export function PositionImportTab({
             </>
           ) : (
             <>
-              Import {parsedPositions?.length ?? 0} Position
-              {parsedPositions?.length !== 1 ? 's' : ''}
+              {recovering
+                ? 'Retry interrupted import'
+                : `Import ${parsedPositions?.length ?? 0} Position${parsedPositions?.length !== 1 ? 's' : ''}`}
             </>
           )}
         </Button>

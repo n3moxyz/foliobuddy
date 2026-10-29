@@ -26,6 +26,8 @@ type CoinGeckoExchangeRates = {
 type CoinGeckoMarketChartResponse = { prices: [number, number][] };
 export type ExchangeRates = {
   usdSgd: number;
+  usdGbp?: number;
+  sourceTimes?: Record<string, Date>;
   usdJpy?: number;
   usdTwd?: number;
   usdKrw?: number;
@@ -242,6 +244,7 @@ export class CoinGeckoProvider implements AssetPriceProvider {
 
       return {
         usdSgd,
+        usdGbp: usdTo('gbp'),
         usdJpy: usdTo('jpy'),
         usdTwd: usdTo('twd'),
         usdKrw: usdTo('krw'),

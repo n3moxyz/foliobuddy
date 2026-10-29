@@ -42,6 +42,8 @@ import { isAuthSessionCurrent } from '@/lib/authSession';
 import {
   beginPositionImport,
   confirmPositionImport,
+  pendingPositionImports,
+  preparePositionImportCorrection,
   type PositionImportAttempt,
 } from '@/lib/positionImportAttempt';
 import type {
@@ -192,10 +194,6 @@ const DEFAULT_FIAT_CASH_CURRENCY: FiatCashCurrency = 'USD';
 const DEFAULT_FIAT_CASH_STORAGE_TYPE: PositionStorageType = 'BROKERAGE';
 const DEFAULT_STABLECOIN_STORAGE_TYPE: PositionStorageType = 'CEX';
 const FIAT_CASH_CURRENCIES: FiatCashCurrency[] = ['USD', 'SGD', 'GBP'];
-const FIAT_CASH_USD_FALLBACKS: Record<Exclude<FiatCashCurrency, 'SGD'>, number> = {
-  USD: 1,
-  GBP: 1.27,
-};
 
 const MAX_POSITIONS_PER_CATEGORY = 20;
 const EMPTY_CUSTODY_NAMES: string[] = [];
@@ -272,6 +270,8 @@ export function PositionForm({
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<ImportResultItem[] | null>(null);
   const [importOutcomeKnown, setImportOutcomeKnown] = useState(false);
+  const [recoverableImports, setRecoverableImports] = useState<PositionImportAttempt[]>([]);
+  const [recoveringImport, setRecoveringImport] = useState(false);
   // Displayed rows can outlive a lost response. Handlers require the latest acknowledged result.
   const acknowledgedImportResults = useRef<ImportResultItem[] | null>(null);
   const importAttempt = useRef<{
@@ -621,14 +621,15 @@ export function PositionForm({
   }, [additionalQuantity, deltaMode, additionalAmountEntered]);
 
   const handlePaste = async () => {
-    if (importInFlight.current) return;
+    if (importInFlight.current || recoveringImport) return;
+    const attemptAtPaste = importAttempt.current;
     try {
       const text = await navigator.clipboard.readText();
-      if (importInFlight.current) return;
+      if (importInFlight.current || importAttempt.current !== attemptAtPaste) return;
       setJsonInput(text);
       parseJson(text);
     } catch {
-      if (!importInFlight.current) {
+      if (!importInFlight.current && importAttempt.current === attemptAtPaste) {
         setParseError('Failed to read clipboard. Please paste manually.');
       }
     }
@@ -675,19 +676,24 @@ export function PositionForm({
     if (importInFlight.current) return;
 
     // Stamp custodyOf on all positions if custody checkbox is checked
-    const positionsToImport = retryAttempt
-      ? importAttempt.current?.positions
-      : isCustody
-        ? parsedPositions?.map((p) => ({ ...p, custodyOf: custodyOf.trim() || 'Someone' }))
-        : parsedPositions;
+    const positionsToImport =
+      retryAttempt || recoveringImport
+        ? importAttempt.current?.positions
+        : isCustody
+          ? parsedPositions?.map((p) => ({ ...p, custodyOf: custodyOf.trim() || 'Someone' }))
+          : parsedPositions;
     if (!positionsToImport?.length) return;
     const input = JSON.stringify(positionsToImport);
     const previousIdentity = importAttempt.current?.identity;
-    const identity =
-      previousIdentity?.input === input && isAuthSessionCurrent(previousIdentity.session)
-        ? previousIdentity
-        : beginPositionImport(input);
+    let identity: PositionImportAttempt;
+    try {
+      identity = beginPositionImport(input, previousIdentity);
+    } catch (error) {
+      setParseError(error instanceof Error ? error.message : 'Import recovery could not be saved.');
+      return;
+    }
     importAttempt.current = { identity, positions: positionsToImport };
+    setRecoveringImport(true);
     importInFlight.current = true;
     acknowledgedImportResults.current = null;
     setImportOutcomeKnown(false);
@@ -742,6 +748,19 @@ export function PositionForm({
       (_, index) => results[index]?.success === false
     );
     if (!failedPositions.length) return;
+    try {
+      const identity = preparePositionImportCorrection(
+        importAttempt.current.identity,
+        JSON.stringify(failedPositions)
+      );
+      importAttempt.current = { identity, positions: failedPositions };
+    } catch (error) {
+      setParseError(
+        error instanceof Error ? error.message : 'Import recovery could not be updated.'
+      );
+      return;
+    }
+    setRecoveringImport(false);
     const failedInput = JSON.stringify(failedPositions, null, 2);
     setJsonInput(failedInput);
     parseJson(failedInput);
@@ -759,7 +778,14 @@ export function PositionForm({
       results.every((result) => result.success)
     ) {
       // Another dialog can still have an uncertain reply. Release only acknowledged results.
-      confirmPositionImport(attempt.identity);
+      try {
+        confirmPositionImport(attempt.identity);
+      } catch (error) {
+        setParseError(
+          error instanceof Error ? error.message : 'Import recovery could not be updated.'
+        );
+        return;
+      }
     }
     onSuccess();
   };
@@ -768,6 +794,8 @@ export function PositionForm({
     importAttempt.current = null;
     acknowledgedImportResults.current = null;
     setImportOutcomeKnown(false);
+    setRecoveringImport(false);
+    setRecoverableImports([]);
     setJsonInput('');
     setParseError(null);
     setParsedPositions(null);
@@ -979,29 +1007,54 @@ export function PositionForm({
       });
   };
 
-  const fiatCashPriceUsd = (currency: FiatCashCurrency) => {
-    if (currency === 'SGD') return 1 / fxSgdPerUsd;
-    return FIAT_CASH_USD_FALLBACKS[currency];
-  };
-
   const ensureFiatCashAsset = async (currency: FiatCashCurrency) => {
     const existingCashAsset = assets?.find(
       (a) => a.category === 'CASH' && a.symbol.toUpperCase() === currency
     );
     if (existingCashAsset) {
+      if (
+        !existingCashAsset.currentPriceUsd ||
+        !Number.isFinite(existingCashAsset.currentPriceUsd)
+      ) {
+        setAssetId('');
+        setSelectedAsset(null);
+        setError(`A recent USD/${currency} rate is required. Refresh rates and try again.`);
+        return null;
+      }
       setAssetId(existingCashAsset.id);
       setSelectedAsset(existingCashAsset);
       return existingCashAsset;
     }
 
     try {
+      // Keep this request compatible during a rolling backend deployment. The
+      // updated server resolves FX itself and ignores the supplied quote.
+      const fx =
+        currency === 'USD'
+          ? undefined
+          : fxRates?.find((rate) => {
+              const time = new Date(rate.timestamp).getTime();
+              return (
+                rate.fromCcy === 'USD' &&
+                rate.toCcy === currency &&
+                Number.isFinite(rate.rate) &&
+                rate.rate > 0 &&
+                Number.isFinite(time) &&
+                Date.now() - time <= 48 * 3600000 &&
+                time - Date.now() <= 300000
+              );
+            });
+      if (currency !== 'USD' && !fx) {
+        setError(`A recent USD/${currency} rate is required. Refresh rates and try again.`);
+        return null;
+      }
       const asset = await createAsset.mutateAsync({
         symbol: currency,
         name: `Cash ${currency}`,
         category: 'CASH',
         priceProvider: 'manual',
         nativeCurrency: currency,
-        currentPriceUsd: fiatCashPriceUsd(currency),
+        currentPriceUsd: currency === 'USD' ? 1 : 1 / fx!.rate,
       });
 
       setAssetId(asset.id);
@@ -1916,7 +1969,15 @@ export function PositionForm({
             aria-pressed={mode === 'import'}
             disabled={importing}
             onClick={() => {
-              if (!importInFlight.current) setMode('import');
+              if (importInFlight.current) return;
+              setMode('import');
+              try {
+                setRecoverableImports(pendingPositionImports());
+              } catch (error) {
+                setParseError(
+                  error instanceof Error ? error.message : 'Import recovery could not be read.'
+                );
+              }
             }}
             className={`min-h-[44px] flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
               mode === 'import'
@@ -1930,25 +1991,58 @@ export function PositionForm({
       )}
 
       {mode === 'import' && !isEditing ? (
-        <PositionImportTab
-          jsonInput={jsonInput}
-          parseError={parseError}
-          parsedPositions={parsedPositions}
-          importing={importing}
-          isCustody={isCustody}
-          custodyOf={custodyOf}
-          footerSlot={custodyCheckbox}
-          onJsonChange={(value) => {
-            if (importInFlight.current) return;
-            setJsonInput(value);
-            parseJson(value);
-          }}
-          onPaste={handlePaste}
-          onImport={() => {
-            handleCustodySave();
-            handleImport();
-          }}
-        />
+        <>
+          {!jsonInput && recoverableImports.length > 0 && (
+            <div className="space-y-2 rounded-md border p-3">
+              <p className="text-sm font-medium">Interrupted imports</p>
+              <p className="text-sm text-muted-foreground">
+                Resume an import to check rows that may already be saved.
+              </p>
+              {recoverableImports.map((attempt, index) => (
+                <Button
+                  key={attempt.requestId}
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    if (importInFlight.current || !isAuthSessionCurrent(attempt.session)) return;
+                    setJsonInput(attempt.input);
+                    parseJson(attempt.input);
+                    importAttempt.current = {
+                      identity: attempt,
+                      positions: JSON.parse(attempt.input),
+                    };
+                    setIsCustody(false);
+                    setRecoveringImport(!attempt.draft);
+                    setRecoverableImports([]);
+                  }}
+                >
+                  Resume interrupted import{recoverableImports.length > 1 ? ` ${index + 1}` : ''}
+                </Button>
+              ))}
+            </div>
+          )}
+          <PositionImportTab
+            jsonInput={jsonInput}
+            parseError={parseError}
+            parsedPositions={parsedPositions}
+            importing={importing}
+            recovering={recoveringImport}
+            isCustody={isCustody}
+            custodyOf={custodyOf}
+            footerSlot={recoveringImport ? undefined : custodyCheckbox}
+            onJsonChange={(value) => {
+              if (importInFlight.current || recoveringImport) return;
+              setJsonInput(value);
+              parseJson(value);
+            }}
+            onPaste={handlePaste}
+            onImport={() => {
+              handleCustodySave();
+              handleImport();
+            }}
+          />
+        </>
       ) : (
         /* Add New Mode */
         <form onSubmit={handleSubmit} className="space-y-3">

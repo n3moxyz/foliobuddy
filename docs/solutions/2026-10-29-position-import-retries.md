@@ -36,7 +36,12 @@ The updated client checks this flag before sending an import. An older backend
 must leave the import unavailable rather than silently discard its retry identity.
 
 Keep the same request ID after a lost response and when retrying a partial batch.
-Keep uncertain attempts across dialog closure within the same auth session.
+Save the full payload and request ID in session storage before dispatch.
+Recovery stays scoped to this tab, API destination, owner, and sign-in session.
+A full reload offers an explicit Resume action. It never automatically submits.
+Recovered uncertain input stays read-only until the server confirms the outcome.
+Hidden monetary values also hide recovered read-only JSON.
+Storage failures block submission before the server can receive an untracked write.
 Release an attempt only after visible acknowledgement of complete success.
 An unmounted form's late response must not erase another form's retry identity.
 
@@ -45,9 +50,14 @@ leaves the outcome unknown, even when earlier results remain visible. Keep
 failed-row editing disabled until same-ID replay confirms the latest outcome.
 An unknown outcome must not release the pending identity through Close Import.
 
-To correct a confirmed partial import, retain only failed rows by their result indexes.
-Start a new request ID for that corrected batch. Do not identify rows by ticker,
-because a batch can contain several holdings of the same asset.
+To correct a confirmed result, retain only failed rows by their result indexes.
+Atomically seal the original journal entry and save the failed-row draft before editing.
+The draft has its own request ID, including when every original row failed.
+Its payload can change only before first dispatch. Stale dialog references cannot
+revive sealed entries or replace dispatched payloads.
+Reload restores that draft for editing. Re-pasting the sealed original stays blocked,
+including after its correction succeeds, so earlier successful rows cannot duplicate.
+Do not identify rows by ticker. One batch can contain several holdings of the same asset.
 
 ## Verification
 
@@ -67,9 +77,12 @@ The position itself is the durable receipt. Deleting any imported position remov
 that row's receipt. A replay can recreate the deleted row. Remaining rows retain
 their retry protection.
 
-Client pending identities stay in memory for the current auth session. A full
-page reload or a new sign-in session starts a new client attempt. Check the saved
-portfolio before submitting an uncertain import after either event.
+Client recovery survives full reloads within this tab and sign-in session.
+Logout clears its financial payload even after reload without reopening Import.
+Confirmed signed-out startup and a different session also clear prior recovery.
+Closing the tab, clearing browser data, or starting a new sign-in session removes
+this recovery boundary. Check saved holdings before reimporting after those events.
+Sealed partial receipts remain until that boundary. Unsaved draft edits can be lost.
 
 This repair covers position imports with request IDs. It does not establish
 exactly-once behavior for other create endpoints or older clients.

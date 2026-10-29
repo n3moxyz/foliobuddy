@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
   return {
     scheduledJobs,
     configureKnownUnitTrusts: vi.fn(),
+    upsertUsdRates: vi.fn(),
     cronSchedule: vi.fn(
       (
         expression: string,
@@ -63,6 +64,7 @@ vi.mock('node-cron', () => ({
   },
 }));
 vi.mock('../services/priceService.js', () => ({ priceService: mocks.priceService }));
+vi.mock('../services/fxRateService.js', () => ({ upsertUsdRates: mocks.upsertUsdRates }));
 vi.mock('../services/unitTrustNavService.js', () => ({
   configureKnownUnitTrusts: mocks.configureKnownUnitTrusts,
 }));
@@ -91,6 +93,16 @@ const sgtUser = (id: string, hour = 5) => ({
 });
 
 describe('scheduler', () => {
+  it('refreshes supported FX pairs at startup without changing the hourly schedule', async () => {
+    const rates = { usdSgd: 1.25, usdGbp: 0.8 };
+    mocks.priceService.getExchangeRates.mockResolvedValueOnce(rates);
+    mocks.upsertUsdRates.mockResolvedValueOnce([]);
+    startFxRateJob();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mocks.upsertUsdRates).toHaveBeenCalledWith(rates);
+    expect(mocks.cronSchedule).toHaveBeenCalledWith('0 * * * *', expect.any(Function));
+  });
   it('keeps established manager feeds refreshing when mapping fails', async () => {
     mocks.configureKnownUnitTrusts.mockRejectedValueOnce(new Error('mapping conflict'));
     mocks.priceService.refreshAllPrices.mockResolvedValue({
