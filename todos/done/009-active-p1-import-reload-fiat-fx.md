@@ -1,5 +1,5 @@
 ---
-status: active
+status: complete
 priority: p1
 complexity: complex
 depends-on: []
@@ -24,9 +24,14 @@ recorded cost basis, historical snapshots, and managed IBKR aggregate semantics.
 - [x] Verify reload after a committed response loss against real local PostgreSQL.
 - [x] Verify SGD funding, proceeds, cancellation, and FX refresh against real records.
 - [x] Run project checks and document changed contracts and remaining limits.
-- [ ] Complete PR review, merge, and exact production deployment verification.
+- [x] Complete PR review, merge, and exact production deployment verification.
 
 Acceptance: reload recovery replays the original request ID without duplicate rows.
-SGD400 of funding consumes SGD400 when the purchase and cash use the same rate.
+SGD400 of funding consumes SGD400 when the purchase and cash use the same currency.
 Fiat value changes with validated FX. Cost basis and native balances remain intact.
 No authentication policy, schema migration, dependency, or live configuration change is needed.
+
+Released in PR #85. Backend and frontend commit:
+`dfe4acd520ffe896e1f079877013bd48f4693e05`.
+Main CI, exact backend deployment, and Production Check passed.
+See [release evidence](../../docs/qa/2026-10-29-reload-fx-followup.md).
