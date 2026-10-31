@@ -4,6 +4,12 @@ import { toast } from 'sonner';
 import { useSnapshots, useDeleteSnapshot, useDeleteAllSnapshots } from '@/hooks/useSnapshots';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
+import {
+  DEFAULT_SNAPSHOT_HOUR,
+  DEFAULT_SNAPSHOT_TIMEZONE,
+  describeSnapshotTime,
+} from '@/lib/snapshotPreferences';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -77,6 +83,11 @@ export default function History() {
   const { currency } = useCurrencyStore();
   const { formatCurrency } = useMoneyFormatter();
   const { data: summary } = usePortfolioSummary();
+  const { data: preferences } = useUserPreferences();
+  const snapshotTime = describeSnapshotTime(
+    preferences?.snapshotHour ?? DEFAULT_SNAPSHOT_HOUR,
+    preferences?.snapshotTimezone ?? DEFAULT_SNAPSHOT_TIMEZONE
+  );
   // Fetch enough history for source counts and the current local scale dataset.
   // isPending, not isLoading: a first load paused offline or in a hidden tab has
   // no data yet, so it must show the skeleton rather than an empty state.
@@ -233,6 +244,7 @@ export default function History() {
               onEdit={setEditingSnapshot}
               onDelete={setDeletingSnapshot}
               onAddSnapshot={() => setShowAddForm(true)}
+              snapshotTime={snapshotTime}
             />
           </TabsContent>
         )}

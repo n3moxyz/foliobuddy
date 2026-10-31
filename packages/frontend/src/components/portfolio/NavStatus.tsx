@@ -4,7 +4,7 @@ import { formatCurrency, formatDateTime, getPriceAgeInfo, priceAgeClass } from '
 function navDateLabel(value: string | null | undefined): string {
   if (!value || !Number.isFinite(new Date(value).getTime())) return 'NAV date unavailable';
   return `NAV as of ${new Date(value).toLocaleDateString('en-GB', {
-    day: '2-digit',
+    day: 'numeric',
     month: 'short',
     year: 'numeric',
     timeZone: 'UTC',

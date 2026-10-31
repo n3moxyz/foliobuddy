@@ -59,16 +59,17 @@ export function getDaysFromPeriod(period: TimePeriod): number {
 export function formatXAxisDate(timestamp: string, totalDays: number): string {
   const date = new Date(timestamp);
   const day = date.getDate();
-  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  // en-GB, like every other date in the app ("Sept", not "Sep").
+  const month = date.toLocaleDateString('en-GB', { month: 'short' });
   const year = date.getFullYear();
 
   if (totalDays <= 60) return `${day} ${month}`;
   return `${month} ${year}`;
 }
 
+/** Day first, like every other date in the app: "5 Sept 2026". */
 export function formatTooltipDate(timestamp: string): string {
-  const date = new Date(timestamp);
-  return date.toLocaleDateString('en-US', {
+  return new Date(timestamp).toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
