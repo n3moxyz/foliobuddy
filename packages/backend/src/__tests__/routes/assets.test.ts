@@ -1207,7 +1207,7 @@ describe('POST /api/assets/parse-unit-trust-statement', () => {
       timeoutMs: 5_000,
     });
     expect(res.status).toBe(422);
-    expect(res.body.error).toMatch(/^Could not recognize this statement format/);
+    expect(res.body.error).toMatch(/^Could not recognise this statement format/);
   });
 
   it.each([

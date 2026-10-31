@@ -289,7 +289,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                 aria-describedby="fundingCost-description"
               />
               <p id="fundingCost-description" className="text-xs text-muted-foreground">
-                USD amount paid; deducted from realized P&amp;L.
+                USD amount paid; deducted from realised P&amp;L.
               </p>
             </div>
 

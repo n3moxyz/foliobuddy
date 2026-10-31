@@ -684,7 +684,7 @@ export default function Portfolio() {
                       <p className="text-muted-foreground text-sm">YTD P&L</p>
                       <HelpTooltip
                         label="YTD P&L"
-                        content="Unrealized profit or loss since the start of the year"
+                        content="Unrealised profit or loss since the start of the year"
                       />
                     </div>
                     <p
@@ -873,7 +873,7 @@ export default function Portfolio() {
                   {section.pnlUsd !== null && (
                     <span
                       className={`shrink-0 font-mono text-sm font-medium tabular-nums ${getPnLColorClass(section.pnlUsd)}`}
-                      aria-label={`Unrealized P and L ${formatCurrency(
+                      aria-label={`Unrealised P and L ${formatCurrency(
                         convertValue(section.pnlUsd),
                         currency,
                         0
@@ -1013,7 +1013,7 @@ export default function Portfolio() {
                 {custodyGroupPnL.pnlUsd !== null && (
                   <span
                     className={`shrink-0 font-mono text-sm font-medium tabular-nums ${getPnLColorClass(custodyGroupPnL.pnlUsd)}`}
-                    aria-label={`Unrealized P and L ${formatCurrency(
+                    aria-label={`Unrealised P and L ${formatCurrency(
                       convertValue(custodyGroupPnL.pnlUsd),
                       currency,
                       0

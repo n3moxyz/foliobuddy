@@ -89,7 +89,7 @@ describe('daily IBKR connection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
     expect(api.registerIbkrDevice).not.toHaveBeenCalled();
     expect(screen.getByText(/Only your owned IBKR shares/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Authorize daily IBKR sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Authorise daily IBKR sync' }));
     await waitFor(() =>
       expect(vi.mocked(api.registerIbkrDevice).mock.calls[0]?.[0]).toEqual({
         cashPositionId: position.id,
@@ -111,10 +111,10 @@ describe('daily IBKR connection', () => {
       target: { value: JSON.stringify(named) },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
-    expect(screen.getByText("Authorize Alice's Mini")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Authorize daily IBKR sync' }));
+    expect(screen.getByText("Authorise Alice's Mini")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Authorise daily IBKR sync' }));
     await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith("Alice's Mini authorized for daily IBKR sync")
+      expect(toast.success).toHaveBeenCalledWith("Alice's Mini authorised for daily IBKR sync")
     );
   });
   it('discards an authorization completion after the signed-in account changes', async () => {
@@ -130,7 +130,7 @@ describe('daily IBKR connection', () => {
       target: { value: JSON.stringify(enrollment) },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Authorize daily IBKR sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Authorise daily IBKR sync' }));
     await waitFor(() => expect(api.registerIbkrDevice).toHaveBeenCalled());
     installAuthSession('owner-b', 'session-b', async () => 'test-b');
     await act(async () => {

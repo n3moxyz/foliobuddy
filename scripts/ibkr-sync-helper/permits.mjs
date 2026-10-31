@@ -32,7 +32,7 @@ export function createPermitConsumer(origin, fetcher = fetch) {
   if (!api) throw new Error('Unsupported helper app.');
   return async (request) => {
     if (!opaque(request.permit) || !validScope(request))
-      throw new Error('Fresh signed-in authorization is required.');
+      throw new Error('Fresh signed-in authorisation is required.');
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), 10000);
     try {
@@ -45,9 +45,9 @@ export function createPermitConsumer(origin, fetcher = fetch) {
         signal: abort.signal,
       });
       if (!response.ok || !response.headers.get('content-type')?.includes('application/json'))
-        throw new Error('Authorization failed.');
+        throw new Error('Authorisation failed.');
       const reader = response.body?.getReader();
-      if (!reader) throw new Error('Authorization is incomplete.');
+      if (!reader) throw new Error('Authorisation is incomplete.');
       const chunks = [];
       let size = 0;
       try {
@@ -55,7 +55,7 @@ export function createPermitConsumer(origin, fetcher = fetch) {
           const { done, value } = await reader.read();
           if (done) break;
           size += value.byteLength;
-          if (size > 8192) throw new Error('Authorization is too large.');
+          if (size > 8192) throw new Error('Authorisation is too large.');
           chunks.push(value);
         }
       } finally {
@@ -70,11 +70,11 @@ export function createPermitConsumer(origin, fetcher = fetch) {
         result.userId.length > 200 ||
         Object.keys(result).some((key) => ![...scopeFields, 'userId'].includes(key))
       )
-        throw new Error('Authorization does not match.');
+        throw new Error('Authorisation does not match.');
       return result;
     } catch {
       throw new Error(
-        'The signed-in IBKR authorization expired or could not be verified. Sign in and try again.'
+        'The signed-in IBKR authorisation expired or could not be verified. Sign in and try again.'
       );
     } finally {
       clearTimeout(timer);

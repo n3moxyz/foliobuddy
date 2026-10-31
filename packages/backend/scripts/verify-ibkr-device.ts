@@ -264,7 +264,7 @@ async function verifyIndependentOwners() {
   await unchanged('copied enrollment for a different anchor', () =>
     assert.rejects(
       () => enrollIbkrDevice(second.id, second.anchor, first.selected.enrollment),
-      /enrollment.*anchor/i
+      /enrolment.*anchor/i
     )
   );
   await unchanged('tampered signed enrollment anchor', () =>
@@ -788,7 +788,7 @@ try {
   await assert.rejects(
     () =>
       enrollIbkrDevice(enrollmentTarget.id, enrollmentTarget.anchor, copiedEnrollment.enrollment),
-    /enrollment.*anchor/i
+    /enrolment.*anchor/i
   );
   assert.equal(await prisma.ibkrSyncDevice.count({ where: { userId: enrollmentTarget.id } }), 0);
   const registered = await enrollIbkrDevice(owner, cashId, device.enrollment);

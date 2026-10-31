@@ -87,14 +87,14 @@ export function ibkrDeviceAudience(): string {
 }
 export function verifyIbkrEnrollment(raw: unknown, now = Date.now()) {
   const enrollment = enrollmentSchema.parse(raw);
-  if (enrollment.audience !== ibkrDeviceAudience()) fail('IBKR enrollment audience differs');
+  if (enrollment.audience !== ibkrDeviceAudience()) fail('IBKR enrolment audience differs');
   const age = now - Date.parse(enrollment.createdAt);
   if (!Number.isFinite(age) || age < -30_000 || age > 86_400_000)
-    fail('IBKR device enrollment expired; create a fresh public enrollment');
+    fail('IBKR device enrolment expired; create a fresh public enrolment');
   const key = publicKeyFrom(enrollment.publicKey);
   const { signature, ...body } = enrollment;
-  if (!verify(null, messageBytes(body), key, base64(signature, 64, 'Invalid enrollment signature')))
-    fail('Invalid IBKR enrollment signature');
+  if (!verify(null, messageBytes(body), key, base64(signature, 64, 'Invalid enrolment signature')))
+    fail('Invalid IBKR enrolment signature');
   return {
     ...body,
     keyFingerprint: createHash('sha256')

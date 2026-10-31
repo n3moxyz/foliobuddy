@@ -947,7 +947,7 @@ export function PositionTable({
               {formattedGroupPnL && (
                 <span
                   className={getPnLColorClass(groupPnL.pnlUsd)}
-                  aria-label={`Unrealized P and L ${formattedGroupPnL}`}
+                  aria-label={`Unrealised P and L ${formattedGroupPnL}`}
                 >
                   {formattedGroupPnL}
                 </span>
@@ -1067,7 +1067,7 @@ export function PositionTable({
     const latestCancelableHistoryId =
       latestHistoryEntry && latestHistoryEntry.mode !== 'reset' ? latestHistoryEntry.id : null;
 
-    // "Sold for X · Realized ±Y" — the realized figure carries its own profit/loss
+    // "Sold for X · Realised ±Y" — the realized figure carries its own profit/loss
     // tint, independent of the row's direction tint (a reduce is red even when it won).
     const renderSaleDetail = (proceedsUsd: number, costBasisUsd: number) => {
       const realizedUsd = proceedsUsd - costBasisUsd;
@@ -1075,7 +1075,7 @@ export function PositionTable({
         <>
           Sold for{' '}
           {formatCurrency(convert(proceedsUsd), currency, getSmartDecimals(convert(proceedsUsd)))}
-          {' · Realized '}
+          {' · Realised '}
           <span className={realizedUsd >= 0 ? 'text-profit' : 'text-loss'}>
             {formatSignedCurrency(
               convert(realizedUsd),
@@ -1381,7 +1381,7 @@ export function PositionTable({
           renderPositionSection({
             id: cexId,
             label: 'CEX',
-            helpContent: 'Centralized exchange: assets held on platforms like Binance or Coinbase',
+            helpContent: 'Centralised exchange: assets held on platforms like Binance or Coinbase',
             positions: cexPositions,
             total: cexTotal,
             sortState: cexSort,
@@ -1589,7 +1589,7 @@ export function PositionTable({
                     })}
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Unrealized P&L</p>
+                    <p className="text-xs text-muted-foreground">Unrealised P&L</p>
                     <p
                       className={`font-mono font-medium ${getPnLColorClass(viewPosition.unrealizedPnL)}`}
                     >
@@ -1823,7 +1823,7 @@ export function PositionTable({
               onClick={handleCancelHistoryEntry}
               disabled={cancelPositionHistoryMutation.isPending}
             >
-              {cancelPositionHistoryMutation.isPending ? 'Canceling...' : 'Cancel Entry'}
+              {cancelPositionHistoryMutation.isPending ? 'Cancelling...' : 'Cancel Entry'}
             </Button>
           </DialogFooter>
         </DialogContent>

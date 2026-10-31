@@ -24,7 +24,7 @@ one-click **Sync IBKR** control still runs on the Mac paired with that browser.
    directory. Never paste a private key, Clerk token, broker credential or `.env`.
 3. In the signed-in FolioBuddy portfolio, edit the owned **IBKR cash & debt**
    position. Under **Daily sync → Connect a Mac**, paste the public connection
-   details, review the scope and select **Authorize daily IBKR sync**. This binds
+   details, review the scope and select **Authorise daily IBKR sync**. This binds
    that device to the signed-in owner and that exact cash anchor. Public enrollment
    expires after 24 hours; rerun setup to refresh it without replacing the key.
 4. From that Mac’s workspace, run
