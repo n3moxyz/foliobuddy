@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 
@@ -12,8 +13,10 @@ router.get('/db', async (req, res) => {
     res.json({ status: 'ok', latency_ms });
   } catch (error) {
     const latency_ms = Date.now() - start;
-    const message = error instanceof Error ? error.message : 'Unknown database error';
-    res.status(503).json({ status: 'error', latency_ms, message });
+    // Anyone can call this route, and Prisma connection errors name the private
+    // database host and port. Keep the cause in the server log only.
+    logger.error('[Health] Database check failed:', error);
+    res.status(503).json({ status: 'error', latency_ms, message: 'Database unavailable' });
   }
 });
 

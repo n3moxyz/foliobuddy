@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import { Prisma } from '@prisma/client';
 
-// Use vi.hoisted so the mock fn is available at hoist time
-const { mockQueryRawUnsafe } = vi.hoisted(() => ({
+// Use vi.hoisted so the mock fns are available at hoist time
+const { mockQueryRawUnsafe, mockLogger } = vi.hoisted(() => ({
   mockQueryRawUnsafe: vi.fn(),
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
 vi.mock('../../lib/prisma.js', () => ({
@@ -13,7 +15,19 @@ vi.mock('../../lib/prisma.js', () => ({
   },
 }));
 
+vi.mock('../../lib/logger.js', () => ({ logger: mockLogger }));
+
 import healthRouter from '../health.js';
+
+// Prisma's P1001 text names the database host and port.
+const PRIVATE_DB_HOST = 'postgres.internal.example';
+const connectionError = () =>
+  new Prisma.PrismaClientInitializationError(
+    `Can't reach database server at \`${PRIVATE_DB_HOST}\`:\`5432\`\n\n` +
+      `Please make sure your database server is running at \`${PRIVATE_DB_HOST}\`:\`5432\`.`,
+    'test',
+    'P1001'
+  );
 
 function createApp() {
   const app = express();
@@ -38,17 +52,24 @@ describe('GET /api/health/db', () => {
     expect(res.body.latency_ms).toBeGreaterThanOrEqual(0);
   });
 
-  it('returns 503 with status error and message when DB is unreachable', async () => {
-    mockQueryRawUnsafe.mockRejectedValue(new Error('Connection refused'));
+  it('returns 503 with a fixed message and logs the raw error when DB is unreachable', async () => {
+    const error = connectionError();
+    mockQueryRawUnsafe.mockRejectedValue(error);
 
     const app = createApp();
     const res = await request(app).get('/api/health/db');
 
     expect(res.status).toBe(503);
-    expect(res.body.status).toBe('error');
-    expect(res.body.message).toBe('Connection refused');
-    expect(typeof res.body.latency_ms).toBe('number');
+    // Exact shape, so no extra field can carry the raw error text.
+    expect(res.body).toEqual({
+      status: 'error',
+      latency_ms: expect.any(Number),
+      message: 'Database unavailable',
+    });
     expect(res.body.latency_ms).toBeGreaterThanOrEqual(0);
+    expect(res.text).not.toContain(PRIVATE_DB_HOST);
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
+    expect(mockLogger.error).toHaveBeenCalledWith(expect.any(String), error);
   });
 
   it('includes latency_ms as a non-negative number in error responses', async () => {

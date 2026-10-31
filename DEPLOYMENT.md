@@ -137,7 +137,7 @@ curl https://api.foliobuddy.xyz/health
 
 # 2. Full chain via Vercel rewrite — this is what actually breaks when VITE_API_URL drifts
 curl https://foliobuddy.xyz/api/v1/health/db
-# → {"status":"healthy",...}
+# → {"status":"ok","latency_ms":...}
 
 # 3. Visit https://foliobuddy.xyz/ — confirm:
 #    - Status badge shows "Live" (not "Offline") — WebSocket connected
@@ -145,6 +145,7 @@ curl https://foliobuddy.xyz/api/v1/health/db
 ```
 
 If (2) returns 404, check the frontend host's `VITE_API_URL` value and redeploy after changing it.
+If (2) returns 503, the response says only `Database unavailable`. The backend log's `[Health] Database check failed` line has the cause.
 
 ## Env var change workflow
 
