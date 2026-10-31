@@ -95,7 +95,7 @@ export function CustodyCheckbox({
                   onCancelAddingName();
                 }
               }}
-              placeholder="Enter name..."
+              placeholder="Enter name…"
               aria-label="Custody person name"
             />
             <Button type="button" size="sm" onClick={onAddNewName} disabled={!newNameInput.trim()}>

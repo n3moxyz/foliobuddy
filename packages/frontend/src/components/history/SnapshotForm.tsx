@@ -170,7 +170,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
             id="notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any notes about this snapshot..."
+            placeholder="Any notes about this snapshot…"
             rows={2}
           />
         </div>
@@ -180,7 +180,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
             Cancel
           </Button>
           <Button type="submit" disabled={!canSubmit}>
-            {isLoading ? 'Saving...' : 'Update'}
+            {isLoading ? 'Saving…' : 'Update'}
           </Button>
         </div>
       </form>
@@ -306,7 +306,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any notes about this snapshot..."
+              placeholder="Any notes about this snapshot…"
               rows={2}
             />
           </div>
@@ -316,7 +316,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
               Cancel
             </Button>
             <Button type="submit" disabled={!canSubmit}>
-              {isLoading ? 'Saving...' : 'Add Snapshot'}
+              {isLoading ? 'Saving…' : 'Add Snapshot'}
             </Button>
           </div>
         </form>

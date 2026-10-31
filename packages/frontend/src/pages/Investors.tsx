@@ -504,7 +504,7 @@ export default function Investors() {
                   deleteMutation.isPending || (investors && investors.length > 2 && !reassignToId)
                 }
               >
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
               </Button>
             </div>
           </div>
@@ -632,7 +632,7 @@ function InvestorForm({
             <p id="investor-stake-hint" role="status" className="text-xs text-muted-foreground">
               {suggestedStake > 0
                 ? 'Automatically assigned remaining stake'
-                : 'No stake is available. Reduce an existing investor’s stake, then add the new investor.'}
+                : "No stake is available. Reduce an existing investor's stake, then add the new investor."}
             </p>
           </>
         )}
@@ -674,8 +674,8 @@ function InvestorForm({
         >
           {isLoading
             ? isEditing
-              ? 'Saving...'
-              : 'Adding...'
+              ? 'Saving…'
+              : 'Adding…'
             : isEditing
               ? 'Save Changes'
               : 'Add Investor'}

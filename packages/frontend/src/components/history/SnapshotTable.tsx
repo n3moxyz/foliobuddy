@@ -317,7 +317,7 @@ export function SnapshotTable({
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="text-xs">
-                                  Snapshot captured a zero value - positions may have been empty
+                                  Snapshot captured a zero value — positions may have been empty
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -408,7 +408,7 @@ export function SnapshotTable({
                           <div className="p-4">
                             {isLoadingPos ? (
                               <div className="text-center py-4 text-muted-foreground text-sm">
-                                Loading positions...
+                                Loading positions…
                               </div>
                             ) : positions && positions.length > 0 ? (
                               <div className="space-y-2">

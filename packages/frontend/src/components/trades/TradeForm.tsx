@@ -319,7 +319,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="submit" disabled={isLoading || !isFormValid}>
-                {isLoading ? 'Saving...' : isEditing ? 'Update Trade' : 'Log Trade'}
+                {isLoading ? 'Saving…' : isEditing ? 'Update Trade' : 'Log Trade'}
               </Button>
             </div>
           </form>

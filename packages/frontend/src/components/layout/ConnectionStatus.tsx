@@ -14,7 +14,7 @@ const statusConfig = {
     pulseClass: 'animate-pulse',
   },
   connecting: {
-    label: 'Connecting...',
+    label: 'Connecting…',
     dotClass: 'bg-warning',
     pulseClass: '',
   },
@@ -64,7 +64,7 @@ export function ConnectionStatus({ status, lastUpdate }: ConnectionStatusProps) 
               {status === 'connected'
                 ? 'Real-time updates active'
                 : status === 'connecting'
-                  ? 'Establishing connection...'
+                  ? 'Establishing connection…'
                   : 'Using polling fallback'}
             </p>
             <p className="text-muted-foreground mt-1">

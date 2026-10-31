@@ -220,7 +220,7 @@ function IbkrCashEditor({
             {cash.source === 'ibkr' ? 'Broker capture' : 'Manual balances'} ·{' '}
             {formatDateTime(cash.capturedAt)}.
             {cash.source === 'ibkr' &&
-              ' Net cash uses IBKR’s reported total. Currency conversions can differ slightly because FX quotes refresh separately.'}
+              " Net cash uses IBKR's reported total. Currency conversions can differ slightly because FX quotes refresh separately."}
           </p>
         </>
       ) : (

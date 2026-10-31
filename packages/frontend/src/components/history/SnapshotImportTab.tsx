@@ -58,7 +58,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
       const response = await api.bulkImportSnapshots(parsedSnapshots);
       setImportResults(response.results.map((r) => ({ ...r, label: r.timestamp })));
     } catch (e) {
-      setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
+      setParseError(e instanceof Error ? e.message : 'Import failed — please try again');
     } finally {
       setImporting(false);
     }
@@ -141,7 +141,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              Importing...
+              Importing…
             </>
           ) : (
             <>

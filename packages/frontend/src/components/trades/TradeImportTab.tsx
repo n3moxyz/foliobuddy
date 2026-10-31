@@ -87,7 +87,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
       const response = await api.bulkImportTrades(parsedTrades);
       setImportResults(response.results.map((r) => ({ ...r, label: r.symbol })));
     } catch (e) {
-      setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
+      setParseError(e instanceof Error ? e.message : 'Import failed — please try again');
     } finally {
       setImporting(false);
     }
@@ -169,7 +169,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              Importing...
+              Importing…
             </>
           ) : (
             <>

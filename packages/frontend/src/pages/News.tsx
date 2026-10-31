@@ -244,7 +244,7 @@ export default function News() {
               disabled={activeFetching}
             >
               <RefreshCw className={cn('h-4 w-4 mr-1', activeFetching && 'animate-spin')} />
-              {activeFetching ? 'Refreshing...' : 'Refresh'}
+              {activeFetching ? 'Refreshing…' : 'Refresh'}
             </Button>
           </>
         }

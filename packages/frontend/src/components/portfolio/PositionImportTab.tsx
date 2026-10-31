@@ -117,7 +117,7 @@ export function PositionImportTab({
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              Importing...
+              Importing…
             </>
           ) : (
             <>

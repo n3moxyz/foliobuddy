@@ -147,7 +147,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={updateNav.isPending}>
-              {updateNav.isPending ? 'Saving...' : 'Save NAV'}
+              {updateNav.isPending ? 'Saving…' : 'Save NAV'}
             </Button>
           </div>
         </form>
