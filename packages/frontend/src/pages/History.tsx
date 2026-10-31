@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useSnapshots, useDeleteSnapshot, useDeleteAllSnapshots } from '@/hooks/useSnapshots';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { SnapshotForm } from '@/components/history/SnapshotForm';
 import { SnapshotTable } from '@/components/history/SnapshotTable';
+import { resolveSnapshotSchedule } from '@/components/history/snapshotTiming';
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Plus, Trash2, Copy, Check, MoreVertical } from 'lucide-react';
@@ -77,6 +79,9 @@ export default function History() {
   const { currency } = useCurrencyStore();
   const { formatCurrency } = useMoneyFormatter();
   const { data: summary } = usePortfolioSummary();
+  // The live row follows the person's snapshot schedule, or 5am Singapore while it loads or fails.
+  const { data: preferences } = useUserPreferences();
+  const snapshotSchedule = resolveSnapshotSchedule(preferences);
   // Fetch enough history for source counts and the current local scale dataset.
   // isPending, not isLoading: a first load paused offline or in a hidden tab has
   // no data yet, so it must show the skeleton rather than an empty state.
@@ -230,6 +235,7 @@ export default function History() {
               isLoading={snapshotsPending}
               displayValue={displayValue}
               liveValueUsd={summary?.totalValueUsd}
+              snapshotSchedule={snapshotSchedule}
               onEdit={setEditingSnapshot}
               onDelete={setDeletingSnapshot}
               onAddSnapshot={() => setShowAddForm(true)}

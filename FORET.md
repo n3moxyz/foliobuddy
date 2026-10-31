@@ -1,5 +1,27 @@
 # FOR[ET].md - FolioBuddy
 
+## History live row follows the snapshot schedule (31 October 2026)
+
+The History page shows a "PENDING" live row until the day's automatic snapshot runs.
+That row kept the old fixed rule after snapshot times became per-user in August.
+It asked two questions in Singapore time: is it before 5 AM, and is there a snapshot
+on today's Singapore date? For someone on 8 AM New York, the live row showed from
+midday to late afternoon, after their snapshot had run. It never showed in the early
+morning, while their snapshot was still due.
+
+The live row now uses the person's saved hour and timezone. It uses 5 AM Singapore
+while preferences load or fail. `components/history/snapshotTiming.ts` finds today's
+snapshot time with the rule from the scheduler's `scheduledSnapshotAt()`: the first
+15-minute step of the local day at or after the chosen hour. So a skipped DST hour runs
+at the first valid time after the jump, and a repeated hour runs at its first occurrence.
+"Today" is the calendar date in the chosen timezone. A one-off parity run compared the
+two implementations around every 2026 DST change in 14 timezones. It found no differences.
+The row's text still says "5am SGT". A separate wording review covers that text.
+
+The lesson: when a server rule becomes per-user, search the frontend for copies of the
+old constant. A small UI hint can hide a whole schedule. Change `snapshotTiming.ts`
+whenever the rule in `lib/snapshotSchedule.ts` changes.
+
 ## Reload recovery and current cash FX (29 October 2026)
 
 Pending imports now survive a full reload in the same tab and sign-in session.
