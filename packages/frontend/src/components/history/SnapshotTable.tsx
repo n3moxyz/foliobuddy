@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { formatDate } from '@/lib/utils';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { api } from '@/lib/api';
-import { isBeforeDailySnapshotTime, isSameSingaporeDay } from './snapshotTiming';
+import { isBeforeDailySnapshotTime, isSameLocalDay, type SnapshotSchedule } from './snapshotTiming';
 import {
   DEFAULT_SNAPSHOT_HOUR,
   DEFAULT_SNAPSHOT_TIMEZONE,
@@ -41,6 +41,8 @@ interface SnapshotTableProps {
   isLoading: boolean;
   displayValue: (value: number) => string;
   liveValueUsd?: number;
+  /** The person's daily snapshot schedule, which decides when the live row shows. */
+  snapshotSchedule: SnapshotSchedule;
   onEdit: (snapshot: Snapshot) => void;
   onDelete: (snapshot: Snapshot) => void;
   onAddSnapshot?: () => void;
@@ -78,6 +80,7 @@ export function SnapshotTable({
   isLoading,
   displayValue,
   liveValueUsd,
+  snapshotSchedule,
   onEdit,
   onDelete,
   onAddSnapshot,
@@ -92,13 +95,15 @@ export function SnapshotTable({
   const [liveRowTimestamp] = useState(() => new Date().toISOString());
 
   const now = new Date();
-  // Check against the Singapore calendar day because the automatic schedule is defined in SGT.
+  // Check against the calendar day in the person's snapshot timezone, as the scheduler does.
   const hasTodaySnapshot = snapshots.some((snapshot) =>
-    isSameSingaporeDay(new Date(snapshot.timestamp), now)
+    isSameLocalDay(new Date(snapshot.timestamp), now, snapshotSchedule.timeZone)
   );
   // Show live row if: before snapshot time, no today snapshot, and we have live value
   const showLiveRow =
-    isBeforeDailySnapshotTime(now) && !hasTodaySnapshot && liveValueUsd !== undefined;
+    isBeforeDailySnapshotTime(now, snapshotSchedule) &&
+    !hasTodaySnapshot &&
+    liveValueUsd !== undefined;
 
   const toggleExpand = async (snapshotId: string) => {
     const newExpanded = new Set(expandedSnapshots);

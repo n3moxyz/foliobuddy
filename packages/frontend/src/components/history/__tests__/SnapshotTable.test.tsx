@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { Snapshot, SnapshotPosition } from '@/lib/types';
 import { SnapshotTable } from '../SnapshotTable';
+import { DEFAULT_SNAPSHOT_SCHEDULE, type SnapshotSchedule } from '../snapshotTiming';
 import { MASKED_MONEY_VALUE, usePrivacyStore } from '@/stores/privacyStore';
 
 afterEach(() => act(() => usePrivacyStore.getState().setValuesHidden(false)));
@@ -43,6 +44,7 @@ function renderTable() {
       snapshots={[automaticSnapshot]}
       isLoading={false}
       displayValue={(value) => `$${value}`}
+      snapshotSchedule={DEFAULT_SNAPSHOT_SCHEDULE}
       onEdit={vi.fn()}
       onDelete={vi.fn()}
     />
@@ -150,5 +152,50 @@ describe('SnapshotTable copy positions', () => {
     const [known, unknown] = JSON.parse(writeText.mock.calls[0][0]);
     expect(known.asset.category).toBe('EQUITY');
     expect(unknown.asset).not.toHaveProperty('category');
+  });
+});
+
+describe('SnapshotTable live row', () => {
+  // 11:30Z is 07:30 in New York (before 8am) but 19:30 in Singapore (after 5am).
+  const NEW_YORK_8AM: SnapshotSchedule = { hour: 8, timeZone: 'America/New_York' };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-07-15T11:30:00.000Z'));
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  function renderLiveTable(snapshotSchedule: SnapshotSchedule, snapshots: Snapshot[] = []) {
+    return render(
+      <SnapshotTable
+        snapshots={snapshots}
+        isLoading={false}
+        displayValue={(value) => `$${value}`}
+        liveValueUsd={1234}
+        snapshotSchedule={snapshotSchedule}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+  }
+
+  it("shows the pending row until the person's own snapshot time", () => {
+    // 02:00Z is 22:00 yesterday in New York, but already today in Singapore.
+    const lastNight = { ...automaticSnapshot, timestamp: '2026-07-15T02:00:00.000Z' };
+    renderLiveTable(NEW_YORK_8AM, [lastNight]);
+    expect(screen.getByText('PENDING')).toBeInTheDocument();
+  });
+
+  it('hides the pending row on the default schedule once 5am Singapore has passed', () => {
+    renderLiveTable(DEFAULT_SNAPSHOT_SCHEDULE);
+    expect(screen.queryByText('PENDING')).not.toBeInTheDocument();
+  });
+
+  it("hides the pending row once a snapshot exists for today in the person's timezone", () => {
+    // 10:00Z is 06:00 today in New York.
+    const earlierToday = { ...automaticSnapshot, timestamp: '2026-07-15T10:00:00.000Z' };
+    renderLiveTable(NEW_YORK_8AM, [earlierToday]);
+    expect(screen.queryByText('PENDING')).not.toBeInTheDocument();
   });
 });
