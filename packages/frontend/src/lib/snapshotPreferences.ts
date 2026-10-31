@@ -1,16 +1,20 @@
 /** Pure helpers for the Settings "Daily snapshot" section. */
 
+import { formatTime } from './utils';
+
 export const DEFAULT_SNAPSHOT_HOUR = 5;
 export const DEFAULT_SNAPSHOT_TIMEZONE = 'Asia/Singapore';
 
-/** 0..23 as select options with a friendly 12h label plus 24h hint. */
+/** A whole hour on the style guide's 12-hour clock: 5 → "5:00am", 0 → "12:00am". */
+export function formatHourLabel(hour: number): string {
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  return `${twelve}:00${hour < 12 ? 'am' : 'pm'}`;
+}
+
+/** 0..23 as select options with 12-hour labels. */
 export const SNAPSHOT_HOUR_OPTIONS: ReadonlyArray<{ value: number; label: string }> = Array.from(
   { length: 24 },
-  (_, hour) => {
-    const period = hour < 12 ? 'AM' : 'PM';
-    const twelve = hour % 12 === 0 ? 12 : hour % 12;
-    return { value: hour, label: `${twelve}:00 ${period}` };
-  }
+  (_, hour) => ({ value: hour, label: formatHourLabel(hour) })
 );
 
 export interface TimeZoneGroup {
@@ -86,6 +90,13 @@ export function formatTimeZoneLabel(zone: string): string {
   return city.replace(/_/g, ' ');
 }
 
+/** A person's daily snapshot time: "5:00am Singapore time", or "5:00am UTC". */
+export function describeSnapshotTime(hour: number, zone: string): string {
+  return zone === 'UTC'
+    ? `${formatHourLabel(hour)} UTC`
+    : `${formatHourLabel(hour)} ${formatTimeZoneLabel(zone)} time`;
+}
+
 /** Short UTC offset ("UTC+8", "UTC−4") for a zone at `at`, or '' if unavailable. */
 export function formatUtcOffset(zone: string, at: Date = new Date()): string {
   try {
@@ -102,7 +113,7 @@ export function formatUtcOffset(zone: string, at: Date = new Date()): string {
 
 /**
  * Describe the next scheduled snapshot in the *viewer's* local time, e.g.
- * "Next snapshot: today at 05:00 (Singapore) · 21:00 your time".
+ * "Next snapshot: today at 5:00am Singapore time · 9:00pm your time".
  * Returns null when the zone can't be formatted.
  */
 export function describeNextSnapshot(
@@ -111,7 +122,6 @@ export function describeNextSnapshot(
   now: Date = new Date()
 ): { local: string; viewer: string; isToday: boolean } | null {
   if (!isKnownTimeZone(zone)) return null;
-  const hh = String(hour).padStart(2, '0');
 
   // Find the wall-clock hour in `zone` right now to decide today vs tomorrow.
   const zoneHourNow = Number(
@@ -136,11 +146,5 @@ export function describeNextSnapshot(
     candidate = new Date(candidate.getTime() + 60 * 60 * 1000);
   }
 
-  const viewer = new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(candidate);
-
-  return { local: `${hh}:00`, viewer, isToday };
+  return { local: formatHourLabel(hour), viewer: formatTime(candidate), isToday };
 }

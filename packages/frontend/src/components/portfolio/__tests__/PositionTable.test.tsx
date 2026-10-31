@@ -244,5 +244,5 @@ it('updates open details after an unchanged native NAV is revalued with new FX',
   expect(dialog.getByText('$4.3187')).toBeInTheDocument();
   expect(dialog.getByText(/Refresh failed/)).toBeInTheDocument();
   expect(dialog.getByText(/Published NAV.*6.0462/)).toBeInTheDocument();
-  expect(dialog.getByText(/NAV as of 09 Sep/)).toBeInTheDocument();
+  expect(dialog.getByText(/NAV as of 9 Sept? 2026/)).toBeInTheDocument();
 });

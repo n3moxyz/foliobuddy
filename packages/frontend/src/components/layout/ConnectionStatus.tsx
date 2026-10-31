@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn, formatTime } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ConnectionStatus as ConnectionStatusType } from '@/hooks/useWebSocket';
 
@@ -35,7 +35,7 @@ function formatLastUpdate(date: Date | null): string {
   if (diffSec < 5) return 'Just now';
   if (diffSec < 60) return `${diffSec}s ago`;
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-  return date.toLocaleTimeString();
+  return formatTime(date);
 }
 
 export function ConnectionStatus({ status, lastUpdate }: ConnectionStatusProps) {

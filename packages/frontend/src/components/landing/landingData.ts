@@ -87,7 +87,7 @@ export const BENCHMARK_SERIES: SeriesPoint[] = buildSeries(
 
 /** Month labels for the illustrative year (no live dates — the story is timeless). */
 export const SERIES_MONTHS = [
-  'Sep',
+  'Sept',
   'Oct',
   'Nov',
   'Dec',

@@ -86,12 +86,11 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
 });
 
-const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-  hour: '2-digit',
+// Style guide: day first, 12-hour clock, lower-case am/pm with no space ("5 Sept 2026, 2:05pm").
+const TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  hour: 'numeric',
   minute: '2-digit',
+  hourCycle: 'h12',
 });
 
 export function formatCurrency(
@@ -250,12 +249,25 @@ export function formatDate(date: Date | string | null | undefined): string {
   return DATE_FORMATTER.format(d);
 }
 
+/** 12-hour clock time: "2:05pm", "12:00am". */
+export function formatTime(date: Date | string | null | undefined): string {
+  if (!date) return '-';
+
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const parts = TIME_FORMATTER.formatToParts(d);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? '';
+
+  return `${part('hour')}:${part('minute')}${part('dayPeriod').toLowerCase()}`;
+}
+
+/** "5 Sept 2026, 2:05pm" */
 export function formatDateTime(date: Date | string | null | undefined): string {
   if (!date) return '-';
 
   const d = typeof date === 'string' ? new Date(date) : date;
 
-  return DATE_TIME_FORMATTER.format(d);
+  return `${DATE_FORMATTER.format(d)}, ${formatTime(d)}`;
 }
 
 /** Compact "2h ago" style timestamps; falls back to formatDate beyond a week. */

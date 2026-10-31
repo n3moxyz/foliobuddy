@@ -33,7 +33,7 @@ afterEach(() => {
 describe('daily NAV display', () => {
   it('renders the source valuation day, distinct check time, four decimals and exact class', () => {
     render(<NavStatus asset={asset} detailed />);
-    expect(screen.getByText(/NAV as of 09 Sept? 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/NAV as of 9 Sept? 2026/)).toBeInTheDocument();
     expect(screen.getByText(/Last checked/)).toBeInTheDocument();
     expect(screen.getByText('Published NAV: S$6.0462')).toBeInTheDocument();
     expect(screen.getByText('ISIN SG9999004360')).toBeInTheDocument();
@@ -41,7 +41,7 @@ describe('daily NAV display', () => {
   it('retains the actual date and shows failure without claiming a new quote', () => {
     render(<NavStatus asset={{ ...asset, priceCheckStatus: 'error' }} detailed />);
     expect(screen.getByText('Refresh failed · last known NAV')).toBeInTheDocument();
-    expect(screen.getByText(/NAV as of 09 Sept? 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/NAV as of 9 Sept? 2026/)).toBeInTheDocument();
   });
   it('does not use a legacy fetch time as the NAV date', () => {
     render(<NavStatus asset={{ ...asset, priceAsOf: null }} />);
@@ -65,6 +65,6 @@ describe('daily NAV display', () => {
     usePrivacyStore.setState({ valuesHidden: true });
     render(<NavStatus asset={asset} detailed />);
     expect(screen.getByText('Published NAV: S$6.0462')).toBeInTheDocument();
-    expect(screen.getByText(/NAV as of 09 Sept? 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/NAV as of 9 Sept? 2026/)).toBeInTheDocument();
   });
 });

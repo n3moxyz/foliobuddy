@@ -152,7 +152,7 @@ export function NetWorthCard({
   const stats: NetWorthStat[] = [
     {
       label: 'YTD P&L',
-      help: 'Unrealized profit or loss since January 1',
+      help: 'Unrealized profit or loss since 1 Jan',
       value: (
         <>
           {formatCurrency(animatedPnl, currency, 0)}

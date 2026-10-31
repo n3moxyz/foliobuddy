@@ -104,7 +104,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
         <h4 id={headingId} className="text-sm font-medium">
           Daily sync
         </h4>
-        <span className="text-xs text-muted-foreground">6:00 AM · Singapore</span>
+        <span className="text-xs text-muted-foreground">6:00am · Singapore</span>
       </div>
       {devices.isPending ? (
         <p role="status" className="text-sm text-muted-foreground">
@@ -189,7 +189,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
             Your original USD purchase records and trade histories stay intact.
           </p>
           <p className="text-xs text-muted-foreground">
-            Runs every morning at 6:00 AM Singapore time. {review.name} must be awake and connected
+            Runs every morning at 6:00am Singapore time. {review.name} must be awake and connected
             to your IBKR account. You can disconnect it here at any time.
           </p>
           <div className="flex flex-wrap gap-2">
