@@ -71,11 +71,11 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
       if (!isAuthSessionCurrent(session)) return;
       client.setQueryData<IbkrSyncDevice[]>(queryKey, (previous) => [saved, ...(previous ?? [])]);
       reset();
-      toast.success(`${saved.name} authorized for daily IBKR sync`);
+      toast.success(`${saved.name} authorised for daily IBKR sync`);
       void client.invalidateQueries({ queryKey: ['ibkr-devices'] });
     } catch (e) {
       if (!isAuthSessionCurrent(session)) return;
-      setError(e instanceof Error ? e.message : 'The connection could not be authorized.');
+      setError(e instanceof Error ? e.message : 'The connection could not be authorised.');
     }
   }
   async function disconnect() {
@@ -183,7 +183,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
         </>
       ) : review ? (
         <div className="space-y-3">
-          <p className="text-sm font-medium">Authorize {review.name}</p>
+          <p className="text-sm font-medium">Authorise {review.name}</p>
           <p className="text-sm text-muted-foreground">
             Only your owned IBKR shares, native cost bases and currency cash or debt can be updated.
             Your original USD purchase records and trade histories stay intact.
@@ -194,7 +194,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" disabled={busy} onClick={() => void authorize()}>
-              {register.isPending ? 'Authorizing…' : 'Authorize daily IBKR sync'}
+              {register.isPending ? 'Authorising…' : 'Authorise daily IBKR sync'}
             </Button>
             <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={reset}>
               Cancel

@@ -8,8 +8,8 @@ describe('PerformersCard', () => {
   it.each([
     ['top', false, 'No owned positions yet'],
     ['worst', false, 'No owned positions yet'],
-    ['top', true, 'No positions with unrealized gains'],
-    ['worst', true, 'No positions with unrealized losses'],
+    ['top', true, 'No positions with unrealised gains'],
+    ['worst', true, 'No positions with unrealised losses'],
   ] as const)(
     'explains an empty %s list with owned positions=%s',
     (type, hasOwnedPositions, message) => {

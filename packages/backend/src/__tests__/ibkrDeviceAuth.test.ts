@@ -70,13 +70,14 @@ describe('IBKR device enrollment', () => {
   });
 
   it('rejects changed enrollment scope and unknown fields', () => {
+    // Messages use British spelling ("enrolment"); code names keep "enrollment".
     expect(() => verifyIbkrEnrollment({ ...signedEnrollment(), name: 'Changed' }, now)).toThrow(
-      /enrollment/i
+      /enrolment/i
     );
     expect(() => verifyIbkrEnrollment({ ...signedEnrollment(), userId: 'other' }, now)).toThrow();
     expect(() =>
       verifyIbkrEnrollment({ ...signedEnrollment(), cashPositionId: 'different-cash' }, now)
-    ).toThrow(/enrollment/i);
+    ).toThrow(/enrolment/i);
   });
 
   it('requires a bounded cash anchor in the signed enrollment', () => {

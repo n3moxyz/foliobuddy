@@ -2253,7 +2253,7 @@ function cancelDemoPositionHistory(positionId: string, historyId: string) {
   }
 
   if (historyEntry.mode === 'reset') {
-    throw new Error('Manual total reset entries cannot be canceled from history');
+    throw new Error('Manual total reset entries cannot be cancelled from history');
   }
 
   const timestamp = new Date().toISOString();
@@ -2271,7 +2271,7 @@ function cancelDemoPositionHistory(positionId: string, historyId: string) {
       )
       .forEach((relatedHistory) => {
         if (relatedHistory.mode === 'reset') {
-          throw new Error('Manual total reset entries cannot be canceled from history');
+          throw new Error('Manual total reset entries cannot be cancelled from history');
         }
         const relatedPosition = demoPositions.find(
           (position) => position.id === relatedHistory.positionId
@@ -2292,7 +2292,7 @@ function cancelDemoPositionHistory(positionId: string, historyId: string) {
       })[0];
 
     if (latestHistoryEntry?.id !== entryToCancel.history.id) {
-      throw new Error('Only the latest position history entry can be canceled');
+      throw new Error('Only the latest position history entry can be cancelled');
     }
 
     const currentTotalCostUsd =

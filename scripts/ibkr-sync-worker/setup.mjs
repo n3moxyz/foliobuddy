@@ -254,7 +254,7 @@ export async function setup(args = process.argv.slice(2)) {
     `Public enrollment is ready at ${path.join(workerDirectory(root), 'enrollment.json')}. Register that public JSON in the owned IBKR cash panel within 24 hours. The private key stays on this Mac.\n`
   );
   process.stdout.write(
-    'Preparation does not start or replace a schedule. After enrollment and a verified --once run, use --enable.\n'
+    'Preparation does not start or replace a schedule. After enrolment and a verified --once run, use --enable.\n'
   );
 }
 

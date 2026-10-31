@@ -54,7 +54,7 @@ export function CustodyCheckbox({
         </label>
         {showDescription && (
           <p className="mt-1 text-xs text-muted-foreground leading-tight">
-            Won&apos;t count toward net worth, P&amp;L, or exposure
+            Won&apos;t count towards net worth, P&amp;L, or exposure
           </p>
         )}
         {isCustody && !addingNewName && (

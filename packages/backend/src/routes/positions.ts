@@ -519,7 +519,7 @@ router.post('/bulk', async (req, res, next) => {
         );
         if (identityMatches.length > 1 && !canonical) {
           throw new AppError(
-            'Multiple catalog records match this share class; reconcile them before importing',
+            'Multiple catalogue records match this share class; reconcile them before importing',
             409
           );
         }
@@ -704,7 +704,7 @@ router.delete('/:id/history/:historyId', async (req, res, next) => {
       }
 
       if (historyEntry.mode === 'reset') {
-        throw new AppError('Manual total reset entries cannot be canceled from history', 400);
+        throw new AppError('Manual total reset entries cannot be cancelled from history', 400);
       }
 
       const entriesToCancel = [{ history: historyEntry, position: existing }];
@@ -720,7 +720,7 @@ router.delete('/:id/history/:historyId', async (req, res, next) => {
 
         for (const relatedHistoryEntry of relatedHistoryEntries) {
           if (relatedHistoryEntry.mode === 'reset') {
-            throw new AppError('Manual total reset entries cannot be canceled from history', 400);
+            throw new AppError('Manual total reset entries cannot be cancelled from history', 400);
           }
 
           const relatedPosition = await tx.position.findFirst({
@@ -751,7 +751,7 @@ router.delete('/:id/history/:historyId', async (req, res, next) => {
         });
 
         if (latestHistoryEntry?.id !== entryToCancel.history.id) {
-          throw new AppError('Only the latest position history entry can be canceled', 400);
+          throw new AppError('Only the latest position history entry can be cancelled', 400);
         }
 
         const currentTotalCostUsd =

@@ -46,8 +46,8 @@ export function PerformersCard({
           {!hasOwnedPositions
             ? 'No owned positions yet'
             : type === 'top'
-              ? 'No positions with unrealized gains'
-              : 'No positions with unrealized losses'}
+              ? 'No positions with unrealised gains'
+              : 'No positions with unrealised losses'}
         </p>
       </div>
     );

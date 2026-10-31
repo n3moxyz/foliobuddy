@@ -126,7 +126,7 @@ export async function enrollIbkrDevice(userId: string, cashPositionId: string, r
   const enrollment = verifyIbkrEnrollment(raw);
   requireIbkr(
     enrollment.cashPositionId === cashPositionId,
-    'IBKR enrollment cash position differs from the requested anchor'
+    'IBKR enrolment cash position differs from the requested anchor'
   );
   return navTransaction(async (tx) => {
     const anchor = await ownedIbkrCash(tx, userId, cashPositionId);
@@ -147,11 +147,11 @@ export async function enrollIbkrDevice(userId: string, cashPositionId: string, r
     });
     requireIbkr(
       !existing,
-      'An active or previously authorized device already uses this anchor or key'
+      'An active or previously authorised device already uses this anchor or key'
     );
     requireIbkr(
       (await tx.ibkrSyncDevice.count({ where: { userId, revokedAt: null } })) < maxDeviceGrants,
-      'Too many active IBKR device grants; disconnect one before authorizing another device'
+      'Too many active IBKR device grants; disconnect one before authorising another device'
     );
     requireIbkr(
       (await tx.ibkrSyncDevice.count({ where: { userId, cashPositionId } })) < maxDeviceGrants,

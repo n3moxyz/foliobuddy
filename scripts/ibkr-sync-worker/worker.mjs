@@ -177,7 +177,7 @@ export async function runWorker({
     try {
       if ((await broker.connect()) !== config.connectorFingerprint)
         throw new Error(
-          'The connected IBKR account changed. Reconnect and authorize the intended device before syncing.'
+          'The connected IBKR account changed. Reconnect and authorise the intended device before syncing.'
         );
       capture = await collector(broker, save);
     } finally {
@@ -200,7 +200,7 @@ export async function runWorker({
     stage = 'checkpoint';
     const verified = verifyCheckpoint(preview.backup, capture, grant.cashPositionId, preview.state);
     if (verified.owner !== grant.userId)
-      throw new Error('The checkpoint owner differs from the authorized device grant.');
+      throw new Error('The checkpoint owner differs from the authorised device grant.');
     const checkpointHash = await save('account-sync-checkpoint.json', preview.backup);
     await save('review.json', {
       attemptId,

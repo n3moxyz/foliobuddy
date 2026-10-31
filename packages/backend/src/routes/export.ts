@@ -23,7 +23,7 @@ router.get('/csv/positions', async (req, res, next) => {
       'Avg Cost (USD)',
       'Current Price (USD)',
       'Market Value (USD)',
-      'Unrealized P&L',
+      'Unrealised P&L',
       'P&L %',
       'Storage Type',
       'Storage Location',
@@ -97,7 +97,7 @@ router.get('/csv/trades', async (req, res, next) => {
       'Quantity',
       'Position Size (USD)',
       'Funding Cost',
-      'Realized P&L',
+      'Realised P&L',
       'P&L %',
       'Notes',
     ];
@@ -164,7 +164,7 @@ router.get('/excel', async (req, res, next) => {
     summarySheet.addRow(['Total Value (USD)', summary.totalValueUsd]);
     summarySheet.addRow(['Total Value (SGD)', summary.totalValueSgd]);
     summarySheet.addRow(['Total Cost Basis', summary.totalCostBasis]);
-    summarySheet.addRow(['Unrealized P&L', summary.unrealizedPnL]);
+    summarySheet.addRow(['Unrealised P&L', summary.unrealizedPnL]);
     summarySheet.addRow(['P&L %', `${summary.unrealizedPnLPct.toFixed(2)}%`]);
     summarySheet.addRow(['Position Count', summary.positionCount]);
     summarySheet.addRow(['Last Updated', summary.lastUpdated.toISOString()]);
@@ -178,7 +178,7 @@ router.get('/excel', async (req, res, next) => {
       { header: 'Avg Cost', key: 'avgCost', width: 12 },
       { header: 'Current Price', key: 'currentPrice', width: 15 },
       { header: 'Market Value', key: 'marketValue', width: 15 },
-      { header: 'Unrealized P&L', key: 'unrealizedPnL', width: 15 },
+      { header: 'Unrealised P&L', key: 'unrealizedPnL', width: 15 },
       { header: 'P&L %', key: 'pnlPct', width: 10 },
       { header: 'Storage', key: 'storage', width: 10 },
       { header: 'Location', key: 'location', width: 20 },
@@ -219,7 +219,7 @@ router.get('/excel', async (req, res, next) => {
       { header: 'Quantity', key: 'quantity', width: 12 },
       { header: 'Position Size', key: 'positionSize', width: 15 },
       { header: 'Funding Cost', key: 'fundingCost', width: 12 },
-      { header: 'Realized P&L', key: 'realizedPnL', width: 12 },
+      { header: 'Realised P&L', key: 'realizedPnL', width: 12 },
       { header: 'P&L %', key: 'pnlPct', width: 10 },
       { header: 'Notes', key: 'notes', width: 30 },
     ];

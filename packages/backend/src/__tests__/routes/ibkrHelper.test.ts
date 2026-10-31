@@ -51,7 +51,7 @@ const scope = {
   jobId: null,
 };
 const permit = 'p'.repeat(43);
-const unavailable = { error: 'IBKR helper authorization is unavailable' };
+const unavailable = { error: 'IBKR helper authorisation is unavailable' };
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => vi.unstubAllEnvs());

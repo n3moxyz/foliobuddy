@@ -2440,7 +2440,7 @@ describe('DELETE /api/positions/:id/history/:historyId', () => {
     const res = await request(app).delete('/api/positions/position-1/history/history-1');
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Only the latest position history entry can be canceled');
+    expect(res.body.error).toBe('Only the latest position history entry can be cancelled');
     expect(mockPrisma.position.update).not.toHaveBeenCalled();
     expect(mockPrisma.positionHistory.deleteMany).not.toHaveBeenCalled();
   });
@@ -2474,7 +2474,7 @@ describe('DELETE /api/positions/:id/history/:historyId', () => {
     const res = await request(app).delete('/api/positions/position-1/history/history-reset-1');
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Manual total reset entries cannot be canceled from history');
+    expect(res.body.error).toBe('Manual total reset entries cannot be cancelled from history');
     expect(mockPrisma.position.update).not.toHaveBeenCalled();
     expect(mockPrisma.positionHistory.deleteMany).not.toHaveBeenCalled();
   });
