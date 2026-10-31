@@ -35,8 +35,12 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
   const [review, setReview] = useState<IbkrDeviceEnrollment | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const register = useMutation({ mutationFn: api.registerIbkrDevice });
-  const revoke = useMutation({ mutationFn: api.revokeIbkrDevice });
+  // Both actions show their failures inline in this section.
+  const register = useMutation({
+    meta: { showsOwnError: true },
+    mutationFn: api.registerIbkrDevice,
+  });
+  const revoke = useMutation({ meta: { showsOwnError: true }, mutationFn: api.revokeIbkrDevice });
   const busy = register.isPending || revoke.isPending;
   const device = devices.data?.find((d) => !d.revokedAt);
   // Observe successful poll timestamps even when React Query shares unchanged data.

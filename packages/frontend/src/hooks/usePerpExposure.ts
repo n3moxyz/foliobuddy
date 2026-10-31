@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { failureDescription } from '@/lib/mutationFeedback';
 import type { UserPreferences } from '@/lib/types';
 import { USER_PREFERENCES_QUERY_KEY, useUserPreferences } from './useUserPreferences';
 
@@ -58,6 +59,8 @@ export function usePerpExposure() {
 
   const update = useMutation({
     mutationKey: PERP_EXPOSURE_MUTATION_KEY,
+    // onError names the action itself: saving and removing need different words.
+    meta: { showsOwnError: true },
     mutationFn: ({ value }: PerpExposureUpdate) =>
       api.updateUserPreferences({ perpExposureUsd: value }),
     onMutate: async ({ value, source }) => {
@@ -77,9 +80,17 @@ export function usePerpExposure() {
 
       return { previous, didOptimisticallyUpdate };
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, variables, context) => {
       if (context?.didOptimisticallyUpdate && context.previous !== undefined) {
         queryClient.setQueryData(USER_PREFERENCES_QUERY_KEY, context.previous);
+      }
+      // A failed background migration keeps the legacy value and retries on the next load,
+      // so only a person's own save reports the failure (as only it reports success).
+      if (variables.source === 'manual') {
+        toast.error(
+          variables.value === 0 ? "Couldn't remove perp exposure" : "Couldn't save perp exposure",
+          { description: failureDescription(error) }
+        );
       }
     },
     onSuccess: (saved, variables) => {

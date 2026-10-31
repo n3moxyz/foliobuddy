@@ -41,6 +41,8 @@ export function useCreateAssetFromCoinGecko() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // Every caller reports the failure itself ("Couldn't select …" or an inline error).
+    meta: { showsOwnError: true },
     mutationFn: (data: { coingeckoId: string; symbol: string; name: string; category?: string }) =>
       api.createAssetFromCoinGecko(data),
     onSuccess: () => {
@@ -53,6 +55,8 @@ export function useCreateAsset() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // PositionForm shows the failure inline.
+    meta: { showsOwnError: true },
     mutationFn: (data: CreateAssetData) => api.createAsset(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
@@ -83,6 +87,8 @@ export function useCreateAssetFromProvider() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // Callers report the failure themselves; the background catalog repair stays quiet.
+    meta: { showsOwnError: true },
     mutationFn: (data: CreateAssetFromProviderData) => api.createAssetFromProvider(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
@@ -94,6 +100,8 @@ export function useRefreshAssetPrice() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // UpdateNavModal shows the failure inline.
+    meta: { showsOwnError: true },
     mutationFn: (id: string) => api.refreshAssetPrice(id),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
@@ -107,6 +115,8 @@ export function useCreateUnitTrust() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // PositionForm shows the failure inline.
+    meta: { showsOwnError: true },
     mutationFn: (data: Parameters<typeof api.createUnitTrust>[0]) => api.createUnitTrust(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
@@ -118,6 +128,8 @@ export function useUpdateAssetNav() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // UpdateNavModal and PositionForm show the failure inline.
+    meta: { showsOwnError: true },
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.updateAssetNav>[1] }) =>
       api.updateAssetNav(id, data),
     onSuccess: () => {

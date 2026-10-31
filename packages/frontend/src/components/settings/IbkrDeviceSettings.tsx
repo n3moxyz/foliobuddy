@@ -18,7 +18,8 @@ export function IbkrDeviceSettings() {
   });
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const revoke = useMutation({ mutationFn: api.revokeIbkrDevice });
+  // Disconnect failures show inline in this section.
+  const revoke = useMutation({ meta: { showsOwnError: true }, mutationFn: api.revokeIbkrDevice });
   async function disconnect(deviceId: string) {
     const session = captureAuthSession();
     setError(null);

@@ -64,6 +64,8 @@ export function useCreatePosition() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // PositionForm shows the failure inline.
+    meta: { showsOwnError: true },
     mutationFn: (data: CreatePositionData) => api.createPosition(data),
     onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: ['positions'] });
@@ -82,6 +84,8 @@ export function useUpdatePosition() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // PositionForm shows the failure inline.
+    meta: { showsOwnError: true },
     mutationFn: ({ id, data }: { id: string; data: UpdatePositionData }) =>
       api.updatePosition(id, data),
     onSuccess: (_, { id, data }) => {
@@ -103,6 +107,8 @@ export function useCancelPositionHistory() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // The Cancel History Entry dialog shows the failure inline.
+    meta: { showsOwnError: true },
     mutationFn: ({ id, historyId }: { id: string; historyId: string }) =>
       api.cancelPositionHistory(id, historyId),
     onSuccess: (position, { id }) => {
@@ -118,6 +124,7 @@ export function useDeletePosition() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { failureTitle: "Couldn't delete position" },
     mutationFn: (id: string) => api.deletePosition(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ['positions'] });
@@ -143,6 +150,7 @@ export function useDeleteAllPositions() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { failureTitle: "Couldn't delete positions" },
     mutationFn: () => api.deleteAllPositions(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['positions'] });
