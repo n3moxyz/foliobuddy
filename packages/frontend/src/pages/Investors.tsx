@@ -619,7 +619,7 @@ function InvestorForm({
             )}
             {exceedsTotal ? (
               <p role="alert" className="text-xs text-warning">
-                Total will be {formatStakePercentage(projectedTotal)}% - rebalancing needed
+                Total will be {formatStakePercentage(projectedTotal)}% — rebalancing needed
               </p>
             ) : null}
           </>
