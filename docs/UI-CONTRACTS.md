@@ -10,7 +10,7 @@ Signed-out: `/` → lazy `pages/Landing.tsx` (`components/landing/` sections), e
 
 iOS HIG, all pages:
 
-- **Tables → cards**: `PositionTable` → `renderMobilePositionRow` below `md`; full table only on "All columns" (`showMobileColumnToggle`). `mobileVariant` `focus` (symbol+name, value, P&L pill, meta) / `compact` (value + P&L); row actions → 44px `⋮` menu; Trades column-hides (`hidden md:table-cell`).
+- **Tables → cards**: `PositionTable` → `renderMobilePositionRow` below `md`; full table only on "All Columns" (`showMobileColumnToggle`). `mobileVariant` `focus` (symbol+name, value, P&L pill, meta) / `compact` (value + P&L); row actions → 44px `⋮` menu; Trades column-hides (`hidden md:table-cell`).
 - **Dialogs**: content-heavy dock full-width to mobile's bottom (`!bottom-0`, rounded top, safe-area bottom padding), centered modal `sm+`; all `w-[calc(100%-2rem)]` + `max-h-[85vh] overflow-y-auto`.
 - **Touch**: 44px, compacting `sm+`/`md+`; `Input`/`SelectTrigger`/`DropdownMenuItem`/asset-search options/creatable-select row actions bake `h-11`/`min-h-11` → `sm:`; never redo per-call-site heights; dense row actions need `shrink-0`.
 - **Headers**: `flex-col gap-3 sm:flex-row`; secondary actions → `DropdownMenu` overflow.
@@ -41,7 +41,7 @@ Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tab
 
 ## Portfolio Section Headers
 
-2-level, all breakpoints: **Crypto/Equities/Cash** (`Portfolio.tsx` via `CollapsibleCard`, `icon` + `accentColor`) → **CEX/Broker account/Bank/Onchain** (`PositionTable`, trigger $ totals). Equities: persisted By Broker/By Type. Accent tokens `crypto`/`equities`/`cash`/`custody` in `index.css`/`tailwind.config.js`, never raw `-500`; custody accent `CUSTODY_CONFIG`. Heading wraps trigger (`<h2><button>`), never reversed: invalid HTML hides headings from SR nav. Desktop `hidden sm:block` full table rows; mobile `sm:hidden` `mobileVariant="compact"`, no column toggle; custody own section on both.
+2-level, all breakpoints: **Crypto/Equities/Cash** (`Portfolio.tsx` via `CollapsibleCard`, `icon` + `accentColor`) → **CEX/Broker Account/Bank/Onchain** (`PositionTable`, trigger $ totals). Equities: persisted By Broker/By Type. Accent tokens `crypto`/`equities`/`cash`/`custody` in `index.css`/`tailwind.config.js`, never raw `-500`; custody accent `CUSTODY_CONFIG`. Heading wraps trigger (`<h2><button>`), never reversed: invalid HTML hides headings from SR nav. Desktop `hidden sm:block` full table rows; mobile `sm:hidden` `mobileVariant="compact"`, no column toggle; custody own section on both.
 
 ## Creatable Storage Location Dropdowns
 

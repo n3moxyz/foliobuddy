@@ -57,7 +57,7 @@ describe('IBKR cash panel', () => {
     expect(screen.getByText('Cash')).toBeInTheDocument();
     expect(screen.getAllByText('••••').length).toBeGreaterThan(3);
     expect(screen.queryByText(/111,000|300\.00|450\.00/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit currency balances' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Currency Balances' }));
     expect(screen.getByRole('textbox', { name: 'Amount JPY' })).toHaveValue('111,000');
   });
   it('shows the broker total even when converted currency rows differ', () => {
@@ -71,7 +71,7 @@ describe('IBKR cash panel', () => {
   });
   it('reopens editing from the latest balances after a refetch', () => {
     const { rerender } = mount(position);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit currency balances' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Currency Balances' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Amount USD' }), {
       target: { value: '999' },
     });
@@ -84,7 +84,7 @@ describe('IBKR cash panel', () => {
       },
     };
     rerender(<IbkrCashPanel position={updated} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit currency balances' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Currency Balances' }));
     expect(screen.getByRole('textbox', { name: 'Amount USD' })).toHaveValue('42');
     expect(screen.queryByRole('textbox', { name: 'Amount JPY' })).not.toBeInTheDocument();
   });
@@ -106,7 +106,7 @@ describe('IBKR cash panel', () => {
     });
     await waitFor(() => expect(screen.getAllByText('$42.00')).toHaveLength(2));
     expect(screen.queryByText(/111,000/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit currency balances' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Currency Balances' }));
     expect(screen.getByRole('textbox', { name: 'Amount USD' })).toHaveValue('42');
   });
 });

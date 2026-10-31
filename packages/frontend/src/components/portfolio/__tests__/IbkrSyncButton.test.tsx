@@ -122,11 +122,11 @@ describe('one-click IBKR control', () => {
   it('explains one-time setup without asking for a chat link or Send', () => {
     show();
     fireEvent.click(screen.getByRole('button', { name: 'Sync IBKR' }));
-    expect(screen.getByRole('heading', { name: 'Connect this Mac once' })).toBeInTheDocument();
-    expect(screen.getByLabelText('One-time setup code')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Connect This Mac Once' })).toBeInTheDocument();
+    expect(screen.getByLabelText('One-Time Setup Code')).toBeInTheDocument();
     expect(screen.queryByLabelText('Codex chat link')).not.toBeInTheDocument();
     expect(screen.queryByText(/Press Send/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Connect and sync' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Connect and Sync' })).toBeInTheDocument();
   });
   it.each([
     ['manual', 'Last manual cash edit'],

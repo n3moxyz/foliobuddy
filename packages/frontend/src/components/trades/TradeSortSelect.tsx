@@ -21,7 +21,7 @@ export function TradeSortSelect({ id, className }: { id: string; className?: str
     >
       <SelectTrigger
         id={id}
-        aria-label="Default trade order"
+        aria-label="Default Trade Order"
         className={cn('w-full sm:w-[240px]', className)}
       >
         <SelectValue />

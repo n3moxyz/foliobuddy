@@ -181,7 +181,7 @@ it('keeps IBKR sync outside the collapse toggle and excludes other brokers and c
   expect(group.contains(sync)).toBe(false);
   fireEvent.click(sync);
   expect(group).toHaveAttribute('aria-expanded', expanded);
-  expect(screen.getByRole('dialog')).toHaveTextContent('Connect this Mac once');
+  expect(screen.getByRole('dialog')).toHaveTextContent('Connect This Mac Once');
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   await waitFor(() => expect(sync).toHaveFocus());
   rerender(

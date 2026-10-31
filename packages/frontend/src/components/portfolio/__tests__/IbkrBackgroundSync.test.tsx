@@ -83,13 +83,13 @@ describe('daily IBKR connection', () => {
     vi.mocked(api.registerIbkrDevice).mockResolvedValue({ ...device, lastStatus: 'authorized' });
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Public connection details' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Public Connection Details' }), {
       target: { value: JSON.stringify(enrollment) },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review Connection' }));
     expect(api.registerIbkrDevice).not.toHaveBeenCalled();
     expect(screen.getByText(/Only your owned IBKR shares/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Authorise daily IBKR sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Authorise Daily IBKR Sync' }));
     await waitFor(() =>
       expect(vi.mocked(api.registerIbkrDevice).mock.calls[0]?.[0]).toEqual({
         cashPositionId: position.id,
@@ -102,17 +102,17 @@ describe('daily IBKR connection', () => {
     vi.mocked(api.registerIbkrDevice).mockResolvedValue({ ...device, name: named.name });
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
-    expect(screen.getByLabelText('Mac name')).toHaveValue('My Mac');
-    fireEvent.change(screen.getByLabelText('Mac name'), { target: { value: named.name } });
+    expect(screen.getByLabelText('Mac Name')).toHaveValue('My Mac');
+    fireEvent.change(screen.getByLabelText('Mac Name'), { target: { value: named.name } });
     expect(screen.getByText(/npm run ibkr:worker:setup/).textContent).toContain(
       "--name 'Alice'\\''s Mini'"
     );
-    fireEvent.change(screen.getByLabelText('Public connection details'), {
+    fireEvent.change(screen.getByLabelText('Public Connection Details'), {
       target: { value: JSON.stringify(named) },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review Connection' }));
     expect(screen.getByText("Authorise Alice's Mini")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Authorise daily IBKR sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Authorise Daily IBKR Sync' }));
     await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith("Alice's Mini authorised for daily IBKR sync")
     );
@@ -126,11 +126,11 @@ describe('daily IBKR connection', () => {
     );
     const { client } = mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
-    fireEvent.change(screen.getByLabelText('Public connection details'), {
+    fireEvent.change(screen.getByLabelText('Public Connection Details'), {
       target: { value: JSON.stringify(enrollment) },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Authorise daily IBKR sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review Connection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Authorise Daily IBKR Sync' }));
     await waitFor(() => expect(api.registerIbkrDevice).toHaveBeenCalled());
     installAuthSession('owner-b', 'session-b', async () => 'test-b');
     await act(async () => {
@@ -142,20 +142,20 @@ describe('daily IBKR connection', () => {
   it('rejects unexpected private fields before sending connection details', async () => {
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Public connection details' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Public Connection Details' }), {
       target: { value: JSON.stringify({ ...enrollment, privateKey: 'must-not-send' }) },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review Connection' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/public connection details/);
     expect(api.registerIbkrDevice).not.toHaveBeenCalled();
   });
   it('rejects connection details signed for another cash position', async () => {
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Public connection details' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Public Connection Details' }), {
       target: { value: JSON.stringify({ ...enrollment, cashPositionId: 'other-cash' }) },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Review connection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review Connection' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/different IBKR cash position/);
     expect(api.registerIbkrDevice).not.toHaveBeenCalled();
   });
@@ -179,7 +179,7 @@ describe('daily IBKR connection', () => {
     mount();
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not be loaded/);
     expect(screen.queryByRole('button', { name: 'Connect a Mac' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Retry connection status' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry Connection Status' })).toBeInTheDocument();
   });
   it('requires confirmation before revoking and retains the display on failure', async () => {
     vi.mocked(api.getIbkrDevices).mockResolvedValue([device]);
@@ -187,7 +187,7 @@ describe('daily IBKR connection', () => {
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
     expect(api.revokeIbkrDevice).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Stop daily sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop Daily Sync' }));
     await waitFor(() =>
       expect(vi.mocked(api.revokeIbkrDevice).mock.calls[0]?.[0]).toBe(device.deviceId)
     );

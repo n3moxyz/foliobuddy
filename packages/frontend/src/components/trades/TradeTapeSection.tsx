@@ -82,7 +82,7 @@ export function TradeTapeSection({
           </div>
           <div className="flex min-w-0 flex-col gap-1.5">
             <Label htmlFor={sortSelectId} className="text-xs text-muted-foreground">
-              Default trade order
+              Default Trade Order
             </Label>
             <TradeSortSelect id={sortSelectId} />
           </div>

@@ -420,7 +420,7 @@ export default function Portfolio() {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setShowNativeReconciliation(true)}>
                   <Pencil className="h-4 w-4 mr-2" />
-                  Reconcile IBKR costs
+                  Reconcile IBKR Costs
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
@@ -483,7 +483,7 @@ export default function Portfolio() {
                   onClick={() => setShowNativeReconciliation(true)}
                 >
                   <Pencil className="h-4 w-4 mr-2" />
-                  Reconcile IBKR costs
+                  Reconcile IBKR Costs
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="min-h-11"
@@ -904,7 +904,7 @@ export default function Portfolio() {
                       <div className="flex min-h-10 items-center gap-1 text-xs text-muted-foreground">
                         <span>Perp:</span>
                         <HelpTooltip
-                          label="Perp exposure"
+                          label="Perp Exposure"
                           content="Open perpetual futures position size: adds to your crypto exposure calculation"
                         />{' '}
                         {editingPerpInline ? (
@@ -1043,7 +1043,7 @@ export default function Portfolio() {
       <Dialog open={showNativeReconciliation} onOpenChange={setShowNativeReconciliation}>
         <DialogContent className="w-[calc(100%-2rem)] sm:max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Reconcile IBKR costs</DialogTitle>
+            <DialogTitle>Reconcile IBKR Costs</DialogTitle>
             <DialogDescription>Preview, back up, and repair native cost records.</DialogDescription>
           </DialogHeader>
           {showNativeReconciliation && <NativeCostReconciliation />}

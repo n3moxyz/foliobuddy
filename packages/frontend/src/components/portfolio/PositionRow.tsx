@@ -105,7 +105,7 @@ export const PositionRow = React.memo(function PositionRow({
   const isUnitTrust = position.asset.category === 'UNIT_TRUST';
   const shouldShowNavAge = !isUnitTrust && isManual && !isStable;
   const ageInfo = shouldShowNavAge ? getPriceAgeInfo(position.asset.priceUpdatedAt) : null;
-  const assetNameOverride = position.ibkrCash ? 'IBKR cash & debt' : isStable ? 'Cash' : undefined;
+  const assetNameOverride = position.ibkrCash ? 'IBKR Cash & Debt' : isStable ? 'Cash' : undefined;
   const priceUpdatedTitle = position.asset.priceUpdatedAt
     ? `NAV updated ${formatDateTime(position.asset.priceUpdatedAt)}`
     : 'NAV never set';

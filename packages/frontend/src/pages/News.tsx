@@ -304,7 +304,7 @@ export default function News() {
           )}
           {topStories.length > 0 && (
             <CollapsibleCard
-              title="Top stories"
+              title="Top Stories"
               icon={<Sparkles className="h-4 w-4 text-primary" />}
               accentColor="border-primary/30 bg-primary/5"
               isExpanded={expanded.top}

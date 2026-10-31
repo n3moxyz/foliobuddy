@@ -415,7 +415,7 @@ export function AllocationCharts({
         // as very different counterparty risks even though they share a venue.
         storageLabel = bucketFor(p.asset.category) === 'Cash' ? 'CEX Cash' : 'CEX Crypto';
       } else if (p.storageType === 'BROKERAGE') {
-        storageLabel = p.storageLocation?.trim() || 'Broker account';
+        storageLabel = p.storageLocation?.trim() || 'Broker Account';
       } else if (p.storageType === 'BANK') {
         storageLabel = 'Bank';
       } else if (p.storageLocation?.toLowerCase().includes('ledger')) {

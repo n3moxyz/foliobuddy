@@ -141,7 +141,7 @@ export default function Settings() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <Label htmlFor="default-trade-sort">Default trade order</Label>
+              <Label htmlFor="default-trade-sort">Default Trade Order</Label>
               <p className="text-sm text-muted-foreground">
                 Saved in this browser for all trade tables. Open trades sort last by exit date.
                 Column headers temporarily override this order.

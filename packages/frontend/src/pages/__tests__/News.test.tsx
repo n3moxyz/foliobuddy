@@ -272,16 +272,16 @@ describe('News page', () => {
     );
   });
 
-  it('omits the Top stories section on quiet days', () => {
+  it('omits the Top Stories section on quiet days', () => {
     mocks.useNews.mockReturnValue(newsQueryState({ data: loadedNews }));
 
     renderNews();
 
-    expect(screen.queryByText('Top stories')).not.toBeInTheDocument();
+    expect(screen.queryByText('Top Stories')).not.toBeInTheDocument();
     expect(screen.queryByText('Important')).not.toBeInTheDocument();
   });
 
-  it('renders Top stories and restrained badges for material news', () => {
+  it('renders Top Stories and restrained badges for material news', () => {
     const material = fixtureItem({
       id: 'material',
       title: 'SEC approves spot Bitcoin ETF options',
@@ -324,7 +324,7 @@ describe('News page', () => {
 
     renderNews();
 
-    expect(screen.getByText('Top stories')).toBeInTheDocument();
+    expect(screen.getByText('Top Stories')).toBeInTheDocument();
     // Once in Top stories, once in the BTC group.
     expect(screen.getAllByText('SEC approves spot Bitcoin ETF options')).toHaveLength(2);
     expect(screen.getAllByText('Important').length).toBeGreaterThanOrEqual(2);
@@ -367,12 +367,12 @@ describe('News page', () => {
     });
     expect(flags).toHaveLength(2);
     // The section copy is marked as already featured; the Top stories copy is not.
-    expect(screen.getByText(/in Top stories/)).toBeInTheDocument();
+    expect(screen.getByText(/in Top Stories/)).toBeInTheDocument();
 
     // Drive the full flow on the BTC group row: open (Radix opens on
     // pointerdown), pick a reason, and assert the exact payload sent.
     fireEvent.pointerDown(flags[1]);
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Not relevant' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Not Relevant' }));
 
     // TanStack v5 passes a context object as mutationFn's 2nd arg — assert
     // the payload (1st arg) only.
@@ -502,7 +502,7 @@ describe('News page', () => {
       ).toHaveLength(2);
     });
 
-    it('opens the dossier from a card, then returns focus and scroll with All news', () => {
+    it('opens the dossier from a card, then returns focus and scroll with All News', () => {
       mocks.useNews.mockReturnValue(newsQueryState({ data: holdingsNews }));
       mocks.useAssetNews.mockImplementation((assetId: string | null) =>
         newsQueryState(assetId ? { data: btcDossier } : {})
@@ -517,13 +517,13 @@ describe('News page', () => {
       expect(locationSearch()).toBe('?asset=asset-btc');
       expect(mocks.useAssetNews).toHaveBeenLastCalledWith('asset-btc');
       expect(screen.getByRole('heading', { level: 2, name: 'BTC Bitcoin' })).toHaveFocus();
-      expect(screen.queryByText('Top stories')).not.toBeInTheDocument();
+      expect(screen.queryByText('Top Stories')).not.toBeInTheDocument();
       expect(scrollToSpy).toHaveBeenLastCalledWith(0, 0);
 
-      fireEvent.click(screen.getByRole('button', { name: 'All news' }));
+      fireEvent.click(screen.getByRole('button', { name: 'All News' }));
 
       expect(locationSearch()).toBe('');
-      expect(screen.getByText('Top stories')).toBeInTheDocument();
+      expect(screen.getByText('Top Stories')).toBeInTheDocument();
       expect(scrollToSpy).toHaveBeenLastCalledWith(0, 640);
       expect(screen.getByRole('button', { name: 'BTC Bitcoin 4 stories' })).toHaveFocus();
       Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
@@ -726,7 +726,7 @@ describe('News page', () => {
       fireEvent.change(input, { target: { value: 'ldo' } });
       fireEvent.keyDown(input, { key: 'Enter' });
       expect(locationSearch()).toBe('?asset=asset-lido');
-      fireEvent.click(screen.getByRole('button', { name: 'All news' }));
+      fireEvent.click(screen.getByRole('button', { name: 'All News' }));
 
       expect(locationSearch()).toBe('');
       expect(searchInput()).toHaveFocus();
@@ -781,7 +781,7 @@ describe('News page', () => {
       expect(screen.getByRole('heading', { level: 2, name: 'BTC Bitcoin' })).toHaveFocus();
       expect(screen.getByText('Loading BTC news…').closest('[role="status"]')).not.toBeNull();
       // The dossier replaces Top stories and the sections.
-      expect(screen.queryByText('Top stories')).not.toBeInTheDocument();
+      expect(screen.queryByText('Top Stories')).not.toBeInTheDocument();
       expect(mocks.useAssetNews).toHaveBeenCalledWith('asset-btc');
     });
 
@@ -817,7 +817,7 @@ describe('News page', () => {
       // groupSymbol = the holding, so co-affected holdings still show.
       expect(screen.getByText(/also affects ETH/)).toBeInTheDocument();
       // btc-1 is in the feed's Top stories.
-      expect(screen.getAllByText(/in Top stories/)).toHaveLength(1);
+      expect(screen.getAllByText(/in Top Stories/)).toHaveLength(1);
       expect(screen.getAllByRole('button', { name: /^Flag story:/ })).toHaveLength(4);
       expect(screen.getByText('4 stories · last 60 days · newest first')).toBeInTheDocument();
     });

@@ -180,7 +180,7 @@ export function TradeTable({
             </>
           ) : (
             <>
-              <Columns3 className="h-3.5 w-3.5 mr-1" /> All columns
+              <Columns3 className="h-3.5 w-3.5 mr-1" /> All Columns
             </>
           )}
         </Button>

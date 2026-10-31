@@ -91,7 +91,7 @@ export function ImportResultsList({
             onClick={onEditFailed}
             disabled={retrying || !outcomeKnown}
           >
-            Edit failed rows
+            Edit Failed Rows
           </Button>
         )}
         {canRetry && (
@@ -102,9 +102,9 @@ export function ImportResultsList({
                 Retrying…
               </>
             ) : outcomeKnown ? (
-              'Retry failed import'
+              'Retry Failed Import'
             ) : (
-              'Retry original batch'
+              'Retry Original Batch'
             )}
           </Button>
         )}

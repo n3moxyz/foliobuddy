@@ -100,13 +100,13 @@ export function TickerDossierLens({
 
           <div className="mt-6 grid grid-cols-2 divide-x divide-y divide-border rounded-md border bg-background/40 sm:grid-cols-4 sm:divide-y-0">
             <MiniMetric label="Trades" value={String(selectedTicker.trades.length)} />
-            <MiniMetric label="Win rate" value={`${formatNumber(selectedTicker.winRate, 0)}%`} />
+            <MiniMetric label="Win Rate" value={`${formatNumber(selectedTicker.winRate, 0)}%`} />
             <MiniMetric
-              label="Avg hold"
+              label="Avg Hold"
               value={selectedTicker.avgHoldDays ? `${selectedTicker.avgHoldDays}d` : '-'}
             />
             <MiniMetric
-              label="Avg size"
+              label="Avg Size"
               value={formatCurrency(
                 convertCurrency(selectedTicker.avgPositionSizeUsd, currency, fxRate),
                 currency,
@@ -124,21 +124,21 @@ export function TickerDossierLens({
           </p>
           <div className="divide-y divide-border">
             <TradeEdgeRow
-              label="Largest win"
+              label="Largest Win"
               trade={selectedTicker.largestWin}
               currency={currency}
               fxRate={fxRate}
               onTradeClick={onTradeClick}
             />
             <TradeEdgeRow
-              label="Largest loss"
+              label="Largest Loss"
               trade={selectedTicker.largestLoss}
               currency={currency}
               fxRate={fxRate}
               onTradeClick={onTradeClick}
             />
             <InsightRow
-              label="Open exposure"
+              label="Open Exposure"
               value={`${selectedTicker.openCount} open`}
               detail={`${selectedTicker.closedTrades.length} closed`}
               tone={selectedTicker.openCount > 0 ? 'info' : 'muted'}
@@ -150,7 +150,7 @@ export function TickerDossierLens({
       {recentClosed.length > 0 && (
         <section className="rounded-md border bg-card/70 p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Recent closed trades</h3>
+            <h3 className="text-sm font-semibold">Recent Closed Trades</h3>
             <span className="text-xs text-muted-foreground">{recentClosed.length} total</span>
           </div>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -244,7 +244,7 @@ export function MonthlyPostmortemLens({
             valueClass={getPnLColorClass(selectedMonth.totalPnL)}
           />
           <MiniMetric label="Trades" value={String(selectedMonth.count)} />
-          <MiniMetric label="Win rate" value={`${formatNumber(selectedMonth.winRate, 0)}%`} />
+          <MiniMetric label="Win Rate" value={`${formatNumber(selectedMonth.winRate, 0)}%`} />
           <MiniMetric
             label="Win / Loss"
             value={`${selectedMonth.wins} / ${selectedMonth.losses}`}
@@ -254,7 +254,7 @@ export function MonthlyPostmortemLens({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
         <section className="rounded-md border bg-card/70 p-4 sm:p-5">
-          <h3 className="mb-3 text-sm font-semibold">Repeatable edge</h3>
+          <h3 className="mb-3 text-sm font-semibold">Repeatable Edge</h3>
           <TagList tags={winningTags.length > 0 ? winningTags : selectedMonth.topTags} />
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <TradeMiniButton
@@ -277,7 +277,7 @@ export function MonthlyPostmortemLens({
         </section>
 
         <section className="rounded-md border bg-card/70 p-4 sm:p-5">
-          <h3 className="mb-3 text-sm font-semibold">Loss review</h3>
+          <h3 className="mb-3 text-sm font-semibold">Loss Review</h3>
           {losingTrades.length > 0 ? (
             <div className="divide-y divide-border">
               {losingTrades.slice(0, 3).map((trade) => (
@@ -302,7 +302,7 @@ export function MonthlyPostmortemLens({
       {openTrades.length > 0 && (
         <section className="rounded-md border bg-card/70 p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Open trades watchlist</h3>
+            <h3 className="text-sm font-semibold">Open Trades Watchlist</h3>
             <span className="text-xs text-muted-foreground">{openTrades.length} open</span>
           </div>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">

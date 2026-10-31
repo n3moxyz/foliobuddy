@@ -1814,10 +1814,10 @@ export function PositionForm({
   if (fundingConfirmation) {
     const isCredit = fundingConfirmation.direction === 'credit';
     const positionActionLabel = isCredit
-      ? 'Reduce position'
+      ? 'Reduce Position'
       : isEditing
-        ? 'Add to position'
-        : 'Add position';
+        ? 'Add to Position'
+        : 'Add Position';
     return (
       <div className="space-y-4">
         <div className="space-y-1">
@@ -1845,7 +1845,7 @@ export function PositionForm({
           <div className="border-t border-border/60 pt-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-medium">{isCredit ? 'Add to cash pile' : 'Reduce cash pile'}</p>
+                <p className="font-medium">{isCredit ? 'Add to Cash Pile' : 'Reduce Cash Pile'}</p>
                 <p className="text-muted-foreground">{fundingConfirmation.cashLabel}</p>
               </div>
               <span
@@ -1856,13 +1856,13 @@ export function PositionForm({
               </span>
             </div>
             <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span>Cash pile before</span>
+              <span>Cash Pile Before</span>
               <span className="tabular-nums">
                 {formatCurrency(fundingConfirmation.cashAvailableUsd, 'USD', 0)}
               </span>
             </div>
             <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span>Cash pile after</span>
+              <span>Cash Pile After</span>
               <span className="tabular-nums">
                 {formatCurrency(fundingConfirmation.cashRemainingUsd, 'USD', 0)}
               </span>
@@ -2004,7 +2004,7 @@ export function PositionForm({
         <>
           {!jsonInput && recoverableImports.length > 0 && (
             <div className="space-y-2 rounded-md border p-3">
-              <p className="text-sm font-medium">Interrupted imports</p>
+              <p className="text-sm font-medium">Interrupted Imports</p>
               <p className="text-sm text-muted-foreground">
                 Resume an import to check rows that may already be saved.
               </p>
@@ -2027,7 +2027,7 @@ export function PositionForm({
                     setRecoverableImports([]);
                   }}
                 >
-                  Resume interrupted import{recoverableImports.length > 1 ? ` ${index + 1}` : ''}
+                  Resume Interrupted Import{recoverableImports.length > 1 ? ` ${index + 1}` : ''}
                 </Button>
               ))}
             </div>
@@ -2058,7 +2058,7 @@ export function PositionForm({
         <form onSubmit={handleSubmit} className="space-y-3">
           {creatingIbkrCash && (
             <div className="space-y-2 rounded-md border p-3">
-              <p className="text-sm font-medium">IBKR currency cash &amp; debt</p>
+              <p className="text-sm font-medium">IBKR Currency Cash &amp; Debt</p>
               <p className="text-sm text-muted-foreground">
                 Track all currency balances in one account, including borrowing.
               </p>
@@ -2080,7 +2080,7 @@ export function PositionForm({
                   }
                 }}
               >
-                {openingIbkrCash ? 'Opening…' : 'Open IBKR currency balances'}
+                {openingIbkrCash ? 'Opening…' : 'Open IBKR Currency Balances'}
               </Button>
             </div>
           )}
@@ -2262,7 +2262,7 @@ export function PositionForm({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1">
-                        <p className="text-sm font-medium">Upload monthly statement (PDF)</p>
+                        <p className="text-sm font-medium">Upload Monthly Statement (PDF)</p>
                         <p className="text-xs text-muted-foreground">
                           Drag &amp; drop or click to upload. Supports UOB Kay Hian and FSMOne.
                         </p>

@@ -137,7 +137,7 @@ function sortPositionsByMarketValue(a: Position, b: Position) {
 function brokerLabelForPosition(position: Position): string {
   const location = position.storageLocation?.trim();
   if (location) return location;
-  if (position.storageType === 'BROKERAGE') return 'Broker account';
+  if (position.storageType === 'BROKERAGE') return 'Broker Account';
   return STORAGE_TYPE_LABELS[position.storageType] || position.storageType || 'Storage';
 }
 
@@ -565,7 +565,7 @@ export function PositionTable({
     const assetLabel = (
       <AssetLabel
         asset={position.asset}
-        nameOverride={position.ibkrCash ? 'IBKR cash & debt' : undefined}
+        nameOverride={position.ibkrCash ? 'IBKR Cash & Debt' : undefined}
         badge={
           options.showUnitTrustBadge && isUnitTrust ? (
             <span
@@ -1345,7 +1345,7 @@ export function PositionTable({
                 <details className="border-b bg-background/50">
                   <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide [&::-webkit-details-marker]:hidden">
                     <ChevronRight className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    Previous history before manual correction ({previousRows.length})
+                    Previous History Before Manual Correction ({previousRows.length})
                   </summary>
                   <div className="divide-y border-t">{renderActivityRows(previousRows)}</div>
                 </details>
@@ -1369,7 +1369,7 @@ export function PositionTable({
               className="text-muted-foreground touch-manipulation"
               onClick={() => setShowAllColumns(!showAllColumns)}
               aria-label={showAllColumns ? 'Show compact mobile list' : 'Show all table columns'}
-              title={showAllColumns ? 'Compact' : 'All columns'}
+              title={showAllColumns ? 'Compact' : 'All Columns'}
             >
               {showAllColumns ? <Columns2 className="h-4 w-4" /> : <Columns3 className="h-4 w-4" />}
             </Button>
@@ -1391,7 +1391,7 @@ export function PositionTable({
           brokeragePositions.length > 0 &&
           renderPositionSection({
             id: brokerageId,
-            label: 'Broker account',
+            label: 'Broker Account',
             helpContent: 'Assets held in broker accounts or fund platforms',
             positions: brokeragePositions,
             total: brokerageTotal,
@@ -1744,13 +1744,13 @@ export function PositionTable({
             <div className="rounded-md border bg-muted/10 p-3 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-muted-foreground">Current quantity</p>
+                  <p className="text-xs text-muted-foreground">Current Quantity</p>
                   <p className="font-mono">
                     {formatQuantity(cancelHistoryEntry.nextQuantity, viewPosition.asset.category)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Restored quantity</p>
+                  <p className="text-xs text-muted-foreground">Restored Quantity</p>
                   <p className="font-mono">
                     {formatQuantity(
                       cancelHistoryEntry.previousQuantity,
@@ -1759,7 +1759,7 @@ export function PositionTable({
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Current recorded average</p>
+                  <p className="text-xs text-muted-foreground">Current Recorded Average</p>
                   <p className="font-mono">
                     {formatCurrency(
                       convert(cancelHistoryEntry.nextAvgCostUsd),
@@ -1779,7 +1779,7 @@ export function PositionTable({
                   )}
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Restored recorded average</p>
+                  <p className="text-xs text-muted-foreground">Restored Recorded Average</p>
                   <p className="font-mono">
                     {formatCurrency(
                       convert(cancelHistoryEntry.previousAvgCostUsd),

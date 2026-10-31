@@ -84,12 +84,12 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
               }
             }}
           >
-            {refreshPrice.isPending ? 'Checking NAV…' : 'Check latest NAV'}
+            {refreshPrice.isPending ? 'Checking NAV…' : 'Check Latest NAV'}
           </Button>
         )}
         {asset && (
           <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Stored USD price</span>
+            <span className="text-muted-foreground">Stored USD Price</span>
             <span className="font-mono">
               {formatPrice(asset.currentPriceUsd)}{' '}
               <span className={priceAgeClass(getPriceAgeInfo(asset.priceUpdatedAt).severity)}>
@@ -126,7 +126,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
           </div>
           <div className="space-y-1">
             <Label htmlFor="nav-date" className="text-sm">
-              As of
+              As Of
             </Label>
             <Input
               id="nav-date"

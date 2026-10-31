@@ -326,7 +326,7 @@ describe('Portfolio responsive grouping', () => {
     const dialog = openNav();
     const checkedBefore = within(dialog).getByText(/Last checked/).textContent;
     fireEvent.change(within(dialog).getByLabelText('NAV (SGD)'), { target: { value: '5.5' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Check latest NAV' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check Latest NAV' }));
     await within(dialog).findByText('NAV refresh failed; last value retained');
 
     navMocks.positions = navMocks.positions.map((position) => ({
@@ -351,7 +351,7 @@ describe('Portfolio responsive grouping', () => {
     render(<Portfolio />);
     let dialog = openNav();
     fireEvent.change(within(dialog).getByLabelText('NAV (SGD)'), { target: { value: '5.5' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Check latest NAV' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check Latest NAV' }));
     await within(dialog).findByText('AMOVA refresh failed');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
@@ -364,7 +364,7 @@ describe('Portfolio responsive grouping', () => {
     expect(within(dialog).queryByText('AMOVA refresh failed')).not.toBeInTheDocument();
     expect(within(dialog).getByLabelText('NAV (SGD)')).toHaveValue('');
     expect(
-      within(dialog).queryByRole('button', { name: 'Check latest NAV' })
+      within(dialog).queryByRole('button', { name: 'Check Latest NAV' })
     ).not.toBeInTheDocument();
   });
 
@@ -373,7 +373,7 @@ describe('Portfolio responsive grouping', () => {
     navMocks.refresh.mockRejectedValueOnce(new Error('AMOVA refresh failed'));
     render(<Portfolio />);
     const dialog = openNav();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Check latest NAV' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check Latest NAV' }));
     await within(dialog).findByText('AMOVA refresh failed');
 
     let finishCheck!: () => void;
@@ -383,7 +383,7 @@ describe('Portfolio responsive grouping', () => {
           finishCheck = resolve;
         })
     );
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Check latest NAV' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check Latest NAV' }));
     expect(within(dialog).queryByText('AMOVA refresh failed')).not.toBeInTheDocument();
     await act(async () => finishCheck());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

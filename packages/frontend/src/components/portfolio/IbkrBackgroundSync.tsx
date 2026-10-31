@@ -102,7 +102,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
     <section aria-labelledby={headingId} className="space-y-3 border-t pt-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h4 id={headingId} className="text-sm font-medium">
-          Daily sync
+          Daily Sync
         </h4>
         <span className="text-xs text-muted-foreground">6:00am · Singapore</span>
       </div>
@@ -116,7 +116,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
             Daily sync connection could not be loaded.
           </p>
           <Button type="button" variant="outline" size="sm" onClick={() => void devices.refetch()}>
-            Retry connection status
+            Retry Connection Status
           </Button>
         </>
       ) : device ? (
@@ -136,7 +136,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
                   disabled={busy}
                   onClick={() => void disconnect()}
                 >
-                  {revoke.isPending ? 'Disconnecting…' : 'Stop daily sync'}
+                  {revoke.isPending ? 'Disconnecting…' : 'Stop Daily Sync'}
                 </Button>
                 <Button
                   type="button"
@@ -194,7 +194,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" disabled={busy} onClick={() => void authorize()}>
-              {register.isPending ? 'Authorising…' : 'Authorise daily IBKR sync'}
+              {register.isPending ? 'Authorising…' : 'Authorise Daily IBKR Sync'}
             </Button>
             <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={reset}>
               Cancel
@@ -208,7 +208,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
             macOS user profile. In its FolioBuddy folder, run this setup command:
           </p>
           <label htmlFor={nameId} className="text-sm font-medium">
-            Mac name
+            Mac Name
           </label>
           <Input
             id={nameId}
@@ -221,7 +221,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
             {`npm run ibkr:worker:setup -- --cash-position-id '${cashPositionId.replace(/'/g, "'\\''")}' --name '${(macName.trim() || 'My Mac').replace(/'/g, "'\\''")}'`}
           </code>
           <label htmlFor={inputId} className="text-sm font-medium">
-            Public connection details
+            Public Connection Details
           </label>
           <p id={`${inputId}-help`} className="text-xs text-muted-foreground">
             Paste the public connection details generated on your Mac during setup. No passwords or
@@ -259,7 +259,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
                 }
               }}
             >
-              Review connection
+              Review Connection
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={reset}>
               Cancel
@@ -303,17 +303,17 @@ function DeviceStatus({ device, now }: { device: IbkrSyncDevice; now: number }) 
       )}
       <dl className="space-y-1 text-xs text-muted-foreground">
         <div className="flex flex-wrap justify-between gap-2">
-          <dt>Last verified sync</dt>
+          <dt>Last Verified Sync</dt>
           <dd>{device.lastVerifiedAt ? formatDateTime(device.lastVerifiedAt) : 'Not yet'}</dd>
         </div>
         {device.lastCapturedAt && (
           <div className="flex flex-wrap justify-between gap-2">
-            <dt>Broker capture</dt>
+            <dt>Broker Capture</dt>
             <dd>{formatDateTime(device.lastCapturedAt)}</dd>
           </div>
         )}
         <div className="flex flex-wrap justify-between gap-2">
-          <dt>Last contact</dt>
+          <dt>Last Contact</dt>
           <dd>{device.lastSeenAt ? formatDateTime(device.lastSeenAt) : 'Not yet'}</dd>
         </div>
       </dl>
@@ -335,7 +335,7 @@ function DeviceStatus({ device, now }: { device: IbkrSyncDevice; now: number }) 
         ))}
       <details className="text-xs text-muted-foreground">
         <summary className="cursor-pointer rounded-sm py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          Connection details
+          Connection Details
         </summary>
         <p className="break-all py-1">Device fingerprint: {device.keyFingerprint}</p>
         <p className="break-all py-1">IBKR connection: {device.connectorFingerprint}</p>

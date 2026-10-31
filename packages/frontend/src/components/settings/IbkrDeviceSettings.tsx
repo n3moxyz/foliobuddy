@@ -40,9 +40,9 @@ export function IbkrDeviceSettings() {
     }
   }
   return (
-    <section aria-label="IBKR daily sync" className="space-y-3">
+    <section aria-label="IBKR Daily Sync" className="space-y-3">
       <div>
-        <h2 className="text-base font-semibold">IBKR daily sync</h2>
+        <h2 className="text-base font-semibold">IBKR Daily Sync</h2>
         <p className="text-sm text-muted-foreground">
           Manage Macs allowed to sync your IBKR positions in FolioBuddy.
         </p>
@@ -57,7 +57,7 @@ export function IbkrDeviceSettings() {
             IBKR connections could not be loaded.
           </p>
           <Button variant="outline" size="sm" onClick={() => void devices.refetch()}>
-            Retry connections
+            Retry Connections
           </Button>
         </div>
       ) : devices.data.length === 0 ? (
@@ -86,7 +86,7 @@ export function IbkrDeviceSettings() {
                       disabled={revoke.isPending}
                       onClick={() => void disconnect(device.deviceId)}
                     >
-                      {revoke.isPending ? 'Disconnecting…' : 'Stop daily sync'}
+                      {revoke.isPending ? 'Disconnecting…' : 'Stop Daily Sync'}
                     </Button>
                     <Button
                       variant="ghost"

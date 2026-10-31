@@ -253,7 +253,7 @@ export function SnapshotTable({
                   <TableCell className="hidden sm:table-cell">
                     <span className="flex items-center gap-1 text-xs text-profit">
                       <Clock className="h-3 w-3 animate-pulse" />
-                      PENDING
+                      Pending
                     </span>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
@@ -342,7 +342,7 @@ export function SnapshotTable({
                           ) : (
                             <Clock className="h-3 w-3" />
                           )}
-                          {snapshot.source}
+                          {snapshot.source === 'AUTOMATIC' ? 'Automatic' : 'Manual'}
                         </span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell max-w-[150px] truncate">

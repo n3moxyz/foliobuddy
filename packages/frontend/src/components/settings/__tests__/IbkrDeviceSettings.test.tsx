@@ -34,7 +34,7 @@ describe('owner IBKR device settings', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
     expect(api.getIbkrDevices).toHaveBeenCalledWith();
     expect(api.revokeIbkrDevice).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Stop daily sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop Daily Sync' }));
     await waitFor(() =>
       expect(vi.mocked(api.revokeIbkrDevice).mock.calls[0]?.[0]).toBe(device.deviceId)
     );
@@ -44,7 +44,7 @@ describe('owner IBKR device settings', () => {
     vi.mocked(api.revokeIbkrDevice).mockRejectedValue(new Error('Disconnect failed'));
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Stop daily sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop Daily Sync' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Disconnect failed');
     expect(screen.getByText('Merlin')).toBeInTheDocument();
   });
@@ -52,6 +52,6 @@ describe('owner IBKR device settings', () => {
     vi.mocked(api.getIbkrDevices).mockRejectedValue(new Error('offline'));
     mount();
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not be loaded/);
-    expect(screen.getByRole('button', { name: 'Retry connections' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry Connections' })).toBeInTheDocument();
   });
 });

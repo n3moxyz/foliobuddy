@@ -169,7 +169,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={configure}>Sync details</DropdownMenuItem>
+            <DropdownMenuItem onSelect={configure}>Sync Details</DropdownMenuItem>
             {connected && (
               <DropdownMenuItem
                 onSelect={() => {
@@ -183,7 +183,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
                   }
                 }}
               >
-                Disconnect this browser
+                Disconnect This Browser
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -198,7 +198,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
           }}
         >
           <DialogHeader className="pr-10 text-left">
-            <DialogTitle>{connected ? 'Sync IBKR' : 'Connect this Mac once'}</DialogTitle>
+            <DialogTitle>{connected ? 'Sync IBKR' : 'Connect This Mac Once'}</DialogTitle>
             <DialogDescription>
               {connected
                 ? 'Updates your IBKR shares, native cost bases and currency cash or debt. Your trade history stays intact.'
@@ -220,7 +220,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
                 Mac helper setup instructions
               </a>
               <div className="space-y-2">
-                <Label htmlFor={fieldId}>One-time setup code</Label>
+                <Label htmlFor={fieldId}>One-Time Setup Code</Label>
                 <Input
                   id={fieldId}
                   value={code}
@@ -281,7 +281,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
                     ))}
                     {state.changes.cash.map((row) => (
                       <div key={row.currency} className="space-y-1 py-3">
-                        <dt className="font-medium">{row.currency} cash / debt</dt>
+                        <dt className="font-medium">{row.currency} Cash / Debt</dt>
                         <dd className="font-mono text-muted-foreground">
                           {row.previous == null
                             ? 'Not recorded'
@@ -325,7 +325,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
                 disabled={busy || connecting || disabled}
                 onClick={() => (completed ? setOpen(false) : void sync())}
               >
-                {completed ? 'Done' : 'Sync now'}
+                {completed ? 'Done' : 'Sync Now'}
               </Button>
             ) : (
               <Button
@@ -333,7 +333,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
                 disabled={connecting || disabled}
                 onClick={() => void connect()}
               >
-                {connecting ? 'Connecting…' : 'Connect and sync'}
+                {connecting ? 'Connecting…' : 'Connect and Sync'}
               </Button>
             )}
           </DialogFooter>

@@ -53,7 +53,7 @@ Posts from the owner's validated X roster (validatex `verified-ai-roster.csv`) r
 - `GET /agent/news` and `GET /agent/news/asset/:assetId`: the same payloads for the agent key's owner (`x-api-key: AGENT_API_KEY`), so the live feed can be checked without a Clerk session.
 - `GET /news`: fetches the 40 largest targets (`MAX_NEWS_TARGETS`) plus five macro queries; `holdings` lists every news-eligible holding, largest first, with `storyCount` and `loaded`. Uncached failures reject; a partial refresh keeps successes; if every Yahoo request fails the call rejects, so React Query keeps the last good headlines. Google failures never count.
 - `GET /news/asset/:assetId`: id must match `^[A-Za-z0-9_-]{1,64}$` (400 otherwise). 404 unless the asset is one of the user's owned or open-trade news targets. Yahoo (30) + Google (40, `.SI` only), ranked with a 60-day window, newest first, capped at 60. Rejects only when Yahoo fails and Google returned nothing.
-- `GET /news/enrichment`: read-only view of the Stage 2 cache. `POST /news/feedback`: per-row Flag ("Not relevant" / "Poor source"), logged as story metadata only, never portfolio values.
+- `GET /news/enrichment`: read-only view of the Stage 2 cache. `POST /news/feedback`: per-row Flag ("Not Relevant" / "Poor Source"), logged as story metadata only, never portfolio values.
 
 ## Ranking (`ranking.ts`, `sourceQuality.ts`, `materiality.ts`)
 
@@ -61,7 +61,7 @@ Posts from the owner's validated X roster (validatex `verified-ai-roster.csv`) r
 - **Materiality**: headline patterns set importance + event type; clickbait forces low.
 - **Score**: importance + tier + relevance (held beats open-trade, small large-holding bonus) + recency (24h half-life). Feed age limit 14 days (30 if high importance); `RankOptions` lets a holding page look back 60. Future timestamps are treated as undated.
 - **Clustering**: story id → identity-preserving URL (tracking params stripped) → title signature within 72h. The best publisher represents the cluster; `affectedSymbols` is the union. One story, one place, except that a holding whose only coverage was filed under a bigger holding shows it too. `storyCount` counts every story touching a holding. Holding cards are ordered by their best story's rank.
-- **Top stories**: high materiality and (tier ≤2, or tier 3 with ≥2 normalized distinct publishers), cap 4, empty on quiet days. Section repeats carry an "in Top stories" marker.
+- **Top stories**: high materiality and (tier ≤2, or tier 3 with ≥2 normalized distinct publishers), cap 4, empty on quiet days. Section repeats carry an "in Top Stories" marker.
 - API responses expose labels only: never scores, weights, position values, or provider tags (test-enforced).
 
 ## Stage 2 enrichment (`enrichmentService.ts`, `articleRetrieval.ts`)

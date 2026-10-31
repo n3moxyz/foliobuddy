@@ -67,7 +67,7 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 - "Side" (trades table) or "Direction" (form, stats, export) for LONG and SHORT.
 - "completed trades" (Dashboard help) or "closed", the state name used everywhere else.
 - "Owner" (desktop badge) or "Primary owner" (mobile card and form).
-- The IBKR disconnect flow: "Disconnect My Mac", then "Stop daily sync", then "disconnected".
+- The IBKR disconnect flow: "Disconnect My Mac", then "Stop Daily Sync", then "disconnected".
 - "% WR" in the collapsed Trade Analytics card, or "% win rate".
 - Four phrasings for an empty search: "No results for", "No holding matches", "No matching assets", "No matching holdings".
 - "Check saved holdings" in import recovery, which means saved positions.
