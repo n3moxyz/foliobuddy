@@ -22,7 +22,7 @@ describe('DbStatusBanner', () => {
     vi.clearAllMocks();
   });
 
-  it('shows loading state with yellow dot and "Checking..." text', () => {
+  it('shows loading state with yellow dot and "Checking…" text', () => {
     mockUseDbHealth.mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -31,7 +31,7 @@ describe('DbStatusBanner', () => {
 
     renderBanner();
 
-    expect(screen.getByText('Checking...')).toBeInTheDocument();
+    expect(screen.getByText('Checking…')).toBeInTheDocument();
     const dots = document.querySelectorAll('.bg-warning');
     expect(dots.length).toBeGreaterThan(0);
   });

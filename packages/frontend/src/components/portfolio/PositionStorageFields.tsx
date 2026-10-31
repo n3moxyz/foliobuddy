@@ -71,7 +71,7 @@ export function PositionStorageFields({
             options={locationOptions}
             placeholder="Select broker"
             addLabel="+ Add new broker"
-            inputPlaceholder="Enter broker name..."
+            inputPlaceholder="Enter broker name…"
             inputLabel="New broker name"
             adding={addingStorageLocation}
             inputValue={newStorageLocation}
@@ -118,7 +118,7 @@ export function PositionStorageFields({
             options={locationOptions}
             placeholder={`Select ${storageLocationLabel.toLowerCase()}`}
             addLabel={`+ Add new ${storageLocationLabel.toLowerCase()}`}
-            inputPlaceholder={`Enter ${storageLocationLabel.toLowerCase()} name...`}
+            inputPlaceholder={`Enter ${storageLocationLabel.toLowerCase()} name…`}
             inputLabel={`New ${storageLocationLabel.toLowerCase()} name`}
             adding={addingStorageLocation}
             inputValue={newStorageLocation}

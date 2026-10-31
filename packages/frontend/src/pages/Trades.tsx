@@ -422,7 +422,7 @@ export default function Trades() {
                 }}
                 disabled={deleteAllMutation.isPending}
               >
-                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All Trades'}
+                {deleteAllMutation.isPending ? 'Deleting…' : 'Delete All Trades'}
               </Button>
             </div>
           </div>
@@ -479,7 +479,7 @@ export default function Trades() {
                 }}
                 disabled={deleteTradeMutation.isPending}
               >
-                {deleteTradeMutation.isPending ? 'Deleting...' : 'Delete'}
+                {deleteTradeMutation.isPending ? 'Deleting…' : 'Delete'}
               </Button>
             </div>
           </div>

@@ -1328,7 +1328,7 @@ export function PositionTable({
 
         {options.isLoading ? (
           <p className="rounded-md border bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
-            Loading activity...
+            Loading activity…
           </p>
         ) : options.isError ? (
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-4 text-sm text-destructive">
@@ -1526,7 +1526,7 @@ export function PositionTable({
               onClick={handleDelete}
               disabled={deletePositionMutation.isPending}
             >
-              {deletePositionMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deletePositionMutation.isPending ? 'Deleting…' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1653,7 +1653,7 @@ export function PositionTable({
               )}
               {positionHistory?.some((entry) => entry.brokerOrderId) && (
                 <p className="text-xs text-muted-foreground">
-                  Native history uses IBKR’s portfolio average. Statement charges include taxes and
+                  Native history uses IBKR's portfolio average. Statement charges include taxes and
                   can differ from the charges included in that average.
                 </p>
               )}
@@ -1823,7 +1823,7 @@ export function PositionTable({
               onClick={handleCancelHistoryEntry}
               disabled={cancelPositionHistoryMutation.isPending}
             >
-              {cancelPositionHistoryMutation.isPending ? 'Cancelling...' : 'Cancel Entry'}
+              {cancelPositionHistoryMutation.isPending ? 'Cancelling…' : 'Cancel Entry'}
             </Button>
           </DialogFooter>
         </DialogContent>

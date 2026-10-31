@@ -208,7 +208,7 @@ export function PositionDeltaEditor({
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="submit" disabled={isLoading || !canSubmit}>
-          {isLoading ? 'Saving...' : deltaMode === 'add' ? 'Add to Position' : 'Reduce Position'}
+          {isLoading ? 'Saving…' : deltaMode === 'add' ? 'Add to Position' : 'Reduce Position'}
         </Button>
       </div>
     </>

@@ -315,7 +315,7 @@ export default function History() {
                 onClick={handleDelete}
                 disabled={deleteSnapshot.isPending}
               >
-                {deleteSnapshot.isPending ? 'Deleting...' : 'Delete'}
+                {deleteSnapshot.isPending ? 'Deleting…' : 'Delete'}
               </Button>
             </div>
           </div>
@@ -354,7 +354,7 @@ export default function History() {
                 }}
                 disabled={deleteAllMutation.isPending}
               >
-                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All Snapshots'}
+                {deleteAllMutation.isPending ? 'Deleting…' : 'Delete All Snapshots'}
               </Button>
             </div>
           </div>

@@ -53,7 +53,7 @@ it('explains full allocation before submission and lets the user return to rebal
   fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'New investor' } });
   expect(within(dialog).getByRole('button', { name: 'Add Investor' })).toBeDisabled();
   expect(within(dialog).getByRole('status')).toHaveTextContent(
-    'No stake is available. Reduce an existing investor’s stake'
+    "No stake is available. Reduce an existing investor's stake"
   );
   expect(create).not.toHaveBeenCalled();
   fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));

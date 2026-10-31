@@ -740,7 +740,7 @@ describe('News page', () => {
 
       fireEvent.change(input, { target: { value: 'zzz' } });
 
-      expect(screen.getByText('No holding matches “zzz”')).toBeInTheDocument();
+      expect(screen.getByText('No holding matches "zzz"')).toBeInTheDocument();
       expect(screen.queryByRole('option')).not.toBeInTheDocument();
       expect(input).toHaveAttribute('aria-expanded', 'false');
       fireEvent.keyDown(input, { key: 'Enter' });

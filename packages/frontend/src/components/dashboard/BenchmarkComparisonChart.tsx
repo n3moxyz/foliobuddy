@@ -470,7 +470,7 @@ export function BenchmarkComparisonChart() {
               </PopoverTrigger>
               <PopoverContent className="w-[calc(100vw-2rem)] max-w-64 p-2">
                 <Input
-                  placeholder="Search coins, ETFs, indexes..."
+                  placeholder="Search coins, ETFs, indexes…"
                   aria-label="Search for a benchmark"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -478,7 +478,7 @@ export function BenchmarkComparisonChart() {
                 />
                 <div className="mt-2 max-h-40 overflow-y-auto">
                   {isSearching && (
-                    <div className="text-sm text-muted-foreground p-2">Searching...</div>
+                    <div className="text-sm text-muted-foreground p-2">Searching…</div>
                   )}
                   {!isSearching && searchResults.length === 0 && searchQuery.length >= 1 && (
                     <div className="break-words p-2 text-sm text-muted-foreground">
@@ -553,7 +553,7 @@ export function BenchmarkComparisonChart() {
           <div className="relative">
             {isBenchmarkFetching && (
               <div className="absolute inset-0 z-10 flex items-center justify-center">
-                <span className="text-sm text-muted-foreground animate-pulse">Loading...</span>
+                <span className="text-sm text-muted-foreground animate-pulse">Loading…</span>
               </div>
             )}
             <ResponsiveContainer width="100%" height={300}>

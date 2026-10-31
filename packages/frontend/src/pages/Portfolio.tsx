@@ -1150,7 +1150,7 @@ export default function Portfolio() {
                 }}
                 disabled={deleteAllMutation.isPending}
               >
-                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All Positions'}
+                {deleteAllMutation.isPending ? 'Deleting…' : 'Delete All Positions'}
               </Button>
             </div>
           </div>
