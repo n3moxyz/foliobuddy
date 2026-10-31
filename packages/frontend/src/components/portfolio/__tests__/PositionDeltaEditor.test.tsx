@@ -268,7 +268,7 @@ describe('PositionDeltaEditor', () => {
     expect(screen.getByRole('button', { name: 'Add to Position' })).toBeInTheDocument();
   });
 
-  it('warns that reducing to zero closes and removes the position', () => {
+  it('warns that reducing to zero deletes the position and its history', () => {
     const basePreview = {
       currentQuantity: 10,
       currentAvgCost: 100,
@@ -280,7 +280,7 @@ describe('PositionDeltaEditor', () => {
       deltaMode: 'reduce',
       preview: { ...basePreview, nextQuantity: 4, nextTotalCost: 400 },
     });
-    expect(screen.queryByText(/closes the position/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/deletes the position/i)).not.toBeInTheDocument();
     unmount();
     void rerender;
 
@@ -288,7 +288,7 @@ describe('PositionDeltaEditor', () => {
       deltaMode: 'reduce',
       preview: { ...basePreview, nextQuantity: 0, nextAvgCost: 0, nextTotalCost: 0 },
     });
-    expect(screen.getByText(/closes the position/i)).toBeInTheDocument();
+    expect(screen.getByText(/deletes the position/i)).toBeInTheDocument();
   });
 
   it('shows the same fractional native average before and after a partial sale', () => {

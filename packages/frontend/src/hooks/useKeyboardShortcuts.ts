@@ -47,9 +47,9 @@ export function useKeyboardShortcuts({ onShowHelp }: UseKeyboardShortcutsOptions
 export const shortcuts = [
   { key: 'D', description: 'Go to Dashboard' },
   { key: 'P', description: 'Go to Portfolio' },
-  { key: 'T', description: 'Go to Trades' },
+  { key: 'T', description: 'Go to Trade Journal' },
   { key: 'N', description: 'Go to News' },
-  { key: 'H', description: 'Go to History' },
+  { key: 'H', description: 'Go to Snapshot History' },
   { key: 'I', description: 'Go to Investors' },
   { key: 'S', description: 'Go to Settings' },
   { key: '/', description: 'Toggle theme' },

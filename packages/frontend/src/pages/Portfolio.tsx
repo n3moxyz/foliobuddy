@@ -961,8 +961,8 @@ export default function Portfolio() {
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
                               onClick={handlePerpDelete}
-                              aria-label="Delete perp exposure"
-                              title="Delete perp exposure"
+                              aria-label="Remove perp exposure"
+                              title="Remove perp exposure"
                               disabled={perpExposureActionsDisabled}
                             >
                               <Trash2 className="h-3.5 w-3.5" />

@@ -207,8 +207,8 @@ export function CreatableSelect({
                         className="h-11 w-11 shrink-0 sm:h-8 sm:w-8"
                         onPointerDown={stopOptionAction}
                         onClick={(event) => handleDeleteOption(event, option)}
-                        aria-label={`Delete ${option}`}
-                        title={`Delete ${option}`}
+                        aria-label={`Remove ${option}`}
+                        title={`Remove ${option}`}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

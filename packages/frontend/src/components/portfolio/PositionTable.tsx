@@ -1296,8 +1296,8 @@ export function PositionTable({
                     variant="ghost"
                     size="icon"
                     className="-mr-1 shrink-0 text-destructive touch-manipulation hover:text-destructive"
-                    aria-label={`Delete ${entry.label.toLowerCase()} history entry`}
-                    title="Delete history entry"
+                    aria-label={`Cancel ${entry.label.toLowerCase()} history entry`}
+                    title="Cancel history entry"
                     onClick={() => {
                       cancelPositionHistoryMutation.reset();
                       setCancelHistoryEntry(entry.historyEntry);
