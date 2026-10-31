@@ -90,4 +90,18 @@ describe('Trades asset picker: server returns a different asset', () => {
     await waitFor(() => expect(onSelectAsset).toHaveBeenCalledWith('ethena', coinRow));
     expect(toast.error).not.toHaveBeenCalled();
   });
+
+  it('names the pick when the request fails, with the connection hint for network errors', async () => {
+    mutateAsync.mockRejectedValue(new TypeError('Failed to fetch'));
+    const onSelectAsset = vi.fn<OnSelectAsset>();
+
+    await pickEthenaCoin(onSelectAsset);
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't select Ethena USDe", {
+        description: 'Check your connection and try again.',
+      })
+    );
+    expect(onSelectAsset).not.toHaveBeenCalled();
+  });
 });

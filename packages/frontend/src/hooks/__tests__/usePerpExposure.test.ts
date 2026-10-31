@@ -18,6 +18,7 @@ vi.mock('@/lib/api', () => ({
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
@@ -188,6 +189,9 @@ describe('usePerpExposure', () => {
       preferences(null)
     );
     expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith("Couldn't save perp exposure", {
+      description: 'offline',
+    });
   });
 
   it('uses perp-specific success copy for manual save and delete', async () => {
@@ -232,5 +236,7 @@ describe('usePerpExposure', () => {
       })
     );
     expect(localStorage.getItem(CURRENT_STORAGE_KEY)).toBe('350000');
+    // The background migration retries on the next load; it never reports a failure.
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });

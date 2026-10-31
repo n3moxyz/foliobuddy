@@ -7,6 +7,8 @@ import { isListedCoinCandidate } from '@/components/portfolio/assetSearchMatchin
 import type { Asset, CoinSearchResult } from '@/lib/types';
 import { toast } from 'sonner';
 import { mismatchedPickToast, resolvedAssetMatchesPick } from '@/lib/assetPickGuard';
+import { AuthSessionChangedError } from '@/lib/authSession';
+import { failureDescription } from '@/lib/mutationFeedback';
 
 interface AssetSearchDropdownProps {
   selectedAsset: Asset | null;
@@ -83,12 +85,20 @@ export function AssetSearchDropdown({
   };
 
   const handleSelectCoin = async (coin: CoinSearchResult) => {
-    const asset = await createAssetFromCoinGecko.mutateAsync({
-      coingeckoId: coin.id,
-      symbol: coin.symbol,
-      name: coin.name,
-      category: 'LIQUID_CRYPTO',
-    });
+    let asset: Asset;
+    try {
+      asset = await createAssetFromCoinGecko.mutateAsync({
+        coingeckoId: coin.id,
+        symbol: coin.symbol,
+        name: coin.name,
+        category: 'LIQUID_CRYPTO',
+      });
+    } catch (error) {
+      if (!(error instanceof AuthSessionChangedError)) {
+        toast.error(`Couldn't select ${coin.name}`, { description: failureDescription(error) });
+      }
+      return;
+    }
     if (!resolvedAssetMatchesPick(asset, 'LIQUID_CRYPTO')) {
       const { title, description } = mismatchedPickToast(coin.name, asset);
       toast.error(title, { description });

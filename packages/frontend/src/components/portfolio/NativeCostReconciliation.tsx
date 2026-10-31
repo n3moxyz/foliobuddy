@@ -18,7 +18,11 @@ export function NativeCostReconciliation() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { formatPrice, formatQuantity, maskMoney } = useMoneyFormatter();
-  const mutation = useMutation({ mutationFn: api.reconcileNativeCosts });
+  // Preview, apply and restore failures show inline in this dialog.
+  const mutation = useMutation({
+    meta: { showsOwnError: true },
+    mutationFn: api.reconcileNativeCosts,
+  });
   const reset = () => {
     setPreview(null);
     setDownloaded(false);

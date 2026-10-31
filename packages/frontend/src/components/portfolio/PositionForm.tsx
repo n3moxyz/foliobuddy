@@ -38,7 +38,8 @@ import {
   applyPositionDelta,
 } from '@foliobuddy/shared';
 import { api } from '@/lib/api';
-import { isAuthSessionCurrent } from '@/lib/authSession';
+import { AuthSessionChangedError, isAuthSessionCurrent } from '@/lib/authSession';
+import { failureDescription } from '@/lib/mutationFeedback';
 import {
   beginPositionImport,
   confirmPositionImport,
@@ -1071,25 +1072,34 @@ export function PositionForm({
   const handleSelectCoin = async (candidate: CoinSearchResult | ProviderSearchResult) => {
     let asset: Asset;
     let requestedCategory: AssetCategory;
-    if ('provider' in candidate) {
-      requestedCategory = 'EQUITY';
-      asset = await createAssetFromProvider.mutateAsync({
-        provider: candidate.provider,
-        providerAssetId: candidate.providerAssetId,
-        symbol: candidate.symbol,
-        name: candidate.name,
-        category: requestedCategory,
-        nativeCurrency: candidate.nativeCurrency ?? undefined,
-        exchange: candidate.exchange ?? null,
-      });
-    } else {
-      requestedCategory = category === 'cash' ? 'STABLECOIN' : 'LIQUID_CRYPTO';
-      asset = await createAssetFromCoinGecko.mutateAsync({
-        coingeckoId: candidate.id,
-        symbol: candidate.symbol,
-        name: candidate.name,
-        category: requestedCategory,
-      });
+    try {
+      if ('provider' in candidate) {
+        requestedCategory = 'EQUITY';
+        asset = await createAssetFromProvider.mutateAsync({
+          provider: candidate.provider,
+          providerAssetId: candidate.providerAssetId,
+          symbol: candidate.symbol,
+          name: candidate.name,
+          category: requestedCategory,
+          nativeCurrency: candidate.nativeCurrency ?? undefined,
+          exchange: candidate.exchange ?? null,
+        });
+      } else {
+        requestedCategory = category === 'cash' ? 'STABLECOIN' : 'LIQUID_CRYPTO';
+        asset = await createAssetFromCoinGecko.mutateAsync({
+          coingeckoId: candidate.id,
+          symbol: candidate.symbol,
+          name: candidate.name,
+          category: requestedCategory,
+        });
+      }
+    } catch (error) {
+      if (!(error instanceof AuthSessionChangedError)) {
+        toast.error(`Couldn't select ${candidate.name}`, {
+          description: failureDescription(error),
+        });
+      }
+      return;
     }
 
     if (!resolvedAssetMatchesPick(asset, requestedCategory)) {

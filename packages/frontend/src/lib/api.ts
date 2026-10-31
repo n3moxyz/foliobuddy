@@ -59,8 +59,10 @@ import {
   setSessionTokenGetter,
   type AuthSession,
 } from './authSession';
+import { ApiError } from './apiError';
 
 export * from './types';
+export { ApiError };
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -104,7 +106,10 @@ async function request<T>(
     if (!response.ok) {
       const error = await response.json().catch(() => null);
       assertAuthSession(session);
-      throw new Error(error?.error || `Request failed (HTTP ${response.status})`);
+      throw new ApiError(
+        error?.error || `Request failed (HTTP ${response.status})`,
+        response.status
+      );
     }
     if (response.status === 204) return undefined as T;
     const data = await response.json();

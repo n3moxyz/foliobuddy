@@ -96,6 +96,7 @@ export default function Investors() {
       : formatCurrency(value, 'USD', 0);
 
   const createMutation = useMutation({
+    meta: { failureTitle: "Couldn't add investor" },
     mutationFn: (data: CreateInvestorData) => api.createInvestor(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investors'] });
@@ -104,6 +105,7 @@ export default function Investors() {
   });
 
   const updateMutation = useMutation({
+    meta: { failureTitle: "Couldn't save investor" },
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateInvestorData> }) =>
       api.updateInvestor(id, data),
     onSuccess: () => {
@@ -113,6 +115,7 @@ export default function Investors() {
   });
 
   const deleteMutation = useMutation({
+    meta: { failureTitle: "Couldn't delete investor" },
     mutationFn: ({ id, reassignTo }: { id: string; reassignTo?: string }) =>
       api.deleteInvestor(id, reassignTo),
     onSuccess: () => {
