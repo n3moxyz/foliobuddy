@@ -21,11 +21,11 @@ Deploy the additive migration and backend before using the frontend. New endpoin
 are protected by the existing Clerk owner session, not the read-only agent key.
 
 1. Open the owned IBKR cash position. If absent, select Cash (fiat) at IBKR in Add
-   Position and choose **Open IBKR currency balances**. This creates a zero-value
+   Position and choose **Open IBKR Currency Balances**. This creates a zero-value
    anchor, never a fabricated deposit or fill. Multiple existing cash rows require
    review rather than automatic consolidation.
-2. Choose **Edit currency balances** for a manual correction or **Import broker
-   capture** for a complete broker capture. Preview performs no writes.
+2. Choose **Edit Currency Balances** for a manual correction or **Import Broker
+   Capture** for a complete broker capture. Preview performs no writes.
 3. Review quantity, native average and net cash changes, including each currency.
    Download and verify the private checkpoint before applying. Complete Chrome's
    native Save dialog when enabled; a button click alone does not confirm the file.
@@ -35,7 +35,7 @@ are protected by the existing Clerk owner session, not the read-only agent key.
    rolls back every write. The same source capture applies only once.
 5. Reload and verify the saved quantities, native averages, currency balances and
    source timestamp. Original USD purchase records and all trade history remain.
-6. **Recent checkpoints → Restore → Check restoration** shows the exact reversal.
+6. **Recent Checkpoints → Restore → Check Restoration** shows the exact reversal.
    Restore succeeds only when current IBKR financial records and history still
    equal that checkpoint's saved result. Later edits or syncs require review.
 
@@ -47,7 +47,7 @@ verifies the complete capture. No chat prompt or Send step is needed. See the
 [one-click sync runbook](2026-10-01-ibkr-one-click-sync.md) for setup, pairing,
 security boundaries, audit files and failure handling.
 
-**Import broker capture** remains the manual JSON path. Manual cash snapshots show
+**Import Broker Capture** remains the manual JSON path. Manual cash snapshots show
 **Last manual cash edit**; `ibkrSyncedAt` also changes on manual edits and cannot
 alone identify a broker capture.
 

@@ -50,7 +50,7 @@ export function SnapshotScheduleSection() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-1.5">
-              <Label htmlFor="snapshot-hour">Snapshot time</Label>
+              <Label htmlFor="snapshot-hour">Snapshot Time</Label>
               <HelpTooltip
                 label="About snapshot time"
                 content="Each day at this local time, FolioBuddy saves your total value, allocation and per-position P&L. Weekly and monthly snapshots use the same time on your Sunday and 1st of the month."

@@ -229,13 +229,13 @@ export default function Investors() {
                     </div>
                     <dl className="my-4 grid grid-cols-2 gap-3 text-sm">
                       <div className="min-w-0">
-                        <dt className="text-xs text-muted-foreground">Current value</dt>
+                        <dt className="text-xs text-muted-foreground">Current Value</dt>
                         <dd className="mt-1 break-words font-mono">
                           {displayValue(investor.currentValue)}
                         </dd>
                       </div>
                       <div className="min-w-0">
-                        <dt className="text-xs text-muted-foreground">YTD return</dt>
+                        <dt className="text-xs text-muted-foreground">YTD Return</dt>
                         <dd
                           className={`mt-1 break-words font-mono ${getPnLColorClass(investor.ytdReturn)}`}
                         >
@@ -613,7 +613,7 @@ function InvestorForm({
                   onClick={handleUseSuggested}
                   className="text-primary hover:underline"
                 >
-                  Use this
+                  Use This
                 </button>
               </p>
             )}

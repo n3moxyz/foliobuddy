@@ -178,13 +178,13 @@ function IbkrCashEditor({
   return (
     <section aria-label="IBKR currency cash and debt" className="space-y-4">
       <div className="space-y-1">
-        <h3 className="text-base font-semibold">IBKR cash &amp; debt</h3>
+        <h3 className="text-base font-semibold">IBKR Cash &amp; Debt</h3>
         <p className="text-sm text-muted-foreground">
           Currency balances contribute one net USD amount to your portfolio.
         </p>
       </div>
       <div className="flex items-baseline justify-between gap-3 border-b pb-3">
-        <span className="text-sm text-muted-foreground">Net cash (USD)</span>
+        <span className="text-sm text-muted-foreground">Net Cash (USD)</span>
         <span
           className={`font-mono text-xl font-semibold ${(cash?.netCashUsd ?? position.marketValueUsd ?? 0) < 0 ? 'text-loss' : ''}`}
         >
@@ -240,7 +240,7 @@ function IbkrCashEditor({
             clear();
           }}
         >
-          Edit currency balances
+          Edit Currency Balances
         </Button>
         <Button
           type="button"
@@ -251,7 +251,7 @@ function IbkrCashEditor({
             clear();
           }}
         >
-          Import broker capture
+          Import Broker Capture
         </Button>
       </div>
       {mode === 'cash' && (
@@ -341,7 +341,7 @@ function IbkrCashEditor({
             }}
           >
             <Plus className="mr-1 h-4 w-4" />
-            Add currency
+            Add Currency
           </Button>
         </div>
       )}
@@ -377,14 +377,14 @@ function IbkrCashEditor({
           disabled={busy || (mode === 'sync' && !text.trim())}
           onClick={() => void reconcile(false)}
         >
-          {busy ? 'Checking…' : 'Preview IBKR changes'}
+          {busy ? 'Checking…' : 'Preview IBKR Changes'}
         </Button>
       )}
       {preview && (
         <div className="space-y-3 border-t pt-3">
           {preview.review.map((row) => (
             <div key={row.id} className="space-y-1 text-sm">
-              <p className="font-medium">{row.cash ? 'Net cash (USD)' : row.symbol}</p>
+              <p className="font-medium">{row.cash ? 'Net Cash (USD)' : row.symbol}</p>
               <p>
                 {row.cash ? (
                   <>
@@ -433,7 +433,7 @@ function IbkrCashEditor({
           ) : (
             <>
               <Button type="button" variant="outline" disabled={busy} onClick={download}>
-                Download IBKR checkpoint
+                Download IBKR Checkpoint
               </Button>
               <p className="text-xs text-muted-foreground">
                 A private checkpoint is also saved on the server when you apply. Later edits stop
@@ -444,7 +444,7 @@ function IbkrCashEditor({
                 disabled={busy || !backupSaved}
                 onClick={() => void reconcile(true)}
               >
-                Apply IBKR changes
+                Apply IBKR Changes
               </Button>
             </>
           )}
@@ -457,7 +457,7 @@ function IbkrCashEditor({
       )}
       {!!runs.data?.length && (
         <div className="space-y-2 border-t pt-3">
-          <h4 className="text-sm font-medium">Recent checkpoints</h4>
+          <h4 className="text-sm font-medium">Recent Checkpoints</h4>
           {runs.data.slice(0, 3).map((run) => (
             <div key={run.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span>
@@ -518,11 +518,11 @@ function IbkrCashEditor({
                   disabled={busy}
                   onClick={() => void restoreRun(false)}
                 >
-                  Check restoration
+                  Check Restoration
                 </Button>
                 {restoreReady && (
                   <Button type="button" disabled={busy} onClick={() => void restoreRun(true)}>
-                    Restore checked checkpoint
+                    Restore Checked Checkpoint
                   </Button>
                 )}
                 <Button

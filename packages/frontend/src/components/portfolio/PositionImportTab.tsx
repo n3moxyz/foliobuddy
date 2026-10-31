@@ -122,7 +122,7 @@ export function PositionImportTab({
           ) : (
             <>
               {recovering
-                ? 'Retry interrupted import'
+                ? 'Retry Interrupted Import'
                 : `Import ${parsedPositions?.length ?? 0} Position${parsedPositions?.length !== 1 ? 's' : ''}`}
             </>
           )}

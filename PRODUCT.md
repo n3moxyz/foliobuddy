@@ -8,6 +8,9 @@ Small circle — the creator plus a few friends/family tracking personal portfol
 
 Three words: **Composed. Sharp. Trustworthy.**
 
+### Words
+Product text follows the Content fundamentals in `scripts/design-system/content/README.md`: UK English, one name per concept, day-first dates on the 12-hour clock, Title Case for labels and actions, and feedback that says what happened.
+
 ### Aesthetic Direction
 - **Visual tone**: Dark-mode-native, clean, keyboard-friendly. Inspired by Linear/Raycast (polish, speed, restraint) crossed with Dune Analytics/Zapper (data-density, crypto-native charts, dark themes).
 - **References**: Linear's spatial clarity + Dune's information density + Raycast's micro-interactions

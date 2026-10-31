@@ -101,7 +101,7 @@ export function ReduceQuantityInput({
               {formatQuantity(balance, position.asset.category)}
             </span>
             <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-              MAX
+              Max
             </span>
           </Button>
         </div>

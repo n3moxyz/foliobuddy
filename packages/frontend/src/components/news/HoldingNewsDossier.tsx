@@ -44,7 +44,7 @@ function DossierHeader({
               <span className="min-w-0 break-words [overflow-wrap:anywhere]">{holding.name}</span>
             </>
           ) : (
-            'Holding news'
+            'Holding News'
           )}
         </h2>
         {holding?.openTradeOnly && (
@@ -55,7 +55,7 @@ function DossierHeader({
       </div>
       <Button variant="ghost" size="sm" className="shrink-0" onClick={onClose}>
         <X className="mr-1 h-4 w-4" aria-hidden="true" />
-        All news
+        All News
       </Button>
     </div>
   );

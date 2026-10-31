@@ -107,7 +107,7 @@ describe('PositionDeltaEditor', () => {
     const amountPanel = screen.getByRole('group', { name: 'Reduce quantity controls' });
     expect(amountPanel).toContainElement(screen.getByLabelText('Reduce Quantity'));
     expect(within(amountPanel).getByRole('button', { name: 'Reduce max SOL' })).toHaveTextContent(
-      'MAX'
+      'Max'
     );
     expect(within(amountPanel).getByRole('slider', { name: 'Percentage to reduce' })).toHaveValue(
       '0'

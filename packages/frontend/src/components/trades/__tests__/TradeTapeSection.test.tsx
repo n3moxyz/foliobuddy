@@ -84,7 +84,7 @@ describe('trade order controls', () => {
       'aria-sort',
       'descending'
     );
-    expect(screen.getByRole('combobox', { name: 'Default trade order' })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: 'Default Trade Order' })).toHaveTextContent(
       'Entry date: newest first'
     );
   });

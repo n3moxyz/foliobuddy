@@ -200,7 +200,7 @@ function WinRateSegment({ analytics }: { analytics: TradeAnalytics }) {
       <div className="flex items-center justify-between text-xs tabular-nums">
         <span className="text-profit font-medium">{analytics.winningTrades} wins</span>
         <span className="text-muted-foreground font-medium">
-          TOTAL: {analytics.totalTrades} trades
+          Total: {analytics.totalTrades} trades
         </span>
         <span className="text-loss font-medium">{analytics.losingTrades} losses</span>
       </div>

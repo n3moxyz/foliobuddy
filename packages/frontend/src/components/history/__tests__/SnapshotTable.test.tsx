@@ -184,18 +184,18 @@ describe('SnapshotTable live row', () => {
     // 02:00Z is 22:00 yesterday in New York, but already today in Singapore.
     const lastNight = { ...automaticSnapshot, timestamp: '2026-07-15T02:00:00.000Z' };
     renderLiveTable(NEW_YORK_8AM, [lastNight]);
-    expect(screen.getByText('PENDING')).toBeInTheDocument();
+    expect(screen.getByText('Pending')).toBeInTheDocument();
   });
 
   it('hides the pending row on the default schedule once 5am Singapore has passed', () => {
     renderLiveTable(DEFAULT_SNAPSHOT_SCHEDULE);
-    expect(screen.queryByText('PENDING')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pending')).not.toBeInTheDocument();
   });
 
   it("hides the pending row once a snapshot exists for today in the person's timezone", () => {
     // 10:00Z is 06:00 today in New York.
     const earlierToday = { ...automaticSnapshot, timestamp: '2026-07-15T10:00:00.000Z' };
     renderLiveTable(NEW_YORK_8AM, [earlierToday]);
-    expect(screen.queryByText('PENDING')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pending')).not.toBeInTheDocument();
   });
 });

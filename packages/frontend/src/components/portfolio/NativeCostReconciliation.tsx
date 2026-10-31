@@ -88,10 +88,10 @@ export function NativeCostReconciliation() {
       >
         <TabsList>
           <TabsTrigger value="reconcile" disabled={mutation.isPending}>
-            Reconcile costs
+            Reconcile Costs
           </TabsTrigger>
           <TabsTrigger value="restore" disabled={mutation.isPending}>
-            Restore backup
+            Restore Backup
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -101,7 +101,7 @@ export function NativeCostReconciliation() {
           : 'Use a verified IBKR capture to save native weighted-average costs. Existing USD entries remain available. Included broker orders must match your recorded dates and share quantities.'}
       </p>
       <label className="text-sm font-medium block">
-        {mode === 'restore' ? 'Backup file' : 'Broker capture file'}
+        {mode === 'restore' ? 'Backup File' : 'Broker Capture File'}
         <input
           type="file"
           accept=".json,application/json"
@@ -147,7 +147,7 @@ export function NativeCostReconciliation() {
           disabled={!text.trim() || mutation.isPending}
           onClick={() => void run(false)}
         >
-          {mutation.isPending ? 'Checking…' : 'Preview changes'}
+          {mutation.isPending ? 'Checking…' : 'Preview Changes'}
         </Button>
       )}
       {preview && (
@@ -199,7 +199,7 @@ export function NativeCostReconciliation() {
                     onClick={downloadBackup}
                     disabled={mutation.isPending}
                   >
-                    Download private backup
+                    Download Private Backup
                   </Button>
                   {downloaded && (
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -225,8 +225,8 @@ export function NativeCostReconciliation() {
                 {mutation.isPending
                   ? 'Applying…'
                   : mode === 'restore'
-                    ? 'Restore reviewed records'
-                    : 'Apply reviewed changes'}
+                    ? 'Restore Reviewed Records'
+                    : 'Apply Reviewed Changes'}
               </Button>
             </>
           )}

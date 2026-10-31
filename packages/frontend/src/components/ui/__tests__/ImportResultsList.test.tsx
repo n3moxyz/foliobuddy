@@ -16,8 +16,8 @@ describe('ImportResultsList compatibility', () => {
     );
 
     expect(screen.getByText('1 imported successfully, 1 failed')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Retry failed import' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Edit failed rows' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry Failed Import' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Failed Rows' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Close Import' }));
     expect(onDone).toHaveBeenCalledTimes(1);
   });
@@ -42,11 +42,11 @@ describe('ImportResultsList compatibility', () => {
       screen.getByText('Last confirmed result: 1 imported successfully, 1 failed')
     ).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Some rows may already be saved');
-    const edit = screen.getByRole('button', { name: 'Edit failed rows' });
+    const edit = screen.getByRole('button', { name: 'Edit Failed Rows' });
     expect(edit).toBeDisabled();
     fireEvent.click(edit);
     expect(onEditFailed).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Retry original batch' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry Original Batch' }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

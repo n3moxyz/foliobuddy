@@ -23,8 +23,8 @@ one-click **Sync IBKR** control still runs on the Mac paired with that browser.
    The private key remains on that Mac, mode `0600`, under the ignored private worker
    directory. Never paste a private key, Clerk token, broker credential or `.env`.
 3. In the signed-in FolioBuddy portfolio, edit the owned **IBKR cash & debt**
-   position. Under **Daily sync → Connect a Mac**, paste the public connection
-   details, review the scope and select **Authorise daily IBKR sync**. This binds
+   position. Under **Daily Sync → Connect a Mac**, paste the public connection
+   details, review the scope and select **Authorise Daily IBKR Sync**. This binds
    that device to the signed-in owner and that exact cash anchor. Public enrollment
    expires after 24 hours; rerun setup to refresh it without replacing the key.
 4. From that Mac’s workspace, run
@@ -46,8 +46,8 @@ sleep, logout, shutdown, expired access or a network outage can stop a run. No p
 FileVault, TCC, network or broker security settings are modified by setup.
 
 `npm run ibkr:worker:remove` stops/removes this worker's LaunchAgent and retains its
-keys and private evidence. **Daily sync → Disconnect <Mac name> → Stop daily sync**
-revokes the server permission. **Settings → IBKR daily sync** also lists active
+keys and private evidence. **Daily Sync → Disconnect <Mac name> → Stop Daily Sync**
+revokes the server permission. **Settings → IBKR Daily Sync** also lists active
 connections and can revoke them after a cash entry moves or becomes ineligible.
 Revocation takes effect for future transactions;
 a transaction already committed before revocation remains in the checkpoint log.

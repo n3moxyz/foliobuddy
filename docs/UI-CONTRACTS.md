@@ -10,7 +10,7 @@ Signed-out: `/` → lazy `pages/Landing.tsx` (`components/landing/` sections), e
 
 iOS HIG, all pages:
 
-- **Tables → cards**: `PositionTable` → `renderMobilePositionRow` below `md`; full table only on "All columns" (`showMobileColumnToggle`). `mobileVariant` `focus` (symbol+name, value, P&L pill, meta) / `compact` (value + P&L); row actions → 44px `⋮` menu; Trades column-hides (`hidden md:table-cell`).
+- **Tables → cards**: `PositionTable` → `renderMobilePositionRow` below `md`; full table only on "All Columns" (`showMobileColumnToggle`). `mobileVariant` `focus` (symbol+name, value, P&L pill, meta) / `compact` (value + P&L); row actions → 44px `⋮` menu; Trades column-hides (`hidden md:table-cell`).
 - **Dialogs**: content-heavy dock full-width to mobile's bottom (`!bottom-0`, rounded top, safe-area bottom padding), centered modal `sm+`; all `w-[calc(100%-2rem)]` + `max-h-[85vh] overflow-y-auto`.
 - **Touch**: 44px, compacting `sm+`/`md+`; `Input`/`SelectTrigger`/`DropdownMenuItem`/asset-search options/creatable-select row actions bake `h-11`/`min-h-11` → `sm:`; never redo per-call-site heights; dense row actions need `shrink-0`.
 - **Headers**: `flex-col gap-3 sm:flex-row`; secondary actions → `DropdownMenu` overflow.

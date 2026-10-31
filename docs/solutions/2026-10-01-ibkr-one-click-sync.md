@@ -24,8 +24,8 @@ npm run ibkr:helper:setup
 This installs an owner LaunchAgent, copies the helper runtime to the ignored
 `.local/ibkr-helper/runtime`, and opens a private local page with a setup code.
 Open FolioBuddy's owned IBKR section, choose **Sync IBKR**, and enter that code in
-**Connect this Mac once**. The code expires after ten minutes and five invalid
-attempts. **Connect and sync** pairs the browser and starts its first sync.
+**Connect This Mac Once**. The code expires after ten minutes and five invalid
+attempts. **Connect and Sync** pairs the browser and starts its first sync.
 
 If Chrome asks to allow FolioBuddy access to the local network, the owner must
 approve that one-time browser permission. Do not bypass a browser warning. This
@@ -59,7 +59,7 @@ asleep. To remove the helper from login items and stop it:
 npm run ibkr:helper:remove
 ```
 
-Removal retains private backups. **IBKR sync options → Disconnect this browser**
+Removal retains private backups. **IBKR sync options → Disconnect This Browser**
 forgets that browser's local token; it does not change the IBKR connection.
 
 ## Data flow and fail-closed behavior

@@ -46,8 +46,8 @@ their existing path.
 
 1. Capture current IBKR quantities and native portfolio averages. Keep the private
    JSON outside Git. `capturedAt` must be within 24 hours for preview/apply.
-2. In Portfolio's overflow menu choose **Reconcile IBKR costs**. Load the capture
-   and choose **Preview changes**. No writes occur.
+2. In Portfolio's overflow menu choose **Reconcile IBKR Costs**. Load the capture
+   and choose **Preview Changes**. No writes occur.
 3. Check every quantity, native average, retained USD average, dated current USD
    equivalent and history count. Each symbol must match exactly one owned IBKR
    brokerage position. Existing native baselines refuse a second repair.
@@ -59,7 +59,7 @@ their existing path.
 6. Reload the portfolio and inspect native costs, main USD costs and the corrected
    histories. Independently reread IBKR if any position changed during review.
 
-To undo, select **Restore backup**, load the downloaded version-2 backup, preview,
+To undo, select **Restore Backup**, load the downloaded version-2 backup, preview,
 then restore. The server requires the same owner and exact repaired state, restores
 only native fields and removes only the reconstructed initial rows. Original USD
 fields and original history remain intact. Later edits, buys, sales or identity

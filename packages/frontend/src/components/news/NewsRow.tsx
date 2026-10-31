@@ -58,7 +58,7 @@ function newsMetaText(item: NewsItem, groupSymbol?: string, featured?: boolean):
   } else if (affectedSymbols.length > 0) {
     parts.push(`affects ${affectedSymbols.slice(0, 3).join(', ')}`);
   }
-  if (featured) parts.push('in Top stories');
+  if (featured) parts.push('in Top Stories');
   return parts.join(' · ');
 }
 
@@ -128,10 +128,10 @@ export function NewsRow({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onFeedback(item, 'not_relevant', groupSymbol)}>
-                Not relevant
+                Not Relevant
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onFeedback(item, 'poor_source', groupSymbol)}>
-                Poor source
+                Poor Source
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -84,7 +84,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
               }
             }}
           >
-            {refreshPrice.isPending ? 'Checking NAV…' : 'Check latest NAV'}
+            {refreshPrice.isPending ? 'Checking NAV…' : 'Check Latest NAV'}
           </Button>
         )}
         {asset && (

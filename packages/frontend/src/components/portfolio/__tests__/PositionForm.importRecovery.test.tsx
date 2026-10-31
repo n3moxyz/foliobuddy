@@ -108,7 +108,7 @@ function openImport(rows = [nativePosition]) {
 
 function submitImport() {
   fireEvent.click(
-    screen.getByRole('button', { name: /^(Import \d+ Positions?|Retry interrupted import)$/ })
+    screen.getByRole('button', { name: /^(Import \d+ Positions?|Retry Interrupted Import)$/ })
   );
 }
 
@@ -161,11 +161,11 @@ describe('PositionForm import recovery', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Import' }));
     expect(importPositions).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Resume interrupted import' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resume Interrupted Import' }));
     const editor = screen.getByRole('textbox', { name: 'Position JSON to import' });
     expect(editor).toHaveAttribute('readonly');
     expect(JSON.parse((editor as HTMLTextAreaElement).value)).toEqual(rows);
-    fireEvent.click(screen.getByRole('button', { name: 'Retry interrupted import' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry Interrupted Import' }));
     await screen.findByText('1 imported successfully');
     expect(importPositions.mock.calls[1]).toEqual([rows, requestId]);
     fireEvent.click(screen.getByRole('button', { name: 'Close Import' }));
@@ -209,7 +209,7 @@ describe('PositionForm import recovery', () => {
       },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Paste from Clipboard' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Resume interrupted import' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resume Interrupted Import' }));
     await act(async () => resolve(JSON.stringify([secondPosition])));
     const editor = screen.getByRole('textbox', { name: 'Position JSON to import' });
     expect(JSON.parse((editor as HTMLTextAreaElement).value)).toEqual([nativePosition]);
@@ -371,14 +371,14 @@ describe('PositionForm import recovery', () => {
     submitImport();
     await screen.findByText('1 imported successfully, 2 failed');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retry failed import' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry Failed Import' }));
 
     await screen.findByText('3 imported successfully');
     expect(importPositions).toHaveBeenCalledTimes(2);
     expect(importPositions.mock.calls[1]).toEqual(importPositions.mock.calls[0]);
     expect(importPositions.mock.calls[1][0]).toEqual(batch);
-    expect(screen.queryByRole('button', { name: 'Retry failed import' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Edit failed rows' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry Failed Import' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Failed Rows' })).not.toBeInTheDocument();
   });
 
   it('edits only failed indexes, preserving custody and native precision, then starts a new request ID', async () => {
@@ -388,7 +388,7 @@ describe('PositionForm import recovery', () => {
     submitImport();
     await screen.findByText('1 imported successfully, 2 failed');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit failed rows' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Failed Rows' }));
 
     const editor = screen.getByRole('textbox', { name: 'Position JSON to import' });
     expect(JSON.parse((editor as HTMLTextAreaElement).value)).toEqual([
@@ -445,8 +445,8 @@ describe('PositionForm import recovery', () => {
     const { onSuccess } = openImport(batch);
     submitImport();
     await screen.findByText('1 imported successfully, 2 failed');
-    const retry = screen.getByRole('button', { name: 'Retry failed import' });
-    const edit = screen.getByRole('button', { name: 'Edit failed rows' });
+    const retry = screen.getByRole('button', { name: 'Retry Failed Import' });
+    const edit = screen.getByRole('button', { name: 'Edit Failed Rows' });
     const done = screen.getByRole('button', { name: 'Close Import' });
 
     act(() => {
@@ -495,8 +495,8 @@ describe('PositionForm import recovery', () => {
     const rendered = openImport(rows);
     submitImport();
     await screen.findByText('1 imported successfully, 1 failed');
-    const edit = screen.getByRole('button', { name: 'Edit failed rows' });
-    fireEvent.click(screen.getByRole('button', { name: 'Retry failed import' }));
+    const edit = screen.getByRole('button', { name: 'Edit Failed Rows' });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry Failed Import' }));
     await screen.findByText('Committed retry response lost');
 
     expect(edit).toBeDisabled();
@@ -513,7 +513,7 @@ describe('PositionForm import recovery', () => {
       screen.queryByRole('textbox', { name: 'Position JSON to import' })
     ).not.toBeInTheDocument();
     expect(importPositions).toHaveBeenCalledTimes(2);
-    fireEvent.click(screen.getByRole('button', { name: 'Retry original batch' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry Original Batch' }));
 
     await screen.findByText('2 imported successfully');
     expect(importPositions.mock.calls[1]).toEqual(importPositions.mock.calls[0]);
@@ -542,13 +542,13 @@ describe('PositionForm import recovery', () => {
     openImport(batch);
     submitImport();
     await screen.findByText('1 imported successfully, 2 failed');
-    fireEvent.click(screen.getByRole('button', { name: 'Retry failed import' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry Failed Import' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The import response was incomplete'
     );
-    expect(screen.getByRole('button', { name: 'Edit failed rows' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Retry original batch' }));
+    expect(screen.getByRole('button', { name: 'Edit Failed Rows' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry Original Batch' }));
 
     await screen.findByText('3 imported successfully');
     expect(importPositions.mock.calls[2]).toEqual(importPositions.mock.calls[0]);
@@ -586,7 +586,7 @@ describe('PositionForm import recovery', () => {
     );
     submitImport();
     await screen.findByText('0 imported successfully, 1 failed');
-    fireEvent.click(screen.getByRole('button', { name: 'Edit failed rows' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Failed Rows' }));
 
     const editor = screen.getByRole('textbox', { name: 'Position JSON to import' });
     expect(JSON.parse((editor as HTMLTextAreaElement).value)).toEqual([
