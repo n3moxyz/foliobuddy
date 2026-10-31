@@ -16,7 +16,7 @@ snapshot time with the rule from the scheduler's `scheduledSnapshotAt()`: the fi
 at the first valid time after the jump, and a repeated hour runs at its first occurrence.
 "Today" is the calendar date in the chosen timezone. A one-off parity run compared the
 two implementations around every 2026 DST change in 14 timezones. It found no differences.
-The row's text still says "5am SGT". A separate wording review covers that text.
+The row's text already names the same time, from the October wording review.
 
 The lesson: when a server rule becomes per-user, search the frontend for copies of the
 old constant. A small UI hint can hide a whole schedule. Change `snapshotTiming.ts`
