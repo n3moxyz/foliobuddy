@@ -41,7 +41,7 @@ Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tab
 
 ## Portfolio Section Headers
 
-2-level, all breakpoints: **Crypto/Equities/Cash** (`Portfolio.tsx` via `CollapsibleCard`, `icon` + `accentColor`) → **CEX/Broker account/Bank/Onchain** (`PositionTable`, trigger $ totals). Equities: persisted By Broker/By Type. Accent tokens `crypto`/`equities`/`cash`/`custody` in `index.css`/`tailwind.config.js`, never raw `-500`; custody accent `CUSTODY_CONFIG`. Heading wraps trigger (`<h2><button>`), never reversed: invalid HTML hides headings from SR nav. Desktop `hidden sm:block` full table rows; mobile `sm:hidden` `mobileVariant="compact"`, no column toggle; custody own section on both.
+2-level, all breakpoints: **Crypto/Equities/Cash** (`Portfolio.tsx` via `CollapsibleCard`, `icon` + `accentColor`) → **CEX/Broker Account/Bank/Onchain** (`PositionTable`, trigger $ totals). Equities: persisted By Broker/By Type. Accent tokens `crypto`/`equities`/`cash`/`custody` in `index.css`/`tailwind.config.js`, never raw `-500`; custody accent `CUSTODY_CONFIG`. Heading wraps trigger (`<h2><button>`), never reversed: invalid HTML hides headings from SR nav. Desktop `hidden sm:block` full table rows; mobile `sm:hidden` `mobileVariant="compact"`, no column toggle; custody own section on both.
 
 ## Creatable Storage Location Dropdowns
 

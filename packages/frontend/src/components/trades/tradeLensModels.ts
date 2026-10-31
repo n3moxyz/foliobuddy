@@ -118,7 +118,7 @@ const CLASS_LABELS: Record<CategoryGroup, string> = {
   [CategoryGroup.CRYPTO]: 'Crypto',
   [CategoryGroup.STABLES]: 'Cash',
   [CategoryGroup.EQUITIES]: 'Equity',
-  [CategoryGroup.UNIT_TRUSTS]: 'Unit trust',
+  [CategoryGroup.UNIT_TRUSTS]: 'Unit Trust',
 };
 
 type LabelledAsset = Pick<Asset, 'id' | 'symbol' | 'name' | 'category'>;

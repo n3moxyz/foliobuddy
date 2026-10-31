@@ -110,14 +110,14 @@ export default function Dashboard() {
   };
 
   const getInvestorLabel = () => {
-    if (!investors || investors.length === 0) return 'No investors';
-    if (selectedInvestors.length === 0) return 'All investors';
-    if (selectedInvestors.length === investors.length) return 'All investors';
+    if (!investors || investors.length === 0) return 'No Investors';
+    if (selectedInvestors.length === 0) return 'All Investors';
+    if (selectedInvestors.length === investors.length) return 'All Investors';
     if (selectedInvestors.length === 1) {
       const inv = investors.find((i) => i.id === selectedInvestors[0]);
       return inv?.name || 'Selected';
     }
-    return `${selectedInvestors.length} investors`;
+    return `${selectedInvestors.length} Investors`;
   };
 
   // isPending, not isLoading: a first load paused offline or in a hidden tab has

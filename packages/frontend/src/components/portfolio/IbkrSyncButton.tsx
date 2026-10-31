@@ -281,7 +281,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
                     ))}
                     {state.changes.cash.map((row) => (
                       <div key={row.currency} className="space-y-1 py-3">
-                        <dt className="font-medium">{row.currency} cash / debt</dt>
+                        <dt className="font-medium">{row.currency} Cash / Debt</dt>
                         <dd className="font-mono text-muted-foreground">
                           {row.previous == null
                             ? 'Not recorded'

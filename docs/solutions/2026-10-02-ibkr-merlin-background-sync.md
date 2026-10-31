@@ -22,7 +22,7 @@ one-click **Sync IBKR** control still runs on the Mac paired with that browser.
    **public enrollment JSON**; it does not enable the schedule yet.
    The private key remains on that Mac, mode `0600`, under the ignored private worker
    directory. Never paste a private key, Clerk token, broker credential or `.env`.
-3. In the signed-in FolioBuddy portfolio, edit the owned **IBKR cash & debt**
+3. In the signed-in FolioBuddy portfolio, edit the owned **IBKR Cash & Debt**
    position. Under **Daily Sync → Connect a Mac**, paste the public connection
    details, review the scope and select **Authorise Daily IBKR Sync**. This binds
    that device to the signed-in owner and that exact cash anchor. Public enrollment

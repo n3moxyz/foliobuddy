@@ -137,7 +137,7 @@ function sortPositionsByMarketValue(a: Position, b: Position) {
 function brokerLabelForPosition(position: Position): string {
   const location = position.storageLocation?.trim();
   if (location) return location;
-  if (position.storageType === 'BROKERAGE') return 'Broker account';
+  if (position.storageType === 'BROKERAGE') return 'Broker Account';
   return STORAGE_TYPE_LABELS[position.storageType] || position.storageType || 'Storage';
 }
 
@@ -565,7 +565,7 @@ export function PositionTable({
     const assetLabel = (
       <AssetLabel
         asset={position.asset}
-        nameOverride={position.ibkrCash ? 'IBKR cash & debt' : undefined}
+        nameOverride={position.ibkrCash ? 'IBKR Cash & Debt' : undefined}
         badge={
           options.showUnitTrustBadge && isUnitTrust ? (
             <span
@@ -1391,7 +1391,7 @@ export function PositionTable({
           brokeragePositions.length > 0 &&
           renderPositionSection({
             id: brokerageId,
-            label: 'Broker account',
+            label: 'Broker Account',
             helpContent: 'Assets held in broker accounts or fund platforms',
             positions: brokeragePositions,
             total: brokerageTotal,

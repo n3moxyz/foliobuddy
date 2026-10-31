@@ -1814,10 +1814,10 @@ export function PositionForm({
   if (fundingConfirmation) {
     const isCredit = fundingConfirmation.direction === 'credit';
     const positionActionLabel = isCredit
-      ? 'Reduce position'
+      ? 'Reduce Position'
       : isEditing
-        ? 'Add to position'
-        : 'Add position';
+        ? 'Add to Position'
+        : 'Add Position';
     return (
       <div className="space-y-4">
         <div className="space-y-1">
@@ -1845,7 +1845,7 @@ export function PositionForm({
           <div className="border-t border-border/60 pt-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-medium">{isCredit ? 'Add to cash pile' : 'Reduce cash pile'}</p>
+                <p className="font-medium">{isCredit ? 'Add to Cash Pile' : 'Reduce Cash Pile'}</p>
                 <p className="text-muted-foreground">{fundingConfirmation.cashLabel}</p>
               </div>
               <span
@@ -2058,7 +2058,7 @@ export function PositionForm({
         <form onSubmit={handleSubmit} className="space-y-3">
           {creatingIbkrCash && (
             <div className="space-y-2 rounded-md border p-3">
-              <p className="text-sm font-medium">IBKR currency cash &amp; debt</p>
+              <p className="text-sm font-medium">IBKR Currency Cash &amp; Debt</p>
               <p className="text-sm text-muted-foreground">
                 Track all currency balances in one account, including borrowing.
               </p>

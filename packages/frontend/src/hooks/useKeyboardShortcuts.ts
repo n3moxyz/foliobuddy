@@ -52,6 +52,6 @@ export const shortcuts = [
   { key: 'H', description: 'Go to Snapshot History' },
   { key: 'I', description: 'Go to Investors' },
   { key: 'S', description: 'Go to Settings' },
-  { key: '/', description: 'Toggle theme' },
-  { key: 'Cmd/Ctrl + K', description: 'Show keyboard shortcuts' },
+  { key: '/', description: 'Toggle Theme' },
+  { key: 'Cmd/Ctrl + K', description: 'Show Keyboard Shortcuts' },
 ];

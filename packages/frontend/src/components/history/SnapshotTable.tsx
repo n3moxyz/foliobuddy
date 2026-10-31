@@ -342,7 +342,7 @@ export function SnapshotTable({
                           ) : (
                             <Clock className="h-3 w-3" />
                           )}
-                          {snapshot.source}
+                          {snapshot.source === 'AUTOMATIC' ? 'Automatic' : 'Manual'}
                         </span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell max-w-[150px] truncate">

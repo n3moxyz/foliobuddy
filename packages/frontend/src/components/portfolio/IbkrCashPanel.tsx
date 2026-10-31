@@ -420,7 +420,7 @@ function IbkrCashEditor({
             {preview.cash.balances.map((balance) => (
               <div key={balance.currency} className="flex flex-wrap justify-between gap-2">
                 <dt>
-                  {balance.currency} {balance.cashBalance < 0 ? 'debt' : 'cash'}
+                  {balance.currency} {balance.cashBalance < 0 ? 'Debt' : 'Cash'}
                 </dt>
                 <dd className="font-mono">{native(balance.cashBalance, balance.currency)}</dd>
               </div>
