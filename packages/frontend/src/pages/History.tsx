@@ -275,16 +275,15 @@ export default function History() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Snapshot</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete this snapshot from{' '}
+            <DialogDescription>
+              Are you sure you want to delete the snapshot from{' '}
               <span className="font-semibold text-foreground">
                 {deletingSnapshot && formatDate(deletingSnapshot.timestamp)}
               </span>
-              ?
-            </p>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -311,14 +310,13 @@ export default function History() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Snapshots</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
+            <DialogDescription>
+              Are you sure you want to permanently delete all{' '}
+              <span className="font-semibold text-foreground">{allSnapshots?.length || 0}</span>{' '}
+              snapshots? This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete all{' '}
-              <span className="font-semibold text-foreground">{allSnapshots?.length || 0}</span>{' '}
-              snapshots? This will permanently remove all your snapshot history.
-            </p>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"

@@ -674,7 +674,7 @@ export default function Portfolio() {
                       <p className="text-muted-foreground text-sm">Positions</p>
                       <HelpTooltip
                         label="Positions"
-                        content="Number of assets you currently hold"
+                        content="Number of positions you own. Positions held for others are excluded."
                       />
                     </div>
                     <p className="font-medium tabular-nums">{summary.positionCount}</p>
@@ -1122,14 +1122,13 @@ export default function Portfolio() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Positions</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
+            <DialogDescription>
+              Are you sure you want to permanently delete all{' '}
+              <span className="font-semibold text-foreground">{positions?.length || 0}</span>{' '}
+              positions and their history? This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete all{' '}
-              <span className="font-semibold text-foreground">{positions?.length || 0}</span>{' '}
-              positions? This will permanently remove all your portfolio data.
-            </p>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"

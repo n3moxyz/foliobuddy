@@ -212,7 +212,8 @@ export default function Settings() {
             <div>
               <Label>Refresh Prices</Label>
               <p className="text-sm text-muted-foreground">
-                Fetch latest prices from CoinGecko ({prices?.length || 0} assets)
+                Fetch latest prices from CoinGecko, Yahoo Finance and fund managers (
+                {prices?.length || 0} assets)
               </p>
             </div>
             <Button
@@ -231,7 +232,9 @@ export default function Settings() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Refresh FX Rates</Label>
-              <p className="text-sm text-muted-foreground">Update USD/SGD exchange rate</p>
+              <p className="text-sm text-muted-foreground">
+                Update USD exchange rates for SGD, GBP, JPY, TWD, KRW and NOK
+              </p>
             </div>
             <Button
               variant="outline"
@@ -335,14 +338,14 @@ export default function Settings() {
             </p>
           </div>
           <p className="text-muted-foreground">
-            A portfolio tracking application for managing crypto investments, trade journaling, and
-            multi-investor support.
+            A private portfolio dashboard for a small circle: crypto, equities, funds and cash side
+            by side, with live prices, daily snapshots and honest benchmarks.
           </p>
           <div className="pt-4">
             <p className="text-muted-foreground">Data Sources:</p>
             <ul className="list-disc list-inside text-muted-foreground">
-              <li>Prices: CoinGecko API</li>
-              <li>FX Rates: CoinGecko API</li>
+              <li>Prices: CoinGecko, Yahoo Finance and fund-manager NAV feeds</li>
+              <li>FX rates: CoinGecko, with Yahoo Finance as a fallback</li>
             </ul>
           </div>
         </div>

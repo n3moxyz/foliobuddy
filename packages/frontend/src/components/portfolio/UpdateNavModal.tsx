@@ -65,7 +65,7 @@ export function UpdateNavModal({ asset, open, onClose }: UpdateNavModalProps) {
             {asset
               ? asset.priceProvider !== 'manual'
                 ? 'Daily NAV updates automatically. A statement entry is saved as history and cannot replace a verified automatic quote.'
-                : `Log the latest NAV in ${asset.nativeCurrency}. We'll convert to USD using the current FX rate.`
+                : `Log the latest NAV in ${asset.nativeCurrency}. FolioBuddy converts it to USD at the current FX rate.`
               : ''}
           </DialogDescription>
         </DialogHeader>
