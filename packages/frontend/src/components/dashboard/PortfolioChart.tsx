@@ -320,7 +320,7 @@ export function PortfolioChart({
           >
             {isFetching && (
               <div className="absolute inset-0 z-10 flex items-center justify-center">
-                <span className="text-sm text-muted-foreground animate-pulse">Loading...</span>
+                <span className="text-sm text-muted-foreground animate-pulse">Loading…</span>
               </div>
             )}
             <ResponsiveContainer width="100%" height={300} onResize={setChartWidth}>

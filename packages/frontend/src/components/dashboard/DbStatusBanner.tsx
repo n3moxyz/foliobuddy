@@ -10,10 +10,10 @@ export function DbStatusBanner() {
 
   const dotClass = isLoading ? 'bg-warning' : isHealthy ? 'bg-profit' : 'bg-destructive';
 
-  const label = isLoading ? 'Checking...' : isHealthy ? 'DB OK' : 'DB Down';
+  const label = isLoading ? 'Checking…' : isHealthy ? 'DB OK' : 'DB Down';
 
   const tooltipText = isLoading
-    ? 'Checking database connection...'
+    ? 'Checking database connection…'
     : isHealthy
       ? `Database healthy (${data!.latency_ms}ms)`
       : isUnhealthy && data?.message

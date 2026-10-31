@@ -38,7 +38,7 @@ export function AssetSearchDropdown({
   combinedResults,
   isEditing,
   id,
-  placeholder = 'Search for a coin...',
+  placeholder = 'Search for a coin…',
   positionAssetSymbol,
   positionAssetName,
   onSearchChange,
@@ -128,7 +128,7 @@ export function AssetSearchDropdown({
           className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
         >
           {searchLoading && searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">Searching...</div>
+            <div className="p-3 text-sm text-muted-foreground">Searching…</div>
           ) : combinedResults.length > 0 ? (
             combinedResults.map((result, index) => (
               <button
@@ -177,7 +177,7 @@ export function AssetSearchDropdown({
           ) : searchQuery.length >= 1 ? (
             <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
           ) : (
-            <div className="p-3 text-sm text-muted-foreground">Type to search assets...</div>
+            <div className="p-3 text-sm text-muted-foreground">Type to search assets…</div>
           )}
         </div>
       )}

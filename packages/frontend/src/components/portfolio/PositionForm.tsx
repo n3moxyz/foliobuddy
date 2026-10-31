@@ -728,7 +728,7 @@ export function PositionForm({
       }
     } catch (e) {
       if (formMounted.current && isAuthSessionCurrent(identity.session)) {
-        setParseError(e instanceof Error ? e.message : 'Import failed - please try again');
+        setParseError(e instanceof Error ? e.message : 'Import failed — please try again');
       }
     } finally {
       importInFlight.current = false;
@@ -1901,7 +1901,7 @@ export function PositionForm({
             Back
           </Button>
           <Button type="button" onClick={handleConfirmFunding} disabled={confirmingFunding}>
-            {confirmingFunding ? 'Saving...' : 'Confirm'}
+            {confirmingFunding ? 'Saving…' : 'Confirm'}
           </Button>
         </div>
       </div>
@@ -2280,7 +2280,7 @@ export function PositionForm({
                       />
                       <span className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
                         <Upload className="h-3.5 w-3.5" />
-                        {utUploading ? 'Parsing...' : 'Upload PDF'}
+                        {utUploading ? 'Parsing…' : 'Upload PDF'}
                       </span>
                     </div>
                     {utUploadError && (
@@ -2489,7 +2489,7 @@ export function PositionForm({
                     placeholder={
                       category === 'equity'
                         ? 'Search ticker (e.g. AAPL, D05.SI)'
-                        : 'Search for a coin...'
+                        : 'Search for a coin…'
                     }
                     positionAssetSymbol={position?.asset.symbol}
                     positionAssetName={position?.asset.name}
@@ -2528,7 +2528,7 @@ export function PositionForm({
                           <SelectValue
                             placeholder={
                               createAssetFromCoinGecko.isPending || createAsset.isPending
-                                ? 'Loading...'
+                                ? 'Loading…'
                                 : 'Select a type'
                             }
                           />
@@ -2685,7 +2685,7 @@ export function PositionForm({
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any notes..."
+                  placeholder="Add any notes…"
                   rows={2}
                   className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                 />
@@ -2720,7 +2720,7 @@ export function PositionForm({
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="submit" disabled={creatingIbkrCash || isLoading || !isFormValid}>
                   {isLoading
-                    ? 'Saving...'
+                    ? 'Saving…'
                     : isEditing || utStatementMatch
                       ? 'Update Position'
                       : 'Add Position'}

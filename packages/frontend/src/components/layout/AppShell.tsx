@@ -387,7 +387,7 @@ function AppShellContent({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleRefreshPrices} disabled={refreshing}>
                 <RefreshCw className={cn('h-4 w-4 mr-2', refreshing && 'animate-spin')} />
-                {refreshing ? 'Refreshing...' : 'Refresh Prices'}
+                {refreshing ? 'Refreshing…' : 'Refresh Prices'}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />

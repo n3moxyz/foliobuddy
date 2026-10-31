@@ -223,7 +223,7 @@ export default function Settings() {
               disabled={refreshingPrices}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshingPrices ? 'animate-spin' : ''}`} />
-              {refreshingPrices ? 'Refreshing...' : 'Refresh'}
+              {refreshingPrices ? 'Refreshing…' : 'Refresh'}
             </Button>
           </div>
 
@@ -243,7 +243,7 @@ export default function Settings() {
               disabled={refreshingFx}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshingFx ? 'animate-spin' : ''}`} />
-              {refreshingFx ? 'Refreshing...' : 'Refresh'}
+              {refreshingFx ? 'Refreshing…' : 'Refresh'}
             </Button>
           </div>
 
@@ -263,7 +263,7 @@ export default function Settings() {
               disabled={creatingSnapshot}
             >
               <Camera className={`h-4 w-4 mr-2`} />
-              {creatingSnapshot ? 'Creating...' : 'Create Snapshot'}
+              {creatingSnapshot ? 'Creating…' : 'Create Snapshot'}
             </Button>
           </div>
         </div>

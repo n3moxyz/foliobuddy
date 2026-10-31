@@ -329,7 +329,7 @@ function providerMetadataUpdates(
       (nativeCurrency && existing.nativeCurrency !== nativeCurrency))
   ) {
     throw new AppError(
-      'A priced fund’s currency and share-class identity cannot change during import',
+      "A priced fund's currency and share-class identity cannot change during import",
       409
     );
   }
@@ -516,7 +516,7 @@ router.put('/:id', async (req, res, next) => {
         )
       ) {
         throw new AppError(
-          'A priced fund’s currency, provider identity and category cannot change',
+          "A priced fund's currency, provider identity and category cannot change",
           409
         );
       }

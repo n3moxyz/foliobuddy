@@ -318,7 +318,7 @@ export async function syncIbkrDirect(id: string) {
       uncertain.set(stateKey, {
         phase: 'error',
         error:
-          'The sync may have saved, but completion is unverified. Review the original account’s saved checkpoint before another sync.',
+          "The sync may have saved, but completion is unverified. Review the original account's saved checkpoint before another sync.",
       });
     states.delete(stateKey);
     notify();
@@ -384,7 +384,7 @@ export async function syncIbkrDirect(id: string) {
         if (!isIbkrFxTimingError(error)) throw error;
         if (attempt === 3)
           throw new Error(
-            'IBKR’s currency balances and account total still disagree after three fresh captures. Nothing was saved. Try again shortly.',
+            "IBKR's currency balances and account total still disagree after three fresh captures. Nothing was saved. Try again shortly.",
             { cause: error }
           );
         previous = ibkrRetryBaseline(capture.capture);
