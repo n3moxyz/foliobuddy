@@ -204,7 +204,7 @@ export function createHelper({
             challenge.cashPositionId !== state.cashPositionId ||
             challenge.connectorFingerprint !== state.fingerprint)
       )
-        throw new Error('Fresh signed-in authorization is required for this IBKR account.');
+        throw new Error('Fresh signed-in authorisation is required for this IBKR account.');
       const scope = {
         cashPositionId: challenge.cashPositionId,
         connectorFingerprint: challenge.connectorFingerprint,

@@ -14,7 +14,7 @@ import {
 
 const ttlMs = 60_000;
 const permitsPerMinute = 30;
-const unavailable = 'IBKR helper authorization is unavailable';
+const unavailable = 'IBKR helper authorisation is unavailable';
 const digest = (permit: string) => createHash('sha256').update(permit).digest('hex');
 
 export async function issueIbkrHelperPermit(userId: string, raw: unknown) {

@@ -104,5 +104,9 @@ describe('GET /api/export/excel', () => {
     const tradesSheet = workbook.getWorksheet('Trades');
     expect(tradesSheet?.getCell(1, 10).value).toBe('Funding Cost');
     expect(tradesSheet?.getCell(2, 10).value).toBe(12.5);
+    // The app defines this value as capital at the start of the year (it drives YTD returns).
+    expect(workbook.getWorksheet('Investors')?.getCell(1, 3).value).toBe(
+      'Capital at Start of Year'
+    );
   });
 });

@@ -8,7 +8,23 @@ import {
   formatPercentAxisTick,
   getDateRange,
   normalizeToPercentChange,
+  formatTooltipDate,
+  formatXAxisDate,
 } from '@/lib/chartUtils';
+
+describe('chart dates', () => {
+  // Local noon, so the expectations hold in any test timezone.
+  const fifthOfSeptember = new Date(2026, 8, 5, 12).toISOString();
+
+  it('puts the day first in tooltips, like the rest of the app', () => {
+    expect(formatTooltipDate(fifthOfSeptember)).toBe('5 Sept 2026');
+  });
+
+  it('uses the same month abbreviations on the axis', () => {
+    expect(formatXAxisDate(fifthOfSeptember, 30)).toBe('5 Sept');
+    expect(formatXAxisDate(fifthOfSeptember, 365)).toBe('Sept 2026');
+  });
+});
 
 describe('percentage axis labels', () => {
   it('preserves distinct ticks for moves smaller than one percent', () => {

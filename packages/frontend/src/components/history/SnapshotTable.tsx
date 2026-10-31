@@ -16,6 +16,11 @@ import { formatDate } from '@/lib/utils';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { api } from '@/lib/api';
 import { isBeforeDailySnapshotTime, isSameLocalDay, type SnapshotSchedule } from './snapshotTiming';
+import {
+  DEFAULT_SNAPSHOT_HOUR,
+  DEFAULT_SNAPSHOT_TIMEZONE,
+  describeSnapshotTime,
+} from '@/lib/snapshotPreferences';
 import { toast } from 'sonner';
 import type { Snapshot, SnapshotPosition } from '@/lib/types';
 import {
@@ -41,6 +46,8 @@ interface SnapshotTableProps {
   onEdit: (snapshot: Snapshot) => void;
   onDelete: (snapshot: Snapshot) => void;
   onAddSnapshot?: () => void;
+  /** The person's own daily snapshot time, e.g. "5:00am Singapore time". */
+  snapshotTime?: string;
 }
 
 const SNAPSHOT_TABLE_HEADER_SKELETON_KEYS = ['date', 'value', 'source', 'notes'] as const;
@@ -77,6 +84,7 @@ export function SnapshotTable({
   onEdit,
   onDelete,
   onAddSnapshot,
+  snapshotTime = describeSnapshotTime(DEFAULT_SNAPSHOT_HOUR, DEFAULT_SNAPSHOT_TIMEZONE),
 }: SnapshotTableProps) {
   const { formatCurrency, maskMoney } = useMoneyFormatter();
   const [expandedSnapshots, setExpandedSnapshots] = useState<Set<string>>(new Set());
@@ -234,7 +242,10 @@ export function SnapshotTable({
                   <TableCell></TableCell>
                   <TableCell className="font-medium">{formatDate(liveRowTimestamp)}</TableCell>
                   <TableCell className="text-right font-mono">
-                    <div className="text-profit" title="Live portfolio value (snapshot at 5am SGT)">
+                    <div
+                      className="text-profit"
+                      title={`Live portfolio value (snapshot at ${snapshotTime})`}
+                    >
                       <div>{displayValue(liveValueUsd!)}</div>
                       <div className="text-xs">(Live)</div>
                     </div>
@@ -246,7 +257,7 @@ export function SnapshotTable({
                     </span>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                    Snapshot at 5am SGT
+                    Snapshot at {snapshotTime}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs">

@@ -131,7 +131,7 @@ function MetricsSegment({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <div>
-        <MetricLabel label="Total P&L" tip="Sum of all realized profits and losses" />
+        <MetricLabel label="Total P&L" tip="Sum of all realised profits and losses" />
         <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(analytics.totalPnL)}`}>
           {formatCurrency(convert(analytics.totalPnL), currency)}
         </p>
@@ -413,7 +413,7 @@ export function TradeStatsCard({
       : ratingLabel(riskReward, [
           [3, 'Excellent'],
           [2, 'Good'],
-          [1, 'Below 1:1'],
+          [1, 'Fair'],
           [0, 'Poor'],
         ]);
 

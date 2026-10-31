@@ -62,6 +62,8 @@ export function useCreateTrade() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // TradeForm shows the failure inline.
+    meta: { showsOwnError: true },
     mutationFn: (data: CreateTradeData) => api.createTrade(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
@@ -73,6 +75,8 @@ export function useUpdateTrade() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // TradeForm shows the failure inline.
+    meta: { showsOwnError: true },
     mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTradeData> }) => {
       const session = captureAuthSession();
       try {
@@ -106,6 +110,7 @@ export function useDeleteTrade() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { failureTitle: "Couldn't delete trade" },
     mutationFn: (id: string) => api.deleteTrade(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ['trades'] });
@@ -130,6 +135,7 @@ export function useDeleteAllTrades() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { failureTitle: "Couldn't delete trades" },
     mutationFn: () => api.deleteAllTrades(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });

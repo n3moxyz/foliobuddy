@@ -96,6 +96,7 @@ export default function Investors() {
       : formatCurrency(value, 'USD', 0);
 
   const createMutation = useMutation({
+    meta: { failureTitle: "Couldn't add investor" },
     mutationFn: (data: CreateInvestorData) => api.createInvestor(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investors'] });
@@ -104,6 +105,7 @@ export default function Investors() {
   });
 
   const updateMutation = useMutation({
+    meta: { failureTitle: "Couldn't save investor" },
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateInvestorData> }) =>
       api.updateInvestor(id, data),
     onSuccess: () => {
@@ -113,6 +115,7 @@ export default function Investors() {
   });
 
   const deleteMutation = useMutation({
+    meta: { failureTitle: "Couldn't delete investor" },
     mutationFn: ({ id, reassignTo }: { id: string; reassignTo?: string }) =>
       api.deleteInvestor(id, reassignTo),
     onSuccess: () => {
@@ -430,15 +433,13 @@ export default function Investors() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Investor</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
+            <DialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-semibold text-foreground">{deleteInvestor?.name}</span> from the
+              investor list? Historical data will not be affected. This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to remove{' '}
-              <span className="font-semibold text-foreground">{deleteInvestor?.name}</span> from the
-              investor list? Historical data will not be affected.
-            </p>
-
             {deleteInvestor && investors && investors.length > 1 && (
               <div className="space-y-2">
                 <Label htmlFor="reassign-investor">

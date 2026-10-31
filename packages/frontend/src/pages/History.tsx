@@ -5,6 +5,11 @@ import { useSnapshots, useDeleteSnapshot, useDeleteAllSnapshots } from '@/hooks/
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
+import {
+  DEFAULT_SNAPSHOT_HOUR,
+  DEFAULT_SNAPSHOT_TIMEZONE,
+  describeSnapshotTime,
+} from '@/lib/snapshotPreferences';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -79,8 +84,12 @@ export default function History() {
   const { currency } = useCurrencyStore();
   const { formatCurrency } = useMoneyFormatter();
   const { data: summary } = usePortfolioSummary();
-  // The live row follows the person's snapshot schedule, or 5am Singapore while it loads or fails.
   const { data: preferences } = useUserPreferences();
+  const snapshotTime = describeSnapshotTime(
+    preferences?.snapshotHour ?? DEFAULT_SNAPSHOT_HOUR,
+    preferences?.snapshotTimezone ?? DEFAULT_SNAPSHOT_TIMEZONE
+  );
+  // The live row follows the person's snapshot schedule, or 5am Singapore while it loads or fails.
   const snapshotSchedule = resolveSnapshotSchedule(preferences);
   // Fetch enough history for source counts and the current local scale dataset.
   // isPending, not isLoading: a first load paused offline or in a hidden tab has
@@ -239,6 +248,7 @@ export default function History() {
               onEdit={setEditingSnapshot}
               onDelete={setDeletingSnapshot}
               onAddSnapshot={() => setShowAddForm(true)}
+              snapshotTime={snapshotTime}
             />
           </TabsContent>
         )}
@@ -281,16 +291,15 @@ export default function History() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Snapshot</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete this snapshot from{' '}
+            <DialogDescription>
+              Are you sure you want to delete the snapshot from{' '}
               <span className="font-semibold text-foreground">
                 {deletingSnapshot && formatDate(deletingSnapshot.timestamp)}
               </span>
-              ?
-            </p>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -317,14 +326,13 @@ export default function History() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Snapshots</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
+            <DialogDescription>
+              Are you sure you want to permanently delete all{' '}
+              <span className="font-semibold text-foreground">{allSnapshots?.length || 0}</span>{' '}
+              snapshots? This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete all{' '}
-              <span className="font-semibold text-foreground">{allSnapshots?.length || 0}</span>{' '}
-              snapshots? This will permanently remove all your snapshot history.
-            </p>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"

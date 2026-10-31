@@ -35,8 +35,12 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
   const [review, setReview] = useState<IbkrDeviceEnrollment | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const register = useMutation({ mutationFn: api.registerIbkrDevice });
-  const revoke = useMutation({ mutationFn: api.revokeIbkrDevice });
+  // Both actions show their failures inline in this section.
+  const register = useMutation({
+    meta: { showsOwnError: true },
+    mutationFn: api.registerIbkrDevice,
+  });
+  const revoke = useMutation({ meta: { showsOwnError: true }, mutationFn: api.revokeIbkrDevice });
   const busy = register.isPending || revoke.isPending;
   const device = devices.data?.find((d) => !d.revokedAt);
   // Observe successful poll timestamps even when React Query shares unchanged data.
@@ -67,11 +71,11 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
       if (!isAuthSessionCurrent(session)) return;
       client.setQueryData<IbkrSyncDevice[]>(queryKey, (previous) => [saved, ...(previous ?? [])]);
       reset();
-      toast.success(`${saved.name} authorized for daily IBKR sync`);
+      toast.success(`${saved.name} authorised for daily IBKR sync`);
       void client.invalidateQueries({ queryKey: ['ibkr-devices'] });
     } catch (e) {
       if (!isAuthSessionCurrent(session)) return;
-      setError(e instanceof Error ? e.message : 'The connection could not be authorized.');
+      setError(e instanceof Error ? e.message : 'The connection could not be authorised.');
     }
   }
   async function disconnect() {
@@ -100,7 +104,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
         <h4 id={headingId} className="text-sm font-medium">
           Daily sync
         </h4>
-        <span className="text-xs text-muted-foreground">6:00 AM · Singapore</span>
+        <span className="text-xs text-muted-foreground">6:00am · Singapore</span>
       </div>
       {devices.isPending ? (
         <p role="status" className="text-sm text-muted-foreground">
@@ -179,18 +183,18 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
         </>
       ) : review ? (
         <div className="space-y-3">
-          <p className="text-sm font-medium">Authorize {review.name}</p>
+          <p className="text-sm font-medium">Authorise {review.name}</p>
           <p className="text-sm text-muted-foreground">
             Only your owned IBKR shares, native cost bases and currency cash or debt can be updated.
             Your original USD purchase records and trade histories stay intact.
           </p>
           <p className="text-xs text-muted-foreground">
-            Runs every morning at 6:00 AM Singapore time. {review.name} must be awake and connected
+            Runs every morning at 6:00am Singapore time. {review.name} must be awake and connected
             to your IBKR account. You can disconnect it here at any time.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" disabled={busy} onClick={() => void authorize()}>
-              {register.isPending ? 'Authorizing…' : 'Authorize daily IBKR sync'}
+              {register.isPending ? 'Authorising…' : 'Authorise daily IBKR sync'}
             </Button>
             <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={reset}>
               Cancel

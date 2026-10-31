@@ -42,7 +42,7 @@ export interface MonthlyReview {
 }
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
-const MONTH_FORMATTER = new Intl.DateTimeFormat('en-US', {
+const MONTH_FORMATTER = new Intl.DateTimeFormat('en-GB', {
   month: 'short',
   year: 'numeric',
   timeZone: 'UTC',

@@ -25,6 +25,7 @@ export function useUpdateUserPreferences() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { failureTitle: "Couldn't save snapshot schedule" },
     mutationFn: (data: UpdateUserPreferencesData) => api.updateUserPreferences(data),
     onMutate: async (data) => {
       await queryClient.cancelQueries({ queryKey: USER_PREFERENCES_QUERY_KEY });

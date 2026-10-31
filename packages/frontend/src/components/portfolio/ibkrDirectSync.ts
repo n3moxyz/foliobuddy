@@ -176,7 +176,7 @@ async function helper<T>(
   });
   assertAuthSession(context.session);
   if (!/^[A-Za-z0-9_-]{43}$/.test(permit.permit) || !Number.isFinite(Date.parse(permit.expiresAt)))
-    throw new Error('FolioBuddy did not authorize the helper operation.');
+    throw new Error('FolioBuddy did not authorise the helper operation.');
   return helperFetch<T>(operation, context, {
     ...body,
     permit: permit.permit,

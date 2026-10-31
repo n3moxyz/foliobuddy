@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
-import { formatTrimmedNumber } from '@/lib/utils';
+import { formatDateTime, formatTrimmedNumber } from '@/lib/utils';
 
 export function NativeCostReconciliation() {
   const [mode, setMode] = useState('reconcile');
@@ -18,7 +18,11 @@ export function NativeCostReconciliation() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { formatPrice, formatQuantity, maskMoney } = useMoneyFormatter();
-  const mutation = useMutation({ mutationFn: api.reconcileNativeCosts });
+  // Preview, apply and restore failures show inline in this dialog.
+  const mutation = useMutation({
+    meta: { showsOwnError: true },
+    mutationFn: api.reconcileNativeCosts,
+  });
   const reset = () => {
     setPreview(null);
     setDownloaded(false);
@@ -169,7 +173,7 @@ export function NativeCostReconciliation() {
               </p>
               {row.costFxAsOf && (
                 <p className="text-xs text-muted-foreground">
-                  FX checked {new Date(row.costFxAsOf).toLocaleString()}
+                  FX checked {formatDateTime(row.costFxAsOf)}
                 </p>
               )}
               {row.nativeHistoryRows !== undefined && (

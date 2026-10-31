@@ -394,14 +394,13 @@ export default function Trades() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete All Trades</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
+            <DialogDescription>
+              Are you sure you want to permanently delete all{' '}
+              <span className="font-semibold text-foreground">{trades?.length || 0}</span> trades?
+              This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete all{' '}
-              <span className="font-semibold text-foreground">{trades?.length || 0}</span> trades?
-              This will permanently remove all your trade history.
-            </p>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -448,16 +447,15 @@ export default function Trades() {
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Trade</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <DialogDescription>
               Are you sure you want to delete this{' '}
               <span className="font-semibold text-foreground">
                 {deletingTrade?.asset.symbol} {deletingTrade?.direction}
               </span>{' '}
-              trade?
-            </p>
+              trade? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"

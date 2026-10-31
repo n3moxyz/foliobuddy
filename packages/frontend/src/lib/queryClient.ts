@@ -1,6 +1,7 @@
 import { MutationCache, QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { assertAuthSession, isAuthSessionCurrent, type AuthSession } from './authSession';
+import { DEFAULT_FAILURE_TITLE, failureDescription } from './mutationFeedback';
 
 type AnyMutationOptions = NonNullable<Parameters<QueryClient['defaultMutationOptions']>[0]>;
 
@@ -13,11 +14,12 @@ class SessionQueryClient extends QueryClient {
         queries: { staleTime: 30000, refetchOnWindowFocus: false, retry: 1 },
       },
       mutationCache: new MutationCache({
-        onError: (error) => {
+        onError: (error, _variables, _onMutateResult, mutation) => {
           if (!isAuthSessionCurrent(session)) return;
-          toast.error('Action failed', {
-            description:
-              error instanceof Error ? error.message : 'Check your connection and try again.',
+          // One message per failure: a form that shows the error inline gets no toast.
+          if (mutation.meta?.showsOwnError) return;
+          toast.error(mutation.meta?.failureTitle ?? DEFAULT_FAILURE_TITLE, {
+            description: failureDescription(error),
           });
         },
       }),

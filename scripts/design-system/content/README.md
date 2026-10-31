@@ -16,11 +16,21 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 - No emoji, hype words or urgency. The only exclamation mark is the brief "Copied!" on copy buttons.
 - Lead marketing with the outcome: "Every asset you own. One quiet dashboard." "The full picture, without the spreadsheet." "Benchmarks that tell the truth."
 
+**Language.**
+
+- Write UK English (decided 2026-10-31). Right: "Cancelled", "5 Sept 2026". Wrong: "Canceled", "Sep 5, 2026".
+- Spell with British -ise forms, plus cancelled, catalogue, enrolment and towards (decided 2026-10-31). Keep "Unauthorized" in API errors (the HTTP status phrase), third-party names as their owners write them, and code names such as `realizedPnL`. Right: "Unrealised P&L". Wrong: "Unrealized P&L".
+- Use straight apostrophes and quotation marks, a spaced em dash ( — ) between clauses, and the ellipsis character (…) in loading text and placeholders (decided 2026-10-31). Right: "Search for a coin…", "an investor's stake". Wrong: "Search for a coin...", "an investor’s stake".
+
 **Casing.**
 
 - In-app header and dialog actions: Title Case, verb first — "Add Position", "Refresh Prices", "Create Snapshot", "Log New Trade", "Delete All Trades".
 - Everything that reads as a sentence uses sentence case: toasts, notices, help text, descriptions and landing calls to action ("Sign in", "See how it works", "Try again").
 - Small uppercase labels (`label-caps`, `eyebrow`) are the only all-caps text.
+- Headings, card titles, field and metric labels, table headers, tabs, menu items and other buttons also use Title Case (decided 2026-10-31). Inline "Label: value" text, checkbox sentences, and empty-state and error headings stay sentence case. Right: "Win Rate", "Recent Closed Trades". Wrong: "Win rate", "Recent closed trades".
+- LONG and SHORT stay in capitals: they are the direction values the JSON import accepts (kept 2026-10-31).
+
+**Names.** Give each page one name, and use it in the sidebar, the shortcut list, the page header and the browser tab (decided 2026-10-31). Right: "Trade Journal" in the sidebar and the header. Wrong: "Trades" in the sidebar, "Trade Journal" in the header.
 
 **Patterns.**
 
@@ -34,6 +44,11 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 | Loading             | Ellipsis character, present tense: "Loading trades…", "Retrying…"                                                                                                             |
 | Destructive confirm | Title repeats the action ("Delete Position"). The description names the object and ends "This action cannot be undone." Footer: outline "Cancel", then the destructive button |
 
+**Errors and removals.**
+
+- When a save or delete fails, name the action, then give the cause or the next step (decided 2026-10-31). Show one message per failure: a form that shows the error inline shows no toast. For connection and server faults, use "Check your connection and try again." Right: "Couldn't delete trade" + "Check your connection and try again." Wrong: "Action failed" + "Failed to fetch".
+- Match the verb to the effect (decided 2026-10-31). Delete: a record is gone for good. Remove: an item leaves a list, or a value is cleared. Cancel: a history entry is undone. The control, its confirmation and its toast use the same verb. Right: "Remove Binance" for a saved location. Wrong: "Delete Binance".
+
 **Numbers.**
 
 - Set every figure with tabular numerals.
@@ -43,7 +58,19 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 - Percentages show two decimals and a sign ("+12.40%"). Drawdowns display as negative percentages ("-8.31%").
 - An infinite profit factor (wins, no losses) displays "∞". A missing value displays "-" (a missing drawdown "N/A"), never 0.
 
+**Dates and times.** Put the day first and use the 12-hour clock (decided 2026-10-31): "5 Sept 2026", "5 Sept 2026, 2:05pm", "5:00am", "since 1 Jan". Write am and pm in lower case with no space. No leading zero on the day, no month-first dates, and never the browser's own locale format. Right: "5 Sept 2026, 2:05pm". Wrong: "Sep 5, 2026", "05:00", "5:00 AM".
+
 **Privacy.** The eye toggle in the header masks every account amount and holding quantity: in pages, tables, dialogs, chart labels, tooltips and copied chart images. Percentages, counts, chart geometry, public quotes and published NAVs stay visible. Editable inputs are never masked.
+
+**Open (not yet decided, 2026-10-31).**
+
+- "Side" (trades table) or "Direction" (form, stats, export) for LONG and SHORT.
+- "completed trades" (Dashboard help) or "closed", the state name used everywhere else.
+- "Owner" (desktop badge) or "Primary owner" (mobile card and form).
+- The IBKR disconnect flow: "Disconnect My Mac", then "Stop daily sync", then "disconnected".
+- "% WR" in the collapsed Trade Analytics card, or "% win rate".
+- Four phrasings for an empty search: "No results for", "No holding matches", "No matching assets", "No matching holdings".
+- "Check saved holdings" in import recovery, which means saved positions.
 
 ## Visual foundations
 

@@ -282,7 +282,7 @@ Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/soluti
 
 ### Position Add/Reduce History
 
-`PUT /positions/:id` + `positionDelta` writes `PositionHistory`; validate next quantity/basis against delta, update position + history in one `Serializable` transaction (pile read inside; P2034 → 409). `fundingCashPositionId` needs `positionDelta`, never custody rows (hide picker). Funded add ↔ cash `reduce`; reduce-only `positionDelta.proceedsUsd` → `PositionHistory.proceedsUsd` (>0 with pile) ↔ cash `add` (quantity = supplied native amount for matching fiat, else proceeds ÷ pile USD price, basis = proceeds). Shared `operationId`: cancel restores both. Proceeds ledger: `Sold for … · Realized …`. `Edit Totals`: `mode='reset'`, collapse old rows, never delete history. `DELETE .../history/:historyId`: only newest add/reduce, totals must match. Demo mirrors; story: FORET.md.
+`PUT /positions/:id` + `positionDelta` writes `PositionHistory`; validate next quantity/basis against delta, update position + history in one `Serializable` transaction (pile read inside; P2034 → 409). `fundingCashPositionId` needs `positionDelta`, never custody rows (hide picker). Funded add ↔ cash `reduce`; reduce-only `positionDelta.proceedsUsd` → `PositionHistory.proceedsUsd` (>0 with pile) ↔ cash `add` (quantity = supplied native amount for matching fiat, else proceeds ÷ pile USD price, basis = proceeds). Shared `operationId`: cancel restores both. Proceeds ledger: `Sold for … · Realised …`. `Edit Totals`: `mode='reset'`, collapse old rows, never delete history. `DELETE .../history/:historyId`: only newest add/reduce, totals must match. Demo mirrors; story: FORET.md.
 
 ### Global Value Privacy
 

@@ -16,7 +16,7 @@ function failed(error: unknown, response: Response) {
       : error instanceof AppError
         ? error.statusCode
         : 503;
-  return response.status(status).json({ error: 'IBKR helper authorization is unavailable' });
+  return response.status(status).json({ error: 'IBKR helper authorisation is unavailable' });
 }
 // Body-parser errors contain the original request body. These routes must never
 // forward any error to the ordinary logger, even before the route handler runs.

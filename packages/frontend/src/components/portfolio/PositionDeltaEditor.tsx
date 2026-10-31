@@ -186,8 +186,7 @@ export function PositionDeltaEditor({
           </div>
           {preview.nextQuantity === 0 && (
             <p className="mt-2 text-xs text-warning">
-              Reducing to zero closes the position: it is removed from your portfolio along with its
-              history.
+              Reducing to zero deletes the position and its history from your portfolio.
             </p>
           )}
         </div>

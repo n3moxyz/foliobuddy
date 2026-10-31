@@ -206,6 +206,7 @@ export default function News() {
   const featuredIds = new Set(topStories.map((item) => item.id));
 
   const feedbackMutation = useMutation({
+    meta: { failureTitle: "Couldn't send feedback" },
     mutationFn: api.sendNewsFeedback,
     onSuccess: () => toast.success('Feedback noted'),
   });

@@ -132,7 +132,7 @@ export function TradeDetailDialog({
 
             <div className="grid grid-cols-2 gap-4 border-t pt-4">
               <div>
-                <p className="mb-1 text-xs text-muted-foreground">Realized P&amp;L</p>
+                <p className="mb-1 text-xs text-muted-foreground">Realised P&amp;L</p>
                 {trade.realizedPnL !== null ? (
                   <p className={`font-mono font-medium ${getPnLColorClass(trade.realizedPnL)}`}>
                     {formatCurrency(trade.realizedPnL, 'USD', 0)}

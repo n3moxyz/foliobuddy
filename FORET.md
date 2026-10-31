@@ -2921,3 +2921,7 @@ A tunnel adds a proxy before Traefik. Trusting a fixed number of hops can either
 ## CI action defaults can override intent (25 October 2026)
 
 The first private CI run stopped before deployment because the official action already adds `--accept-routes`. Our duplicate flag made Tailscale reject startup. The workflows now disable route acceptance with `tailscale set` immediately after enrollment, then check all three network preferences before production access. The restricted tailnet policy applies throughout enrollment. Review the pinned action's generated command, not only its documented inputs.
+
+## Health checks describe failures, not the network (31 October 2026)
+
+`GET /api/v1/health/db` needs no sign-in, yet a failed check returned Prisma's raw error. Connection errors name the private database host and port, and the uptime workflow prints the response body into a public Actions log. The 503 now says only `Database unavailable`, and the backend logs the cause. No caller read the old text: the dashboard only sees a failed request, and uptime checks the status code. A public route can report that something failed without saying where it runs.

@@ -1,13 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   formatDate,
+  formatDateTime,
   formatNativeAmount,
   formatNativePrice,
   formatQuantity,
   formatRelativeTime,
+  formatTime,
   isMarketExposureCategory,
 } from '@/lib/utils';
 import { localAmountLabel, localPriceLabel } from '@/components/portfolio/positionPriceDisplay';
+
+describe('date and time formats (day first, 12-hour clock)', () => {
+  // Local-time dates, so the expectations hold in any test timezone.
+  it('writes times on the 12-hour clock, lower case with no space', () => {
+    expect(formatTime(new Date(2026, 8, 5, 14, 5))).toBe('2:05pm');
+    expect(formatTime(new Date(2026, 8, 5, 0, 5))).toBe('12:05am');
+    expect(formatTime(new Date(2026, 8, 5, 12, 0))).toBe('12:00pm');
+  });
+
+  it('puts the day first, with no leading zero', () => {
+    expect(formatDate(new Date(2026, 8, 5))).toBe('5 Sept 2026');
+    expect(formatDateTime(new Date(2026, 8, 5, 14, 5))).toBe('5 Sept 2026, 2:05pm');
+  });
+});
 
 describe('isMarketExposureCategory', () => {
   it('includes market-risk assets and excludes stablecoins and cash', () => {

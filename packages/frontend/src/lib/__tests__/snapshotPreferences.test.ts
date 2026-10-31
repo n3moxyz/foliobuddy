@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   describeNextSnapshot,
+  describeSnapshotTime,
   formatTimeZoneLabel,
   formatUtcOffset,
   getTimeZoneGroups,
@@ -9,12 +10,18 @@ import {
 } from '../snapshotPreferences';
 
 describe('snapshotPreferences', () => {
-  it('offers all 24 hours with 12h labels', () => {
+  it('offers all 24 hours on the 12-hour clock, lower-case with no space', () => {
     expect(SNAPSHOT_HOUR_OPTIONS).toHaveLength(24);
-    expect(SNAPSHOT_HOUR_OPTIONS[0]).toEqual({ value: 0, label: '12:00 AM' });
-    expect(SNAPSHOT_HOUR_OPTIONS[5]).toEqual({ value: 5, label: '5:00 AM' });
-    expect(SNAPSHOT_HOUR_OPTIONS[12]).toEqual({ value: 12, label: '12:00 PM' });
-    expect(SNAPSHOT_HOUR_OPTIONS[23]).toEqual({ value: 23, label: '11:00 PM' });
+    expect(SNAPSHOT_HOUR_OPTIONS[0]).toEqual({ value: 0, label: '12:00am' });
+    expect(SNAPSHOT_HOUR_OPTIONS[5]).toEqual({ value: 5, label: '5:00am' });
+    expect(SNAPSHOT_HOUR_OPTIONS[12]).toEqual({ value: 12, label: '12:00pm' });
+    expect(SNAPSHOT_HOUR_OPTIONS[23]).toEqual({ value: 23, label: '11:00pm' });
+  });
+
+  it("describes a person's own snapshot time", () => {
+    expect(describeSnapshotTime(5, 'Asia/Singapore')).toBe('5:00am Singapore time');
+    expect(describeSnapshotTime(21, 'America/New_York')).toBe('9:00pm New York time');
+    expect(describeSnapshotTime(0, 'UTC')).toBe('12:00am UTC');
   });
 
   it('groups timezones by region with UTC pinned first', () => {
@@ -48,14 +55,16 @@ describe('snapshotPreferences', () => {
       // 20:00Z = 04:00 SGT → 05:00 SGT is still today
       const next = describeNextSnapshot(5, 'Asia/Singapore', new Date('2026-07-15T20:00:00Z'));
       expect(next?.isToday).toBe(true);
-      expect(next?.local).toBe('05:00');
+      expect(next?.local).toBe('5:00am');
+      // The viewer's own time uses the same 12-hour form, never the browser's locale format.
+      expect(next?.viewer).toMatch(/^\d{1,2}:00(am|pm)$/);
     });
 
     it('says "tomorrow" once the hour has passed in that zone', () => {
       // 22:00Z = 06:00 SGT → 05:00 SGT already happened today
       const next = describeNextSnapshot(5, 'Asia/Singapore', new Date('2026-07-15T22:00:00Z'));
       expect(next?.isToday).toBe(false);
-      expect(next?.local).toBe('05:00');
+      expect(next?.local).toBe('5:00am');
     });
 
     it('returns null for an unknown zone instead of throwing', () => {

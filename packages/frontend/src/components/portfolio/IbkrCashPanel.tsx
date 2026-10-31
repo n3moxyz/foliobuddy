@@ -68,8 +68,10 @@ function IbkrCashEditor({
   const [restorePreview, setRestorePreview] = useState<Awaited<
     ReturnType<typeof api.restoreIbkr>
   > | null>(null);
-  const mutation = useMutation({ mutationFn: api.reconcileIbkr });
+  // Both actions show their failures inline in this panel.
+  const mutation = useMutation({ meta: { showsOwnError: true }, mutationFn: api.reconcileIbkr });
   const restore = useMutation({
+    meta: { showsOwnError: true },
     mutationFn: ({ id, apply }: { id: string; apply: boolean }) =>
       api.restoreIbkr(id, apply ? 'apply' : 'preview'),
   });

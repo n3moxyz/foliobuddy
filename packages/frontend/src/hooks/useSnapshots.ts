@@ -20,6 +20,7 @@ export function useCreateManualSnapshot() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { failureTitle: "Couldn't add snapshot" },
     mutationFn: (data: CreateManualSnapshotData) => api.createManualSnapshot(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['snapshots'] });
@@ -32,6 +33,7 @@ export function useUpdateSnapshot() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { failureTitle: "Couldn't save snapshot" },
     mutationFn: ({ id, data }: { id: string; data: UpdateSnapshotData }) =>
       api.updateSnapshot(id, data),
     onSuccess: () => {
@@ -45,6 +47,7 @@ export function useDeleteSnapshot() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { failureTitle: "Couldn't delete snapshot" },
     mutationFn: (id: string) => api.deleteSnapshot(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ['snapshots'] });
@@ -70,6 +73,7 @@ export function useDeleteAllSnapshots() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { failureTitle: "Couldn't delete snapshots" },
     mutationFn: () => api.deleteAllSnapshots(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['snapshots'] });
