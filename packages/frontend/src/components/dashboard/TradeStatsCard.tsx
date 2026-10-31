@@ -413,7 +413,7 @@ export function TradeStatsCard({
       : ratingLabel(riskReward, [
           [3, 'Excellent'],
           [2, 'Good'],
-          [1, 'Below 1:1'],
+          [1, 'Fair'],
           [0, 'Poor'],
         ]);
 

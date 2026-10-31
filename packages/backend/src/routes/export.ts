@@ -245,7 +245,7 @@ router.get('/excel', async (req, res, next) => {
     investorsSheet.columns = [
       { header: 'Name', key: 'name', width: 20 },
       { header: 'Stake %', key: 'stakePct', width: 10 },
-      { header: 'Initial Capital', key: 'initialCapital', width: 15 },
+      { header: 'Capital at Start of Year', key: 'initialCapital', width: 22 },
       { header: 'Current Value', key: 'currentValue', width: 15 },
       { header: 'Total Return', key: 'totalReturn', width: 15 },
       { header: 'Return %', key: 'returnPct', width: 10 },
