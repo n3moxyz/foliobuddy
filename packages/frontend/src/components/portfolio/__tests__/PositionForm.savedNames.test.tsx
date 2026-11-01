@@ -16,8 +16,8 @@ import {
 
 vi.mock('@/hooks/useAssets', () => ({
   useAssets: () => ({ data: [] }),
-  useSearchCoins: () => ({ data: [], isLoading: false }),
-  useSearchAssets: () => ({ data: [], isLoading: false }),
+  useSearchCoins: () => ({ data: [], isSearching: false, isError: false, retry: vi.fn() }),
+  useSearchAssets: () => ({ data: [], isSearching: false, isError: false, retry: vi.fn() }),
   useCreateAssetFromProvider: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateAssetFromCoinGecko: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
