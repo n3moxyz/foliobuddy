@@ -7,7 +7,12 @@ const catalog: { assets: Asset[]; coins: CoinSearchResult[] } = { assets: [], co
 
 vi.mock('@/hooks/useAssets', () => ({
   useAssets: () => ({ data: catalog.assets }),
-  useSearchCoins: () => ({ data: catalog.coins, isLoading: false }),
+  useSearchCoins: () => ({
+    data: catalog.coins,
+    isSearching: false,
+    isError: false,
+    retry: vi.fn(),
+  }),
   useCreateAssetFromCoinGecko: () => ({ mutateAsync: vi.fn() }),
 }));
 

@@ -43,6 +43,7 @@ import { Plus, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { ChartCopyButton } from '@/components/dashboard/ChartCopyButton';
+import { SearchErrorNotice } from '@/components/SearchErrorNotice';
 
 /** Recharts injects these at runtime into the dot render callback; the library types it as `any`. */
 interface RechartsLineDotProps {
@@ -115,14 +116,23 @@ export function BenchmarkComparisonChart() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const chartRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const trimmedQuery = searchQuery.trim();
 
-  const { data: cryptoSearchResults, isLoading: cryptoSearching } = useSearchAssets(searchQuery, {
-    provider: 'coingecko',
-  });
-  const { data: tradfiSearchResults, isLoading: tradfiSearching } = useSearchAssets(searchQuery, {
-    provider: 'yahoo',
-  });
-  const isSearching = cryptoSearching || tradfiSearching;
+  const cryptoSearch = useSearchAssets(searchQuery, { provider: 'coingecko' });
+  const tradfiSearch = useSearchAssets(searchQuery, { provider: 'yahoo' });
+  const cryptoSearchResults = cryptoSearch.data;
+  const tradfiSearchResults = tradfiSearch.data;
+  const isSearching = cryptoSearch.isSearching || tradfiSearch.isSearching;
+  // Report a failure once both searches settle; any results shown beside it are partial.
+  const searchFailed = !isSearching && (cryptoSearch.isError || tradfiSearch.isError);
+
+  const retrySearch = () => {
+    // The notice unmounts once the search runs again, so keep focus in the popover.
+    searchInputRef.current?.focus();
+    if (cryptoSearch.isError) cryptoSearch.retry();
+    if (tradfiSearch.isError) tradfiSearch.retry();
+  };
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const days = useMemo(() => getDaysFromPeriod(period), [period]);
@@ -256,15 +266,15 @@ export function BenchmarkComparisonChart() {
 
   // Filter out already added benchmarks from search results
   const searchResults = useMemo(() => {
-    const trimmedQuery = searchQuery.trim().toLowerCase();
-    if (trimmedQuery.length < 1) return [];
+    const needle = trimmedQuery.toLowerCase();
+    if (needle.length < 1) return [];
     const existingIds = new Set([
       ...benchmarks.map((b) => benchmarkIdentity(b.provider, b.providerAssetId)),
       ...additionalBenchmarks.map((b) => benchmarkIdentity(b.provider, b.providerAssetId)),
     ]);
     const presetMatches = TRADFI_BENCHMARK_PRESETS.filter((benchmark) => {
       const haystack = `${benchmark.symbol} ${benchmark.name} ${benchmark.providerAssetId}`;
-      return haystack.toLowerCase().includes(trimmedQuery);
+      return haystack.toLowerCase().includes(needle);
     });
     const seen = new Set<string>();
     return [...presetMatches, ...(tradfiSearchResults ?? []), ...(cryptoSearchResults ?? [])]
@@ -275,7 +285,7 @@ export function BenchmarkComparisonChart() {
         return true;
       })
       .slice(0, 8);
-  }, [searchQuery, cryptoSearchResults, tradfiSearchResults, benchmarks, additionalBenchmarks]);
+  }, [trimmedQuery, cryptoSearchResults, tradfiSearchResults, benchmarks, additionalBenchmarks]);
 
   const addBenchmark = (candidate: BenchmarkSearchResult) => {
     if (additionalBenchmarks.length >= 3) return;
@@ -470,21 +480,29 @@ export function BenchmarkComparisonChart() {
               </PopoverTrigger>
               <PopoverContent className="w-[calc(100vw-2rem)] max-w-64 p-2">
                 <Input
+                  ref={searchInputRef}
                   placeholder="Search coins, ETFs, indexes…"
                   aria-label="Search for a benchmark"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8"
                 />
+                {searchFailed && (
+                  <SearchErrorNotice className="mt-2" subject="benchmarks" onRetry={retrySearch} />
+                )}
                 <div className="mt-2 max-h-40 overflow-y-auto">
                   {isSearching && (
                     <div className="text-sm text-muted-foreground p-2">Searching…</div>
                   )}
-                  {!isSearching && searchResults.length === 0 && searchQuery.length >= 1 && (
-                    <div className="break-words p-2 text-sm text-muted-foreground">
-                      No matching benchmarks
-                    </div>
-                  )}
+                  {/* Only a successful empty response from both searches means no match. */}
+                  {!isSearching &&
+                    !searchFailed &&
+                    searchResults.length === 0 &&
+                    trimmedQuery.length >= 1 && (
+                      <div className="break-words p-2 text-sm text-muted-foreground">
+                        No matching benchmarks
+                      </div>
+                    )}
                   {searchResults.map((candidate) => (
                     <Button
                       key={benchmarkIdentity(candidate.provider, candidate.providerAssetId)}
