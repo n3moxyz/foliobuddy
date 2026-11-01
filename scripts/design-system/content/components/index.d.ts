@@ -107,6 +107,7 @@ export interface CreatableSelectProps {
   /** Return the created option to select it, or null to refuse. */
   onAdd: () => string | null | void;
   onCancel: () => void;
+  /** Return the saved name, or null to refuse. A name already in `options` is refused first. */
   onEditOption?: (currentValue: string, nextValue: string) => string | null | void;
   /** Return false to veto the removal. */
   onDeleteOption?: (value: string) => boolean | void;

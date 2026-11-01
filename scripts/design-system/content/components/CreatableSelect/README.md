@@ -6,6 +6,8 @@ Select with a "+ Add new …" row for free-text storage locations (exchange, wal
 - **Optional management:** `onEditOption(current, next)`, `onDeleteOption(option)` (return false to veto), `onClearValue`, and `isOptionEditable(option)` to protect the defaults.
 - The pencil and trash buttons inside the list are pointer-only. The Rename / Remove row under the trigger is the keyboard path — keep both.
 - Removing an option removes only the option. Records that use it keep their value.
+- Renaming changes only the option's name. A change of capitals renames in place. A name already in `options` is refused under the box ("Couldn't rename OKX. Binance is already in the list.") before `onEditOption` runs, so two options never merge.
+- Escape in the add or rename box cancels only that box. The box is marked `data-cancel-on-escape`, so a surrounding `DialogContent` stays open and keeps the form.
 - **Copy:** `addLabel` "+ Add new broker", `inputPlaceholder` "Enter broker name…", `inputLabel` "New broker name".
 - Never use it for fixed lists (category, currency, direction): those are `Select`.
 

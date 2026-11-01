@@ -15,7 +15,7 @@ iOS HIG, all pages:
 - **Touch**: 44px, compacting `sm+`/`md+`; `Input`/`SelectTrigger`/`DropdownMenuItem`/asset-search options/creatable-select row actions bake `h-11`/`min-h-11` → `sm:`; never redo per-call-site heights; dense row actions need `shrink-0`.
 - **Headers**: `flex-col gap-3 sm:flex-row`; secondary actions → `DropdownMenu` overflow.
 - Mobile navigation uses a modal Radix dialog. Closed navigation has no hidden focus targets. App shortcuts pause while overlays are open.
-- `DialogContent` restores its opener and lets an open asset search consume Escape first. `DialogHeader` reserves close-button space.
+- `DialogContent` restores its opener. Escape goes first to an open asset search or a focused `data-cancel-on-escape` box, each closing or cancelling only itself. `DialogHeader` reserves close-button space.
 - Mobile text inputs use 16px text. Keep import textareas at 16px below `sm`. `SelectItem` has a 44px mobile target.
 - `PageActionHeader` measures its sticky height for focus scroll offsets. Dashboard charts use container queries for layout and larger text.
 
@@ -49,5 +49,7 @@ Only free-text location dropdowns (CEX/wallet/broker/bank) use `CreatableSelect`
 
 - Customs: popover pencil/trash pointer-only, Rename/Remove under trigger keyboard; keep both.
 - Defaults protected; customs → `foliobuddy-storage-location-options` by storage type (`positionOptions.ts`); delete drops only the option, positions keep value (edit forms re-add one-off).
+- Rename changes only the saved name. A capitals-only change renames in place. A name already in the list (built-in, saved or the field's one-off) is refused inline ("Couldn't rename OKX. Binance is already in the list."), never merged; `renameLocationOptionForStorageType()` also refuses built-in and saved names.
+- Add/rename boxes carry `data-cancel-on-escape`: Escape cancels only the box, never the Add/Edit Position dialog. Radix refocuses the trigger in a 0 ms timer after the list closes, so a box opened from the list takes focus in `onCloseAutoFocus`; a focused box returns focus to the trigger as it closes.
 - `onValueChange` must ignore empties Radix emits on create-row close.
 - `SelectContent` sizes to content, above dialogs (`z-[60]`); never force `h-[var(--radix-select-trigger-height)]` or reuse dialog `z-50` (menus open but clipped).

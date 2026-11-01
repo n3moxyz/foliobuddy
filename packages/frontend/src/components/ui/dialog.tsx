@@ -38,8 +38,14 @@ const DialogPanel = React.forwardRef<
       ref={ref}
       onEscapeKeyDown={(event) => {
         onEscapeKeyDown?.(event);
-        // Radix observes Escape before a combobox can close its own popup.
-        if (document.activeElement?.matches('input[role="combobox"][aria-expanded="true"]')) {
+        // Radix observes Escape before the focused control can handle it. Leave it to
+        // an expanded combobox, which closes its own popup, and to an inline box marked
+        // data-cancel-on-escape, which cancels its own edit. Neither closes the dialog.
+        const focused = document.activeElement;
+        if (
+          focused?.matches('input[role="combobox"][aria-expanded="true"]') ||
+          focused?.closest('[data-cancel-on-escape]')
+        ) {
           event.preventDefault();
         }
       }}

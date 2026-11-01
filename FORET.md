@@ -2961,3 +2961,11 @@ Three search boxes said "No matching assets" or "No matching benchmarks" when th
 The hooks now trim the input and describe the search for the text on screen. `isSearching` covers the debounce wait, the request and its retry, and a request paused offline. `isError` means the results are unknown. A failure shows `SearchErrorNotice` ("Couldn't search assets" with Try again) beside any catalog or preset matches that did load. The empty line appears only after a successful empty response. The pickers now close only when focus leaves the whole picker, so Tab reaches Try again, and Enter no longer acts on options hidden behind "Searching…".
 
 The lesson: the debounce is part of the request. "Not fetched yet" and "fetched nothing" are different answers.
+
+## Rename means rename (1 November 2026)
+
+A words review caught the saved-location rename in Add and Edit Position doing more than renaming. Names compare without case, so changing "kraken" to "Kraken" matched the option against itself and was treated as a merge: the saved name vanished and the field kept "kraken" with no pencil. Renaming to a name already in the list merged silently too. A capitals-only change now renames in place, and any other name already in the list is refused with a message under the box. Rename only ever changes a saved name.
+
+Escape in the rename box also closed the whole dialog, taking the half-filled form with it. Radix listens for Escape on the document during the capture phase, before the box's own key handler runs. The dialog now leaves Escape to a focused box marked `data-cancel-on-escape`, the same way it already waited for an open asset search. The add box and the custody "Add new person" box had the same bug.
+
+Checking in Chromium turned up a third problem: a box opened from a list never kept focus. In the location dropdowns, Radix hands focus back to the trigger in a zero-delay timer scheduled after the component's own, so the trigger won, typing went to its typeahead, and Escape closed the dialog. The box now takes focus in `onCloseAutoFocus`. The custody box replaces its person list outright, so focus fell back to the dialog itself; now whichever control replaces the focused one takes focus. The lessons: a field's key handler can't outrank a layer listening on the document, and two zero-delay timers run in the order they were scheduled.

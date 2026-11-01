@@ -170,20 +170,26 @@ export function renameLocationOptionForStorageType(
   const storedOptions = readStoredLocationOptions();
   const customOptions = customOptionsForBucket(bucket);
   const currentKey = currentOption.toLocaleLowerCase();
+  const nextKey = nextOption.toLocaleLowerCase();
 
   if (!customOptions.some((option) => option.toLocaleLowerCase() === currentKey)) return null;
 
-  const defaultMatch = findLocationOption(defaultLocationsForBucket(bucket), nextOption);
-  const existingCustom = findLocationOption(customOptions, nextOption);
-  const nextOptions = mergeLocationOptions(
-    customOptions
-      .filter((option) => option.toLocaleLowerCase() !== currentKey)
-      .concat(defaultMatch || existingCustom ? [] : [nextOption])
-  ).sort((a, b) => a.localeCompare(b));
+  // Rename changes only the saved name. A change of capitals keeps the same option;
+  // a name that belongs to a built-in or another saved option is refused, never merged.
+  if (
+    nextKey !== currentKey &&
+    findLocationOption([...defaultLocationsForBucket(bucket), ...customOptions], nextOption)
+  ) {
+    return null;
+  }
+
+  const nextOptions = customOptions
+    .map((option) => (option.toLocaleLowerCase() === currentKey ? nextOption : option))
+    .sort((a, b) => a.localeCompare(b));
 
   writeStoredLocationOptions({ ...storedOptions, [bucket]: nextOptions });
 
-  return defaultMatch ?? existingCustom ?? nextOption;
+  return nextOption;
 }
 
 export function deleteLocationOptionForStorageType(
