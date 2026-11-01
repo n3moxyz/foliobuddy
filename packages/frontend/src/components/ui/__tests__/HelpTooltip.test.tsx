@@ -88,6 +88,33 @@ describe('HelpTooltip', () => {
     expect(screen.getByRole('tooltip')).toBeInTheDocument();
   });
 
+  it('closes the open definition when another one opens', () => {
+    render(
+      <>
+        <HelpTooltip label="MDD" content="Largest peak-to-trough decline this year." />
+        <HelpTooltip label="YTD Start" content="First recorded portfolio value this year." />
+      </>
+    );
+
+    // iOS: a tap never focuses the button, so only each click opens its definition.
+    pointerClick(screen.getByRole('button', { name: 'Help: MDD' }), 'touch');
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      'Largest peak-to-trough decline this year.'
+    );
+
+    pointerClick(screen.getByRole('button', { name: 'Help: YTD Start' }), 'touch');
+    const open = screen.getAllByRole('tooltip');
+    expect(open).toHaveLength(1);
+    expect(open[0]).toHaveTextContent('First recorded portfolio value this year.');
+
+    // Tapping the first again swaps back.
+    pointerClick(screen.getByRole('button', { name: 'Help: MDD' }), 'touch');
+    expect(screen.getAllByRole('tooltip')).toHaveLength(1);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      'Largest peak-to-trough decline this year.'
+    );
+  });
+
   it('still toggles from the keyboard after a press that never became a click', () => {
     render(<HelpTooltip label="MDD" content="Largest peak-to-trough decline this year." />);
     const button = screen.getByRole('button', { name: 'Help: MDD' });

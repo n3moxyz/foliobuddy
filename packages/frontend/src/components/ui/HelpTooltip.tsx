@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -9,8 +9,24 @@ interface HelpTooltipProps {
   label?: string;
 }
 
+// One definition shows at a time. Radix closes other tooltips only when it opens one itself (hover
+// or focus). A tap opens this one through its own state instead — on iOS a tap never focuses the
+// button — and both buttons stop the tap reaching the open tooltip's outside-press listener, so
+// opening one closes whichever other definition is open.
+let closeOpenDefinition: (() => void) | null = null;
+
 export function HelpTooltip({ content, label }: HelpTooltipProps) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    closeOpenDefinition?.();
+    closeOpenDefinition = close;
+    return () => {
+      if (closeOpenDefinition === close) closeOpenDefinition = null;
+    };
+  }, [open]);
   // The current press: its pointer type and whether the tooltip was open when it began. On a touch
   // tap, Chrome focuses the button after the finger lifts, so Radix opens the tooltip on focus just
   // before the click arrives; flipping the state at click time would close it again at once.

@@ -22,6 +22,7 @@ interface NetWorthCardProps {
   maxDailyDrawdownDate?: string | null;
   exposurePct?: number;
   positionCount?: number;
+  /** Closed-trade count; leave it undefined until it loads, so the tile shows "-" rather than 0. */
   closedTrades?: number;
   investorLabel?: string;
 }
@@ -117,7 +118,7 @@ export function NetWorthCard({
   maxDailyDrawdownDate,
   exposurePct,
   positionCount = 0,
-  closedTrades = 0,
+  closedTrades,
   investorLabel,
 }: NetWorthCardProps) {
   const { formatCurrency } = useMoneyFormatter();
@@ -215,9 +216,13 @@ export function NetWorthCard({
     {
       label: 'Trades',
       help: 'Number of closed trades in your trade journal',
-      value: closedTrades,
+      // A count that hasn't loaded (or failed to) shows "-", never 0. Screen readers hear why.
+      value: closedTrades ?? <span aria-hidden="true">-</span>,
       to: '/trades',
-      linkDescription: `${countNoun(closedTrades, 'trade')} — view trade journal`,
+      linkDescription:
+        closedTrades === undefined
+          ? 'Closed trades not loaded — view trade journal'
+          : `${countNoun(closedTrades, 'trade')} — view trade journal`,
     },
   ];
 
