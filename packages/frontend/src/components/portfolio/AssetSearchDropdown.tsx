@@ -1,6 +1,7 @@
 import { useRef, useEffect, useId } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { SearchErrorNotice } from '@/components/SearchErrorNotice';
 import type { Asset, CoinSearchResult, ProviderSearchResult } from '@/lib/types';
 import { PositionAssetSummary } from './PositionAssetSummary';
 
@@ -11,7 +12,11 @@ interface AssetSearchDropdownProps {
   searchQuery: string;
   showDropdown: boolean;
   highlightedIndex: number;
+  /** The query has no answer yet, including the debounce wait before the request. */
   searchLoading: boolean;
+  /** The provider search for the query failed: its results are unknown, not empty. */
+  searchFailed?: boolean;
+  onRetrySearch?: () => void;
   combinedResults: Array<{ type: 'existing' | 'search'; asset?: Asset; coin?: SearchCandidate }>;
   isEditing: boolean;
   id?: string;
@@ -35,6 +40,8 @@ export function AssetSearchDropdown({
   showDropdown,
   highlightedIndex,
   searchLoading,
+  searchFailed = false,
+  onRetrySearch,
   combinedResults,
   isEditing,
   id,
@@ -51,10 +58,15 @@ export function AssetSearchDropdown({
   setHighlightedIndex,
   setValidationError,
 }: AssetSearchDropdownProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
+  const trimmedQuery = searchQuery.trim();
+  const searching = searchLoading && trimmedQuery.length >= 1;
+  // "Searching…" replaces the list, so no hidden option may be marked active.
+  const visibleResults = searching ? [] : combinedResults;
   const activeOptionId =
-    highlightedIndex >= 0 && highlightedIndex < combinedResults.length && showDropdown
+    highlightedIndex >= 0 && highlightedIndex < visibleResults.length && showDropdown
       ? `${listboxId}-option-${highlightedIndex}`
       : undefined;
 
@@ -95,9 +107,22 @@ export function AssetSearchDropdown({
     );
   }
 
+  const retrySearch = () => {
+    // The notice unmounts once the search runs again, so keep focus in the picker.
+    inputRef.current?.focus();
+    onRetrySearch?.();
+  };
+
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      // Close only when focus leaves the picker, so Tab can reach "Try again".
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) onBlur();
+      }}
+    >
       <Input
+        ref={inputRef}
         id={id}
         placeholder={placeholder}
         value={searchQuery}
@@ -106,7 +131,6 @@ export function AssetSearchDropdown({
           setValidationError(null);
         }}
         onFocus={onFocus}
-        onBlur={onBlur}
         onKeyDown={onKeyDown}
         autoComplete="off"
         spellCheck={false}
@@ -120,64 +144,77 @@ export function AssetSearchDropdown({
 
       {showDropdown && (
         <div
-          id={listboxId}
-          ref={dropdownRef}
-          role="listbox"
-          aria-label="Matching assets"
           onMouseDown={(event) => event.preventDefault()}
-          className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
+          className="absolute z-10 w-full mt-1 overflow-hidden bg-background border rounded-md shadow-lg"
         >
-          {searchLoading && searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">Searching…</div>
-          ) : combinedResults.length > 0 ? (
-            combinedResults.map((result, index) => (
-              <button
-                key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
-                id={`${listboxId}-option-${index}`}
-                type="button"
-                role="option"
-                tabIndex={-1}
-                aria-selected={index === highlightedIndex}
-                className={`flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left sm:min-h-0 ${
-                  index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
-                }`}
-                onClick={() => {
-                  if (result.type === 'existing') {
-                    onSelectExistingAsset(result.asset!);
-                  } else {
-                    onSelectCoin(result.coin!);
-                  }
-                }}
-                onMouseEnter={() => setHighlightedIndex(index)}
-              >
-                <span className="min-w-0 break-words [overflow-wrap:anywhere]">
-                  <span className="font-medium">
-                    {result.type === 'existing'
-                      ? result.asset!.symbol
-                      : result.coin!.symbol.toUpperCase()}
-                  </span>
-                  <span className="text-muted-foreground ml-2">
-                    {result.type === 'existing' ? result.asset!.name : result.coin!.name}
-                  </span>
-                </span>
-                {result.type === 'search' &&
-                  'exchange' in result.coin! &&
-                  result.coin!.exchange && (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {result.coin!.exchange}
+          {/* A failed search with nothing to list shows only the notice below. */}
+          {(!searchFailed || visibleResults.length > 0) && (
+            <div
+              id={listboxId}
+              ref={dropdownRef}
+              role="listbox"
+              aria-label="Matching assets"
+              className="max-h-60 overflow-auto"
+            >
+              {searching ? (
+                <div className="p-3 text-sm text-muted-foreground">Searching…</div>
+              ) : visibleResults.length > 0 ? (
+                visibleResults.map((result, index) => (
+                  <button
+                    key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
+                    id={`${listboxId}-option-${index}`}
+                    type="button"
+                    role="option"
+                    tabIndex={-1}
+                    aria-selected={index === highlightedIndex}
+                    className={`flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left sm:min-h-0 ${
+                      index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
+                    }`}
+                    onClick={() => {
+                      if (result.type === 'existing') {
+                        onSelectExistingAsset(result.asset!);
+                      } else {
+                        onSelectCoin(result.coin!);
+                      }
+                    }}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                  >
+                    <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                      <span className="font-medium">
+                        {result.type === 'existing'
+                          ? result.asset!.symbol
+                          : result.coin!.symbol.toUpperCase()}
+                      </span>
+                      <span className="text-muted-foreground ml-2">
+                        {result.type === 'existing' ? result.asset!.name : result.coin!.name}
+                      </span>
                     </span>
-                  )}
-                {result.type === 'search' && !('exchange' in result.coin!) && result.coin!.rank && (
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    #{result.coin!.rank}
-                  </span>
-                )}
-              </button>
-            ))
-          ) : searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
-          ) : (
-            <div className="p-3 text-sm text-muted-foreground">Type to search assets…</div>
+                    {result.type === 'search' &&
+                      'exchange' in result.coin! &&
+                      result.coin!.exchange && (
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {result.coin!.exchange}
+                        </span>
+                      )}
+                    {result.type === 'search' &&
+                      !('exchange' in result.coin!) &&
+                      result.coin!.rank && (
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          #{result.coin!.rank}
+                        </span>
+                      )}
+                  </button>
+                ))
+              ) : trimmedQuery.length >= 1 ? (
+                // Reached only after a successful empty response for this query.
+                <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
+              ) : (
+                <div className="p-3 text-sm text-muted-foreground">Type to search assets…</div>
+              )}
+            </div>
+          )}
+          {searchFailed && (
+            <SearchErrorNotice className="m-2" subject="assets" onRetry={retrySearch} />
           )}
         </div>
       )}

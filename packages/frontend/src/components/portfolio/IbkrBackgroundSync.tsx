@@ -7,9 +7,13 @@ import { Input } from '@/components/ui/input';
 import { captureAuthSession, isAuthSessionCurrent } from '@/lib/authSession';
 import { Textarea } from '@/components/ui/textarea';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
+import { failureDescription } from '@/lib/mutationFeedback';
 import { formatDateTime, formatTrimmedNumber } from '@/lib/utils';
 import { isIbkrCashPosition } from './ibkrCash';
 import { backgroundSyncStatus, parsePublicEnrollment } from './ibkrBackgroundStatus';
+
+/** An inline error: the failed action, when one failed, then its cause or next step. */
+type InlineError = { title?: string; description: string };
 
 export function IbkrBackgroundSync({ position }: { position: Position }) {
   if (!isIbkrCashPosition(position) || position.asset.symbol !== 'USD') return null;
@@ -34,7 +38,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
   const [macName, setMacName] = useState('My Mac');
   const [review, setReview] = useState<IbkrDeviceEnrollment | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<InlineError | null>(null);
   // Both actions show their failures inline in this section.
   const register = useMutation({
     meta: { showsOwnError: true },
@@ -75,7 +79,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
       void client.invalidateQueries({ queryKey: ['ibkr-devices'] });
     } catch (e) {
       if (!isAuthSessionCurrent(session)) return;
-      setError(e instanceof Error ? e.message : 'The connection could not be authorised.');
+      setError({ title: `Couldn't authorise ${review.name}`, description: failureDescription(e) });
     }
   }
   async function disconnect() {
@@ -95,7 +99,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
       void client.invalidateQueries({ queryKey: ['ibkr-devices'] });
     } catch (e) {
       if (!isAuthSessionCurrent(session)) return;
-      setError(e instanceof Error ? e.message : 'The connection could not be disconnected.');
+      setError({ title: `Couldn't disconnect ${device.name}`, description: failureDescription(e) });
     }
   }
   return (
@@ -220,6 +224,10 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
           <code className="block break-all rounded bg-muted p-2 text-xs">
             {`npm run ibkr:worker:setup -- --cash-position-id '${cashPositionId.replace(/'/g, "'\\''")}' --name '${(macName.trim() || 'My Mac').replace(/'/g, "'\\''")}'`}
           </code>
+          <p className="text-xs text-muted-foreground">
+            To reconnect a Mac you disconnected, add <code className="font-mono">--rotate</code> to
+            the end of the command. Its old key can't be authorised again, so setup makes a new one.
+          </p>
           <label htmlFor={inputId} className="text-sm font-medium">
             Public Connection Details
           </label>
@@ -255,7 +263,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
                   setReview(enrollment);
                   setError(null);
                 } catch (e) {
-                  setError((e as Error).message);
+                  setError({ description: (e as Error).message });
                 }
               }}
             >
@@ -268,9 +276,10 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
         </div>
       )}
       {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
+        <div role="alert" className="space-y-1 text-sm text-destructive">
+          {error.title && <p className="font-medium">{error.title}</p>}
+          <p>{error.description}</p>
+        </div>
       )}
     </section>
   );

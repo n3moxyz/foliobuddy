@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,38 @@ export function CustodyCheckbox({
   onAddNewName,
   onCancelAddingName,
 }: CustodyCheckboxProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  // The person list and the name box replace each other, so whichever held focus
+  // unmounts. Its replacement takes focus; otherwise focus falls back to the dialog
+  // and the next Escape closes the dialog instead of the box.
+  const focusReplacementRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!focusReplacementRef.current) return;
+    focusReplacementRef.current = false;
+    (addingNewName ? nameInputRef : triggerRef).current?.focus();
+  }, [addingNewName]);
+
+  const startAddingName = () => {
+    focusReplacementRef.current = true;
+    onStartAddingName();
+  };
+
+  const addName = () => {
+    // An empty name is not added, and the box stays open.
+    if (newNameInput.trim()) focusReplacementRef.current = true;
+    onAddNewName();
+  };
+
+  // The dialog leaves Escape to a box marked data-cancel-on-escape (see DialogPanel),
+  // so Escape on the name or the Add button cancels only the new name.
+  const handleNameBoxKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Escape') return;
+    focusReplacementRef.current = true;
+    onCancelAddingName();
+  };
+
   return (
     <div className="flex items-start gap-3 rounded-md border px-3 py-2 bg-muted/20">
       <Checkbox
@@ -62,13 +95,13 @@ export function CustodyCheckbox({
             value={custodyOf}
             onValueChange={(v) => {
               if (v === '__new__') {
-                onStartAddingName();
+                startAddingName();
               } else {
                 onCustodyOfChange(v);
               }
             }}
           >
-            <SelectTrigger className="mt-1" aria-label="Custody person">
+            <SelectTrigger ref={triggerRef} className="mt-1" aria-label="Custody person">
               <SelectValue placeholder="Who is this for?" />
             </SelectTrigger>
             <SelectContent>
@@ -82,23 +115,21 @@ export function CustodyCheckbox({
           </Select>
         )}
         {isCustody && addingNewName && (
-          <div className="flex gap-2 mt-1">
+          <div className="flex gap-2 mt-1" data-cancel-on-escape onKeyDown={handleNameBoxKeyDown}>
             <Input
+              ref={nameInputRef}
               value={newNameInput}
               onChange={(e) => onNewNameInputChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  onAddNewName();
-                }
-                if (e.key === 'Escape') {
-                  onCancelAddingName();
+                  addName();
                 }
               }}
               placeholder="Enter name…"
               aria-label="Custody person name"
             />
-            <Button type="button" size="sm" onClick={onAddNewName} disabled={!newNameInput.trim()}>
+            <Button type="button" size="sm" onClick={addName} disabled={!newNameInput.trim()}>
               Add
             </Button>
           </div>

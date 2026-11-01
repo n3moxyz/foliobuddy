@@ -1,7 +1,13 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { CreateAssetData, CreateAssetFromProviderData, ProviderName } from '@/lib/types';
+import type {
+  CoinSearchResult,
+  CreateAssetData,
+  CreateAssetFromProviderData,
+  ProviderName,
+  ProviderSearchResult,
+} from '@/lib/types';
 
 export function useAssets(params?: { category?: string; search?: string }) {
   return useQuery({
@@ -21,8 +27,49 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-export function useSearchCoins(query: string) {
-  const debouncedQuery = useDebounce(query, 150);
+/** What a search box can say about its current input. */
+export interface SearchState<T> {
+  /** Results for the current input. Undefined until its search succeeds. */
+  data: T[] | undefined;
+  /**
+   * The current input has no answer yet: the debounce wait, a request or its retry
+   * in flight, or a request paused while offline.
+   */
+  isSearching: boolean;
+  /** The search for the current input failed, so its results are unknown, not empty. */
+  isError: boolean;
+  /** Runs the failed search again. */
+  retry: () => void;
+}
+
+/**
+ * Reads a debounced search against the input the user sees now. Only a successful
+ * response for that input may show an empty result.
+ */
+function useSearchState<T>(
+  query: string,
+  debouncedQuery: string,
+  result: UseQueryResult<T[]>
+): SearchState<T> {
+  const { data, isPending, isFetching, isError, refetch } = result;
+  const retry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+  const current = query.length > 0 && debouncedQuery === query;
+  const isSearching = query.length > 0 && (!current || isPending || isFetching);
+
+  return {
+    data: current ? data : undefined,
+    isSearching,
+    isError: current && !isSearching && isError,
+    retry,
+  };
+}
+
+export function useSearchCoins(query: string): SearchState<CoinSearchResult> {
+  // Whitespace alone never searches, and padded input shares the trimmed request.
+  const trimmedQuery = query.trim();
+  const debouncedQuery = useDebounce(trimmedQuery, 150);
 
   const result = useQuery({
     queryKey: ['coins', 'search', debouncedQuery],
@@ -31,10 +78,7 @@ export function useSearchCoins(query: string) {
     staleTime: 30000,
   });
 
-  return {
-    ...result,
-    isLoading: result.isFetching && debouncedQuery.length >= 1,
-  };
+  return useSearchState(trimmedQuery, debouncedQuery, result);
 }
 
 export function useCreateAssetFromCoinGecko() {
@@ -67,8 +111,10 @@ export function useCreateAsset() {
 export function useSearchAssets(
   query: string,
   params: { category?: string; provider?: ProviderName }
-) {
-  const debouncedQuery = useDebounce(query, 200);
+): SearchState<ProviderSearchResult> {
+  // Whitespace alone never searches, and padded input shares the trimmed request.
+  const trimmedQuery = query.trim();
+  const debouncedQuery = useDebounce(trimmedQuery, 200);
 
   const result = useQuery({
     queryKey: ['assets', 'search', debouncedQuery, params.category, params.provider],
@@ -77,10 +123,7 @@ export function useSearchAssets(
     staleTime: 30_000,
   });
 
-  return {
-    ...result,
-    isLoading: result.isFetching && debouncedQuery.length >= 1,
-  };
+  return useSearchState(trimmedQuery, debouncedQuery, result);
 }
 
 export function useCreateAssetFromProvider() {
