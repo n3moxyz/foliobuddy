@@ -14,7 +14,6 @@ import {
   formatDrawdown,
   formatPercent,
   getPnLColorClass,
-  isMarketExposureCategory,
   isStablecoinCategory,
   cn,
 } from '@/lib/utils';
@@ -65,6 +64,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { usePerpExposure } from '@/hooks/usePerpExposure';
+import { calculateExposurePct } from '@/lib/exposure';
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { isNonNegativeNumberInput } from '@/lib/formValidation';
@@ -160,6 +160,7 @@ export default function Portfolio() {
   const {
     perpExposure,
     savePerpExposure,
+    hasLoaded: perpExposureLoaded,
     isReady: perpExposureReady,
     isSaving: perpExposureSaving,
   } = usePerpExposure();
@@ -355,16 +356,18 @@ export default function Portfolio() {
     return Array.from(names).sort();
   }, [custodyPositions]);
 
-  // Derived total for exposure calc in summary cards
-  const marketExposureTotal = useMemo(() => {
-    return ownedPositions
-      .filter((position) => isMarketExposureCategory(position.asset.category))
-      .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
-  }, [ownedPositions]);
-  const exposurePct =
-    summary && summary.totalValueUsd > 0
-      ? `${(((marketExposureTotal + perpExposure) / summary.totalValueUsd) * 100).toFixed(1)}%`
-      : '0%';
+  // Same formula as the Dashboard. Undefined (shown as "-") until positions, the summary and the
+  // perp setting have loaded, so the hero never shows a figure that leaves perps out, and when
+  // something is exposed against a zero total. A refresh that fails keeps the last value.
+  const exposurePct = useMemo(
+    () =>
+      calculateExposurePct({
+        positions,
+        totalValueUsd: summary?.totalValueUsd,
+        perpExposureUsd: perpExposureLoaded ? perpExposure : undefined,
+      }),
+    [positions, summary?.totalValueUsd, perpExposure, perpExposureLoaded]
+  );
 
   return (
     <div className="space-y-6">
@@ -664,10 +667,12 @@ export default function Portfolio() {
                       <p className="text-muted-foreground text-sm">Exposure</p>
                       <HelpTooltip
                         label="Exposure"
-                        content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash"
+                        content="Percentage of portfolio in market-risk assets, excluding stablecoins and cash, including perps"
                       />
                     </div>
-                    <p className="font-medium tabular-nums">{exposurePct}</p>
+                    <p className="font-medium tabular-nums">
+                      {exposurePct === undefined ? '-' : `${exposurePct.toFixed(1)}%`}
+                    </p>
                   </div>
                   <div className="px-4">
                     <div className="flex items-center gap-1">

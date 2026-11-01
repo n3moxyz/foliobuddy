@@ -1,5 +1,11 @@
 # FOR[ET].md - FolioBuddy
 
+## Exposure waits for its inputs (1 November 2026)
+
+The Dashboard's Exposure tile had the same false zero as the Trades tile: it read 0.0% while positions loaded, kept it if they failed, and left perps out until the perp setting arrived, so a perp-heavy portfolio briefly looked far safer than it was. The Portfolio hero used the same formula with its own fallback ("0%") and its help text forgot the perps. Both now share `calculateExposurePct()`, which stays unknown until positions, the total and the perp setting have all loaded. The tile shows "-" with "Exposure unavailable" for screen readers, the hero shows "-", and a loaded portfolio with nothing exposed reads 0.0% on both. Perps with nothing owned also show "-", because there is no total to divide by; the old 0.0% called a perp-only account safe.
+
+The lesson came from review: "loaded" isn't "the last request worked". The first version waited for the perp setting's `isSuccess`. In React Query v5 a refresh that fails turns `isSuccess` false but keeps the data, and the perp setting refreshes every time you come back to the tab. So one failed refresh would have turned a known Exposure back into "-". The pages now wait for `hasLoaded` (the data exists), which a failed refresh leaves alone. Editing the perp value still waits for a successful load.
+
 ## One definition at a time, and no false zero (1 November 2026)
 
 Two small follow-ups from the Trade Analytics work. On an iPhone, tapping a second "?" left the first definition open as well, and on a phone-width hero the two popups could overlap. Radix closes other tooltips only when it opens one itself, but a tap opens a help button through its own state (iOS never focuses a tapped button), and the buttons stop the tap reaching the open tooltip's outside-press listener. Opening a definition now closes whichever one is open.

@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { focusManager } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'sonner';
@@ -51,11 +51,14 @@ function createDeferred<T>(): Deferred<T> {
 
 describe('usePerpExposure', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Reset, not clear: a test that fails early must not leave queued replies for the next one.
+    vi.resetAllMocks();
     localStorage.clear();
   });
 
   afterEach(() => {
+    // Unmount first: resetting focus counts as regaining it, and a mounted hook would refetch.
+    cleanup();
     focusManager.setFocused(undefined);
   });
 
@@ -89,6 +92,60 @@ describe('usePerpExposure', () => {
 
     await waitFor(() => expect(api.getUserPreferences).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(result.current.perpExposure).toBe(350_000));
+  });
+
+  it('keeps a loaded value when a later refresh fails', async () => {
+    vi.mocked(api.getUserPreferences)
+      .mockResolvedValueOnce(preferences(100_000))
+      .mockRejectedValueOnce(new Error('Network unavailable'));
+
+    const queryClient = createTestQueryClient();
+    const wrapper = createQueryClientWrapper(queryClient);
+    const { result } = renderHook(() => usePerpExposure(), { wrapper });
+
+    expect(result.current.hasLoaded).toBe(false);
+    await waitFor(() => expect(result.current.hasLoaded).toBe(true));
+    expect(result.current.perpExposure).toBe(100_000);
+
+    act(() => {
+      focusManager.setFocused(false);
+    });
+    act(() => {
+      focusManager.setFocused(true);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    // React Query keeps the last data, so the value stays known; editing still waits.
+    expect(result.current.hasLoaded).toBe(true);
+    expect(result.current.perpExposure).toBe(100_000);
+    expect(result.current.isReady).toBe(false);
+  });
+
+  it('keeps a legacy value that has not migrated yet when a later refresh fails', async () => {
+    localStorage.setItem(CURRENT_STORAGE_KEY, '350000');
+    vi.mocked(api.getUserPreferences)
+      .mockResolvedValueOnce(preferences(null))
+      .mockRejectedValueOnce(new Error('Network unavailable'));
+    vi.mocked(api.updateUserPreferences).mockRejectedValue(new Error('Network unavailable'));
+
+    const queryClient = createTestQueryClient();
+    const wrapper = createQueryClientWrapper(queryClient);
+    const { result } = renderHook(() => usePerpExposure(), { wrapper });
+
+    await waitFor(() => expect(api.updateUserPreferences).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.isSaving).toBe(false));
+    expect(result.current.perpExposure).toBe(350_000);
+
+    act(() => {
+      focusManager.setFocused(false);
+    });
+    act(() => {
+      focusManager.setFocused(true);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.perpExposure).toBe(350_000);
+    expect(localStorage.getItem(CURRENT_STORAGE_KEY)).toBe('350000');
   });
 
   it('uploads a positive legacy value once, clears both keys after success, and stays silent', async () => {
