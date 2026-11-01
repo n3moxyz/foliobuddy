@@ -19,7 +19,9 @@ one-click **Sync IBKR** control still runs on the Mac paired with that browser.
    setup command: `npm run ibkr:worker:setup -- --cash-position-id '<cash reference>' --name '<your Mac name>'`.
    The public reference pins the intended portfolio before any broker read.
    Setup prepares the runtime, generates an Ed25519 key locally and produces
-   **public enrollment JSON**; it does not enable the schedule yet.
+   **public enrollment JSON**; it does not enable the schedule yet. If setup stops, it
+   prints the reason when that reason is one of its fixed refusals. Errors that could
+   contain paths or provider output keep the generic message.
    The private key remains on that Mac, mode `0600`, under the ignored private worker
    directory. Never paste a private key, Clerk token, broker credential or `.env`.
 3. In the signed-in FolioBuddy portfolio, edit the owned **IBKR Cash & Debt**
@@ -53,6 +55,48 @@ Revocation takes effect for future transactions;
 a transaction already committed before revocation remains in the checkpoint log.
 The other Mac's browser helper remains independent. Schedule installation, updates
 and removal refuse an active or unresolved worker lock instead of interrupting it.
+To use a disconnected Mac again, follow [Reconnect a disconnected Mac](#reconnect-a-disconnected-mac).
+
+## Reconnect a disconnected Mac
+
+Disconnecting retires that Mac's key. FolioBuddy keeps the revoked grant in the cash
+position's history and refuses any enrolment that reuses its device ID or key, even with
+a fresh signature. Rerunning setup without `--rotate` signs the old key again, so
+**Authorise Daily IBKR Sync** fails with "These connection details reuse a key that was
+authorised before…". When setup keeps a key, it says so and prints the same command
+with `--rotate` added.
+
+To reconnect the same Mac to the same IBKR cash position:
+
+1. Resolve any blocked or unverified run first, with the owner-reviewed recovery in
+   [Failures and recovery](#failures-and-recovery). Rotation never clears one. The Mac keeps
+   its local crash guard and the cash position keeps its unresolved attempt, so a new key
+   starts blocked too. Setup also refuses to run while a worker lock remains.
+2. In that Mac's FolioBuddy folder, run the setup command from **Daily Sync → Connect a Mac**
+   with `--rotate` at the end:
+   `npm run ibkr:worker:setup -- --cash-position-id '<cash reference>' --name '<your Mac name>' --rotate`.
+   Setup moves the old key and configuration to `.local/ibkr-worker/retired/<old device ID>/`,
+   generates a new key and device ID, and writes new public connection details. Checkpoints,
+   private evidence and crash guards stay where they are.
+3. Paste the new details under **Daily Sync → Connect a Mac**, review the scope and select
+   **Authorise Daily IBKR Sync**.
+4. Run `node scripts/ibkr-sync-worker/worker.mjs "$PWD" --once` and check **Synced and
+   verified**. This also covers today if a scheduled run already tried a key that wasn't
+   authorised. That run is recorded as failed, not blocked. An installed schedule uses the
+   new key from its next run. If you removed it with `npm run ibkr:worker:remove`, enable it
+   again with `npm run ibkr:worker:setup -- --enable`.
+
+Only rotate after **Disconnect**. Authorisation refuses a new key while the cash position
+still has a connected Mac, so rotating a connected Mac stops its sync until you disconnect
+the old grant and authorise the new key. If public connection details expired before you
+authorised them, rerun setup without `--rotate`; that refreshes them with the same key. To
+replace one Mac with another, disconnect the old Mac and run first-time setup on the new
+one. Each reconnect adds a grant to the cash position's history, which is capped at 50.
+
+The steps above keep the same cash position. After a Mac's first sync, its private worker
+state pins that portfolio and cash position, and the worker refuses a grant for any other.
+`--rotate` can enrol the Mac elsewhere, but it cannot move that pin, so treat moving a Mac
+to a different cash position as an owner-reviewed migration.
 
 ## Separate accounts
 
@@ -162,6 +206,8 @@ For an interrupted or blocked attempt, keep its lock/journal/checkpoints. Inspec
 the saved attempt/run ID, exact before/after state, source time and histories with
 the owner's authenticated review tools. **Do not delete locks, edit the journal,
 rotate/re-enroll a key or clear database attempt state as an automatic repair.**
+Rotation is only for [reconnecting](#reconnect-a-disconnected-mac) a Mac after a
+deliberate Disconnect, and it leaves any block in place.
 Resolving an uncertain result requires an explicit owner-reviewed recovery; there
 is deliberately no generic reset or restore action exposed to the device. Disconnecting
 the Mac in FolioBuddy stops it while that review happens. The browser's manual checkpoint
@@ -175,10 +221,12 @@ review remains available.
   scoped grants, replay protection and attempt orchestration.
 - `IbkrBackgroundSync.tsx`: owner connection/review/revocation and daily status.
 - `npm run test:ibkr-worker`: failure ordering, duplicate dates, interrupted writes,
-  private evidence, signature interoperability and installer identity preservation.
+  private evidence, signature interoperability, installer identity preservation, and
+  setup's kept-key hint and printable refusals.
 - `packages/backend/scripts/verify-ibkr-device.ts`: real isolated PostgreSQL checks
   for two independent owners, copied enrollment, foreign keys/attempts, listing and
-  revocation isolation, replay, financial atomicity and immutable histories.
+  revocation isolation, a refused revoked key and a rotated reconnect, replay,
+  financial atomicity and immutable histories.
 - `npm run sandbox`: fictional app only; `IBKR_DEVICE_AUDIENCE` is automatically set
   to its explicit loopback API. Production refuses non-production audiences.
   Never connect real broker holdings to the fictional portfolio. Use injected

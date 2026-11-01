@@ -95,8 +95,10 @@ async function prepareIdentity({
         existing.connectorFingerprint !== connectorFingerprint ||
         existing.cashPositionId !== cashPositionId)
     )
+      // Setup prints this refusal, so it names the only change that rotation can fix: after a
+      // first sync, the worker's private state keeps its portfolio and cash position.
       throw new Error(
-        'The worker audience, broker connection or cash anchor changed. Revoke the old device before explicitly rotating its key.'
+        'The FolioBuddy server, IBKR connection or cash position changed since this Mac was set up. If only the IBKR connection changed, disconnect this Mac in FolioBuddy, then rerun setup with --rotate. Moving it to another server or cash position needs owner review.'
       );
     if (rotate) {
       const retired = path.join(directory, 'retired', existing.deviceId);
