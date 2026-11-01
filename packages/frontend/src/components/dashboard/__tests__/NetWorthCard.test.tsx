@@ -112,6 +112,30 @@ describe('NetWorthCard', () => {
     }
   });
 
+  it('uses the singular in link text for one position or one trade', () => {
+    render(
+      <MemoryRouter>
+        <NetWorthCard
+          summary={summary}
+          currency="USD"
+          exposurePct={66.9}
+          positionCount={1}
+          closedTrades={1}
+        />
+      </MemoryRouter>
+    );
+
+    const rail = screen.getByRole('region', { name: 'Net worth statistics' });
+    const linkTexts = within(rail)
+      .getAllByRole('link')
+      .map((link) => link.textContent);
+    expect(linkTexts).toEqual([
+      '66.9% — view portfolio',
+      '1 position — view portfolio',
+      '1 trade — view trade journal',
+    ]);
+  });
+
   it('renders the alternate-currency footer', () => {
     render(
       <MemoryRouter>

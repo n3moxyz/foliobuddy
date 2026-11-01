@@ -1,8 +1,14 @@
+import { useRef } from 'react';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatNumber, formatDate, getPnLColorClass } from '@/lib/utils';
+import { HelpTooltip } from '@/components/ui/HelpTooltip';
+import { formatCount, formatNumber, formatDate, getPnLColorClass } from '@/lib/utils';
 import type { TradeAnalytics } from '@/lib/types';
 import { useTradeStatsStore, type SegmentId } from '@/stores/tradeStatsStore';
+import {
+  SEGMENT_SCREEN_READER_INSTRUCTIONS,
+  segmentAnnouncements,
+  segmentLabel,
+} from './tradeStatsSegments';
 import {
   DndContext,
   closestCenter,
@@ -11,6 +17,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type UniqueIdentifier,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -23,21 +30,14 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
-function MetricLabel({ label, tip }: { label: string; tip: React.ReactNode }) {
+// Definitions use HelpTooltip, which opens on hover, focus or tap. A hover-only tooltip on the
+// label itself never opened for keyboard or touch users.
+function MetricLabel({ label, help }: { label: string; help: string }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <p className="text-xs text-muted-foreground uppercase tracking-wide cursor-help border-b border-dotted border-muted-foreground/40 w-fit">
-          {label}
-        </p>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-64 p-0 overflow-hidden">
-        <div className="border-b border-border/50 bg-muted/50 px-3 py-1.5">
-          <p className="text-xs font-semibold tracking-wide">{label}</p>
-        </div>
-        <div className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">{tip}</div>
-      </TooltipContent>
-    </Tooltip>
+    <div className="flex items-center gap-1">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <HelpTooltip label={label} content={help} />
+    </div>
   );
 }
 
@@ -71,7 +71,7 @@ function SortableSegment({
   isFirst,
   children,
 }: {
-  id: string;
+  id: SegmentId;
   isFirst: boolean;
   children: React.ReactNode;
 }) {
@@ -95,7 +95,7 @@ function SortableSegment({
       <div className="flex items-start gap-1">
         <button
           type="button"
-          aria-label={`Reorder ${id} section`}
+          aria-label={`Reorder ${segmentLabel(id)} section`}
           className="mt-0.5 inline-flex min-h-11 min-w-11 items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/80 hover:text-muted-foreground transition-colors shrink-0 touch-manipulation md:min-h-0 md:min-w-0"
           {...attributes}
           {...listeners}
@@ -131,7 +131,7 @@ function MetricsSegment({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <div>
-        <MetricLabel label="Total P&L" tip="Sum of all realised profits and losses" />
+        <MetricLabel label="Total P&L" help="Sum of all realised profits and losses." />
         <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(analytics.totalPnL)}`}>
           {formatCurrency(convert(analytics.totalPnL), currency)}
         </p>
@@ -139,7 +139,7 @@ function MetricsSegment({
       <div>
         <MetricLabel
           label="Per Trade Avg"
-          tip={<>(win rate &times; avg win) &minus; (loss rate &times; avg loss)</>}
+          help="Expected result per trade: (win rate × avg win) − (loss rate × avg loss)."
         />
         <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(expectancy)}`}>
           {formatCurrency(convert(expectancy), currency)}
@@ -149,13 +149,7 @@ function MetricsSegment({
       <div>
         <MetricLabel
           label="Profit Factor"
-          tip={
-            <>
-              total gains &divide; total losses
-              <br />
-              Above 1.0 = profitable system
-            </>
-          }
+          help="Total gains ÷ total losses. Above 1.0 means the system is profitable."
         />
         <p className="text-xl font-bold tabular-nums">
           {analytics.profitFactor === null ? '∞' : formatNumber(analytics.profitFactor)}
@@ -165,13 +159,7 @@ function MetricsSegment({
       <div>
         <MetricLabel
           label="Risk : Reward"
-          tip={
-            <>
-              avg win &divide; avg loss
-              <br />
-              Higher = winners are bigger than losers
-            </>
-          }
+          help="Average win ÷ average loss. Higher means winners are bigger than losers."
         />
         <p className="text-xl font-bold tabular-nums">
           1 : {riskReward === Infinity ? '∞' : formatNumber(riskReward)}
@@ -186,7 +174,7 @@ function WinRateSegment({ analytics }: { analytics: TradeAnalytics }) {
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
-        <MetricLabel label="Win Rate" tip={<>winning trades &divide; total trades</>} />
+        <MetricLabel label="Win Rate" help="Winning trades ÷ closed trades." />
         <p className="text-xl font-bold tabular-nums">{formatNumber(analytics.winRate)}%</p>
       </div>
       <div className="relative h-2.5 rounded-full overflow-hidden bg-muted">
@@ -198,11 +186,15 @@ function WinRateSegment({ analytics }: { analytics: TradeAnalytics }) {
         )}
       </div>
       <div className="flex items-center justify-between text-xs tabular-nums">
-        <span className="text-profit font-medium">{analytics.winningTrades} wins</span>
-        <span className="text-muted-foreground font-medium">
-          Total: {analytics.totalTrades} trades
+        <span className="text-profit font-medium">
+          {formatCount(analytics.winningTrades, 'win')}
         </span>
-        <span className="text-loss font-medium">{analytics.losingTrades} losses</span>
+        <span className="text-muted-foreground font-medium">
+          Total: {formatCount(analytics.totalTrades, 'trade')}
+        </span>
+        <span className="text-loss font-medium">
+          {formatCount(analytics.losingTrades, 'loss', 'losses')}
+        </span>
       </div>
     </div>
   );
@@ -226,7 +218,7 @@ function AvgWinLossSegment({
     <div className="space-y-3">
       <MetricLabel
         label="Avg Win vs Avg Loss"
-        tip="Average profit on winning trades vs average loss on losing trades"
+        help="Average profit on winning trades vs average loss on losing trades."
       />
       <div className="space-y-2">
         <div className="flex items-center gap-3">
@@ -377,6 +369,7 @@ export function TradeStatsCard({
 }: TradeStatsCardProps) {
   const { segmentOrder, setOrder } = useTradeStatsStore();
   const { formatCurrency } = useMoneyFormatter();
+  const pickedUpRef = useRef<UniqueIdentifier | null>(null);
 
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
@@ -468,39 +461,45 @@ export function TradeStatsCard({
   }
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <CollapsibleCard
-        title="Trade Analytics"
-        isExpanded={isExpanded}
-        onToggle={onToggle ?? (() => {})}
-        headerRight={
-          !isExpanded ? (
-            <div className="flex items-center gap-3 text-xs tabular-nums">
-              <span className={`font-medium ${getPnLColorClass(analytics.totalPnL)}`}>
-                {formatCurrency(convert(analytics.totalPnL), currency, 0)}
-              </span>
-              <span className="text-muted-foreground">{`${formatNumber(analytics.winRate, 0)}% win\u00a0rate`}</span>
-              <span className="text-muted-foreground">{analytics.totalTrades} trades</span>
-            </div>
-          ) : undefined
-        }
-      >
-        <div className="space-y-5">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={visibleOrder} strategy={verticalListSortingStrategy}>
-              {visibleOrder.map((id, index) => (
-                <SortableSegment key={id} id={id} isFirst={index === 0}>
-                  {renderSegment(id)}
-                </SortableSegment>
-              ))}
-            </SortableContext>
-          </DndContext>
-        </div>
-      </CollapsibleCard>
-    </TooltipProvider>
+    <CollapsibleCard
+      title="Trade Analytics"
+      isExpanded={isExpanded}
+      onToggle={onToggle ?? (() => {})}
+      headerRight={
+        !isExpanded ? (
+          // Phones stack P&L over the win rate so the summary never runs into the title; the
+          // trade count returns from sm, and the page subtitle above the card shows it too.
+          <div className="flex flex-col items-end text-xs tabular-nums sm:flex-row sm:items-center sm:gap-3">
+            <span className={`font-medium ${getPnLColorClass(analytics.totalPnL)}`}>
+              {formatCurrency(convert(analytics.totalPnL), currency, 0)}
+            </span>
+            <span className="text-muted-foreground">{`${formatNumber(analytics.winRate, 0)}% win\u00a0rate`}</span>
+            <span className="hidden text-muted-foreground sm:inline">
+              {formatCount(analytics.totalTrades, 'trade')}
+            </span>
+          </div>
+        ) : undefined
+      }
+    >
+      <div className="space-y-5">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          accessibility={{
+            announcements: segmentAnnouncements(visibleOrder, pickedUpRef),
+            screenReaderInstructions: SEGMENT_SCREEN_READER_INSTRUCTIONS,
+          }}
+        >
+          <SortableContext items={visibleOrder} strategy={verticalListSortingStrategy}>
+            {visibleOrder.map((id, index) => (
+              <SortableSegment key={id} id={id} isFirst={index === 0}>
+                {renderSegment(id)}
+              </SortableSegment>
+            ))}
+          </SortableContext>
+        </DndContext>
+      </div>
+    </CollapsibleCard>
   );
 }

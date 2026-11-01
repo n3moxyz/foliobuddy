@@ -194,6 +194,16 @@ export function formatNumber(value: number | null | undefined, decimals: number 
   return formatter.format(value);
 }
 
+/** The noun that goes with a count: "trade" for 1, "trades" otherwise. Pass irregular plurals ("loss", "losses"). */
+export function countNoun(count: number, singular: string, plural = `${singular}s`): string {
+  return count === 1 ? singular : plural;
+}
+
+/** A count with its noun: "1 trade", "44 trades", "0 trades". */
+export function formatCount(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${countNoun(count, singular, plural)}`;
+}
+
 export function formatTrimmedNumber(value: number | null | undefined, maxDecimals: number): string {
   if (value === null || value === undefined) return '-';
 

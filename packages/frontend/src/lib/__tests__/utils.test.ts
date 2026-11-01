@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  countNoun,
+  formatCount,
   formatDate,
   formatDateTime,
   formatNativeAmount,
@@ -22,6 +24,18 @@ describe('date and time formats (day first, 12-hour clock)', () => {
   it('puts the day first, with no leading zero', () => {
     expect(formatDate(new Date(2026, 8, 5))).toBe('5 Sept 2026');
     expect(formatDateTime(new Date(2026, 8, 5, 14, 5))).toBe('5 Sept 2026, 2:05pm');
+  });
+});
+
+describe('counts', () => {
+  it('uses the singular only for exactly one', () => {
+    expect(formatCount(1, 'trade')).toBe('1 trade');
+    expect(formatCount(0, 'trade')).toBe('0 trades');
+    expect(formatCount(44, 'closed trade')).toBe('44 closed trades');
+    expect(formatCount(1, 'loss', 'losses')).toBe('1 loss');
+    expect(formatCount(2, 'loss', 'losses')).toBe('2 losses');
+    expect(countNoun(1, 'position')).toBe('position');
+    expect(countNoun(26, 'position')).toBe('positions');
   });
 });
 

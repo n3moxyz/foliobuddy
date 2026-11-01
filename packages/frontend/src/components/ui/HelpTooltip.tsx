@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -11,6 +11,10 @@ interface HelpTooltipProps {
 
 export function HelpTooltip({ content, label }: HelpTooltipProps) {
   const [open, setOpen] = useState(false);
+  // The current press: its pointer type and whether the tooltip was open when it began. On a touch
+  // tap, Chrome focuses the button after the finger lifts, so Radix opens the tooltip on focus just
+  // before the click arrives; flipping the state at click time would close it again at once.
+  const pressRef = useRef<{ pointerType: string; wasOpen: boolean } | null>(null);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -23,9 +27,23 @@ export function HelpTooltip({ content, label }: HelpTooltipProps) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setOpen((prev) => !prev);
+              const press = pressRef.current;
+              pressRef.current = null;
+              if (!press) {
+                // A keyboard click has no press: toggle what is showing now.
+                setOpen((prev) => !prev);
+              } else if (press.pointerType === 'mouse') {
+                // Hovering already opened it; a click keeps it open.
+                setOpen(true);
+              } else {
+                // Touch and pen: a tap toggles.
+                setOpen(!press.wasOpen);
+              }
             }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              pressRef.current = { pointerType: e.pointerType, wasOpen: open };
+            }}
           >
             <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/80" />
           </button>

@@ -48,6 +48,7 @@ import {
   Target,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { formatCount } from '@/lib/utils';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import type { Trade } from '@/lib/types';
 import {
@@ -173,7 +174,7 @@ export default function Trades() {
           title="Trade Journal"
           subtitle={
             analytics
-              ? `${analytics.totalTrades} closed trades · ${analytics.winRate?.toFixed(0) ?? 0}% win rate`
+              ? `${formatCount(analytics.totalTrades, 'closed trade')} · ${analytics.winRate?.toFixed(0) ?? 0}% win rate`
               : undefined
           }
           actions={

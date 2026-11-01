@@ -1,5 +1,11 @@
 # FOR[ET].md - FolioBuddy
 
+## Trade Analytics for every input (1 November 2026)
+
+The Trade Journal's analytics card worked best with a mouse. Its definitions sat in hover-only tooltips, so a keyboard or a phone could never open them. Each term now has the app's "?" help button instead ("Help: Win Rate"). Screen readers heard the saved section IDs ("Reorder byDirection section"); handles and drag announcements now name the section and its position ("Win Rate section moved to position 3 of 5"). On narrow phones the collapsed summary ran into the card title, so phones now stack the P&L over the win rate and leave the trade count to the subtitle above. Counts also learned the singular: "1 trade", "1 win", "1 loss", "1 closed trade".
+
+The lesson: test the tap, not the click. The shared help button never opened on a first tap in Android Chrome. Chrome focuses a tapped button after the finger lifts, Radix opens the tooltip on that focus, and the button's own click then flipped it closed again. A click now decides from the state when the press began: a tap toggles, a mouse click keeps the definition open, and Enter still toggles. dnd-kit has a similar trap: it reports a section over itself as soon as it is picked up, which would replace "Picked up…" before anyone heard it.
+
 ## Words and style review: the open questions (1 November 2026)
 
 Nine questions stayed open after the review's eight PRs, and the owner settled each one on 1 November. OPEN and CLOSED stay in capitals, like LONG and SHORT, because they are the stored values. LONG and SHORT are a trade's Direction, as the form and exports already said; only the trades table said Side. A trade is open or closed, so the Dashboard help no longer says "completed". The crowned investor is the Primary owner on desktop too. The IBKR daily sync says Disconnect from the button to the toast, instead of switching to "Stop Daily Sync" halfway. The collapsed Trade Analytics card reads "64% win rate", like the subtitle above it. Empty searches say "No matching" plus what the box searches. Import recovery points people at their saved positions, and a saved location's pencil says Rename, like the button under the field. The design-system previews caught up too: their labels and buttons use Title Case, and their dates put the day first.
