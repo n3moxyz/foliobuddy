@@ -482,7 +482,7 @@ export function BenchmarkComparisonChart() {
                   )}
                   {!isSearching && searchResults.length === 0 && searchQuery.length >= 1 && (
                     <div className="break-words p-2 text-sm text-muted-foreground">
-                      No results for "{searchQuery}"
+                      No matching benchmarks
                     </div>
                   )}
                   {searchResults.map((candidate) => (

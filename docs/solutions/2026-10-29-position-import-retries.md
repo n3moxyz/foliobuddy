@@ -81,7 +81,7 @@ Client recovery survives full reloads within this tab and sign-in session.
 Logout clears its financial payload even after reload without reopening Import.
 Confirmed signed-out startup and a different session also clear prior recovery.
 Closing the tab, clearing browser data, or starting a new sign-in session removes
-this recovery boundary. Check saved holdings before reimporting after those events.
+this recovery boundary. Check your saved positions before reimporting after those events.
 Sealed partial receipts remain until that boundary. Unsaved draft edits can be lost.
 
 This repair covers position imports with request IDs. It does not establish

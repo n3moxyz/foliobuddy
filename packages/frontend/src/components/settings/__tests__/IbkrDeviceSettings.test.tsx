@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IbkrDeviceSettings } from '../IbkrDeviceSettings';
 import { api } from '@/lib/api';
 import type { IbkrSyncDevice } from '@/lib/types';
+import { toast } from 'sonner';
 
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/lib/api', () => ({ api: { getIbkrDevices: vi.fn(), revokeIbkrDevice: vi.fn() } }));
 const device = {
   deviceId: 'fictional-device',
@@ -34,19 +36,27 @@ describe('owner IBKR device settings', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
     expect(api.getIbkrDevices).toHaveBeenCalledWith();
     expect(api.revokeIbkrDevice).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Stop Daily Sync' }));
+    // The same question as the Portfolio panel, naming the Mac rather than "this Mac".
+    expect(
+      screen.getByText(
+        /^Disconnect Merlin\? It will no longer update this IBKR account each morning\./
+      )
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
     await waitFor(() =>
       expect(vi.mocked(api.revokeIbkrDevice).mock.calls[0]?.[0]).toBe(device.deviceId)
     );
     expect(await screen.findByText(/No Mac is connected/)).toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith('Merlin disconnected from daily IBKR sync');
   });
   it('retains a connection and shows the error when revocation fails', async () => {
     vi.mocked(api.revokeIbkrDevice).mockRejectedValue(new Error('Disconnect failed'));
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Stop Daily Sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Disconnect failed');
     expect(screen.getByText('Merlin')).toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
   });
   it('offers retry when grant access is unavailable', async () => {
     vi.mocked(api.getIbkrDevices).mockRejectedValue(new Error('offline'));

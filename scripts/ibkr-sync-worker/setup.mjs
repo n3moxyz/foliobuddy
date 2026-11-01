@@ -215,7 +215,7 @@ export async function setup(args = process.argv.slice(2)) {
   if (options.uninstall) {
     await removeWorker({ root });
     process.stdout.write(
-      'The scheduled IBKR worker is stopped. Device keys, crash guards and private evidence are retained. Revoke the device in FolioBuddy to remove app access.\n'
+      'The scheduled IBKR worker is stopped. Device keys, crash guards and private evidence are retained. Disconnect this Mac in FolioBuddy to end its app access.\n'
     );
     return;
   }

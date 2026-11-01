@@ -1,5 +1,11 @@
 # FOR[ET].md - FolioBuddy
 
+## Words and style review: the open questions (1 November 2026)
+
+Nine questions stayed open after the review's eight PRs, and the owner settled each one on 1 November. OPEN and CLOSED stay in capitals, like LONG and SHORT, because they are the stored values. LONG and SHORT are a trade's Direction, as the form and exports already said; only the trades table said Side. A trade is open or closed, so the Dashboard help no longer says "completed". The crowned investor is the Primary owner on desktop too. The IBKR daily sync says Disconnect from the button to the toast, instead of switching to "Stop Daily Sync" halfway. The collapsed Trade Analytics card reads "64% win rate", like the subtitle above it. Empty searches say "No matching" plus what the box searches. Import recovery points people at their saved positions, and a saved location's pencil says Rename, like the button under the field. The design-system previews caught up too: their labels and buttons use Title Case, and their dates put the day first.
+
+The lesson: measure before trading words for space. Measured with the app's own font, "WR" saved a row only on the largest phones with a small P&L. Spelling it out costs little, and a non-breaking space keeps "win rate" on one line.
+
 ## Words and style review (31 October 2026)
 
 We read the product's visible text against four questions. Does each thing have one name? Are spelling and punctuation consistent? Does feedback say what happened? Are numbers, dates and units written one way? That covered the app, API messages, exports and the Mac helper. The answers became rules in the style guide's Content fundamentals (`scripts/design-system/content/README.md`), shipped with the fixes in eight small PRs.

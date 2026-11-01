@@ -479,7 +479,7 @@ export function TradeStatsCard({
               <span className={`font-medium ${getPnLColorClass(analytics.totalPnL)}`}>
                 {formatCurrency(convert(analytics.totalPnL), currency, 0)}
               </span>
-              <span className="text-muted-foreground">{formatNumber(analytics.winRate)}% WR</span>
+              <span className="text-muted-foreground">{`${formatNumber(analytics.winRate, 0)}% win\u00a0rate`}</span>
               <span className="text-muted-foreground">{analytics.totalTrades} trades</span>
             </div>
           ) : undefined

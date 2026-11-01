@@ -91,7 +91,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
         )
       );
       setConfirmDisconnect(false);
-      toast.success('Daily IBKR sync disconnected');
+      toast.success(`${device.name} disconnected from daily IBKR sync`);
       void client.invalidateQueries({ queryKey: ['ibkr-devices'] });
     } catch (e) {
       if (!isAuthSessionCurrent(session)) return;
@@ -125,8 +125,8 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
           {confirmDisconnect ? (
             <div className="space-y-2">
               <p className="text-sm">
-                Stop {device.name} from updating this IBKR account? Your saved positions and
-                checkpoints stay available.
+                Disconnect {device.name}? It will no longer update this IBKR account each morning.
+                Your IBKR connection in Codex, saved positions and checkpoints stay as they are.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -136,7 +136,7 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
                   disabled={busy}
                   onClick={() => void disconnect()}
                 >
-                  {revoke.isPending ? 'Disconnecting…' : 'Stop Daily Sync'}
+                  {revoke.isPending ? 'Disconnecting…' : 'Disconnect'}
                 </Button>
                 <Button
                   type="button"

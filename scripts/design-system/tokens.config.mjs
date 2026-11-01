@@ -237,7 +237,7 @@ export const TYPE = {
           '18px',
           '28px',
           600,
-          'Snapshot schedule',
+          'Daily Snapshot',
           'Settings sections, empty-state headings.'
         ),
         style('dialog-title', '18px', 1.375, 600, 'Add Position', 'Dialog titles.', '-0.025em'),
@@ -296,7 +296,7 @@ export const TYPE = {
           '11px',
           '16px',
           400,
-          '(Mar 12, 2026)',
+          '(12 Mar 2026)',
           'Dates under metrics and native-currency price hints. Always full-opacity `muted-foreground`.'
         ),
       ],
