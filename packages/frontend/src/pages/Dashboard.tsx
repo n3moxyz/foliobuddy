@@ -43,7 +43,7 @@ export default function Dashboard() {
   const { data: topPerformers } = useTopPerformers(5);
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: investors } = useInvestors();
-  const { perpExposure, isReady: perpExposureReady } = usePerpExposure();
+  const { perpExposure, hasLoaded: perpExposureLoaded } = usePerpExposure();
   const totalValueUsd = summary?.totalValueUsd ?? 0;
   const totalValueSgd = summary?.totalValueSgd ?? 0;
   const {
@@ -82,15 +82,16 @@ export default function Dashboard() {
     return totalStake / 100;
   }, [selectedInvestors, investors]);
 
-  // Undefined (shown as "-") until positions and the perp setting have loaded.
+  // Undefined (shown as "-") until positions and the perp setting have loaded. A refresh
+  // that fails keeps the last value.
   const exposurePct = useMemo(
     () =>
       calculateExposurePct({
         positions,
         totalValueUsd: summary?.totalValueUsd,
-        perpExposureUsd: perpExposureReady ? perpExposure : undefined,
+        perpExposureUsd: perpExposureLoaded ? perpExposure : undefined,
       }),
-    [positions, summary?.totalValueUsd, perpExposure, perpExposureReady]
+    [positions, summary?.totalValueUsd, perpExposure, perpExposureLoaded]
   );
 
   const handleInvestorToggle = (investorId: string) => {

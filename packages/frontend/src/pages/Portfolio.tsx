@@ -160,6 +160,7 @@ export default function Portfolio() {
   const {
     perpExposure,
     savePerpExposure,
+    hasLoaded: perpExposureLoaded,
     isReady: perpExposureReady,
     isSaving: perpExposureSaving,
   } = usePerpExposure();
@@ -356,15 +357,16 @@ export default function Portfolio() {
   }, [custodyPositions]);
 
   // Same formula as the Dashboard. Undefined (shown as "-") until the summary and the perp
-  // setting have loaded, so the hero never shows a figure that leaves perps out.
+  // setting have loaded, so the hero never shows a figure that leaves perps out. A refresh
+  // that fails keeps the last value.
   const exposurePct = useMemo(
     () =>
       calculateExposurePct({
         positions,
         totalValueUsd: summary?.totalValueUsd,
-        perpExposureUsd: perpExposureReady ? perpExposure : undefined,
+        perpExposureUsd: perpExposureLoaded ? perpExposure : undefined,
       }),
-    [positions, summary?.totalValueUsd, perpExposure, perpExposureReady]
+    [positions, summary?.totalValueUsd, perpExposure, perpExposureLoaded]
   );
 
   return (

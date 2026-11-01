@@ -6,6 +6,7 @@ import Portfolio from '../Portfolio';
 
 const perpMocks = vi.hoisted(() => ({
   exposure: 0,
+  loaded: true,
   ready: true,
   save: vi.fn(() => true),
 }));
@@ -98,6 +99,7 @@ vi.mock('@/hooks/usePerpExposure', () => ({
   usePerpExposure: () => ({
     perpExposure: perpMocks.exposure,
     savePerpExposure: perpMocks.save,
+    hasLoaded: perpMocks.loaded,
     isReady: perpMocks.ready,
     isSaving: false,
   }),
@@ -200,6 +202,7 @@ function openNav(symbol = 'AMOVA') {
 describe('Portfolio responsive grouping', () => {
   beforeEach(() => {
     perpMocks.exposure = 0;
+    perpMocks.loaded = true;
     perpMocks.ready = true;
     perpMocks.save.mockClear();
     navMocks.positions = undefined;
@@ -253,7 +256,7 @@ describe('Portfolio responsive grouping', () => {
     expect(screen.queryByText('DD from ATH')).not.toBeInTheDocument();
   });
 
-  it('shows Exposure with perps, and "-" until the perp setting loads', () => {
+  it('shows Exposure with perps, "-" until the perp setting loads, and keeps it on a failed refresh', () => {
     summaryMocks.data = {
       totalValueUsd: 74_000,
       totalValueSgd: 94_720,
@@ -272,8 +275,13 @@ describe('Portfolio responsive grouping', () => {
       screen.getByRole('button', { name: 'Help: Exposure' }).closest('.px-4') as HTMLElement;
     expect(within(exposureCell()).getByText('100.0%')).toBeInTheDocument();
 
-    // Leaving perps out would understate it, so the hero waits for the perp setting.
+    // A refresh of the perp setting that fails keeps the figure already worked out.
     perpMocks.ready = false;
+    rerender(<Portfolio />);
+    expect(within(exposureCell()).getByText('100.0%')).toBeInTheDocument();
+
+    // Leaving perps out would understate it, so the hero waits for the perp setting.
+    perpMocks.loaded = false;
     rerender(<Portfolio />);
     expect(within(exposureCell()).getByText('-')).toBeInTheDocument();
     expect(within(exposureCell()).queryByText(/%/)).not.toBeInTheDocument();

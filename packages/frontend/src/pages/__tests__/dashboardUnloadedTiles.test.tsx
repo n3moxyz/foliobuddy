@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { QueryClient } from '@tanstack/react-query';
+import { focusManager, type QueryClient } from '@tanstack/react-query';
+import { USER_PREFERENCES_QUERY_KEY } from '@/hooks/useUserPreferences';
 import { api } from '@/lib/api';
 import type { PortfolioSummary, Position, UserPreferences } from '@/lib/types';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -88,6 +89,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  focusManager.setFocused(undefined);
   client?.clear();
   vi.restoreAllMocks();
 });
@@ -124,6 +126,7 @@ describe('Dashboard tiles that have not loaded', () => {
     ['positions are still loading', pending, () => Promise.resolve(preferences)],
     ['positions failed to load', failed, () => Promise.resolve(preferences)],
     ['the perp setting is still loading', () => Promise.resolve(positions), pending],
+    ['the perp setting failed to load', () => Promise.resolve(positions), failed],
   ])('shows "-", never 0.0%, for Exposure while %s', async (_state, loadPositions, loadPrefs) => {
     vi.spyOn(api, 'getPositions').mockImplementation(loadPositions);
     vi.spyOn(api, 'getUserPreferences').mockImplementation(loadPrefs);
@@ -146,5 +149,28 @@ describe('Dashboard tiles that have not loaded', () => {
     await waitFor(() =>
       expect(within(rail).getAllByRole('link')[0].textContent).toBe('60.0% — view portfolio')
     );
+  });
+
+  it('keeps a worked-out Exposure when a later refresh of the perp setting fails', async () => {
+    vi.spyOn(api, 'getPositions').mockResolvedValue(positions);
+    vi.spyOn(api, 'getUserPreferences')
+      .mockResolvedValueOnce({ ...preferences, perpExposureUsd: 8_000 })
+      .mockRejectedValueOnce(new Error('Network unavailable'));
+
+    const rail = await renderRail();
+    const exposureLink = () => within(rail).getAllByRole('link')[0];
+    await waitFor(() => expect(exposureLink().textContent).toBe('60.0% — view portfolio'));
+
+    // Returning to the tab refreshes the perp setting; this time the request fails.
+    act(() => {
+      focusManager.setFocused(false);
+    });
+    act(() => {
+      focusManager.setFocused(true);
+    });
+    await waitFor(() =>
+      expect(client.getQueryState(USER_PREFERENCES_QUERY_KEY)?.status).toBe('error')
+    );
+    expect(exposureLink().textContent).toBe('60.0% — view portfolio');
   });
 });
