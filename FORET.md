@@ -1,5 +1,13 @@
 # FOR[ET].md - FolioBuddy
 
+## Keep failed page imports failed during recovery (1 November 2026)
+
+Two Sentry alerts on Portfolio and the public homepage pointed into a bundle named `clerk-BnAS2Ziw.js`. The saved build showed that its `ie` function was actually React's lazy initializer, reading a module's `.default`. In a production Vite fixture, failing a lazy page fetch while holding the reload pending reproduced the same TypeError.
+
+Our stale-chunk recovery handler called `preventDefault()` before asking the browser to reload. Vite takes that cancellation as permission to swallow the import error and resolve with `undefined`. React can render again before navigation completes, then crash while reading the missing module. Recovery now leaves the event uncancelled: the original failed import reaches the error boundary while the reload proceeds. The one-reload-per-minute cap stays in place. Reading `sessionStorage` also happens inside the existing guard, because access to the property itself can throw.
+
+The regression test builds a tiny app with the installed Vite and React, removes its emitted page chunk, and checks that the boundary receives the missing-module error. Chromium also covers a failed fetch, the cooldown, blocked storage and a healthy load. This establishes a local failure mechanism consistent with the alerts; full Sentry event details and production verification are still needed to establish their original fetch failures and whether the fix resolves them in production.
+
 ## Exposure waits for its inputs (1 November 2026)
 
 The Dashboard's Exposure tile had the same false zero as the Trades tile: it read 0.0% while positions loaded, kept it if they failed, and left perps out until the perp setting arrived, so a perp-heavy portfolio briefly looked far safer than it was. The Portfolio hero used the same formula with its own fallback ("0%") and its help text forgot the perps. Both now share `calculateExposurePct()`, which stays unknown until positions, the total and the perp setting have all loaded. The tile shows "-" with "Exposure unavailable" for screen readers, the hero shows "-", and a loaded portfolio with nothing exposed reads 0.0% on both. Perps with nothing owned also show "-", because there is no total to divide by; the old 0.0% called a perp-only account safe.

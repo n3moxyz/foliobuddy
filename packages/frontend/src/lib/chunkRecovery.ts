@@ -11,21 +11,19 @@ interface ChunkRecoveryOptions {
  * Recover once from a stale Vite lazy-chunk URL after a deployment.
  *
  * The cooldown keeps a genuinely unavailable asset from creating an automatic
- * reload loop. When recovery is suppressed, Vite throws the original error so
- * the normal Sentry error boundary remains available to the user.
+ * reload loop. Keep Vite's original rejection even while a reload is pending:
+ * cancelling the event makes a failed import resolve to undefined, which crashes
+ * React.lazy when it reads the module's default export.
  */
 export function recoverFromVitePreloadError(
-  event: Event,
-  {
-    now = Date.now,
-    reload = () => window.location.reload(),
-    storage = window.sessionStorage,
-  }: ChunkRecoveryOptions = {}
+  _event: Event,
+  { now = Date.now, reload = () => window.location.reload(), storage }: ChunkRecoveryOptions = {}
 ): boolean {
   const currentTime = now();
 
   try {
-    const previousTime = Number(storage.getItem(CHUNK_RELOAD_KEY));
+    const recoveryStorage = storage ?? window.sessionStorage;
+    const previousTime = Number(recoveryStorage.getItem(CHUNK_RELOAD_KEY));
     const elapsed = currentTime - previousTime;
 
     if (
@@ -37,12 +35,11 @@ export function recoverFromVitePreloadError(
       return false;
     }
 
-    storage.setItem(CHUNK_RELOAD_KEY, String(currentTime));
+    recoveryStorage.setItem(CHUNK_RELOAD_KEY, String(currentTime));
   } catch {
     return false;
   }
 
-  event.preventDefault();
   reload();
   return true;
 }
