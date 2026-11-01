@@ -70,7 +70,7 @@ import { ImportResultsList, type ImportResultItem } from '@/components/ui/Import
 import { CustodyCheckbox } from './CustodyCheckbox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { isNonNegativeNumberInput, isPositiveNumberInput } from '@/lib/formValidation';
-import { formatNumber, isStablecoinCategory, currencyDecimals } from '@/lib/utils';
+import { isStablecoinCategory, currencyDecimals } from '@/lib/utils';
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
 import { PositionCostFields } from './PositionCostFields';
@@ -2317,7 +2317,7 @@ export function PositionForm({
                           >
                             <div className="font-medium">{h.name}</div>
                             <div className="text-xs text-muted-foreground">
-                              {formatNumber(h.units, 2)} units · NAV {h.nativeCurrency}{' '}
+                              {formatQuantity(h.units, 'UNIT_TRUST')} units · NAV {h.nativeCurrency}{' '}
                               {h.navNative} · {h.isin}
                             </div>
                           </button>
