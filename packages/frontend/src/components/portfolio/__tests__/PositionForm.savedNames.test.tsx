@@ -155,3 +155,59 @@ describe('PositionForm: renaming a saved location', () => {
     expect(customLocationOptionsForStorageType('CEX')).toEqual(['Kraken']);
   });
 });
+
+describe('PositionForm: adding a custody person', () => {
+  async function openNewPersonBox() {
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Custody: held for someone else' }));
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Custody person' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('option', { name: '+ Add new person' }));
+    const nameBox = screen.getByRole('textbox', { name: 'Custody person name' });
+    // The person list unmounts as the box opens, so the box must take focus itself.
+    await waitFor(() => expect(nameBox).toHaveFocus());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(nameBox).toHaveFocus();
+    return nameBox;
+  }
+
+  it('cancels only the new name on Escape and keeps what was typed in the form', async () => {
+    const { onOpenChange } = renderAddPositionDialog();
+    fireEvent.change(screen.getByLabelText('Notes (Optional)'), {
+      target: { value: 'Held for a friend' },
+    });
+
+    const nameBox = await openNewPersonBox();
+    fireEvent.change(nameBox, { target: { value: 'Alex' } });
+    fireEvent.keyDown(nameBox, { key: 'Escape' });
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Add Position' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Custody person name' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Notes (Optional)')).toHaveValue('Held for a friend');
+    expect(screen.getByRole('combobox', { name: 'Custody person' })).toHaveFocus();
+  });
+
+  it('cancels only the new name when Escape is pressed on its Add button', async () => {
+    const { onOpenChange } = renderAddPositionDialog();
+    const nameBox = await openNewPersonBox();
+    fireEvent.change(nameBox, { target: { value: 'Alex' } });
+    const add = screen.getByRole('button', { name: 'Add' });
+    add.focus();
+
+    fireEvent.keyDown(add, { key: 'Escape' });
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.queryByRole('textbox', { name: 'Custody person name' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Custody person' })).toHaveFocus();
+  });
+
+  it('selects the added name and returns focus to the person list', async () => {
+    renderAddPositionDialog();
+    const nameBox = await openNewPersonBox();
+    fireEvent.change(nameBox, { target: { value: 'Alex' } });
+    fireEvent.keyDown(nameBox, { key: 'Enter' });
+
+    const person = screen.getByRole('combobox', { name: 'Custody person' });
+    expect(person).toHaveTextContent('Alex');
+    expect(person).toHaveFocus();
+  });
+});
