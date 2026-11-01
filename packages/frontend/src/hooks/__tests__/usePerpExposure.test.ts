@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { focusManager } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'sonner';
@@ -57,6 +57,8 @@ describe('usePerpExposure', () => {
   });
 
   afterEach(() => {
+    // Unmount first: resetting focus counts as regaining it, and a mounted hook would refetch.
+    cleanup();
     focusManager.setFocused(undefined);
   });
 
