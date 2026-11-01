@@ -8,7 +8,12 @@ const mutateAsync = vi.fn();
 
 vi.mock('@/hooks/useAssets', () => ({
   useAssets: () => ({ data: [] }),
-  useSearchCoins: () => ({ data: [ethenaCoin], isLoading: false }),
+  useSearchCoins: () => ({
+    data: [ethenaCoin],
+    isSearching: false,
+    isError: false,
+    retry: vi.fn(),
+  }),
   useCreateAssetFromCoinGecko: () => ({ mutateAsync, isPending: false }),
 }));
 

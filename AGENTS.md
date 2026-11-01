@@ -202,7 +202,7 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 - Toaster `className="pointer-events-auto"` counters modal body pointer lock; `top-center` below `sm`, `offset`/`mobileOffset` top 64px clears `h-14`. Modal FocusScope traps Tab: toasts unreachable by keyboard while modal open (pre-existing).
 - `MutationCache.onError` toasts every failed mutation; handlers must never fail silently (`console.error`-only catch = bug); copy/refresh/snapshot toast success + failure. Story: FORET.md.
 - Skeletons `role="status"` + sr-only text; inline errors `role="alert"` + `aria-invalid`/`aria-describedby`.
-- `QueryErrorNotice` supplies retry controls. Keep loaded data on refresh failure. Show empty states only after successful empty responses.
+- Retry: `QueryErrorNotice` (search: `SearchErrorNotice`). Keep loaded data on refresh failure. Empty states need a successful empty response.
 
 ### Responsive Mobile Design
 

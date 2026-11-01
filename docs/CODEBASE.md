@@ -23,8 +23,9 @@ Package: `packages/backend/`.
 Package: `packages/frontend/`.
 
 - `src/App.tsx` (routing); `src/pages/` (Dashboard, Portfolio, Trades, News, History, Investors, Settings); `src/stores/` (Zustand)
-- `src/hooks/` - React Query hooks (usePortfolio incl. `useDrawdownStats`, useTrades, …), `useAnimatedNumber` (rAF), `usePageTitle`, `useKeyboardShortcuts` (single-key nav; disableable via `stores/shortcutsStore`, WCAG 2.1.4), `useMoneyFormatter` (monetary privacy); tests in `__tests__/`
+- `src/hooks/` - React Query hooks (usePortfolio incl. `useDrawdownStats`, useTrades, useAssets search hooks returning `SearchState`: trimmed input, debounce counts as `isSearching`, …), `useAnimatedNumber` (rAF), `usePageTitle`, `useKeyboardShortcuts` (single-key nav; disableable via `stores/shortcutsStore`, WCAG 2.1.4), `useMoneyFormatter` (monetary privacy); tests in `__tests__/`
 - `src/lib/api.ts` (API client), `chunkRecovery.ts` (chunk reload), `types.ts`, `chartColors.ts` (CSS-var chart colors), `chartUtils.ts` (time-period date helpers + dated drawdown math), `portfolioHistory.ts` (live timeline + chart milestones), `tradeSort.ts` (full-timestamp trade order)
+- `src/components/SearchErrorNotice.tsx` - Compact failed-search notice ("Couldn't search …" + Try again) for picker and popover search boxes; page loads use `ui/QueryErrorNotice.tsx`
 - `src/components/ui/` - `skeleton.tsx`, `HelpTooltip.tsx`, `creatable-select.tsx` ("+ Add new ..." Radix Select), `formatted-number-input.tsx` (thousands-separator input; pure helpers in `-utils.ts` for Fast Refresh)
 - `src/components/layout/PageActionHeader.tsx` - Sticky title/action header, high-scroll data pages
 - `src/components/news/` - `HoldingNewsCard.tsx` (compact holding card + quiet/"Also held" lines), `NewsHoldingSearch.tsx` (holding combobox), `HoldingNewsDossier.tsx` (`?asset=` per-holding page), `NewsRow.tsx` (headline or X-post row + Flag menu), `newsFormat.ts` (pure helpers)

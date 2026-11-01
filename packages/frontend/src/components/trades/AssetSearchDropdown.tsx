@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SearchErrorNotice } from '@/components/SearchErrorNotice';
 import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/useAssets';
 import { isStablecoinCategory } from '@/lib/utils';
 import { isListedCoinCandidate } from '@/components/portfolio/assetSearchMatching';
@@ -26,11 +27,14 @@ export function AssetSearchDropdown({
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
+  const trimmedQuery = searchQuery.trim();
 
   const { data: assets } = useAssets();
-  const { data: searchResults, isLoading: searchLoading } = useSearchCoins(searchQuery);
+  const coinSearch = useSearchCoins(searchQuery);
+  const searchResults = coinSearch.data;
   const createAssetFromCoinGecko = useCreateAssetFromCoinGecko();
 
   // Filter existing assets based on search (exclude stablecoins for trades)
@@ -39,15 +43,15 @@ export function AssetSearchDropdown({
 
     let filtered = assets.filter((a) => !isStablecoinCategory(a.category));
 
-    if (searchQuery.length > 0) {
-      const query = searchQuery.toLowerCase();
+    if (trimmedQuery.length > 0) {
+      const query = trimmedQuery.toLowerCase();
       filtered = filtered.filter(
         (a) => a.symbol.toLowerCase().includes(query) || a.name.toLowerCase().includes(query)
       );
     }
 
     return filtered;
-  }, [assets, searchQuery]);
+  }, [assets, trimmedQuery]);
 
   // Combine existing assets with CoinGecko search results
   const combinedResults = useMemo(() => {
@@ -60,7 +64,7 @@ export function AssetSearchDropdown({
     });
 
     // Add CoinGecko search results that aren't already in the catalog
-    if (searchResults && searchQuery.length >= 1) {
+    if (searchResults && trimmedQuery.length >= 1) {
       searchResults.forEach((coin) => {
         if (!isListedCoinCandidate(assets, coin)) {
           results.push({ type: 'search', coin });
@@ -69,10 +73,12 @@ export function AssetSearchDropdown({
     }
 
     return results;
-  }, [filteredAssets, searchResults, searchQuery, assets]);
+  }, [filteredAssets, searchResults, trimmedQuery, assets]);
 
+  // "Searching…" replaces the list, so the keys must not reach a hidden option.
+  const visibleResults = coinSearch.isSearching ? [] : combinedResults;
   const safeHighlightedIndex =
-    highlightedIndex >= 0 && highlightedIndex < combinedResults.length ? highlightedIndex : -1;
+    highlightedIndex >= 0 && highlightedIndex < visibleResults.length ? highlightedIndex : -1;
   const activeOptionId =
     safeHighlightedIndex >= 0 && showDropdown
       ? `${listboxId}-option-${safeHighlightedIndex}`
@@ -122,21 +128,26 @@ export function AssetSearchDropdown({
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       setShowDropdown(true);
     }
-    if (combinedResults.length === 0) return;
+    // Enter mid-search would submit the trade form or pick an option still hidden.
+    if (coinSearch.isSearching && e.key === 'Enter') {
+      e.preventDefault();
+      return;
+    }
+    if (visibleResults.length === 0) return;
 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev < combinedResults.length - 1 ? prev + 1 : 0));
+        setHighlightedIndex((prev) => (prev < visibleResults.length - 1 ? prev + 1 : 0));
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : combinedResults.length - 1));
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : visibleResults.length - 1));
         break;
       case 'Enter':
         e.preventDefault();
-        if (highlightedIndex >= 0 && highlightedIndex < combinedResults.length) {
-          const result = combinedResults[highlightedIndex];
+        if (highlightedIndex >= 0 && highlightedIndex < visibleResults.length) {
+          const result = visibleResults[highlightedIndex];
           if (result.type === 'existing') {
             handleSelectExistingAsset(result.asset!);
           } else {
@@ -188,9 +199,22 @@ export function AssetSearchDropdown({
     );
   }
 
+  const retrySearch = () => {
+    // The notice unmounts once the search runs again, so keep focus in the picker.
+    inputRef.current?.focus();
+    coinSearch.retry();
+  };
+
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      // Close only when focus leaves the picker, so Tab can reach "Try again".
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setShowDropdown(false);
+      }}
+    >
       <Input
+        ref={inputRef}
         id={id}
         placeholder="Search for a coin…"
         value={searchQuery}
@@ -200,7 +224,6 @@ export function AssetSearchDropdown({
           setHighlightedIndex(-1);
         }}
         onFocus={() => setShowDropdown(true)}
-        onBlur={() => setShowDropdown(false)}
         onKeyDown={handleSearchKeyDown}
         autoComplete="off"
         spellCheck={false}
@@ -214,57 +237,68 @@ export function AssetSearchDropdown({
 
       {showDropdown && (
         <div
-          id={listboxId}
-          ref={dropdownRef}
-          role="listbox"
-          aria-label="Matching assets"
           onMouseDown={(event) => event.preventDefault()}
-          className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
+          className="absolute z-10 w-full mt-1 overflow-hidden bg-background border rounded-md shadow-lg"
         >
-          {searchLoading && searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">Searching…</div>
-          ) : combinedResults.length > 0 ? (
-            combinedResults.map((result, index) => (
-              <button
-                key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
-                id={`${listboxId}-option-${index}`}
-                type="button"
-                role="option"
-                tabIndex={-1}
-                aria-selected={index === safeHighlightedIndex}
-                className={`flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left sm:min-h-0 ${
-                  index === safeHighlightedIndex ? 'bg-muted' : 'hover:bg-muted'
-                }`}
-                onClick={() => {
-                  if (result.type === 'existing') {
-                    handleSelectExistingAsset(result.asset!);
-                  } else {
-                    handleSelectCoin(result.coin!);
-                  }
-                }}
-                onMouseEnter={() => setHighlightedIndex(index)}
-              >
-                <span className="min-w-0 break-words [overflow-wrap:anywhere]">
-                  <span className="font-medium">
-                    {result.type === 'existing'
-                      ? result.asset!.symbol
-                      : result.coin!.symbol.toUpperCase()}
-                  </span>
-                  <span className="text-muted-foreground ml-2">
-                    {result.type === 'existing' ? result.asset!.name : result.coin!.name}
-                  </span>
-                </span>
-                {result.type === 'search' && result.coin!.rank && (
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    #{result.coin!.rank}
-                  </span>
-                )}
-              </button>
-            ))
-          ) : searchQuery.length >= 1 ? (
-            <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
-          ) : (
-            <div className="p-3 text-sm text-muted-foreground">Type to search assets…</div>
+          {/* A failed search with nothing to list shows only the notice below. */}
+          {(!coinSearch.isError || visibleResults.length > 0) && (
+            <div
+              id={listboxId}
+              ref={dropdownRef}
+              role="listbox"
+              aria-label="Matching assets"
+              className="max-h-60 overflow-auto"
+            >
+              {coinSearch.isSearching ? (
+                <div className="p-3 text-sm text-muted-foreground">Searching…</div>
+              ) : visibleResults.length > 0 ? (
+                visibleResults.map((result, index) => (
+                  <button
+                    key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
+                    id={`${listboxId}-option-${index}`}
+                    type="button"
+                    role="option"
+                    tabIndex={-1}
+                    aria-selected={index === safeHighlightedIndex}
+                    className={`flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left sm:min-h-0 ${
+                      index === safeHighlightedIndex ? 'bg-muted' : 'hover:bg-muted'
+                    }`}
+                    onClick={() => {
+                      if (result.type === 'existing') {
+                        handleSelectExistingAsset(result.asset!);
+                      } else {
+                        handleSelectCoin(result.coin!);
+                      }
+                    }}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                  >
+                    <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                      <span className="font-medium">
+                        {result.type === 'existing'
+                          ? result.asset!.symbol
+                          : result.coin!.symbol.toUpperCase()}
+                      </span>
+                      <span className="text-muted-foreground ml-2">
+                        {result.type === 'existing' ? result.asset!.name : result.coin!.name}
+                      </span>
+                    </span>
+                    {result.type === 'search' && result.coin!.rank && (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        #{result.coin!.rank}
+                      </span>
+                    )}
+                  </button>
+                ))
+              ) : trimmedQuery.length >= 1 ? (
+                // Reached only after a successful empty response for this input.
+                <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
+              ) : (
+                <div className="p-3 text-sm text-muted-foreground">Type to search assets…</div>
+              )}
+            </div>
+          )}
+          {coinSearch.isError && (
+            <SearchErrorNotice className="m-2" subject="assets" onRetry={retrySearch} />
           )}
         </div>
       )}

@@ -2943,3 +2943,11 @@ The first private CI run stopped before deployment because the official action a
 ## Health checks describe failures, not the network (31 October 2026)
 
 `GET /api/v1/health/db` needs no sign-in, yet a failed check returned Prisma's raw error. Connection errors name the private database host and port, and the uptime workflow prints the response body into a public Actions log. The 503 now says only `Database unavailable`, and the backend logs the cause. No caller read the old text: the dashboard only sees a failed request, and uptime checks the status code. A public route can report that something failed without saying where it runs.
+
+## Search results are unknown until the search answers (1 November 2026)
+
+Three search boxes said "No matching assets" or "No matching benchmarks" when the request had failed: the Add Position and Log New Trade asset pickers, and the Dashboard benchmark search. They also flashed that line during the 150–200 ms debounce, before any request started. The search hooks reported "not loading, no data" in both cases, and every box read that as no match. A query of only spaces searched too, then claimed no match.
+
+The hooks now trim the input and describe the search for the text on screen. `isSearching` covers the debounce wait, the request and its retry, and a request paused offline. `isError` means the results are unknown. A failure shows `SearchErrorNotice` ("Couldn't search assets" with Try again) beside any catalog or preset matches that did load. The empty line appears only after a successful empty response. The pickers now close only when focus leaves the whole picker, so Tab reaches Try again, and Enter no longer acts on options hidden behind "Searching…".
+
+The lesson: the debounce is part of the request. "Not fetched yet" and "fetched nothing" are different answers.

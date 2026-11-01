@@ -13,10 +13,12 @@ let fxRates: Array<{ fromCcy: string; toCcy: string; rate: number }> | undefined
 
 vi.mock('@/hooks/useAssets', () => ({
   useAssets: () => ({ data: catalog }),
-  useSearchCoins: () => ({ data: [], isLoading: false }),
+  useSearchCoins: () => ({ data: [], isSearching: false, isError: false, retry: vi.fn() }),
   useSearchAssets: (query: string) => ({
     data: query ? [stablecoinXHit] : [],
-    isLoading: false,
+    isSearching: false,
+    isError: false,
+    retry: vi.fn(),
   }),
   useCreateAssetFromProvider: () => ({ mutateAsync: providerMutate, isPending: false }),
   useCreateAssetFromCoinGecko: () => ({ mutateAsync: coingeckoMutate, isPending: false }),
