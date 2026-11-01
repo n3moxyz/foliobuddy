@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -11,6 +11,10 @@ interface HelpTooltipProps {
 
 export function HelpTooltip({ content, label }: HelpTooltipProps) {
   const [open, setOpen] = useState(false);
+  // The current press: its pointer type and whether the tooltip was open when it began. On a touch
+  // tap, Chrome focuses the button after the finger lifts, so Radix opens the tooltip on focus just
+  // before the click arrives; flipping the state at click time would close it again at once.
+  const pressRef = useRef<{ pointerType: string; wasOpen: boolean } | null>(null);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -23,9 +27,25 @@ export function HelpTooltip({ content, label }: HelpTooltipProps) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setOpen((prev) => !prev);
+              // Keyboard and screen-reader clicks (detail 0) have no press of their own, even if an
+              // earlier press never reached a click.
+              const press = e.detail === 0 ? null : pressRef.current;
+              pressRef.current = null;
+              if (!press) {
+                // Toggle what is showing now.
+                setOpen((prev) => !prev);
+              } else if (press.pointerType === 'touch') {
+                // A tap toggles.
+                setOpen(!press.wasOpen);
+              } else {
+                // A mouse or pen may have hovered it open already; a click keeps it open.
+                setOpen(true);
+              }
             }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              pressRef.current = { pointerType: e.pointerType, wasOpen: open };
+            }}
           >
             <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/80" />
           </button>

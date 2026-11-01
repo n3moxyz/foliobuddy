@@ -1123,9 +1123,10 @@ export default function Portfolio() {
           <DialogHeader>
             <DialogTitle>Delete All Positions</DialogTitle>
             <DialogDescription>
-              Are you sure you want to permanently delete all{' '}
+              Are you sure you want to permanently delete {positions?.length === 1 ? '' : 'all '}
               <span className="font-semibold text-foreground">{positions?.length || 0}</span>{' '}
-              positions and their history? This action cannot be undone.
+              {positions?.length === 1 ? 'position and its' : 'positions and their'} history? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

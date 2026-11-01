@@ -6,7 +6,7 @@ import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { useAnimatedNumbers } from '@/hooks/useAnimatedNumber';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import type { PortfolioSummary } from '@/lib/types';
-import { cn, formatDrawdown, formatPercent, getPnLColorClass } from '@/lib/utils';
+import { cn, countNoun, formatDrawdown, formatPercent, getPnLColorClass } from '@/lib/utils';
 import { formatMilestoneDate } from '@/lib/portfolioHistory';
 
 interface NetWorthCardProps {
@@ -210,14 +210,14 @@ export function NetWorthCard({
       help: 'Number of active positions in your portfolio',
       value: positionCount,
       to: '/portfolio',
-      linkDescription: 'positions — view portfolio',
+      linkDescription: `${countNoun(positionCount, 'position')} — view portfolio`,
     },
     {
       label: 'Trades',
       help: 'Number of closed trades in your trade journal',
       value: closedTrades,
       to: '/trades',
-      linkDescription: 'trades — view trade journal',
+      linkDescription: `${countNoun(closedTrades, 'trade')} — view trade journal`,
     },
   ];
 

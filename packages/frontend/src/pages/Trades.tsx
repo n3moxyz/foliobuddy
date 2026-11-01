@@ -48,6 +48,7 @@ import {
   Target,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { countNoun, formatCount } from '@/lib/utils';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import type { Trade } from '@/lib/types';
 import {
@@ -173,7 +174,7 @@ export default function Trades() {
           title="Trade Journal"
           subtitle={
             analytics
-              ? `${analytics.totalTrades} closed trades · ${analytics.winRate?.toFixed(0) ?? 0}% win rate`
+              ? `${formatCount(analytics.totalTrades, 'closed trade')} · ${analytics.winRate?.toFixed(0) ?? 0}% win rate`
               : undefined
           }
           actions={
@@ -395,9 +396,9 @@ export default function Trades() {
           <DialogHeader>
             <DialogTitle>Delete All Trades</DialogTitle>
             <DialogDescription>
-              Are you sure you want to permanently delete all{' '}
-              <span className="font-semibold text-foreground">{trades?.length || 0}</span> trades?
-              This action cannot be undone.
+              Are you sure you want to permanently delete {trades?.length === 1 ? '' : 'all '}
+              <span className="font-semibold text-foreground">{trades?.length || 0}</span>{' '}
+              {countNoun(trades?.length || 0, 'trade')}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

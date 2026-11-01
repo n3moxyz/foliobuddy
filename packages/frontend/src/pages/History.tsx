@@ -11,7 +11,7 @@ import {
   describeSnapshotTime,
 } from '@/lib/snapshotPreferences';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
-import { formatDate } from '@/lib/utils';
+import { countNoun, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -327,9 +327,11 @@ export default function History() {
           <DialogHeader>
             <DialogTitle>Delete All Snapshots</DialogTitle>
             <DialogDescription>
-              Are you sure you want to permanently delete all{' '}
-              <span className="font-semibold text-foreground">{allSnapshots?.length || 0}</span>{' '}
-              snapshots? This action cannot be undone.
+              Are you sure you want to permanently delete {allSnapshots?.length === 1 ? '' : 'all '}
+              <span className="font-semibold text-foreground">
+                {allSnapshots?.length || 0}
+              </span>{' '}
+              {countNoun(allSnapshots?.length || 0, 'snapshot')}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
