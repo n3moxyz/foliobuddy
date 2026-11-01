@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
-import { formatDateTime, formatTrimmedNumber } from '@/lib/utils';
+import { formatCount, formatDateTime, formatTrimmedNumber } from '@/lib/utils';
 
 export function NativeCostReconciliation() {
   const [mode, setMode] = useState('reconcile');
@@ -18,6 +18,11 @@ export function NativeCostReconciliation() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { formatPrice, formatQuantity, maskMoney } = useMoneyFormatter();
+  // The noun follows the printed (possibly masked or rounded) quantity, so a hidden one never reads as 1.
+  const sharesLabel = (quantity: number) => {
+    const shown = formatQuantity(quantity, 'EQUITY');
+    return `${shown} ${shown === '1' ? 'share' : 'shares'}`;
+  };
   // Preview, apply and restore failures show inline in this dialog.
   const mutation = useMutation({
     meta: { showsOwnError: true },
@@ -155,7 +160,7 @@ export function NativeCostReconciliation() {
           {preview.review.map((row) => (
             <div key={row.symbol} className="rounded-lg border p-3 space-y-1 text-sm">
               <p className="font-semibold">
-                {row.symbol} · {formatQuantity(row.quantity, 'EQUITY')} shares
+                {row.symbol} · {sharesLabel(row.quantity)}
               </p>
               <p>
                 Native average:{' '}
@@ -180,7 +185,7 @@ export function NativeCostReconciliation() {
                 <p className="text-xs text-muted-foreground">
                   {row.nativeHistoryRows === 0 && !row.initialRowAdded
                     ? 'Historical entries left unchanged'
-                    : `${row.nativeHistoryRows} existing history rows verified${row.initialRowAdded ? ' · original buy added from broker evidence' : ''}`}
+                    : `${formatCount(row.nativeHistoryRows, 'existing history row')} verified${row.initialRowAdded ? ' · original buy added from broker evidence' : ''}`}
                 </p>
               )}
             </div>

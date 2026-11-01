@@ -130,7 +130,7 @@ describe('TradeStatsCard accessibility', () => {
 
     const instructions = document.getElementById(handles[1].getAttribute('aria-describedby')!);
     expect(instructions).toHaveTextContent(
-      'To move this section, press Space or Enter. Use the arrow keys to move it'
+      'To pick up this section, press Space or Enter. Use the up and down arrow keys to move it'
     );
   });
 });

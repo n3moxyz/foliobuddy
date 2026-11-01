@@ -36,6 +36,14 @@ describe('HelpTooltip', () => {
     expect(container).not.toContainElement(popup);
   });
 
+  // Browsers send detail 1 with a mouse or tap click, and detail 0 with a keyboard or
+  // screen-reader click.
+  const pointerClick = (button: HTMLElement, pointerType: string) => {
+    fireEvent.pointerDown(button, { pointerType });
+    fireEvent.pointerUp(button, { pointerType });
+    fireEvent.click(button, { detail: 1 });
+  };
+
   it('opens on the first tap when the browser focuses the button before the click', () => {
     render(<HelpTooltip label="MDD" content="Largest peak-to-trough decline this year." />);
     const button = screen.getByRole('button', { name: 'Help: MDD' });
@@ -45,26 +53,23 @@ describe('HelpTooltip', () => {
     fireEvent.pointerDown(button, { pointerType: 'touch' });
     fireEvent.pointerUp(button, { pointerType: 'touch' });
     fireEvent.focus(button);
-    fireEvent.click(button);
+    fireEvent.click(button, { detail: 1 });
     expect(screen.getByRole('tooltip')).toHaveTextContent(
       'Largest peak-to-trough decline this year.'
     );
 
     // A second tap closes it.
-    fireEvent.pointerDown(button, { pointerType: 'touch' });
-    fireEvent.pointerUp(button, { pointerType: 'touch' });
-    fireEvent.click(button);
+    pointerClick(button, 'touch');
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
-  it('keeps the definition open when a mouse clicks it', () => {
+  it('keeps the definition open when a mouse or pen clicks it', () => {
     render(<HelpTooltip label="MDD" content="Largest peak-to-trough decline this year." />);
     const button = screen.getByRole('button', { name: 'Help: MDD' });
 
-    for (let i = 0; i < 2; i++) {
-      fireEvent.pointerDown(button, { pointerType: 'mouse' });
-      fireEvent.pointerUp(button, { pointerType: 'mouse' });
-      fireEvent.click(button);
+    // Both can hover the tooltip open before the click, so a click never closes it.
+    for (const pointerType of ['mouse', 'mouse', 'pen', 'pen']) {
+      pointerClick(button, pointerType);
       expect(screen.getByRole('tooltip')).toBeInTheDocument();
     }
   });
@@ -81,5 +86,20 @@ describe('HelpTooltip', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     fireEvent.click(button);
     expect(screen.getByRole('tooltip')).toBeInTheDocument();
+  });
+
+  it('still toggles from the keyboard after a press that never became a click', () => {
+    render(<HelpTooltip label="MDD" content="Largest peak-to-trough decline this year." />);
+    const button = screen.getByRole('button', { name: 'Help: MDD' });
+
+    // A mouse press dragged off the button: no click reaches it.
+    fireEvent.pointerDown(button, { pointerType: 'mouse' });
+    fireEvent.pointerUp(document.body, { pointerType: 'mouse' });
+
+    // Focus opens it, and Enter must still close it.
+    fireEvent.focus(button);
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
+    fireEvent.click(button);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 });

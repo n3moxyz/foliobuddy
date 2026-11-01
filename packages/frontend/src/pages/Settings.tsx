@@ -6,7 +6,7 @@ import { useCurrencyStore } from '@/stores/currencyStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
 import { useShortcutsStore } from '@/stores/shortcutsStore';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { formatDateTime } from '@/lib/utils';
+import { formatCount, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -213,7 +213,7 @@ export default function Settings() {
               <Label>Refresh Prices</Label>
               <p className="text-sm text-muted-foreground">
                 Fetch latest prices from CoinGecko, Yahoo Finance and fund managers (
-                {prices?.length || 0} assets)
+                {formatCount(prices?.length || 0, 'asset')})
               </p>
             </div>
             <Button

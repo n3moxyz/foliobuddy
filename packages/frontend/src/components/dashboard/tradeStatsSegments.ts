@@ -1,4 +1,10 @@
-import type { Announcements, ScreenReaderInstructions, UniqueIdentifier } from '@dnd-kit/core';
+import {
+  KeyboardCode,
+  type Announcements,
+  type KeyboardCoordinateGetter,
+  type ScreenReaderInstructions,
+  type UniqueIdentifier,
+} from '@dnd-kit/core';
 import type { SegmentId } from '@/stores/tradeStatsStore';
 
 // Segment IDs are saved in browser storage (trade-stats-order), so they never change. Screen
@@ -17,7 +23,46 @@ export function segmentLabel(id: UniqueIdentifier): string {
 
 export const SEGMENT_SCREEN_READER_INSTRUCTIONS: ScreenReaderInstructions = {
   draggable:
-    'To move this section, press Space or Enter. Use the arrow keys to move it, then press Space or Enter to drop it. Press Escape to cancel.',
+    'To pick up this section, press Space or Enter. Use the up and down arrow keys to move it, then press Space or Enter to drop it. Press Escape to cancel.',
+};
+
+const ARROW_KEYS: string[] = [
+  KeyboardCode.Down,
+  KeyboardCode.Up,
+  KeyboardCode.Left,
+  KeyboardCode.Right,
+];
+
+/**
+ * Up and Down step to the next or previous section and centre the dragged one on it, so
+ * closestCenter always lands there. dnd-kit's sortable getter lines edges up instead, which
+ * stalls a tall section (Key Metrics stacks to one column on phones) after one step.
+ * Left and Right do nothing: the sections form one column.
+ */
+export const segmentKeyboardCoordinates: KeyboardCoordinateGetter = (event, { context }) => {
+  if (!ARROW_KEYS.includes(event.code)) return undefined;
+  event.preventDefault();
+  if (event.code !== KeyboardCode.Down && event.code !== KeyboardCode.Up) return undefined;
+
+  const { active, over, collisionRect, droppableRects, droppableContainers } = context;
+  if (!active || !collisionRect) return undefined;
+
+  const sections = droppableContainers
+    .getEnabled()
+    .flatMap((container) => {
+      const rect = droppableRects.get(container.id);
+      return rect ? [{ id: container.id, rect }] : [];
+    })
+    .sort((a, b) => a.rect.top - b.rect.top);
+  const current = sections.findIndex((section) => section.id === (over?.id ?? active.id));
+  if (current === -1) return undefined;
+  const target = sections[current + (event.code === KeyboardCode.Down ? 1 : -1)];
+  if (!target) return undefined;
+
+  return {
+    x: collisionRect.left,
+    y: target.rect.top + target.rect.height / 2 - collisionRect.height / 2,
+  };
 };
 
 /**

@@ -7,6 +7,7 @@ import { useTradeStatsStore, type SegmentId } from '@/stores/tradeStatsStore';
 import {
   SEGMENT_SCREEN_READER_INSTRUCTIONS,
   segmentAnnouncements,
+  segmentKeyboardCoordinates,
   segmentLabel,
 } from './tradeStatsSegments';
 import {
@@ -22,7 +23,6 @@ import {
 import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
@@ -139,7 +139,7 @@ function MetricsSegment({
       <div>
         <MetricLabel
           label="Per Trade Avg"
-          help="Expected result per trade: (win rate × avg win) − (loss rate × avg loss)."
+          help="Expected result per trade: (win rate × average win) − (loss rate × average loss)."
         />
         <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(expectancy)}`}>
           {formatCurrency(convert(expectancy), currency)}
@@ -149,7 +149,7 @@ function MetricsSegment({
       <div>
         <MetricLabel
           label="Profit Factor"
-          help="Total gains ÷ total losses. Above 1.0 means the system is profitable."
+          help="Total profit on winning trades ÷ total loss on losing trades. Above 1.0 means your closed trades made money overall."
         />
         <p className="text-xl font-bold tabular-nums">
           {analytics.profitFactor === null ? '∞' : formatNumber(analytics.profitFactor)}
@@ -159,7 +159,7 @@ function MetricsSegment({
       <div>
         <MetricLabel
           label="Risk : Reward"
-          help="Average win ÷ average loss. Higher means winners are bigger than losers."
+          help="Average win ÷ average loss. Above 1.0 means your average win is bigger than your average loss."
         />
         <p className="text-xl font-bold tabular-nums">
           1 : {riskReward === Infinity ? '∞' : formatNumber(riskReward)}
@@ -412,7 +412,7 @@ export function TradeStatsCard({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(KeyboardSensor, { coordinateGetter: segmentKeyboardCoordinates })
   );
 
   function handleDragEnd(event: DragEndEvent) {

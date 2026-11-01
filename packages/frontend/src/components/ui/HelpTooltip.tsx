@@ -27,17 +27,19 @@ export function HelpTooltip({ content, label }: HelpTooltipProps) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              const press = pressRef.current;
+              // Keyboard and screen-reader clicks (detail 0) have no press of their own, even if an
+              // earlier press never reached a click.
+              const press = e.detail === 0 ? null : pressRef.current;
               pressRef.current = null;
               if (!press) {
-                // A keyboard click has no press: toggle what is showing now.
+                // Toggle what is showing now.
                 setOpen((prev) => !prev);
-              } else if (press.pointerType === 'mouse') {
-                // Hovering already opened it; a click keeps it open.
-                setOpen(true);
-              } else {
-                // Touch and pen: a tap toggles.
+              } else if (press.pointerType === 'touch') {
+                // A tap toggles.
                 setOpen(!press.wasOpen);
+              } else {
+                // A mouse or pen may have hovered it open already; a click keeps it open.
+                setOpen(true);
               }
             }}
             onPointerDown={(e) => {
