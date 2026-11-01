@@ -161,9 +161,15 @@ export default function Portfolio() {
     perpExposure,
     savePerpExposure,
     hasLoaded: perpExposureLoaded,
-    isReady: perpExposureReady,
+    isError: perpExposureError,
+    isFetching: perpExposureFetching,
+    refetch: retryPerpExposure,
     isSaving: perpExposureSaving,
   } = usePerpExposure();
+  // Editing needs a loaded value, not a successful latest refresh. A save sends the whole value
+  // and reports its own failure, so a refresh that fails leaves the perp controls usable.
+  const perpExposureActionsDisabled = !perpExposureLoaded || perpExposureSaving;
+  const perpMenuLabel = perpExposure > 0 ? 'Edit Perp' : 'Add Perp';
   const deleteAllMutation = useDeleteAllPositions();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showNativeReconciliation, setShowNativeReconciliation] = useState(false);
@@ -207,7 +213,7 @@ export default function Portfolio() {
   };
 
   const handlePerpDialogOpen = () => {
-    if (!perpExposureReady || perpExposureSaving) return;
+    if (perpExposureActionsDisabled) return;
     setPerpInput(perpExposure.toString());
     setEditingPerp(true);
   };
@@ -229,7 +235,7 @@ export default function Portfolio() {
   };
 
   const handlePerpInlineEdit = () => {
-    if (!perpExposureReady || perpExposureSaving) return;
+    if (perpExposureActionsDisabled) return;
     setPerpInput((convertValue(perpExposure) ?? perpExposure).toString());
     setEditingPerpInline(true);
   };
@@ -260,15 +266,16 @@ export default function Portfolio() {
     }
   };
 
-  const handlePerpDelete = () => {
-    if (!perpExposureReady || perpExposureSaving) return;
+  // Shared by the Cash section's Perp row and the perp dialog.
+  const handlePerpRemove = () => {
+    if (perpExposureActionsDisabled) return;
     savePerpExposure(0);
     setPerpInput('');
+    setEditingPerp(false);
     setEditingPerpInline(false);
   };
 
   const perpInputIsValid = isNonNegativeNumberInput(perpInput);
-  const perpExposureActionsDisabled = !perpExposureReady || perpExposureSaving;
 
   const handleEquityGroupByChange = (value: EquityGroupBy) => {
     setEquityGroupBy(value);
@@ -421,6 +428,15 @@ export default function Portfolio() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {/* The Cash section's perp controls disappear with its last position, but
+                    perps outlive positions (Delete All keeps them), so the menu always has one. */}
+                <DropdownMenuItem
+                  onClick={handlePerpDialogOpen}
+                  disabled={perpExposureActionsDisabled}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  {perpMenuLabel}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowNativeReconciliation(true)}>
                   <Pencil className="h-4 w-4 mr-2" />
                   Reconcile IBKR Costs
@@ -479,7 +495,7 @@ export default function Portfolio() {
                   disabled={perpExposureActionsDisabled}
                 >
                   <Pencil className="h-4 w-4 mr-2" />
-                  {perpExposure > 0 ? 'Edit Perp' : 'Add Perp'}
+                  {perpMenuLabel}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="min-h-11"
@@ -745,6 +761,16 @@ export default function Portfolio() {
         />
       )}
 
+      {/* The perp controls stay disabled until the setting first loads, and Exposure shows "-",
+          so a failed load says why. A failed refresh keeps the loaded value editable instead. */}
+      {perpExposureError && !perpExposureLoaded && (
+        <QueryErrorNotice
+          subject="perp exposure"
+          retrying={perpExposureFetching}
+          onRetry={() => void retryPerpExposure()}
+        />
+      )}
+
       {!positionsPending && !positionsError && (!positions || positions.length === 0) && (
         <div className="py-16 text-center">
           <Wallet className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
@@ -965,7 +991,7 @@ export default function Portfolio() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={handlePerpDelete}
+                              onClick={handlePerpRemove}
                               aria-label="Remove perp exposure"
                               title="Remove perp exposure"
                               disabled={perpExposureActionsDisabled}
@@ -1108,6 +1134,19 @@ export default function Portfolio() {
               />
             </div>
             <div className="flex justify-end gap-2">
+              {/* Remove lives here too: without a Cash section, the menu is the only way in. */}
+              {perpExposure > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mr-auto text-destructive hover:text-destructive"
+                  onClick={handlePerpRemove}
+                  disabled={perpExposureActionsDisabled}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Remove
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => setEditingPerp(false)}>
                 Cancel
               </Button>

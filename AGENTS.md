@@ -241,7 +241,7 @@ Follow the [portfolio hero contract](docs/UI-CONTRACTS.md#portfolio-hero-summary
 
 ### Perp Exposure Persistence
 
-`User.perpExposureUsd Float?` = signed-in user's aggregate open perp size in USD; round-trips via `GET/PATCH /users/me/preferences`; Portfolio + Dashboard share the React Query value (cross-device). `null` = never initialized, `0` = explicitly none. First load: a valid positive `foliobuddy-perp-exposure`/legacy `pa-portfolio-perp-exposure` seeds only a `null` server field (non-null server wins); clear local keys only after the migration PATCH succeeds. Perps affect Exposure + Cash/Perps allocation, never net worth or snapshots. Demo mode mirrors the round-trip, resets to `null`.
+`User.perpExposureUsd Float?`: total open perp size in USD via `GET/PATCH /users/me/preferences`, shared by Portfolio + Dashboard across devices. `null` = never initialized, `0` = explicitly none. On load, a valid positive `foliobuddy-perp-exposure`/legacy `pa-portfolio-perp-exposure` seeds only a `null` server field (non-null wins) unless a manual save came first; clear local keys only after a PATCH succeeds. Edits gate on `hasLoaded`, not `isSuccess` ([controls](docs/UI-CONTRACTS.md#perp-exposure-controls)). Perps affect Exposure + Cash/Perps allocation, never net worth or snapshots. Demo mirrors the round-trip, resets to `null`.
 
 ### Portfolio Section Headers
 
@@ -331,7 +331,7 @@ All pages use same header pattern: `flex-col gap-3 sm:flex-row ... justify-betwe
 
 All vars + comments: `packages/backend/.env.example` + `packages/frontend/.env.example`. Extra gotchas:
 
-- Backend `PORT=4001`, never 3001 (reserved for other projects); local `RATE_LIMIT_MAX=10000`, prod default 200. `VITE_API_URL` needs full `/api/v1`.
+- Backend `PORT=4001`, never 3001 (reserved for other projects). `VITE_API_URL` needs full `/api/v1`.
 - Empty `ADMIN_USER_IDS` warns at boot; catalog edit/delete then 403s for all users. `AGENT_API_KEY` authenticates agent calls; `AGENT_USER_ID` picks portfolio. After owner Clerk-ID rotation run `sync-backend-env.yml` to align `ADMIN_USER_IDS` + `AGENT_USER_ID`, else agent calls return HTTP 200 + empty portfolio.
 
 ### Testing Without Sign-In

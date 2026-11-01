@@ -1,5 +1,13 @@
 # FOR[ET].md - FolioBuddy
 
+## Perp controls that don't need a Cash section (1 November 2026)
+
+Two gaps the Exposure review confirmed. On desktop the perp setting lived only in the Cash section: "Add Perp" in its header, or the Perp row with its edit and remove buttons. But that section exists only while you own cash or stablecoins, and perps outlive positions (Delete All removes positions, not the setting). So an account of crypto and equities couldn't add perps on desktop, and a perps-only account saw Exposure "-" with no way to change or remove the cause. Phones were fine, because their ⋮ menu always had Add Perp/Edit Perp. Desktop's ⋮ menu now has the same item, and the perp dialog has a Remove button once a value exists, so removing no longer needs the Cash section (or typing 0 on a phone).
+
+The second gap was quieter. Every perp control waited for the setting's `isSuccess`, which a failed background refresh turns false while keeping the data, and the setting refreshes whenever you come back to the tab. One failed refresh greyed out the controls, without a word, until a later refresh worked. Waiting on the latest refresh protected nothing: a save sends the whole value, and a failed save rolls back and says so. Editing now waits only for the first load (`hasLoaded`). When that first load fails the controls do stay disabled, so the page says why ("Couldn't load perp exposure") and offers Try again.
+
+The lesson came from checking the legacy migration before relaxing that gate. React Query records every `setQueryData` as a success, a rollback included. So a save made after a failed refresh, if it also failed, rolled back into a "successful" state. A mount that hadn't tried the migration yet, say after a route change, would then start it and upload the old browser value the person had just tried to replace. A person's own save now ends that mount's migration, and a test fails without that line.
+
 ## Keep failed page imports failed during recovery (1 November 2026)
 
 Two Sentry alerts on Portfolio and the public homepage pointed into a bundle named `clerk-BnAS2Ziw.js`. The saved build showed that its `ie` function was actually React's lazy initializer, reading a module's `.default`. In a production Vite fixture, failing a lazy page fetch while holding the reload pending reproduced the same TypeError.

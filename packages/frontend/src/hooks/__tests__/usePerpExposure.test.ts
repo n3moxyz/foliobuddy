@@ -94,10 +94,11 @@ describe('usePerpExposure', () => {
     await waitFor(() => expect(result.current.perpExposure).toBe(350_000));
   });
 
-  it('keeps a loaded value when a later refresh fails', async () => {
+  it('keeps a loaded value, and lets a save replace it, when a later refresh fails', async () => {
     vi.mocked(api.getUserPreferences)
       .mockResolvedValueOnce(preferences(100_000))
       .mockRejectedValueOnce(new Error('Network unavailable'));
+    vi.mocked(api.updateUserPreferences).mockResolvedValue(preferences(250_000));
 
     const queryClient = createTestQueryClient();
     const wrapper = createQueryClientWrapper(queryClient);
@@ -115,10 +116,90 @@ describe('usePerpExposure', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    // React Query keeps the last data, so the value stays known; editing still waits.
+    // React Query keeps the last data, so the value stays known and the page keeps it editable.
     expect(result.current.hasLoaded).toBe(true);
     expect(result.current.perpExposure).toBe(100_000);
-    expect(result.current.isReady).toBe(false);
+
+    // A save sends the whole value, and the saved reply replaces the failed refresh.
+    act(() => {
+      expect(result.current.savePerpExposure(250_000)).toBe(true);
+    });
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Perp exposure saved'));
+    expect(api.updateUserPreferences).toHaveBeenCalledWith({ perpExposureUsd: 250_000 });
+    expect(result.current.perpExposure).toBe(250_000);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('loads the setting on retry after the first load fails', async () => {
+    vi.mocked(api.getUserPreferences)
+      .mockRejectedValueOnce(new Error('Network unavailable'))
+      .mockResolvedValueOnce(preferences(350_000));
+
+    const queryClient = createTestQueryClient();
+    const wrapper = createQueryClientWrapper(queryClient);
+    const { result } = renderHook(() => usePerpExposure(), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.hasLoaded).toBe(false);
+
+    act(() => {
+      void result.current.refetch();
+    });
+
+    await waitFor(() => expect(result.current.hasLoaded).toBe(true));
+    expect(result.current.isError).toBe(false);
+    expect(result.current.perpExposure).toBe(350_000);
+    expect(api.getUserPreferences).toHaveBeenCalledTimes(2);
+  });
+
+  it('never uploads the legacy value after a save made over a failed refresh fails', async () => {
+    localStorage.setItem(CURRENT_STORAGE_KEY, '350000');
+    vi.mocked(api.getUserPreferences)
+      .mockRejectedValue(new Error('Network unavailable'))
+      .mockResolvedValueOnce(preferences(null));
+    vi.mocked(api.updateUserPreferences).mockRejectedValue(new Error('Network unavailable'));
+
+    const queryClient = createTestQueryClient();
+    const wrapper = createQueryClientWrapper(queryClient);
+    const firstRoute = renderHook(() => usePerpExposure(), { wrapper });
+
+    // The background migration fails quietly, so the legacy value stays the one on screen.
+    await waitFor(() => expect(api.updateUserPreferences).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(firstRoute.result.current.isSaving).toBe(false));
+
+    // A refresh fails, then a route change mounts the hook again. The new mount must not migrate
+    // while the server state is unknown.
+    act(() => {
+      focusManager.setFocused(false);
+    });
+    act(() => {
+      focusManager.setFocused(true);
+    });
+    await waitFor(() => expect(firstRoute.result.current.isError).toBe(true));
+    firstRoute.unmount();
+    const secondRoute = renderHook(() => usePerpExposure(), { wrapper });
+    expect(secondRoute.result.current.hasLoaded).toBe(true);
+    expect(secondRoute.result.current.perpExposure).toBe(350_000);
+
+    // React Query records the failed save's rollback as a success. That must not start an upload
+    // of the old browser value the person had just tried to replace.
+    act(() => {
+      secondRoute.result.current.savePerpExposure(400_000);
+    });
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't save perp exposure", {
+        description: 'Network unavailable',
+      })
+    );
+    await waitFor(() => expect(secondRoute.result.current.isSaving).toBe(false));
+    // A migration would start in an effect after the save settles; let one run before counting.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(api.updateUserPreferences).toHaveBeenCalledTimes(2);
+    expect(api.updateUserPreferences).toHaveBeenLastCalledWith({ perpExposureUsd: 400_000 });
+    expect(secondRoute.result.current.perpExposure).toBe(350_000);
+    expect(localStorage.getItem(CURRENT_STORAGE_KEY)).toBe('350000');
   });
 
   it('keeps a legacy value that has not migrated yet when a later refresh fails', async () => {
