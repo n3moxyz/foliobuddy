@@ -45,6 +45,14 @@ describe('calculateExposurePct', () => {
         perpExposureUsd: 0,
       })
     ).toBe(0);
+    // Value held for someone else never counts, so it can't turn a zero total into "-".
+    expect(
+      calculateExposurePct({
+        positions: [position('LIQUID_CRYPTO', 50_000, 'Alex')],
+        totalValueUsd: 0,
+        perpExposureUsd: 0,
+      })
+    ).toBe(0);
   });
 
   it('is unknown when something is exposed but the total is zero', () => {
@@ -52,12 +60,13 @@ describe('calculateExposurePct', () => {
     expect(
       calculateExposurePct({ positions: [], totalValueUsd: 0, perpExposureUsd: 8_000 })
     ).toBeUndefined();
-    // Only positions held for someone else, so the owned total is zero.
+    // Owned market risk against a zero total, e.g. a summary that hasn't caught up with a new
+    // position yet.
     expect(
       calculateExposurePct({
-        positions: [position('LIQUID_CRYPTO', 50_000, 'Alex')],
+        positions: [position('LIQUID_CRYPTO', 40_000)],
         totalValueUsd: 0,
-        perpExposureUsd: 8_000,
+        perpExposureUsd: 0,
       })
     ).toBeUndefined();
   });
