@@ -7,8 +7,11 @@ import Portfolio from '../Portfolio';
 const perpMocks = vi.hoisted(() => ({
   exposure: 0,
   loaded: true,
-  ready: true,
+  error: false,
+  fetching: false,
+  saving: false,
   save: vi.fn(() => true),
+  refetch: vi.fn(),
 }));
 
 const navMocks = vi.hoisted(() => ({
@@ -100,8 +103,10 @@ vi.mock('@/hooks/usePerpExposure', () => ({
     perpExposure: perpMocks.exposure,
     savePerpExposure: perpMocks.save,
     hasLoaded: perpMocks.loaded,
-    isReady: perpMocks.ready,
-    isSaving: false,
+    isError: perpMocks.error,
+    isFetching: perpMocks.fetching,
+    refetch: perpMocks.refetch,
+    isSaving: perpMocks.saving,
   }),
 }));
 
@@ -142,17 +147,20 @@ vi.mock('@/components/portfolio/CollapsibleCard', () => ({
   CollapsibleCard: ({
     title,
     titleHelp,
+    headerRight,
     headerExtra,
     children,
   }: {
     title: string;
     titleHelp?: ReactNode;
+    headerRight?: ReactNode;
     headerExtra?: ReactNode;
     children: ReactNode;
   }) => (
     <section>
       <h2>{title}</h2>
       {titleHelp}
+      {headerRight}
       {headerExtra}
       {children}
     </section>
@@ -199,12 +207,23 @@ function openNav(symbol = 'AMOVA') {
   return screen.getByRole('dialog');
 }
 
+const positionsWithoutCash = positions.filter((position) => position.asset.category !== 'CASH');
+
+// "More options" is the desktop overflow menu, "More actions" the mobile one.
+async function openMenuItem(menu: 'More options' | 'More actions', item: string) {
+  fireEvent.pointerDown(screen.getByRole('button', { name: menu }));
+  return screen.findByRole('menuitem', { name: item });
+}
+
 describe('Portfolio responsive grouping', () => {
   beforeEach(() => {
     perpMocks.exposure = 0;
     perpMocks.loaded = true;
-    perpMocks.ready = true;
+    perpMocks.error = false;
+    perpMocks.fetching = false;
+    perpMocks.saving = false;
     perpMocks.save.mockClear();
+    perpMocks.refetch.mockClear();
     navMocks.positions = undefined;
     navMocks.refresh.mockReset();
     navMocks.update.mockReset();
@@ -276,11 +295,12 @@ describe('Portfolio responsive grouping', () => {
     expect(within(exposureCell()).getByText('100.0%')).toBeInTheDocument();
 
     // A refresh of the perp setting that fails keeps the figure already worked out.
-    perpMocks.ready = false;
+    perpMocks.error = true;
     rerender(<Portfolio />);
     expect(within(exposureCell()).getByText('100.0%')).toBeInTheDocument();
 
     // Leaving perps out would understate it, so the hero waits for the perp setting.
+    perpMocks.error = false;
     perpMocks.loaded = false;
     rerender(<Portfolio />);
     expect(within(exposureCell()).getByText('-')).toBeInTheDocument();
@@ -353,6 +373,90 @@ describe('Portfolio responsive grouping', () => {
 
     expect(perpMocks.save).toHaveBeenCalledTimes(1);
     expect(perpMocks.save).toHaveBeenCalledWith(350_000);
+  });
+
+  it('keeps Add Perp in the desktop menu once the Cash section is gone', async () => {
+    const { rerender } = render(<Portfolio />);
+    expect(screen.getByRole('button', { name: 'Add Perp' })).toBeInTheDocument();
+
+    // Without owned cash there is no Cash section, so its perp controls go with it.
+    navMocks.positions = positionsWithoutCash;
+    rerender(<Portfolio />);
+    expect(screen.queryByRole('heading', { name: /^Cash/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Perp' })).not.toBeInTheDocument();
+
+    fireEvent.click(await openMenuItem('More options', 'Add Perp'));
+    const dialog = screen.getByRole('dialog', { name: 'Perp Exposure' });
+    // Nothing to remove yet.
+    expect(within(dialog).queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+    fireEvent.change(within(dialog).getByLabelText('Position Size (USD)'), {
+      target: { value: '25000' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(perpMocks.save).toHaveBeenCalledWith(25_000);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('edits and removes perps from the desktop menu when only perps are left', async () => {
+    // Delete All removes positions but keeps perps, which are a user setting.
+    navMocks.positions = [];
+    perpMocks.exposure = 350_000;
+    render(<Portfolio />);
+
+    expect(screen.getByRole('heading', { name: 'No positions yet' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove perp exposure' })).not.toBeInTheDocument();
+
+    fireEvent.click(await openMenuItem('More options', 'Edit Perp'));
+    const dialog = screen.getByRole('dialog', { name: 'Perp Exposure' });
+    expect(within(dialog).getByLabelText('Position Size (USD)')).toHaveValue('350,000');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
+    expect(perpMocks.save).toHaveBeenCalledTimes(1);
+    expect(perpMocks.save).toHaveBeenCalledWith(0);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('keeps perp controls usable after a failed refresh', async () => {
+    perpMocks.exposure = 350_000;
+    // The refresh failed, but React Query kept the loaded value.
+    perpMocks.error = true;
+    render(<Portfolio />);
+
+    // A save sends the whole value and reports its own failure, so nothing waits or warns.
+    expect(screen.queryByText(/Couldn't (load|refresh) perp exposure/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove perp exposure' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit perp exposure' }));
+    const input = screen.getByLabelText('Perp exposure in USD');
+    fireEvent.change(input, { target: { value: '400000' } });
+    fireEvent.blur(input);
+    expect(perpMocks.save).toHaveBeenCalledWith(400_000);
+
+    expect(await openMenuItem('More options', 'Edit Perp')).not.toHaveAttribute('aria-disabled');
+  });
+
+  it('explains disabled perp controls when the perp setting fails to load, and retries', async () => {
+    perpMocks.loaded = false;
+    const { rerender } = render(<Portfolio />);
+
+    // Still loading: the controls wait, and there is nothing to explain yet.
+    expect(screen.getByRole('button', { name: 'Add Perp' })).toBeDisabled();
+    expect(screen.queryByText("Couldn't load perp exposure")).not.toBeInTheDocument();
+
+    perpMocks.error = true;
+    rerender(<Portfolio />);
+    const notice = screen.getByRole('alert');
+    expect(notice).toHaveTextContent("Couldn't load perp exposure");
+    expect(notice).toHaveTextContent('Check your connection and try again.');
+    expect(screen.getByRole('button', { name: 'Add Perp' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(perpMocks.refetch).toHaveBeenCalledTimes(1);
+    perpMocks.fetching = true;
+    rerender(<Portfolio />);
+    expect(screen.getByRole('button', { name: 'Retrying…' })).toBeDisabled();
+
+    expect(await openMenuItem('More options', 'Add Perp')).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('updates the open NAV dialog from refreshed positions without losing statement input', async () => {

@@ -50,6 +50,9 @@ function clearLegacyPerpExposure() {
  * A nullable server value is a migration sentinel for accounts created before
  * this setting was synced. A positive legacy browser value is uploaded once;
  * any numeric server value, including zero, is authoritative.
+ *
+ * Gate editing on hasLoaded, not on the latest refresh: a save sends the whole
+ * value, and a failed save rolls back and says so.
  */
 export function usePerpExposure() {
   const preferences = useUserPreferences();
@@ -107,7 +110,7 @@ export function usePerpExposure() {
 
   const serverValue = preferences.data?.perpExposureUsd;
   // True once the setting has loaded. Unlike isSuccess, a later refresh that fails keeps it
-  // true (React Query keeps the data), so a value already on screen stays there.
+  // true (React Query keeps the data), so a value already on screen stays there and editable.
   const hasLoaded = preferences.data !== undefined;
   const legacyValue = useMemo(
     () => (hasLoaded && serverValue == null ? readLegacyPerpExposure() : null),
@@ -133,6 +136,11 @@ export function usePerpExposure() {
   const savePerpExposure = useCallback(
     (value: number) => {
       if (!Number.isFinite(value) || value < 0) return false;
+      // A person's own value replaces the legacy one, so this mount never uploads it afterwards.
+      // React Query records a failed save's rollback as a success. Without this, a save made
+      // after a failed refresh could start the migration in a mount that has not tried it yet,
+      // and send the old browser value the person had just tried to replace.
+      migrationAttempted.current = true;
       mutate({ value, source: 'manual' });
       return true;
     },
@@ -142,9 +150,10 @@ export function usePerpExposure() {
   return {
     perpExposure: serverValue ?? legacyValue ?? 0,
     hasLoaded,
-    isReady: preferences.isSuccess,
     isLoading: preferences.isLoading,
     isError: preferences.isError,
+    isFetching: preferences.isFetching,
+    refetch: preferences.refetch,
     isSaving,
     savePerpExposure,
   };
