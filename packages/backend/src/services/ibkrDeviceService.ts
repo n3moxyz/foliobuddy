@@ -145,9 +145,10 @@ export async function enrollIbkrDevice(userId: string, cashPositionId: string, r
         ],
       },
     });
+    // A revoked grant keeps its device ID and key; reconnecting needs a rotated key.
     requireIbkr(
       !existing,
-      'An active or previously authorised device already uses this anchor or key'
+      'These connection details reuse a key that was authorised before, or a Mac is still connected to this IBKR account. Disconnect any connected Mac, then rerun setup on your Mac with --rotate and paste the new connection details.'
     );
     requireIbkr(
       (await tx.ibkrSyncDevice.count({ where: { userId, revokedAt: null } })) < maxDeviceGrants,

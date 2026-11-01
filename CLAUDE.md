@@ -199,7 +199,7 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 ### Async Feedback (Toasts + Status)
 
 - sonner `AppToaster` (`components/layout/AppToaster.tsx`): raw `theme` (Sonner resolves `system` + tracks OS); Radix `DismissableLayerBranch` prevents toast clicks/focus closing any Radix layer. Keep its Radix pin: `docs/DEPENDENCIES.md`.
-- Toaster `className="pointer-events-auto"` counters modal body pointer lock; `top-center` below `sm`, `offset`/`mobileOffset` top 64px clears `h-14`. Modal FocusScope traps Tab: toasts unreachable by keyboard while modal open (pre-existing).
+- Toaster `className="pointer-events-auto"` counters modal body pointer lock; `top-center` below `sm`, `offset`/`mobileOffset` top 64px clears `h-14`. Modal FocusScope traps Tab: toasts keyboard-unreachable while modal open (pre-existing).
 - `MutationCache.onError` toasts every failed mutation; handlers must never fail silently (`console.error`-only catch = bug); copy/refresh/snapshot toast success + failure. Story: FORET.md.
 - Skeletons `role="status"` + sr-only text; inline errors `role="alert"` + `aria-invalid`/`aria-describedby`.
 - `QueryErrorNotice` supplies retry controls. Keep loaded data on refresh failure. Show empty states only after successful empty responses.
@@ -271,7 +271,7 @@ Create-only sub-type toggle (edit infers category). Provider contract: **Stock/E
 
 ### Position Edit Modes
 
-Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/solutions/2026-09-30-native-cost-reconciliation.md). IBKR [runbook](docs/solutions/2026-10-02-ibkr-merlin-background-sync.md): owner-bound devices/permits, session isolation, recovery. No agent-key writes.
+Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/solutions/2026-09-30-native-cost-reconciliation.md). IBKR [runbook](docs/solutions/2026-10-02-ibkr-merlin-background-sync.md): owner-bound devices/permits, session isolation, reconnect/recovery. No agent-key writes.
 
 `PositionForm.tsx`: `Edit Totals` (corrections) + `Add/Reduce Position` tabs.
 

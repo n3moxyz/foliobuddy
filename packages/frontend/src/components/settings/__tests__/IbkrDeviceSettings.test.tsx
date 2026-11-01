@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IbkrDeviceSettings } from '../IbkrDeviceSettings';
 import { api } from '@/lib/api';
+import { ApiError } from '@/lib/apiError';
+import { CONNECTION_HINT } from '@/lib/mutationFeedback';
 import type { IbkrSyncDevice } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -54,10 +56,36 @@ describe('owner IBKR device settings', () => {
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
     fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Disconnect failed');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent("Couldn't disconnect Merlin");
+    expect(alert).toHaveTextContent('Disconnect failed');
     expect(screen.getByText('Merlin')).toBeInTheDocument();
     expect(toast.success).not.toHaveBeenCalled();
   });
+  it.each([
+    ['offline', new TypeError('Failed to fetch'), CONNECTION_HINT],
+    ['a server fault', new ApiError('Request failed (HTTP 502)', 502), CONNECTION_HINT],
+    [
+      'a server reason',
+      new ApiError('IBKR device is unavailable', 404),
+      'IBKR device is unavailable',
+    ],
+  ] as const)(
+    'names the Mac, then the cause, when disconnecting fails (%s)',
+    async (_case, failure, cause) => {
+      vi.mocked(api.revokeIbkrDevice).mockRejectedValue(failure);
+      mount();
+      fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+      const alert = await screen.findByRole('alert');
+      expect(alert.firstElementChild).toHaveTextContent(/^Couldn't disconnect Merlin$/);
+      expect(alert.lastElementChild).toHaveTextContent(cause);
+      expect(screen.queryByText(/Failed to fetch|HTTP 502/)).not.toBeInTheDocument();
+      expect(toast.success).not.toHaveBeenCalled();
+      // The confirmation stays open, so the owner can try again.
+      expect(screen.getByRole('button', { name: 'Disconnect' })).toBeEnabled();
+    }
+  );
   it('offers retry when grant access is unavailable', async () => {
     vi.mocked(api.getIbkrDevices).mockRejectedValue(new Error('offline'));
     mount();

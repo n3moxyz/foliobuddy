@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IbkrBackgroundSync } from '../IbkrBackgroundSync';
 import { backgroundSyncStatus } from '../ibkrBackgroundStatus';
 import { api } from '@/lib/api';
+import { ApiError } from '@/lib/apiError';
 import { installAuthSession } from '@/lib/authSession';
+import { CONNECTION_HINT } from '@/lib/mutationFeedback';
 import { toast } from 'sonner';
 import type { IbkrSyncDevice, Position } from '@/lib/types';
 import { usePrivacyStore } from '@/stores/privacyStore';
@@ -60,6 +62,24 @@ function mount(p = position) {
   );
   return { ...view, client };
 }
+/** The inline alert that opens with the failed action (a stale Mac can show another alert). */
+async function failureAlert(title: string) {
+  const alert = (await screen.findByText(title)).closest('[role="alert"]');
+  expect(alert).not.toBeNull();
+  return alert as HTMLElement;
+}
+// What the server says when setup was rerun without --rotate after a disconnect.
+const reusedKey =
+  'These connection details reuse a key that was authorised before, or a Mac is still connected to this IBKR account. Disconnect any connected Mac, then rerun setup on your Mac with --rotate and paste the new connection details.';
+const failures = [
+  ['offline', new TypeError('Failed to fetch'), CONNECTION_HINT],
+  ['a server fault', new ApiError('Request failed (HTTP 502)', 502), CONNECTION_HINT],
+  [
+    'a server reason',
+    new ApiError('IBKR device is unavailable', 404),
+    'IBKR device is unavailable',
+  ],
+] as const;
 beforeEach(() => {
   vi.clearAllMocks();
   installAuthSession('owner-a', 'session-a', async () => 'test');
@@ -139,6 +159,37 @@ describe('daily IBKR connection', () => {
     expect(toast.success).not.toHaveBeenCalled();
     expect(client.getQueryData(['ibkr-devices', position.id])).toEqual([]);
   });
+  it.each([
+    ['offline', new TypeError('Failed to fetch'), CONNECTION_HINT],
+    ['a reused key', new ApiError(reusedKey, 409), reusedKey],
+  ] as const)(
+    'names the Mac, then the cause, when authorisation fails (%s)',
+    async (_case, failure, cause) => {
+      vi.mocked(api.registerIbkrDevice).mockRejectedValue(failure);
+      mount();
+      fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
+      fireEvent.change(screen.getByLabelText('Public Connection Details'), {
+        target: { value: JSON.stringify(enrollment) },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Review Connection' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Authorise Daily IBKR Sync' }));
+      const alert = await failureAlert("Couldn't authorise Merlin");
+      expect(alert).toHaveTextContent(cause);
+      expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument();
+      expect(toast.success).not.toHaveBeenCalled();
+      // The review stays open, so the owner can try again.
+      expect(screen.getByRole('button', { name: 'Authorise Daily IBKR Sync' })).toBeEnabled();
+    }
+  );
+  it('tells the owner how to reconnect a Mac they disconnected', async () => {
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
+    expect(screen.getByText(/^To reconnect a Mac you disconnected/)).toHaveTextContent(
+      "To reconnect a Mac you disconnected, add --rotate to the end of the command. Its old key can't be authorised again, so setup makes a new one."
+    );
+    // The first-time command itself never rotates a key.
+    expect(screen.getByText(/npm run ibkr:worker:setup/).textContent).not.toContain('--rotate');
+  });
   it('rejects unexpected private fields before sending connection details', async () => {
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Connect a Mac' }));
@@ -191,9 +242,25 @@ describe('daily IBKR connection', () => {
     await waitFor(() =>
       expect(vi.mocked(api.revokeIbkrDevice).mock.calls[0]?.[0]).toBe(device.deviceId)
     );
-    expect(await screen.findByText('Disconnect failed')).toBeInTheDocument();
+    expect(await failureAlert("Couldn't disconnect Merlin")).toHaveTextContent('Disconnect failed');
     expect(screen.getByText('Merlin')).toBeInTheDocument();
   });
+  it.each(failures)(
+    'names the Mac, then the cause, when disconnecting fails (%s)',
+    async (_case, failure, cause) => {
+      vi.mocked(api.getIbkrDevices).mockResolvedValue([device]);
+      vi.mocked(api.revokeIbkrDevice).mockRejectedValue(failure);
+      mount();
+      fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+      const alert = await failureAlert("Couldn't disconnect Merlin");
+      expect(alert).toHaveTextContent(cause);
+      expect(screen.queryByText(/Failed to fetch|HTTP 502/)).not.toBeInTheDocument();
+      expect(toast.success).not.toHaveBeenCalled();
+      // The confirmation stays open, so the owner can try again.
+      expect(screen.getByRole('button', { name: 'Disconnect' })).toBeEnabled();
+    }
+  );
   it('uses one verb from the button to the toast and names the Mac', async () => {
     vi.mocked(api.getIbkrDevices).mockResolvedValue([device]);
     vi.mocked(api.revokeIbkrDevice).mockResolvedValue(undefined);
