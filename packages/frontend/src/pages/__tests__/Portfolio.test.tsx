@@ -6,6 +6,7 @@ import Portfolio from '../Portfolio';
 
 const perpMocks = vi.hoisted(() => ({
   exposure: 0,
+  ready: true,
   save: vi.fn(() => true),
 }));
 
@@ -97,7 +98,7 @@ vi.mock('@/hooks/usePerpExposure', () => ({
   usePerpExposure: () => ({
     perpExposure: perpMocks.exposure,
     savePerpExposure: perpMocks.save,
-    isReady: true,
+    isReady: perpMocks.ready,
     isSaving: false,
   }),
 }));
@@ -199,6 +200,7 @@ function openNav(symbol = 'AMOVA') {
 describe('Portfolio responsive grouping', () => {
   beforeEach(() => {
     perpMocks.exposure = 0;
+    perpMocks.ready = true;
     perpMocks.save.mockClear();
     navMocks.positions = undefined;
     navMocks.refresh.mockReset();
@@ -249,6 +251,32 @@ describe('Portfolio responsive grouping', () => {
     expect(screen.getAllByText('-24.66%')).toHaveLength(2);
     expect(screen.getAllByText('30 Jul 2026')).toHaveLength(2);
     expect(screen.queryByText('DD from ATH')).not.toBeInTheDocument();
+  });
+
+  it('shows Exposure with perps, and "-" until the perp setting loads', () => {
+    summaryMocks.data = {
+      totalValueUsd: 74_000,
+      totalValueSgd: 94_720,
+      totalCostBasis: 63_000,
+      unrealizedPnL: 11_000,
+      unrealizedPnLPct: 17.46,
+      positionCount: 3,
+      lastUpdated: '2026-10-28T00:00:00Z',
+      ytdStartDate: '2026-01-01T00:00:00Z',
+    };
+    perpMocks.exposure = 10_000;
+    const { rerender } = render(<Portfolio />);
+
+    // (BTC 60,000 + NBIS 4,000 + perps 10,000) ÷ 74,000; cash is not market risk.
+    const exposureCell = () =>
+      screen.getByRole('button', { name: 'Help: Exposure' }).closest('.px-4') as HTMLElement;
+    expect(within(exposureCell()).getByText('100.0%')).toBeInTheDocument();
+
+    // Leaving perps out would understate it, so the hero waits for the perp setting.
+    perpMocks.ready = false;
+    rerender(<Portfolio />);
+    expect(within(exposureCell()).getByText('-')).toBeInTheDocument();
+    expect(within(exposureCell()).queryByText(/%/)).not.toBeInTheDocument();
   });
 
   it('keeps desktop asset categories on mobile while using compact rows', () => {

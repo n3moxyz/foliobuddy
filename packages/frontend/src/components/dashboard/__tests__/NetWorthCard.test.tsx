@@ -168,6 +168,34 @@ describe('NetWorthCard', () => {
     expect(within(tradesCell).getByRole('link').textContent).toBe('0 trades — view trade journal');
   });
 
+  it('shows "-" for Exposure until it can be worked out, and keeps a real 0.0%', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <NetWorthCard summary={summary} currency="USD" positionCount={26} closedTrades={21} />
+      </MemoryRouter>
+    );
+
+    const exposureCell = () => screen.getAllByTestId('net-worth-stat')[6];
+    const link = within(exposureCell()).getByRole('link', {
+      name: 'Exposure not loaded — view portfolio',
+    });
+    expect(link).toHaveTextContent(/^-/);
+    expect(within(exposureCell()).queryByText(/%/)).not.toBeInTheDocument();
+
+    rerender(
+      <MemoryRouter>
+        <NetWorthCard
+          summary={summary}
+          currency="USD"
+          exposurePct={0}
+          positionCount={26}
+          closedTrades={21}
+        />
+      </MemoryRouter>
+    );
+    expect(within(exposureCell()).getByRole('link').textContent).toBe('0.0% — view portfolio');
+  });
+
   it('renders the alternate-currency footer', () => {
     render(
       <MemoryRouter>

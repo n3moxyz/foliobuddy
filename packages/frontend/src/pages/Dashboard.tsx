@@ -11,7 +11,8 @@ import {
 import { useTradeAnalytics } from '@/hooks/useTrades';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
-import { formatDateTime, isMarketExposureCategory } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
+import { calculateExposurePct } from '@/lib/exposure';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -42,7 +43,7 @@ export default function Dashboard() {
   const { data: topPerformers } = useTopPerformers(5);
   const { data: worstPerformers } = useWorstPerformers(5);
   const { data: investors } = useInvestors();
-  const { perpExposure } = usePerpExposure();
+  const { perpExposure, isReady: perpExposureReady } = usePerpExposure();
   const totalValueUsd = summary?.totalValueUsd ?? 0;
   const totalValueSgd = summary?.totalValueSgd ?? 0;
   const {
@@ -81,15 +82,16 @@ export default function Dashboard() {
     return totalStake / 100;
   }, [selectedInvestors, investors]);
 
-  const exposurePct = useMemo(() => {
-    if (!positions || totalValueUsd <= 0) return 0;
-    const ownedMarketExposureTotal = positions
-      .filter((position) => !position.custodyOf)
-      .filter((position) => isMarketExposureCategory(position.asset.category))
-      .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
-
-    return ((ownedMarketExposureTotal + perpExposure) / totalValueUsd) * 100;
-  }, [positions, totalValueUsd, perpExposure]);
+  // Undefined (shown as "-") until positions and the perp setting have loaded.
+  const exposurePct = useMemo(
+    () =>
+      calculateExposurePct({
+        positions,
+        totalValueUsd: summary?.totalValueUsd,
+        perpExposureUsd: perpExposureReady ? perpExposure : undefined,
+      }),
+    [positions, summary?.totalValueUsd, perpExposure, perpExposureReady]
+  );
 
   const handleInvestorToggle = (investorId: string) => {
     setManualSelectedInvestors((prev) => {

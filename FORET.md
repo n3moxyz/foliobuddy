@@ -1,5 +1,9 @@
 # FOR[ET].md - FolioBuddy
 
+## Exposure waits for its inputs (1 November 2026)
+
+The Dashboard's Exposure tile had the same false zero as the Trades tile: it read 0.0% while positions loaded, kept it if they failed, and left perps out until the perp setting arrived, so a perp-heavy portfolio briefly looked far safer than it was. The Portfolio hero used the same formula with its own fallback ("0%") and its help text forgot the perps. Both now share `calculateExposurePct()`, which stays unknown until positions, the total and the perp setting have all loaded. The tile shows "-" with "Exposure not loaded" for screen readers, the hero shows "-", and a loaded empty portfolio still reads 0.0%.
+
 ## One definition at a time, and no false zero (1 November 2026)
 
 Two small follow-ups from the Trade Analytics work. On an iPhone, tapping a second "?" left the first definition open as well, and on a phone-width hero the two popups could overlap. Radix closes other tooltips only when it opens one itself, but a tap opens a help button through its own state (iOS never focuses a tapped button), and the buttons stop the tap reaching the open tooltip's outside-press listener. Opening a definition now closes whichever one is open.
