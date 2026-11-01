@@ -106,9 +106,12 @@ export function usePerpExposure() {
   const isSaving = activeMutationCount > 0;
 
   const serverValue = preferences.data?.perpExposureUsd;
+  // True once the setting has loaded. Unlike isSuccess, a later refresh that fails keeps it
+  // true (React Query keeps the data), so a value already on screen stays there.
+  const hasLoaded = preferences.data !== undefined;
   const legacyValue = useMemo(
-    () => (preferences.isSuccess && serverValue == null ? readLegacyPerpExposure() : null),
-    [preferences.isSuccess, serverValue]
+    () => (hasLoaded && serverValue == null ? readLegacyPerpExposure() : null),
+    [hasLoaded, serverValue]
   );
 
   useEffect(() => {
@@ -138,6 +141,7 @@ export function usePerpExposure() {
 
   return {
     perpExposure: serverValue ?? legacyValue ?? 0,
+    hasLoaded,
     isReady: preferences.isSuccess,
     isLoading: preferences.isLoading,
     isError: preferences.isError,

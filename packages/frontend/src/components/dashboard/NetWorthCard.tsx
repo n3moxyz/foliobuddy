@@ -20,6 +20,7 @@ interface NetWorthCardProps {
   maxDrawdownDate?: string | null;
   maxDailyDrawdownPct?: number | null;
   maxDailyDrawdownDate?: string | null;
+  /** Exposure %; leave it undefined until it can be worked out, so the tile shows "-" rather than 0.0%. */
   exposurePct?: number;
   positionCount?: number;
   /** Closed-trade count; leave it undefined until it loads, so the tile shows "-" rather than 0. */
@@ -202,9 +203,17 @@ export function NetWorthCard({
     {
       label: 'Exposure',
       help: 'Percentage of portfolio in market-risk assets, excluding stablecoins and cash, including perps',
-      value: exposurePct === undefined ? 'N/A' : `${exposurePct.toFixed(1)}%`,
+      // Exposure that can't be worked out (not loaded, or perps with nothing owned) shows "-",
+      // never 0.0%. Screen readers hear "Exposure unavailable", which is true in both cases.
+      value:
+        exposurePct === undefined ? (
+          <span aria-hidden="true">-</span>
+        ) : (
+          `${exposurePct.toFixed(1)}%`
+        ),
       to: '/portfolio',
-      linkDescription: '— view portfolio',
+      linkDescription:
+        exposurePct === undefined ? 'Exposure unavailable — view portfolio' : '— view portfolio',
     },
     {
       label: 'Positions',
