@@ -35,3 +35,13 @@ describe('TradeStatsCard risk : reward grade', () => {
     expect(screen.queryByText('Below 1:1')).not.toBeInTheDocument();
   });
 });
+
+describe('TradeStatsCard collapsed summary', () => {
+  it('spells out the win rate in whole percents, like the page subtitle', () => {
+    render(<TradeStatsCard analytics={{ ...analytics, winRate: 63.64 }} isExpanded={false} />);
+
+    // A non-breaking space keeps "win rate" on one line on phones.
+    expect(screen.getByText('64% win rate').textContent).toBe('64% win rate');
+    expect(screen.queryByText(/% WR$/)).not.toBeInTheDocument();
+  });
+});

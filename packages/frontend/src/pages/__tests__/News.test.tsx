@@ -740,7 +740,8 @@ describe('News page', () => {
 
       fireEvent.change(input, { target: { value: 'zzz' } });
 
-      expect(screen.getByText('No holding matches "zzz"')).toBeInTheDocument();
+      // The visible row is a paragraph; the screen-reader status says the same words.
+      expect(screen.getByText('No matching holdings', { selector: 'p' })).toBeInTheDocument();
       expect(screen.queryByRole('option')).not.toBeInTheDocument();
       expect(input).toHaveAttribute('aria-expanded', 'false');
       fireEvent.keyDown(input, { key: 'Enter' });

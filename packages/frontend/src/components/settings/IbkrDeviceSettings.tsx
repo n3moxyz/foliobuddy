@@ -20,7 +20,7 @@ export function IbkrDeviceSettings() {
   const [error, setError] = useState<string | null>(null);
   // Disconnect failures show inline in this section.
   const revoke = useMutation({ meta: { showsOwnError: true }, mutationFn: api.revokeIbkrDevice });
-  async function disconnect(deviceId: string) {
+  async function disconnect({ deviceId, name }: IbkrSyncDevice) {
     const session = captureAuthSession();
     setError(null);
     try {
@@ -31,7 +31,7 @@ export function IbkrDeviceSettings() {
       );
       setConfirmId(null);
       void client.invalidateQueries({ queryKey: ['ibkr-devices'] });
-      toast.success('Daily IBKR sync disconnected');
+      toast.success(`${name} disconnected from daily IBKR sync`);
     } catch (cause) {
       if (!isAuthSessionCurrent(session)) return;
       setError(
@@ -77,16 +77,18 @@ export function IbkrDeviceSettings() {
               {confirmId === device.deviceId ? (
                 <>
                   <p className="text-sm">
-                    Stop daily sync from this Mac? Your positions and checkpoints stay available.
+                    Disconnect {device.name}? It will no longer update this IBKR account each
+                    morning. Your IBKR connection in Codex, saved positions and checkpoints stay as
+                    they are.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="destructive"
                       size="sm"
                       disabled={revoke.isPending}
-                      onClick={() => void disconnect(device.deviceId)}
+                      onClick={() => void disconnect(device)}
                     >
-                      {revoke.isPending ? 'Disconnecting…' : 'Stop Daily Sync'}
+                      {revoke.isPending ? 'Disconnecting…' : 'Disconnect'}
                     </Button>
                     <Button
                       variant="ghost"

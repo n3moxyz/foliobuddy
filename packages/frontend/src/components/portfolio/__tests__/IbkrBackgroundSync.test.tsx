@@ -187,12 +187,27 @@ describe('daily IBKR connection', () => {
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
     expect(api.revokeIbkrDevice).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Stop Daily Sync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
     await waitFor(() =>
       expect(vi.mocked(api.revokeIbkrDevice).mock.calls[0]?.[0]).toBe(device.deviceId)
     );
     expect(await screen.findByText('Disconnect failed')).toBeInTheDocument();
     expect(screen.getByText('Merlin')).toBeInTheDocument();
+  });
+  it('uses one verb from the button to the toast and names the Mac', async () => {
+    vi.mocked(api.getIbkrDevices).mockResolvedValue([device]);
+    vi.mocked(api.revokeIbkrDevice).mockResolvedValue(undefined);
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'Disconnect Merlin' }));
+    expect(
+      screen.getByText(
+        /^Disconnect Merlin\? It will no longer update this IBKR account each morning\./
+      )
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('Merlin disconnected from daily IBKR sync')
+    );
   });
   it('masks cash, native average and quantity changes', async () => {
     vi.mocked(api.getIbkrDevices).mockResolvedValue([

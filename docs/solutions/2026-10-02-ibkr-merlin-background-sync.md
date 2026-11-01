@@ -46,9 +46,9 @@ sleep, logout, shutdown, expired access or a network outage can stop a run. No p
 FileVault, TCC, network or broker security settings are modified by setup.
 
 `npm run ibkr:worker:remove` stops/removes this worker's LaunchAgent and retains its
-keys and private evidence. **Daily Sync → Disconnect <Mac name> → Stop Daily Sync**
+keys and private evidence. **Daily Sync → Disconnect <Mac name> → Disconnect**
 revokes the server permission. **Settings → IBKR Daily Sync** also lists active
-connections and can revoke them after a cash entry moves or becomes ineligible.
+connections and can disconnect them after a cash entry moves or becomes ineligible.
 Revocation takes effect for future transactions;
 a transaction already committed before revocation remains in the checkpoint log.
 The other Mac's browser helper remains independent. Schedule installation, updates
@@ -163,8 +163,8 @@ the saved attempt/run ID, exact before/after state, source time and histories wi
 the owner's authenticated review tools. **Do not delete locks, edit the journal,
 rotate/re-enroll a key or clear database attempt state as an automatic repair.**
 Resolving an uncertain result requires an explicit owner-reviewed recovery; there
-is deliberately no generic reset or restore action exposed to the device. Revoking
-the device stops it while that review happens. The browser's manual checkpoint
+is deliberately no generic reset or restore action exposed to the device. Disconnecting
+the Mac in FolioBuddy stops it while that review happens. The browser's manual checkpoint
 review remains available.
 
 ## Development and checks

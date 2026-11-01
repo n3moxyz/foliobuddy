@@ -51,7 +51,7 @@ function readJournal(session: AuthSession): Journal {
     return saved;
   } catch {
     throw new Error(
-      'Import recovery could not be read. Check saved holdings before clearing browser data.'
+      'Import recovery could not be read. Check your saved positions before clearing browser data.'
     );
   }
 }
@@ -149,7 +149,7 @@ export function beginPositionImport(
     journal.attempts.some((saved) => saved.input === input && saved.superseded)
   )
     throw new Error(
-      'This batch was split into a correction. Resume the correction or check saved holdings before importing again.'
+      "This batch was split into a correction. Resume Interrupted Import if it's listed, or check your saved positions before importing again."
     );
   let attempt = attempts.find((saved) => saved.input === input);
   const draft = preferred?.draft ? preferred : undefined;

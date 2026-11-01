@@ -193,8 +193,8 @@ export function CreatableSelect({
                         className="h-11 w-11 shrink-0 sm:h-8 sm:w-8"
                         onPointerDown={stopOptionAction}
                         onClick={(event) => handleStartEditing(event, option)}
-                        aria-label={`Edit ${option}`}
-                        title={`Edit ${option}`}
+                        aria-label={`Rename ${option}`}
+                        title={`Rename ${option}`}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -298,7 +298,7 @@ export function CreatableSelect({
               }
             }}
             placeholder={inputPlaceholder}
-            aria-label={`Edit ${editingOption} name`}
+            aria-label={`New name for ${editingOption}`}
           />
           <Button
             type="button"

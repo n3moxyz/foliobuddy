@@ -214,7 +214,7 @@ export function NetWorthCard({
     },
     {
       label: 'Trades',
-      help: 'Total number of completed trades',
+      help: 'Number of closed trades in your trade journal',
       value: closedTrades,
       to: '/trades',
       linkDescription: 'trades — view trade journal',

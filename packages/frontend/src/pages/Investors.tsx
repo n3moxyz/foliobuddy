@@ -309,8 +309,8 @@ export default function Investors() {
                             {investor.name}
                             {investor.isOwner && (
                               <span className="inline-flex items-center gap-1 text-xs text-warning bg-warning/10 px-1.5 py-0.5 rounded">
-                                <Crown className="h-3 w-3" />
-                                Owner
+                                <Crown aria-hidden="true" className="h-3 w-3" />
+                                Primary owner
                               </span>
                             )}
                           </div>

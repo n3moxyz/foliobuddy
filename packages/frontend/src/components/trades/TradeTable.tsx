@@ -199,7 +199,7 @@ export function TradeTable({
                     onSort={onSort}
                   />
                   <SortableHeader
-                    label="Side"
+                    label="Direction"
                     sortKey="direction"
                     activeSortKey={activeSortKey}
                     sortDirection={activeSortDirection}

@@ -182,9 +182,7 @@ export function NewsHoldingSearch({
               ))}
             </ul>
           ) : (
-            <p className="px-3 py-2.5 text-sm text-muted-foreground">
-              No holding matches "{trimmed}"
-            </p>
+            <p className="px-3 py-2.5 text-sm text-muted-foreground">No matching holdings</p>
           )}
         </div>
       )}

@@ -28,26 +28,35 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 - Everything that reads as a sentence uses sentence case: toasts, notices, help text, descriptions and landing calls to action ("Sign in", "See how it works", "Try again").
 - Small uppercase labels (`label-caps`, `eyebrow`) are the only all-caps text.
 - Headings, card titles, field and metric labels, table headers, tabs, menu items and other buttons also use Title Case (decided 2026-10-31). Inline "Label: value" text, checkbox sentences, and empty-state and error headings stay sentence case. Right: "Win Rate", "Recent Closed Trades". Wrong: "Win rate", "Recent closed trades".
-- LONG and SHORT stay in capitals: they are the direction values the JSON import accepts (kept 2026-10-31).
+- LONG, SHORT, OPEN and CLOSED stay in capitals: they are the direction and status values in copied trade JSON and in exports (LONG and SHORT kept 2026-10-31, OPEN and CLOSED 2026-11-01).
+- Status badges stay in sentence case (decided 2026-11-01). Right: "Primary owner", "Primary source", "Open trade". Wrong: "Primary Owner".
 
-**Names.** Give each page one name, and use it in the sidebar, the shortcut list, the page header and the browser tab (decided 2026-10-31). Right: "Trade Journal" in the sidebar and the header. Wrong: "Trades" in the sidebar, "Trade Journal" in the header.
+**Names.**
+
+- Give each page one name, and use it in the sidebar, the shortcut list, the page header and the browser tab (decided 2026-10-31). Right: "Trade Journal" in the sidebar and the header. Wrong: "Trades" in the sidebar, "Trade Journal" in the header.
+- Give each thing one name wherever it appears: labels, help, messages and exports (decided 2026-11-01). Right: "Direction" in the trades table and the trade form. Wrong: "Side" in the table, "Direction" in the form.
+  - LONG or SHORT is a trade's "Direction". "Side" is a broker's buy or sell.
+  - A trade is open or closed. "Realised" is only for money: "Realised P&L".
+  - The one investor flagged as owner is the "Primary owner".
+  - A saved row on Portfolio is a "position". "Holdings" are what News follows and what a broker statement or IBKR sync reports.
 
 **Patterns.**
 
-| Situation           | Write it like this                                                                                                                                                            |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Success toast       | Noun + past participle, no period: "Prices refreshed", "Snapshot created", "Position copied to clipboard"                                                                     |
-| Failure toast       | What failed: "Price refresh failed", "Copy failed". Every failed action shows one; never fail silently                                                                        |
-| Load error          | "Couldn't load positions" + "Check your connection and try again." When old data stays visible, prefix "Showing the last loaded data."                                        |
-| Empty state         | Heading: "No trades logged". One sentence of value: "Start logging your trades to track performance, win rate, and P&L analytics." Then the action                            |
-| Help tooltip        | One or two plain sentences that define the term: "Largest peak-to-trough decline in USD this year. The date below marks the trough."                                          |
-| Loading             | Ellipsis character, present tense: "Loading trades…", "Retrying…"                                                                                                             |
-| Destructive confirm | Title repeats the action ("Delete Position"). The description names the object and ends "This action cannot be undone." Footer: outline "Cancel", then the destructive button |
+| Situation           | Write it like this                                                                                                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Success toast       | Noun + past participle, no period: "Prices refreshed", "Snapshot created", "Position copied to clipboard"                                                                                                     |
+| Failure toast       | What failed: "Price refresh failed", "Copy failed". Every failed action shows one; never fail silently                                                                                                        |
+| Load error          | "Couldn't load positions" + "Check your connection and try again." When old data stays visible, prefix "Showing the last loaded data."                                                                        |
+| Empty state         | Heading: "No trades logged". One sentence of value: "Start logging your trades to track performance, win rate, and P&L analytics." Then the action                                                            |
+| Empty search        | "No matching" + the plural of what the box searches. No period, and no echo of the query, which stays in the box: "No matching assets", "No matching holdings", "No matching benchmarks" (decided 2026-11-01) |
+| Help tooltip        | One or two plain sentences that define the term: "Largest peak-to-trough decline in USD this year. The date below marks the trough."                                                                          |
+| Loading             | Ellipsis character, present tense: "Loading trades…", "Retrying…"                                                                                                                                             |
+| Destructive confirm | Title repeats the action ("Delete Position"). The description names the object and ends "This action cannot be undone." Footer: outline "Cancel", then the destructive button                                 |
 
 **Errors and removals.**
 
 - When a save or delete fails, name the action, then give the cause or the next step (decided 2026-10-31). Show one message per failure: a form that shows the error inline shows no toast. For connection and server faults, use "Check your connection and try again." Right: "Couldn't delete trade" + "Check your connection and try again." Wrong: "Action failed" + "Failed to fetch".
-- Match the verb to the effect (decided 2026-10-31). Delete: a record is gone for good. Remove: an item leaves a list, or a value is cleared. Cancel: a history entry is undone. The control, its confirmation and its toast use the same verb. Right: "Remove Binance" for a saved location. Wrong: "Delete Binance".
+- Match the verb to the effect (decided 2026-10-31). Delete: a record is gone for good. Remove: an item leaves a list, or a value is cleared. Cancel: a history entry is undone. Rename: only a saved name changes. Disconnect: a connected Mac stops syncing (Rename and Disconnect decided 2026-11-01). The control, its confirmation and its toast use the same verb. Right: "Rename Kraken" and "Remove Kraken" for a saved location; "Disconnect Merlin", then "Disconnect", then "Merlin disconnected from daily IBKR sync". Wrong: "Edit Kraken", "Delete Kraken"; "Stop Daily Sync" after "Disconnect Merlin".
 
 **Numbers.**
 
@@ -56,21 +65,12 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 - Totals, sizes and P&L use currency precision: 0 decimals for JPY and KRW, 2 for everything else. Hero totals show 0 decimals.
 - Quantities trim trailing zeros and cap precision by asset type: equities 4, unit trusts 3, crypto 8, cash 2.
 - Percentages show two decimals and a sign ("+12.40%"). Drawdowns display as negative percentages ("-8.31%").
+- Win rates show whole percents in summaries, subtitles, tables and lens metrics: "64% win rate". The expanded Trade Analytics card keeps two decimals. Spell out "win rate", lower case inside a value and "Win Rate" as a label; never "WR" (decided 2026-11-01).
 - An infinite profit factor (wins, no losses) displays "∞". A missing value displays "-" (a missing drawdown "N/A"), never 0.
 
 **Dates and times.** Put the day first and use the 12-hour clock (decided 2026-10-31): "5 Sept 2026", "5 Sept 2026, 2:05pm", "5:00am", "since 1 Jan". Write am and pm in lower case with no space. No leading zero on the day, no month-first dates, and never the browser's own locale format. Right: "5 Sept 2026, 2:05pm". Wrong: "Sep 5, 2026", "05:00", "5:00 AM".
 
-**Privacy.** The eye toggle in the header masks every account amount and holding quantity: in pages, tables, dialogs, chart labels, tooltips and copied chart images. Percentages, counts, chart geometry, public quotes and published NAVs stay visible. Editable inputs are never masked.
-
-**Open (not yet decided, 2026-10-31).**
-
-- "Side" (trades table) or "Direction" (form, stats, export) for LONG and SHORT.
-- "completed trades" (Dashboard help) or "closed", the state name used everywhere else.
-- "Owner" (desktop badge) or "Primary owner" (mobile card and form).
-- The IBKR disconnect flow: "Disconnect My Mac", then "Stop Daily Sync", then "disconnected".
-- "% WR" in the collapsed Trade Analytics card, or "% win rate".
-- Four phrasings for an empty search: "No results for", "No holding matches", "No matching assets", "No matching holdings".
-- "Check saved holdings" in import recovery, which means saved positions.
+**Privacy.** The eye toggle in the header masks every account amount and every position and trade quantity: in pages, tables, dialogs, chart labels, tooltips and copied chart images. Percentages, counts, chart geometry, public quotes and published NAVs stay visible. Editable inputs are never masked.
 
 ## Visual foundations
 
@@ -111,7 +111,7 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 - **Page header:** title + muted subtitle on the left, `sm` buttons on the right. It stacks (`gap-3`) below sm. Busy pages pin it under the app header (`z-sticky`) and host their hero stats or lens tabs inside it.
 - Put only non-destructive actions (Copy All, Add, Log) in the header. "Delete All" lives in the ⋮ overflow menu.
 - **Tables become cards below md.** Wide tables keep content-sized columns and scroll horizontally. Never truncate tickers or names; wrap them.
-- Heroes are borderless. The Net Worth metric rail scrolls horizontally in 144px cells (`metric-cell`) until its container reaches 60rem.
+- Heroes are borderless. The Net Worth metric rail scrolls horizontally in 144px cells (`metric-cell`) until its container reaches 64rem.
 
 ### Shape, borders and elevation
 
