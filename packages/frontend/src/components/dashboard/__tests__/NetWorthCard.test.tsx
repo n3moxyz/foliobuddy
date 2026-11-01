@@ -151,6 +151,23 @@ describe('NetWorthCard', () => {
     expect(within(tradesCell).queryByText('0')).not.toBeInTheDocument();
   });
 
+  it('still shows a loaded count of 0 as 0, not "-"', () => {
+    render(
+      <MemoryRouter>
+        <NetWorthCard
+          summary={summary}
+          currency="USD"
+          exposurePct={66.9}
+          positionCount={26}
+          closedTrades={0}
+        />
+      </MemoryRouter>
+    );
+
+    const tradesCell = screen.getAllByTestId('net-worth-stat')[8];
+    expect(within(tradesCell).getByRole('link').textContent).toBe('0 trades — view trade journal');
+  });
+
   it('renders the alternate-currency footer', () => {
     render(
       <MemoryRouter>
