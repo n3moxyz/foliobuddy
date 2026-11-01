@@ -2943,3 +2943,11 @@ The first private CI run stopped before deployment because the official action a
 ## Health checks describe failures, not the network (31 October 2026)
 
 `GET /api/v1/health/db` needs no sign-in, yet a failed check returned Prisma's raw error. Connection errors name the private database host and port, and the uptime workflow prints the response body into a public Actions log. The 503 now says only `Database unavailable`, and the backend logs the cause. No caller read the old text: the dashboard only sees a failed request, and uptime checks the status code. A public route can report that something failed without saying where it runs.
+
+## Rename means rename (1 November 2026)
+
+A words review caught the saved-location rename in Add and Edit Position doing more than renaming. Names compare without case, so changing "kraken" to "Kraken" matched the option against itself and was treated as a merge: the saved name vanished and the field kept "kraken" with no pencil. Renaming to a name already in the list merged silently too. A capitals-only change now renames in place, and any other name already in the list is refused with a message under the box. Rename only ever changes a saved name.
+
+Escape in the rename box also closed the whole dialog, taking the half-filled form with it. Radix listens for Escape on the document during the capture phase, before the box's own key handler runs. The dialog now leaves Escape to a focused box marked `data-cancel-on-escape`, the same way it already waited for an open asset search. The add box had the same bug.
+
+Checking in Chromium turned up a third problem: a box opened from the list never kept focus. Radix hands focus back to the trigger in a zero-delay timer scheduled after the component's own, so the trigger won, typing went to its typeahead, and Escape closed the dialog. The box now takes focus in `onCloseAutoFocus`. The lessons: a field's key handler can't outrank a layer listening on the document, and two zero-delay timers run in the order they were scheduled.

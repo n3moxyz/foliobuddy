@@ -253,7 +253,7 @@ Follow the [portfolio sections contract](docs/UI-CONTRACTS.md#portfolio-section-
 
 ### Creatable Storage Location Dropdowns
 
-Follow the [location dropdown contract](docs/UI-CONTRACTS.md#creatable-storage-location-dropdowns) before changing which dropdowns accept custom values, custom-option storage, empty values, or select layering.
+Follow the [location dropdown contract](docs/UI-CONTRACTS.md#creatable-storage-location-dropdowns) before changing which dropdowns take custom values, renames, saved options, Escape, empty values, or layering.
 
 ### Cash Positions (Stablecoins + Fiat)
 

@@ -85,6 +85,33 @@ describe('position storage location options', () => {
     ]);
   });
 
+  it('renames a saved option in place when only its capitals change', () => {
+    saveLocationOptionForStorageType('CEX', 'kraken');
+
+    expect(renameLocationOptionForStorageType('CEX', 'kraken', 'Kraken')).toBe('Kraken');
+
+    expect(customLocationOptionsForStorageType('CEX')).toEqual(['Kraken']);
+    expect(locationOptionsForStorageType('CEX')).toEqual([
+      'Binance',
+      'Bybit',
+      'Coinbase',
+      'Kraken',
+    ]);
+  });
+
+  it('refuses a rename to a name already in the list, built-in or saved', () => {
+    saveLocationOptionForStorageType('CEX', 'Kraken');
+    saveLocationOptionForStorageType('CEX', 'OKX');
+    const stored = localStorage.getItem(CUSTOM_LOCATION_OPTIONS_KEY);
+
+    expect(renameLocationOptionForStorageType('CEX', 'OKX', 'binance')).toBeNull();
+    expect(renameLocationOptionForStorageType('CEX', 'OKX', ' KRAKEN ')).toBeNull();
+
+    // Nothing merges: both saved names stay, so neither loses its pencil.
+    expect(localStorage.getItem(CUSTOM_LOCATION_OPTIONS_KEY)).toBe(stored);
+    expect(customLocationOptionsForStorageType('CEX')).toEqual(['Kraken', 'OKX']);
+  });
+
   it('ignores legacy managed-bucket flags and keeps defaults protected', () => {
     localStorage.setItem(
       CUSTOM_LOCATION_OPTIONS_KEY,
