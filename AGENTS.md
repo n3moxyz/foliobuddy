@@ -161,7 +161,7 @@ Valid calendar dates, `exitDate >= entryDate`; UTC analytics months. `TradeAnaly
 
 ### Lazy-Loaded Routes
 
-All pages lazy-loaded (`React.lazy()` + `Suspense`); Vite `manualChunks` splits vendors (recharts, socket.io-client, @sentry/react, @clerk/clerk-react). `chunkRecovery.ts` gives `vite:preloadError` one reload per 60 seconds; keep the cap to avoid loops.
+Pages: `React.lazy()` + `Suspense`. Vite `manualChunks`: recharts, socket.io-client, @sentry/react, @clerk/clerk-react. `chunkRecovery.ts`: one reload/60s. Never cancel `vite:preloadError`: Vite would resolve undefined and crash React.lazy.
 
 ### Public Landing Page
 
