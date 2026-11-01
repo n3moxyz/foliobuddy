@@ -248,7 +248,7 @@ export default function Dashboard() {
             maxDailyDrawdownDate={maxDailyDrawdownDate}
             exposurePct={exposurePct}
             positionCount={summary.positionCount ?? 0}
-            closedTrades={tradeAnalytics?.totalTrades ?? 0}
+            closedTrades={tradeAnalytics?.totalTrades}
             investorLabel={getInvestorLabel()}
           />
         </div>

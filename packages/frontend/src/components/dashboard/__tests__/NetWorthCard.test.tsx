@@ -136,6 +136,21 @@ describe('NetWorthCard', () => {
     ]);
   });
 
+  it('shows "-" for closed trades until the count loads, never 0', () => {
+    render(
+      <MemoryRouter>
+        <NetWorthCard summary={summary} currency="USD" exposurePct={66.9} positionCount={26} />
+      </MemoryRouter>
+    );
+
+    const tradesCell = screen.getAllByTestId('net-worth-stat')[8];
+    const link = within(tradesCell).getByRole('link', {
+      name: 'Closed trades not loaded — view trade journal',
+    });
+    expect(link).toHaveTextContent(/^-/);
+    expect(within(tradesCell).queryByText('0')).not.toBeInTheDocument();
+  });
+
   it('renders the alternate-currency footer', () => {
     render(
       <MemoryRouter>

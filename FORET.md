@@ -1,5 +1,11 @@
 # FOR[ET].md - FolioBuddy
 
+## One definition at a time, and no false zero (1 November 2026)
+
+Two small follow-ups from the Trade Analytics work. On an iPhone, tapping a second "?" left the first definition open as well, and on a phone-width hero the two popups could overlap. Radix closes other tooltips only when it opens one itself, but a tap opens a help button through its own state (iOS never focuses a tapped button), and the buttons stop the tap reaching the open tooltip's outside-press listener. Opening a definition now closes whichever one is open.
+
+The Dashboard's Trades tile also showed 0 while the closed-trade count loaded, and kept showing 0 if that request failed, so someone with 44 closed trades could read "0". It now shows "-" until the count arrives, as the style guide asks for any missing value, and screen readers hear "Closed trades not loaded" rather than "dash". A refresh that fails keeps the last count.
+
 ## Trade Analytics for every input (1 November 2026)
 
 The Trade Journal's analytics card worked best with a mouse. Its definitions sat in hover-only tooltips, so a keyboard or a phone could never open them. Each term now has the app's "?" help button instead ("Help: Win Rate"). Screen readers heard the saved section IDs ("Reorder byDirection section"); handles now name the section ("Reorder Win Rate section"), and drag announcements add its position ("Win Rate section moved to position 3 of 5"). The arrow keys also stalled after one step when the tall Key Metrics section was picked up on a phone, so Up and Down now step one whole section at a time. On narrow phones the collapsed summary ran into the card title, so phones now stack the P&L over the win rate and leave the trade count to the subtitle above. Counts also learned the singular: "1 trade", "1 win", "1 loss", "1 closed trade", and the Delete All dialogs now ask to "delete 1 trade?" instead of "delete all 1 trades?".
