@@ -26,10 +26,10 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 
 - In-app header and dialog actions: Title Case, verb first — "Add Position", "Refresh Prices", "Create Snapshot", "Log New Trade", "Delete All Trades".
 - Everything that reads as a sentence uses sentence case: toasts, notices, help text, descriptions and landing calls to action ("Sign in", "See how it works", "Try again").
-- Small uppercase labels (`label-caps`, `eyebrow`) are the only all-caps text.
+- Small uppercase labels (`label-caps`, `eyebrow`) and the stored trade values below are the only all-caps text.
 - Headings, card titles, field and metric labels, table headers, tabs, menu items and other buttons also use Title Case (decided 2026-10-31). Inline "Label: value" text, checkbox sentences, and empty-state and error headings stay sentence case. Right: "Win Rate", "Recent Closed Trades". Wrong: "Win rate", "Recent closed trades".
-- LONG, SHORT, OPEN and CLOSED stay in capitals: they are the direction and status values in copied trade JSON and in exports (LONG and SHORT kept 2026-10-31, OPEN and CLOSED 2026-11-01).
-- Status badges stay in sentence case (decided 2026-11-01). Right: "Primary owner", "Primary source", "Open trade". Wrong: "Primary Owner".
+- LONG, SHORT, OPEN and CLOSED stay in capitals wherever the stored value itself shows: table cells, pills, the trade form, copied trade JSON and exports (LONG and SHORT kept 2026-10-31, OPEN and CLOSED 2026-11-01). Tabs, headings and sentences use the words: "Open (3)", "Recent Closed Trades".
+- Other status badges stay in sentence case (decided 2026-11-01). Right: "Primary owner", "Primary source", "Open trade". Wrong: "Primary Owner".
 
 **Names.**
 
@@ -56,7 +56,7 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 **Errors and removals.**
 
 - When a save or delete fails, name the action, then give the cause or the next step (decided 2026-10-31). Show one message per failure: a form that shows the error inline shows no toast. For connection and server faults, use "Check your connection and try again." Right: "Couldn't delete trade" + "Check your connection and try again." Wrong: "Action failed" + "Failed to fetch".
-- Match the verb to the effect (decided 2026-10-31). Delete: a record is gone for good. Remove: an item leaves a list, or a value is cleared. Cancel: a history entry is undone. Rename: only a saved name changes. Disconnect: a connected Mac stops syncing (Rename and Disconnect decided 2026-11-01). The control, its confirmation and its toast use the same verb. Right: "Rename Kraken" and "Remove Kraken" for a saved location; "Disconnect Merlin", then "Disconnect", then "Merlin disconnected from daily IBKR sync". Wrong: "Edit Kraken", "Delete Kraken"; "Stop Daily Sync" after "Disconnect Merlin".
+- Match the verb to the effect (decided 2026-10-31). Delete: a record is gone for good. Remove: an item leaves a list, or a value is cleared. Cancel: a history entry is undone. Rename: only a saved name changes. Disconnect: a sync connection ends, such as a Mac's daily IBKR sync or this browser's link to its Mac helper (Rename and Disconnect decided 2026-11-01). The control, its confirmation and its toast use the same verb. Right: "Rename Kraken" and "Remove Kraken" for a saved location; "Disconnect Merlin", then "Disconnect", then "Merlin disconnected from daily IBKR sync". Wrong: "Edit Kraken", "Delete Kraken"; "Stop Daily Sync" after "Disconnect Merlin".
 
 **Numbers.**
 
@@ -70,7 +70,7 @@ FolioBuddy is a private portfolio dashboard for a small circle: crypto, equities
 
 **Dates and times.** Put the day first and use the 12-hour clock (decided 2026-10-31): "5 Sept 2026", "5 Sept 2026, 2:05pm", "5:00am", "since 1 Jan". Write am and pm in lower case with no space. No leading zero on the day, no month-first dates, and never the browser's own locale format. Right: "5 Sept 2026, 2:05pm". Wrong: "Sep 5, 2026", "05:00", "5:00 AM".
 
-**Privacy.** The eye toggle in the header masks every account amount and every position and trade quantity: in pages, tables, dialogs, chart labels, tooltips and copied chart images. Percentages, counts, chart geometry, public quotes and published NAVs stay visible. Editable inputs are never masked.
+**Privacy.** The eye toggle in the header masks every account amount and every position, holding and trade quantity: in pages, tables, dialogs, chart labels, tooltips, import and sync previews, and copied chart images. Percentages, counts, chart geometry, public quotes and published NAVs stay visible. Editable inputs are never masked.
 
 ## Visual foundations
 

@@ -1,19 +1,22 @@
 # FOR[ET].md - FolioBuddy
 
+## Words and style review: the open questions (1 November 2026)
+
+Nine questions stayed open after the review's eight PRs, and the owner settled each one on 1 November. OPEN and CLOSED stay in capitals, like LONG and SHORT, because they are the stored values. LONG and SHORT are a trade's Direction, as the form and exports already said; only the trades table said Side. A trade is open or closed, so the Dashboard help no longer says "completed". The crowned investor is the Primary owner on desktop too. The IBKR daily sync says Disconnect from the button to the toast, instead of switching to "Stop Daily Sync" halfway. The collapsed Trade Analytics card reads "64% win rate", like the subtitle above it. Empty searches say "No matching" plus what the box searches. Import recovery points people at their saved positions, and a saved location's pencil says Rename, like the button under the field. The design-system previews caught up too: their labels and buttons use Title Case, and their dates put the day first.
+
+The lesson: measure before trading words for space. Measured with the app's own font, "WR" saved a row only on the largest phones with a small P&L. Spelling it out costs little, and a non-breaking space keeps "win rate" on one line.
+
 ## Words and style review (31 October 2026)
 
 We read the product's visible text against four questions. Does each thing have one name? Are spelling and punctuation consistent? Does feedback say what happened? Are numbers, dates and units written one way? That covered the app, API messages, exports and the Mac helper. The answers became rules in the style guide's Content fundamentals (`scripts/design-system/content/README.md`), shipped with the fixes in eight small PRs.
 
 Wrong facts came first. Risk : Reward graded 1 : 1.5 as "Below 1:1", and Settings still called FolioBuddy a crypto tracker. Failed saves now name the action, such as "Couldn't delete trade", instead of "Action failed" plus "Failed to fetch". Each `useMutation` sets `meta.failureTitle`, or `showsOwnError` when its form already shows the error. Delete, Remove and Cancel now match what happens to the data, and each page has one name in the sidebar, shortcuts, header and tab. Dates are day first ("5 Sept 2026") and times use the 12-hour clock ("2:05pm"). The app writes UK English with -ise spelling, straight quotes, spaced em dashes and "…", and puts headings, labels, tabs and actions in Title Case.
 
-Eight questions stayed open until 1 November, and each now has one answer. LONG and SHORT are a trade's Direction, as the form and exports already said; only the trades table said Side. A trade is open or closed, so the Dashboard help no longer says "completed". The crowned investor is the Primary owner on desktop too. The IBKR daily sync says Disconnect from the button to the toast, instead of switching to "Stop Daily Sync" halfway. The collapsed Trade Analytics card reads "64% win rate", like the subtitle above it. Empty searches say "No matching" plus what the box searches. Import recovery points people at their saved positions, and a saved location's pencil says Rename, like the button under the field.
-
 The lessons:
 
 - Words have consumers. Tests that find controls by name broke on every casing change, which helped: they showed where the old words lived. Runbooks quote button names in bold, CSV headers end up in people's spreadsheets, and `ibkrCaptureRetry.ts` matches two server messages exactly, so those two stayed as they were. Search beyond `src/` before changing a string.
 - Visible text and code names are separate layers. `realizedPnL`, the `'authorized'` status value and enrollment identifiers kept their spelling; only the words a person reads changed.
 - Let the formatter settle small questions. With en-GB, the browser writes September as "Sept", so the app does too.
-- Measure before trading words for space. Measured with the app's own font, "WR" saved a row only on the largest phones with a small P&L. Spelling it out costs little, and a non-breaking space keeps "win rate" on one line.
 
 ## History live row follows the snapshot schedule (31 October 2026)
 

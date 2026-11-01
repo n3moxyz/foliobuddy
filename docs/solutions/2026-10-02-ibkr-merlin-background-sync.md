@@ -46,7 +46,7 @@ sleep, logout, shutdown, expired access or a network outage can stop a run. No p
 FileVault, TCC, network or broker security settings are modified by setup.
 
 `npm run ibkr:worker:remove` stops/removes this worker's LaunchAgent and retains its
-keys and private evidence. **Daily Sync → Disconnect <Mac name> → Disconnect**
+keys and private evidence. **Daily Sync → Disconnect \<Mac name> → Disconnect**
 revokes the server permission. **Settings → IBKR Daily Sync** also lists active
 connections and can disconnect them after a cash entry moves or becomes ineligible.
 Revocation takes effect for future transactions;
