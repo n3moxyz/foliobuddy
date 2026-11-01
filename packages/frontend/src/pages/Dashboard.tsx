@@ -82,8 +82,9 @@ export default function Dashboard() {
     return totalStake / 100;
   }, [selectedInvestors, investors]);
 
-  // Undefined (shown as "-") until positions and the perp setting have loaded. A refresh
-  // that fails keeps the last value.
+  // Undefined (shown as "-") until positions and the perp setting have loaded, and when
+  // something is exposed against a zero total (see calculateExposurePct). A refresh that fails
+  // keeps the last value.
   const exposurePct = useMemo(
     () =>
       calculateExposurePct({

@@ -6,8 +6,9 @@ import { isMarketExposureCategory } from './utils';
  * as a percentage of total value. Held-for-others positions never count.
  *
  * Returns undefined until positions, the total and the perp setting have all loaded, so screens
- * show "-" instead of a false 0.0% or a figure that leaves perps out. A loaded but empty
- * portfolio is 0.
+ * show "-" instead of a false 0.0% or a figure that leaves perps out. It also stays undefined when
+ * something is exposed but the total is zero (perps with nothing owned): there is no share to
+ * show, and 0.0% would call that account safe. A loaded portfolio with nothing exposed is 0.
  */
 export function calculateExposurePct({
   positions,
@@ -21,10 +22,11 @@ export function calculateExposurePct({
   if (positions === undefined || totalValueUsd === undefined || perpExposureUsd === undefined) {
     return undefined;
   }
-  if (totalValueUsd <= 0) return 0;
 
   const ownedMarketValueUsd = positions
     .filter((position) => !position.custodyOf && isMarketExposureCategory(position.asset.category))
     .reduce((sum, position) => sum + (position.marketValueUsd ?? 0), 0);
-  return ((ownedMarketValueUsd + perpExposureUsd) / totalValueUsd) * 100;
+  const exposedUsd = ownedMarketValueUsd + perpExposureUsd;
+  if (totalValueUsd <= 0) return exposedUsd === 0 ? 0 : undefined;
+  return (exposedUsd / totalValueUsd) * 100;
 }

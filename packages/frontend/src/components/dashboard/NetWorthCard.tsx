@@ -203,7 +203,8 @@ export function NetWorthCard({
     {
       label: 'Exposure',
       help: 'Percentage of portfolio in market-risk assets, excluding stablecoins and cash, including perps',
-      // Exposure that can't be worked out yet shows "-", never 0.0%. Screen readers hear why.
+      // Exposure that can't be worked out (not loaded, or perps with nothing owned) shows "-",
+      // never 0.0%. Screen readers hear "Exposure unavailable", which is true in both cases.
       value:
         exposurePct === undefined ? (
           <span aria-hidden="true">-</span>
@@ -212,7 +213,7 @@ export function NetWorthCard({
         ),
       to: '/portfolio',
       linkDescription:
-        exposurePct === undefined ? 'Exposure not loaded — view portfolio' : '— view portfolio',
+        exposurePct === undefined ? 'Exposure unavailable — view portfolio' : '— view portfolio',
     },
     {
       label: 'Positions',

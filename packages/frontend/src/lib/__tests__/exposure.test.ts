@@ -36,7 +36,29 @@ describe('calculateExposurePct', () => {
     ).toBeUndefined();
   });
 
-  it('is 0 for a loaded but empty portfolio', () => {
+  it('is 0 for a loaded portfolio with nothing exposed', () => {
     expect(calculateExposurePct({ positions: [], totalValueUsd: 0, perpExposureUsd: 0 })).toBe(0);
+    expect(
+      calculateExposurePct({
+        positions: [position('CASH', 10_000)],
+        totalValueUsd: 10_000,
+        perpExposureUsd: 0,
+      })
+    ).toBe(0);
+  });
+
+  it('is unknown when something is exposed but the total is zero', () => {
+    // Perps with nothing owned: there is no share to show, and 0.0% would call the account safe.
+    expect(
+      calculateExposurePct({ positions: [], totalValueUsd: 0, perpExposureUsd: 8_000 })
+    ).toBeUndefined();
+    // Only positions held for someone else, so the owned total is zero.
+    expect(
+      calculateExposurePct({
+        positions: [position('LIQUID_CRYPTO', 50_000, 'Alex')],
+        totalValueUsd: 0,
+        perpExposureUsd: 8_000,
+      })
+    ).toBeUndefined();
   });
 });

@@ -356,9 +356,9 @@ export default function Portfolio() {
     return Array.from(names).sort();
   }, [custodyPositions]);
 
-  // Same formula as the Dashboard. Undefined (shown as "-") until the summary and the perp
-  // setting have loaded, so the hero never shows a figure that leaves perps out. A refresh
-  // that fails keeps the last value.
+  // Same formula as the Dashboard. Undefined (shown as "-") until positions, the summary and the
+  // perp setting have loaded, so the hero never shows a figure that leaves perps out, and when
+  // something is exposed against a zero total. A refresh that fails keeps the last value.
   const exposurePct = useMemo(
     () =>
       calculateExposurePct({

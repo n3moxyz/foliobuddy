@@ -64,6 +64,9 @@ const preferences: UserPreferences = {
 const pending = () => new Promise<never>(() => {});
 const failed = () => Promise.reject(new Error('Network unavailable'));
 
+// React Query tells components about a change on the next tick; let that render land.
+const flushQueryUpdates = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
+
 let client: QueryClient;
 
 // Once positions load, the charts measure with ResizeObserver, which jsdom doesn't implement.
@@ -133,7 +136,7 @@ describe('Dashboard tiles that have not loaded', () => {
 
     const rail = await renderRail();
     expect(
-      within(rail).getByRole('link', { name: 'Exposure not loaded — view portfolio' })
+      within(rail).getByRole('link', { name: 'Exposure unavailable — view portfolio' })
     ).toBeInTheDocument();
   });
 
@@ -171,6 +174,35 @@ describe('Dashboard tiles that have not loaded', () => {
     await waitFor(() =>
       expect(client.getQueryState(USER_PREFERENCES_QUERY_KEY)?.status).toBe('error')
     );
+    await flushQueryUpdates();
     expect(exposureLink().textContent).toBe('60.0% — view portfolio');
+  });
+
+  it('shows "-", never 0.0%, for Exposure when perps are set but nothing is owned', async () => {
+    vi.spyOn(api, 'getPositionSummary').mockResolvedValue({
+      ...summary,
+      totalValueUsd: 0,
+      totalValueSgd: 0,
+      totalCostBasis: 0,
+      unrealizedPnL: 0,
+      unrealizedPnLPct: 0,
+      positionCount: 0,
+    });
+    vi.spyOn(api, 'getPositions').mockResolvedValue([]);
+    vi.spyOn(api, 'getUserPreferences').mockResolvedValue({
+      ...preferences,
+      perpExposureUsd: 8_000,
+    });
+
+    const rail = await renderRail();
+    // Everything has loaded, so this "-" is not a loading state: there is no total to divide by.
+    await waitFor(() => {
+      expect(client.getQueryState(['positions'])?.status).toBe('success');
+      expect(client.getQueryState(USER_PREFERENCES_QUERY_KEY)?.status).toBe('success');
+    });
+    await flushQueryUpdates();
+    expect(
+      within(rail).getByRole('link', { name: 'Exposure unavailable — view portfolio' })
+    ).toBeInTheDocument();
   });
 });

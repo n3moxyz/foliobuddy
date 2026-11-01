@@ -177,7 +177,7 @@ describe('NetWorthCard', () => {
 
     const exposureCell = () => screen.getAllByTestId('net-worth-stat')[6];
     const link = within(exposureCell()).getByRole('link', {
-      name: 'Exposure not loaded — view portfolio',
+      name: 'Exposure unavailable — view portfolio',
     });
     expect(link).toHaveTextContent(/^-/);
     expect(within(exposureCell()).queryByText(/%/)).not.toBeInTheDocument();
