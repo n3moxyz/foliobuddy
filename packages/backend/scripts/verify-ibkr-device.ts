@@ -1,6 +1,13 @@
 /** Real PostgreSQL authorization and reconciliation verification. Fictional local data only. */
 import assert from 'node:assert/strict';
-import { createHash, generateKeyPairSync, randomBytes, randomUUID, sign } from 'node:crypto';
+import {
+  createHash,
+  generateKeyPairSync,
+  randomBytes,
+  randomUUID,
+  sign,
+  type KeyObject,
+} from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { prisma, basePrisma } from '../src/lib/prisma.js';
 import {
@@ -36,6 +43,14 @@ const stockAssetId = `${owner}-equity`;
 const audience = 'https://api.foliobuddy.xyz';
 const symbol = `D${randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase()}`;
 const testConnectors = new Set<string>();
+const signEnrollment = <T extends object>(body: T, privateKey: KeyObject) => ({
+  ...body,
+  signature: sign(
+    null,
+    Buffer.from(JSON.stringify(canonicalIbkrDevice(body))),
+    privateKey
+  ).toString('base64'),
+});
 const makeDevice = (
   cashPositionId = cashId,
   connectorFingerprint = hashIbkrDevice({ fixture: cashPositionId })
@@ -52,12 +67,12 @@ const makeDevice = (
     audience,
     createdAt: new Date().toISOString(),
   };
-  const signature = sign(
-    null,
-    Buffer.from(JSON.stringify(canonicalIbkrDevice(body))),
-    key.privateKey
-  ).toString('base64');
-  return { key, enrollment: { ...body, signature } };
+  return { key, enrollment: signEnrollment(body, key.privateKey) };
+};
+/** Setup rerun without --rotate: the same device ID and key, freshly signed. */
+const rerunSetup = ({ key, enrollment }: ReturnType<typeof makeDevice>) => {
+  const { signature: _previous, ...body } = enrollment;
+  return signEnrollment({ ...body, createdAt: new Date().toISOString() }, key.privateKey);
 };
 const device = makeDevice();
 function requestFor(operation: string, body: unknown, selected = device) {
@@ -799,7 +814,7 @@ try {
   assert.deepEqual(await listIbkrDevices('another-owner'), []);
   await assert.rejects(
     () => enrollIbkrDevice(owner, cashId, makeDevice().enrollment),
-    /active|authorized/i
+    /a Mac is still connected to this IBKR account/
   );
   assert.deepEqual(await listIbkrDevices('another-owner', cashId), []);
   await assert.rejects(
@@ -1070,6 +1085,17 @@ try {
   );
   await revokeIbkrDevice(owner, device.enrollment.deviceId);
   await assert.rejects(() => call('status'), /revoked|authorized|device/i);
+  // Revocation is permanent: a fresh signature cannot revive the revoked device ID and key,
+  // and the refusal tells the owner how to reconnect.
+  await assert.rejects(
+    () => enrollIbkrDevice(owner, cashId, rerunSetup(device)),
+    /authorised before.*rerun setup on your Mac with --rotate/
+  );
+  assert.equal(
+    (await listIbkrDevices(owner, cashId)).filter((grant) => !grant.revokedAt).length,
+    0
+  );
+  // A rotated key reconnects the same anchor, still blocked by its unresolved attempt.
   const replacement = makeDevice();
   await enrollIbkrDevice(owner, cashId, replacement.enrollment);
   assert.equal((await call('status', {}, replacement)).blocked, true);

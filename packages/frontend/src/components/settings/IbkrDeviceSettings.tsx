@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { api, type IbkrSyncDevice } from '@/lib/api';
 import { captureAuthSession, isAuthSessionCurrent } from '@/lib/authSession';
 import { Button } from '@/components/ui/button';
+import { failureDescription } from '@/lib/mutationFeedback';
 import { formatDateTime } from '@/lib/utils';
 
 /** Grant management remains reachable even after its cash position becomes ineligible. */
@@ -17,7 +18,8 @@ export function IbkrDeviceSettings() {
     refetchOnReconnect: true,
   });
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // The failed action, naming the Mac, then its cause or next step.
+  const [error, setError] = useState<{ title: string; description: string } | null>(null);
   // Disconnect failures show inline in this section.
   const revoke = useMutation({ meta: { showsOwnError: true }, mutationFn: api.revokeIbkrDevice });
   async function disconnect({ deviceId, name }: IbkrSyncDevice) {
@@ -34,9 +36,7 @@ export function IbkrDeviceSettings() {
       toast.success(`${name} disconnected from daily IBKR sync`);
     } catch (cause) {
       if (!isAuthSessionCurrent(session)) return;
-      setError(
-        cause instanceof Error ? cause.message : 'The connection could not be disconnected.'
-      );
+      setError({ title: `Couldn't disconnect ${name}`, description: failureDescription(cause) });
     }
   }
   return (
@@ -121,9 +121,10 @@ export function IbkrDeviceSettings() {
         </div>
       )}
       {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
+        <div role="alert" className="space-y-1 text-sm text-destructive">
+          <p className="font-medium">{error.title}</p>
+          <p>{error.description}</p>
+        </div>
       )}
     </section>
   );

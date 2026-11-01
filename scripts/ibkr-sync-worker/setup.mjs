@@ -162,6 +162,82 @@ export async function removeWorker(options) {
   });
 }
 
+async function connectCodex(binary, root) {
+  const client = new CodexClient(binary, root);
+  try {
+    return await client.connect();
+  } finally {
+    client.close();
+  }
+}
+
+/** Quote one word for a POSIX shell, leaving plain flags and references readable. */
+const shellWord = (value) =>
+  /^[\w@%+=:,./-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`;
+
+/**
+ * Fixed refusals from setup and the modules it calls. None names a path, key, account or
+ * provider output, so the owner sees the reason. Any other error keeps the generic line.
+ */
+export const PRINTABLE_SETUP_REFUSALS = new Set([
+  // setup.mjs
+  'Unsupported or repeated installer argument.',
+  'An installer argument is missing its value.',
+  'Enabling accepts only --enable and an optional --root.',
+  'Removal accepts only --uninstall and an optional --root.',
+  'The workspace root must be absolute.',
+  'First setup requires --cash-position-id with the owned IBKR cash reference shown in FolioBuddy.',
+  'An installed signed-in Codex binary is required. Pass its absolute path with --codex.',
+  'The scheduled worker installer supports macOS; use --prepare-only for a test setup.',
+  'An absolute workspace and a local user session are required.',
+  'An absolute Node binary is required.',
+  'The scheduled worker could not be started and verified. Inspect its private log.',
+  'The installed runtime changed. Inspect it before updating.',
+  'The installed runtime is incomplete or changed. Inspect it before updating.',
+  // enrollment.mjs
+  'An absolute workspace is required.',
+  'Absolute workspace and Codex paths are required.',
+  'The connector fingerprint is invalid.',
+  'The existing owned IBKR cash anchor is required. Pass --cash-position-id with its public position reference.',
+  'The device name is invalid.',
+  'The FolioBuddy server, IBKR connection or cash position changed since this Mac was set up. If only the IBKR connection changed, disconnect this Mac in FolioBuddy, then rerun setup with --rotate. Moving it to another server or cash position needs owner review.',
+  'A key without configuration exists. Inspect the interrupted setup before continuing.',
+  'The private worker configuration is incomplete.',
+  'The worker public key is not Ed25519.',
+  'The worker key no longer matches its enrolled identity.',
+  // files.mjs
+  'A worker run or setup is active or interrupted. Review its lock before changing the worker.',
+  'A worker file is not a private regular file.',
+  'The private worker file could not be read back.',
+  // signed-client.mjs
+  'The worker audience is invalid.',
+  'The worker audience must be FolioBuddy production or an explicit loopback sandbox.',
+  'The worker requires an Ed25519 key.',
+  // ../ibkr-sync-helper/launch-agent.mjs
+  'The existing IBKR helper status could not be checked. Nothing was removed.',
+  'The IBKR helper stop could not be verified. Nothing was removed.',
+  'The IBKR helper could not be stopped. Nothing was removed.',
+  // ../ibkr-sync-helper/codex-client.mjs, which never puts Codex diagnostics in an error
+  'Codex could not start. Open Codex and try again.',
+  'The Codex connection closed. Try again.',
+  'IBKR needs attention in Codex. Reconnect there, then try again.',
+  'Codex could not complete the IBKR read. Check its connection.',
+  'Connect the Interactive Brokers plugin in Codex first.',
+  'Codex did not provide a read-only connection.',
+  'The IBKR tool inventory is incomplete.',
+  'A required read-only IBKR tool is unavailable. Reconnect in Codex.',
+  'IBKR tools refer to different connections.',
+  'The IBKR connection timed out. No further changes will be made.',
+]);
+
+export function setupFailureMessage(error) {
+  const reason =
+    error instanceof Error && PRINTABLE_SETUP_REFUSALS.has(error.message)
+      ? error.message
+      : 'Check the selected paths, existing Codex connection and private worker files; no credentials were printed.';
+  return `IBKR worker setup stopped. ${reason}\n`;
+}
+
 async function codexBinary(explicit) {
   const candidates = explicit
     ? [explicit]
@@ -208,20 +284,23 @@ function parseOptions(args) {
   return options;
 }
 
-export async function setup(args = process.argv.slice(2)) {
+export async function setup(
+  args = process.argv.slice(2),
+  { connect = connectCodex, write = (text) => process.stdout.write(text) } = {}
+) {
   const options = parseOptions(args);
   const root = options.root ?? defaultRoot;
   if (!path.isAbsolute(root)) throw new Error('The workspace root must be absolute.');
   if (options.uninstall) {
     await removeWorker({ root });
-    process.stdout.write(
+    write(
       'The scheduled IBKR worker is stopped. Device keys, crash guards and private evidence are retained. Disconnect this Mac in FolioBuddy to end its app access.\n'
     );
     return;
   }
   if (options.enable) {
     await installWorker({ root });
-    process.stdout.write(
+    write(
       'Daily IBKR sync is installed for 06:00 Asia/Singapore. Existing keys and unresolved-run guards are preserved.\n'
     );
     return;
@@ -233,14 +312,8 @@ export async function setup(args = process.argv.slice(2)) {
       'First setup requires --cash-position-id with the owned IBKR cash reference shown in FolioBuddy.'
     );
   const binary = await codexBinary(options.codex);
-  const client = new CodexClient(binary, root);
-  let fingerprint;
-  try {
-    fingerprint = await client.connect();
-  } finally {
-    client.close();
-  }
-  await prepareEnrollment({
+  const fingerprint = await connect(binary, root);
+  const enrollment = await prepareEnrollment({
     root,
     binary,
     audience: options.audience ?? DEFAULT_AUDIENCE,
@@ -250,10 +323,18 @@ export async function setup(args = process.argv.slice(2)) {
     rotate: options.rotate === true,
   });
   await stageRuntime({ root });
-  process.stdout.write(
+  write(
     `Public enrolment is ready at ${path.join(workerDirectory(root), 'enrollment.json')}. Register that public JSON in the owned IBKR cash panel within 24 hours. The private key stays on this Mac.\n`
   );
-  process.stdout.write(
+  // Without --rotate, setup signs the same key again, and FolioBuddy never re-authorises a
+  // disconnected key.
+  if (enrollment.deviceId === previous?.deviceId) {
+    const rerun = ['npm', 'run', 'ibkr:worker:setup', '--', ...args, '--rotate'];
+    write(
+      `This Mac kept its existing key. If you disconnected this Mac in FolioBuddy, that key can't be authorised again. To reconnect, rerun setup with --rotate:\n  ${rerun.map(shellWord).join(' ')}\n`
+    );
+  }
+  write(
     'Preparation does not start or replace a schedule. After enrolment and a verified --once run, use --enable.\n'
   );
 }
@@ -261,10 +342,8 @@ export async function setup(args = process.argv.slice(2)) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     await setup();
-  } catch {
-    process.stderr.write(
-      'IBKR worker setup stopped. Check the selected paths, existing Codex connection and private worker files; no credentials were printed.\n'
-    );
+  } catch (error) {
+    process.stderr.write(setupFailureMessage(error));
     process.exitCode = 1;
   }
 }
