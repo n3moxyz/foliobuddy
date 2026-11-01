@@ -70,7 +70,7 @@ import { ImportResultsList, type ImportResultItem } from '@/components/ui/Import
 import { CustodyCheckbox } from './CustodyCheckbox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { isNonNegativeNumberInput, isPositiveNumberInput } from '@/lib/formValidation';
-import { formatNumber, isStablecoinCategory, currencyDecimals } from '@/lib/utils';
+import { isStablecoinCategory, currencyDecimals } from '@/lib/utils';
 import { Check, Upload } from 'lucide-react';
 import type { ParsedStatementHolding } from '@/lib/types';
 import { PositionCostFields } from './PositionCostFields';
@@ -452,13 +452,16 @@ export function PositionForm({
   // Hooks
   const { data: positions } = usePositions();
   const { data: assets } = useAssets();
-  const { data: searchResults, isLoading: searchLoading } = useSearchCoins(
-    category === 'equity' ? '' : searchQuery
-  );
-  const { data: equitySearchResults, isLoading: equitySearchLoading } = useSearchAssets(
-    category === 'equity' ? searchQuery : '',
-    { category: 'EQUITY', provider: 'yahoo' }
-  );
+  const coinSearch = useSearchCoins(category === 'equity' ? '' : searchQuery);
+  const equitySearch = useSearchAssets(category === 'equity' ? searchQuery : '', {
+    category: 'EQUITY',
+    provider: 'yahoo',
+  });
+  const searchResults = coinSearch.data;
+  const equitySearchResults = equitySearch.data;
+  // The picker reports on the provider search that matches the category.
+  const assetSearch = category === 'equity' ? equitySearch : coinSearch;
+  const trimmedSearchQuery = searchQuery.trim();
   const createAsset = useCreateAsset();
   const createAssetFromCoinGecko = useCreateAssetFromCoinGecko();
   const createAssetFromProvider = useCreateAssetFromProvider();
@@ -875,15 +878,15 @@ export function PositionForm({
       filtered = filtered.filter((a) => a.category === 'EQUITY');
     }
 
-    if (searchQuery.length > 0) {
-      const query = searchQuery.toLowerCase();
+    if (trimmedSearchQuery.length > 0) {
+      const query = trimmedSearchQuery.toLowerCase();
       filtered = filtered.filter(
         (a) => a.symbol.toLowerCase().includes(query) || a.name.toLowerCase().includes(query)
       );
     }
 
     return filtered;
-  }, [assets, category, searchQuery]);
+  }, [assets, category, trimmedSearchQuery]);
 
   // Combine existing assets with search results (for crypto + equity)
   const combinedResults = useMemo(() => {
@@ -899,7 +902,7 @@ export function PositionForm({
       results.push({ type: 'existing', asset });
     });
 
-    if (category === 'crypto' && searchResults && searchQuery.length >= 1) {
+    if (category === 'crypto' && searchResults && trimmedSearchQuery.length >= 1) {
       searchResults.forEach((coin) => {
         if (!isListedCoinCandidate(assets, coin)) {
           results.push({ type: 'search', coin });
@@ -907,7 +910,7 @@ export function PositionForm({
       });
     }
 
-    if (category === 'equity' && equitySearchResults && searchQuery.length >= 1) {
+    if (category === 'equity' && equitySearchResults && trimmedSearchQuery.length >= 1) {
       equitySearchResults.forEach((candidate) => {
         if (!isListedEquityCandidate(assets, candidate)) {
           results.push({ type: 'search', coin: candidate });
@@ -916,7 +919,7 @@ export function PositionForm({
     }
 
     return results;
-  }, [filteredAssets, searchResults, equitySearchResults, searchQuery, category, assets]);
+  }, [filteredAssets, searchResults, equitySearchResults, trimmedSearchQuery, category, assets]);
 
   // Custody rows sit outside net worth, so they never link to an owned cash pile.
   const canUseFundingCash =
@@ -1127,6 +1130,11 @@ export function PositionForm({
     }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       setShowDropdown(true);
+    }
+    // "Searching…" replaces the list: keys must not submit the form or pick a hidden option.
+    if (assetSearch.isSearching) {
+      if (e.key === 'Enter') e.preventDefault();
+      return;
     }
     if (combinedResults.length === 0) return;
 
@@ -2317,7 +2325,7 @@ export function PositionForm({
                           >
                             <div className="font-medium">{h.name}</div>
                             <div className="text-xs text-muted-foreground">
-                              {formatNumber(h.units, 2)} units · NAV {h.nativeCurrency}{' '}
+                              {formatQuantity(h.units, 'UNIT_TRUST')} units · NAV {h.nativeCurrency}{' '}
                               {h.navNative} · {h.isin}
                             </div>
                           </button>
@@ -2483,7 +2491,9 @@ export function PositionForm({
                     searchQuery={searchQuery}
                     showDropdown={showDropdown}
                     highlightedIndex={highlightedIndex}
-                    searchLoading={category === 'equity' ? equitySearchLoading : searchLoading}
+                    searchLoading={assetSearch.isSearching}
+                    searchFailed={assetSearch.isError}
+                    onRetrySearch={assetSearch.retry}
                     combinedResults={combinedResults}
                     isEditing={isEditing}
                     placeholder={
