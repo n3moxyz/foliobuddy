@@ -4,9 +4,11 @@
 
 Reading the daily IBKR sync wording turned up two problems. First, a disconnected Mac couldn't come back. Disconnect keeps the revoked grant as history, and authorisation refuses any device ID or key it has seen before. That's the point: a revoked key stays revoked. But rerunning setup on the same Mac signs its old key again, so the owner got "An active or previously authorised device already uses this anchor or key". Nothing said that setup has a `--rotate` flag. Authorisation itself is unchanged. The connect panel now says to add `--rotate` when reconnecting, the server's refusal says what to do, and the runbook has a "Reconnect a disconnected Mac" section. That section covers what rotation keeps and why it never clears a blocked run. The Postgres verification pins the refusal and its guidance.
 
+The owner then approved two changes to setup's output. When setup keeps a Mac's key, it says so and prints the same command with `--rotate`. When setup stops, it prints the reason if that reason is one of its fixed refusals; anything that could carry a path or Codex output keeps the generic line. A test fails if a printable refusal is reworded where it's thrown. Printing the refusals exposed one bad piece of advice. The guard that told owners to revoke and rotate would strand a Mac moved to another server or cash position, because the worker's private state pins its portfolio and cash position. It now says rotation fixes only an IBKR connection change.
+
 Second, a Disconnect that failed offline showed the browser's raw "Failed to fetch". The fallback text could never appear, because the API client always throws an `Error`. Disconnect in Portfolio and Settings, and Authorise, now name the action and the Mac ("Couldn't disconnect Merlin"), then the cause from `failureDescription()`: the server's reason, or "Check your connection and try again."
 
-The lessons: `e instanceof Error ? e.message : fallback` looks careful, but when every rejection is an `Error` the fallback never runs and people read whatever the browser said. And a refusal that protects something still needs to name the way forward.
+The lessons: `e instanceof Error ? e.message : fallback` looks careful, but when every rejection is an `Error` the fallback never runs and people read whatever the browser said. A refusal that protects something still needs to name the way forward. And showing messages nobody could read is also a review of them: advice that has never been seen has never been tested.
 
 ## Words and style review: the open questions (1 November 2026)
 

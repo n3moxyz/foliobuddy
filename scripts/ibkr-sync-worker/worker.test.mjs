@@ -417,7 +417,14 @@ test('an interrupted marker or existing lock prevents work before any network re
   assert.deepEqual(fixture.calls, []);
 });
 
-const { installWorker, removeWorker, stageRuntime } = await import('./setup.mjs');
+const {
+  installWorker,
+  removeWorker,
+  stageRuntime,
+  setup,
+  setupFailureMessage,
+  PRINTABLE_SETUP_REFUSALS,
+} = await import('./setup.mjs');
 
 test('installer stages the entire runtime immutably and updates without replacing a key', async (t) => {
   const root = await temporary(t);
@@ -495,6 +502,108 @@ test('installer refuses a modified runtime and preserves evidence when uninstall
     /PRIVATE KEY/
   );
   assert.equal(calls.length, 1);
+});
+
+// Setup runs for real here, with a fictional broker connection in place of Codex.
+function setupHarness(root) {
+  const output = [];
+  const run = (extra = [], cash = 'cash') =>
+    setup(
+      [
+        '--root',
+        root,
+        '--cash-position-id',
+        cash,
+        '--codex',
+        process.execPath,
+        '--audience',
+        audience,
+        ...extra,
+      ],
+      { connect: async () => fingerprint, write: (text) => output.push(text) }
+    );
+  const stopped = (extra, cash) =>
+    run(extra, cash).then(
+      () => assert.fail('setup should stop'),
+      (error) => setupFailureMessage(error)
+    );
+  const take = () => output.splice(0).join('');
+  return { run, stopped, take };
+}
+const config = async (root) =>
+  JSON.parse(await readFile(path.join(root, '.local/ibkr-worker/config.json'), 'utf8'));
+const generic =
+  'IBKR worker setup stopped. Check the selected paths, existing Codex connection and private worker files; no credentials were printed.\n';
+
+test('setup says when it kept a key and prints the same command with --rotate', async (t) => {
+  const root = await temporary(t);
+  const { run, take } = setupHarness(root);
+  await run(['--name', "Alice's Mini"]);
+  assert.match(take(), /Public enrolment is ready/);
+  const first = await config(root);
+  // The rerun that failed to reconnect a disconnected Mac: same key, freshly signed.
+  await run(['--name', "Alice's Mini"]);
+  const rerun = take();
+  assert.equal((await config(root)).deviceId, first.deviceId);
+  assert.match(
+    rerun,
+    /This Mac kept its existing key\. If you disconnected this Mac in FolioBuddy, that key can't be authorised again\. To reconnect, rerun setup with --rotate:\n/
+  );
+  const command = rerun.split('\n').find((line) => line.startsWith('  npm run'));
+  assert.ok(command.startsWith('  npm run ibkr:worker:setup -- --root '), command);
+  assert.ok(command.includes(' --cash-position-id cash '), command);
+  assert.ok(command.endsWith(` --name 'Alice'\\''s Mini' --rotate`), command);
+  // Rotating makes a new key, so there is nothing to warn about.
+  await run(['--name', "Alice's Mini", '--rotate']);
+  assert.doesNotMatch(take(), /kept its existing key/);
+  assert.notEqual((await config(root)).deviceId, first.deviceId);
+});
+
+test('setup prints its fixed refusals but keeps paths and provider text generic', async (t) => {
+  const root = await temporary(t);
+  const { run, stopped } = setupHarness(root);
+  assert.equal(
+    await stopped(['--bogus']),
+    'IBKR worker setup stopped. Unsupported or repeated installer argument.\n'
+  );
+  await run();
+  // The same Mac pointed at another cash position: the refusal says what rotation can fix.
+  assert.equal(
+    await stopped([], 'other-cash'),
+    'IBKR worker setup stopped. The FolioBuddy server, IBKR connection or cash position changed since this Mac was set up. If only the IBKR connection changed, disconnect this Mac in FolioBuddy, then rerun setup with --rotate. Moving it to another server or cash position needs owner review.\n'
+  );
+  await mkdir(path.join(root, '.local/ibkr-worker/run.lock'), { mode: 0o700 });
+  assert.equal(
+    await stopped(),
+    'IBKR worker setup stopped. A worker run or setup is active or interrupted. Review its lock before changing the worker.\n'
+  );
+  for (const error of [
+    new Error(`ENOENT: no such file or directory, open '${root}/.local/ibkr-worker/config.json'`),
+    new SyntaxError('Unexpected token \'}\', "{"deviceId"... is not valid JSON'),
+    'not an Error',
+    undefined,
+  ])
+    assert.equal(setupFailureMessage(error), generic);
+});
+
+test('every printable setup refusal is still thrown word for word', async () => {
+  const files = [
+    './setup.mjs',
+    './enrollment.mjs',
+    './files.mjs',
+    './signed-client.mjs',
+    '../ibkr-sync-helper/launch-agent.mjs',
+    '../ibkr-sync-helper/codex-client.mjs',
+  ];
+  const code = (
+    await Promise.all(files.map((file) => readFile(new URL(file, import.meta.url), 'utf8')))
+  ).join('\n');
+  for (const message of PRINTABLE_SETUP_REFUSALS) {
+    // Once in the allow-list and at least once where it is thrown. A reworded throw falls
+    // back to the generic line, which is safe but hides the reason, so it fails here.
+    assert.ok(code.split(message).length - 1 >= 2, `not thrown anywhere: ${message}`);
+    assert.doesNotMatch(message, /\$\{/);
+  }
 });
 
 test('corrupt independent readback blocks completion and further writes', async (t) => {

@@ -19,7 +19,9 @@ one-click **Sync IBKR** control still runs on the Mac paired with that browser.
    setup command: `npm run ibkr:worker:setup -- --cash-position-id '<cash reference>' --name '<your Mac name>'`.
    The public reference pins the intended portfolio before any broker read.
    Setup prepares the runtime, generates an Ed25519 key locally and produces
-   **public enrollment JSON**; it does not enable the schedule yet.
+   **public enrollment JSON**; it does not enable the schedule yet. If setup stops, it
+   prints the reason when that reason is one of its fixed refusals. Errors that could
+   contain paths or provider output keep the generic message.
    The private key remains on that Mac, mode `0600`, under the ignored private worker
    directory. Never paste a private key, Clerk token, broker credential or `.env`.
 3. In the signed-in FolioBuddy portfolio, edit the owned **IBKR Cash & Debt**
@@ -61,7 +63,8 @@ Disconnecting retires that Mac's key. FolioBuddy keeps the revoked grant in the 
 position's history and refuses any enrolment that reuses its device ID or key, even with
 a fresh signature. Rerunning setup without `--rotate` signs the old key again, so
 **Authorise Daily IBKR Sync** fails with "These connection details reuse a key that was
-authorised before…".
+authorised before…". When setup keeps a key, it says so and prints the same command
+with `--rotate` added.
 
 To reconnect the same Mac to the same IBKR cash position:
 
@@ -218,7 +221,8 @@ review remains available.
   scoped grants, replay protection and attempt orchestration.
 - `IbkrBackgroundSync.tsx`: owner connection/review/revocation and daily status.
 - `npm run test:ibkr-worker`: failure ordering, duplicate dates, interrupted writes,
-  private evidence, signature interoperability and installer identity preservation.
+  private evidence, signature interoperability, installer identity preservation, and
+  setup's kept-key hint and printable refusals.
 - `packages/backend/scripts/verify-ibkr-device.ts`: real isolated PostgreSQL checks
   for two independent owners, copied enrollment, foreign keys/attempts, listing and
   revocation isolation, a refused revoked key and a rotated reconnect, replay,
