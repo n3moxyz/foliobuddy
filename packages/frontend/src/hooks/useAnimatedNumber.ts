@@ -58,49 +58,62 @@ export function useAnimatedNumber(target: number | null | undefined, durationMs 
  * with a single shared requestAnimationFrame loop (one re-render per frame) rather
  * than N independent loops. The array length and ordering must be stable across renders.
  *
+ * Only a change to a value already on screen ticks. A value that first arrives (null or
+ * undefined before) shows at once, and so does every value when `resetKey` changes: pass the
+ * view's unit or scope (currency, investor stake) so switching it doesn't count between views.
+ *
  * Respects prefers-reduced-motion — returns the raw values instantly.
  */
 export function useAnimatedNumbers(
   targets: Array<number | null | undefined>,
-  durationMs = 600
+  durationMs = 600,
+  resetKey?: string | number
 ): number[] {
   const normalized = targets.map((t) => t ?? 0);
-  const [display, setDisplay] = useState<number[]>(normalized);
-  const prevTargets = useRef<number[]>(normalized);
+  // A null entry is a value that hasn't arrived yet.
+  const [shown, setShown] = useState<{ values: Array<number | null>; resetKey: typeof resetKey }>(
+    () => ({ values: targets.map((t) => t ?? null), resetKey })
+  );
+  const prevTargets = useRef<Array<number | null>>(shown.values);
+  const prevResetKey = useRef(resetKey);
   const rafId = useRef(0);
   const prefersReducedMotion = useRef(
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
 
-  // Stable primitive key encoding every value — the effect fires only on real changes
-  // and fully reconstructs the values from it, so no array identity leaks into deps.
-  const key = normalized.join('|');
+  // Stable primitive key encoding every value (an empty entry for a missing one) — the effect
+  // fires only on real changes and fully reconstructs the values from it, so no array identity
+  // leaks into deps.
+  const key = targets.map((t) => t ?? '').join('|');
 
   useEffect(() => {
-    const values = key.split('|').map(Number);
-    const from = prevTargets.current;
+    const values = key.split('|').map((v) => (v === '' ? null : Number(v)));
+    const reset = prevResetKey.current !== resetKey;
+    const from = reset ? values : prevTargets.current;
     prevTargets.current = values;
+    prevResetKey.current = resetKey;
 
-    if (prefersReducedMotion.current) {
+    if (!reset && values.every((v, i) => v === from[i])) return;
+
+    const hasChange = values.some((v, i) => v !== null && from[i] != null && v !== from[i]);
+    if (prefersReducedMotion.current || !hasChange) {
       cancelAnimationFrame(rafId.current);
-      rafId.current = requestAnimationFrame(() => setDisplay(values));
+      rafId.current = requestAnimationFrame(() => setShown({ values, resetKey }));
       return () => cancelAnimationFrame(rafId.current);
     }
-
-    const hasChange = values.some((v, i) => v !== (from[i] ?? 0));
-    if (!hasChange) return;
 
     const start = performance.now();
     const tick = (now: number) => {
       const elapsed = now - start;
       const progress = Math.min(elapsed / durationMs, 1);
       const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-      setDisplay(
-        values.map((v, i) => {
-          const f = from[i] ?? 0;
-          return f + (v - f) * eased;
-        })
-      );
+      setShown({
+        resetKey,
+        values: values.map((v, i) => {
+          const f = from[i];
+          return v === null || f == null ? v : f + (v - f) * eased;
+        }),
+      });
       if (progress < 1) {
         rafId.current = requestAnimationFrame(tick);
       }
@@ -110,7 +123,9 @@ export function useAnimatedNumbers(
     rafId.current = requestAnimationFrame(tick);
 
     return () => cancelAnimationFrame(rafId.current);
-  }, [key, durationMs]);
+  }, [key, resetKey, durationMs]);
 
-  return display;
+  // Until the effect catches up, a new view and newly arrived values render as their targets.
+  if (shown.resetKey !== resetKey) return normalized;
+  return shown.values.map((v, i) => v ?? normalized[i]);
 }

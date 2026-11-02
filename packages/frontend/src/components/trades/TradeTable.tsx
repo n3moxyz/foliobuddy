@@ -99,7 +99,10 @@ export function TradeTable({
 
     const frame = requestAnimationFrame(() => {
       setFlashId(highlightTradeId);
-      highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'auto'
+        : 'smooth';
+      highlightRef.current?.scrollIntoView({ behavior, block: 'center' });
 
       timer = setTimeout(() => {
         setFlashId(null);

@@ -95,11 +95,16 @@ export function useScrollProgress<T extends HTMLElement>(ref: RefObject<T>): num
 
 /**
  * Pointer-follow tilt for the hero panel: lerps toward the pointer each frame so
- * the motion has momentum instead of snapping. Returns a style transform string.
- * Disabled for touch-only devices and reduced motion (returns a flat transform).
+ * the motion has momentum instead of snapping. `ref` takes the pointer events and
+ * `panelRef` tilts. The transform goes straight to the panel's style, not to state,
+ * so the hero does not re-render on every frame of the tilt.
+ * Disabled for touch-only devices and reduced motion (the panel stays flat).
  */
-export function usePointerTilt<T extends HTMLElement>(ref: RefObject<T>, maxDegrees = 7): string {
-  const [transform, setTransform] = useState('perspective(1200px)');
+export function usePointerTilt<T extends HTMLElement, P extends HTMLElement>(
+  ref: RefObject<T>,
+  panelRef: RefObject<P>,
+  maxDegrees = 7
+): void {
   const target = useRef({ x: 0, y: 0 });
   const current = useRef({ x: 0, y: 0 });
   const frame = useRef(0);
@@ -107,7 +112,8 @@ export function usePointerTilt<T extends HTMLElement>(ref: RefObject<T>, maxDegr
 
   useEffect(() => {
     const element = ref.current;
-    if (!element || reduced) return;
+    const panel = panelRef.current;
+    if (!element || !panel || reduced) return;
     if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
     const tick = () => {
@@ -115,11 +121,9 @@ export function usePointerTilt<T extends HTMLElement>(ref: RefObject<T>, maxDegr
       const dy = target.current.y - current.current.y;
       current.current.x += dx * 0.12;
       current.current.y += dy * 0.12;
-      setTransform(
-        `perspective(1200px) rotateX(${(-current.current.y * maxDegrees).toFixed(2)}deg) rotateY(${(
-          current.current.x * maxDegrees
-        ).toFixed(2)}deg)`
-      );
+      panel.style.transform = `perspective(1200px) rotateX(${(
+        -current.current.y * maxDegrees
+      ).toFixed(2)}deg) rotateY(${(current.current.x * maxDegrees).toFixed(2)}deg)`;
       if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
         frame.current = requestAnimationFrame(tick);
       } else {
@@ -151,8 +155,11 @@ export function usePointerTilt<T extends HTMLElement>(ref: RefObject<T>, maxDegr
       element.removeEventListener('pointermove', onPointerMove);
       element.removeEventListener('pointerleave', onPointerLeave);
       if (frame.current) cancelAnimationFrame(frame.current);
+      frame.current = 0;
+      // Flatten the panel, so turning reduced motion on mid-tilt leaves it level.
+      target.current = { x: 0, y: 0 };
+      current.current = { x: 0, y: 0 };
+      panel.style.transform = '';
     };
-  }, [ref, maxDegrees, reduced]);
-
-  return reduced ? 'none' : transform;
+  }, [ref, panelRef, maxDegrees, reduced]);
 }

@@ -15,7 +15,8 @@ interface ShortcutsHelpModalProps {
 export function ShortcutsHelpModal({ open, onOpenChange }: ShortcutsHelpModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
+      {/* Opened from the keyboard only (Cmd/Ctrl+K), so the panel appears and leaves at once. */}
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto data-[state=closed]:duration-0 data-[state=open]:duration-0">
         <DialogHeader>
           <DialogTitle>Keyboard Shortcuts</DialogTitle>
           <DialogDescription className="sr-only">

@@ -304,9 +304,9 @@ Follow the [net worth contract](docs/UI-CONTRACTS.md#net-worth-card) before chan
 
 Borderless `divide-y` list, profit/loss-tinted title icons, muted tabular ranks. Ranking (`getTopPerformers`/`getWorstPerformers`): by absolute `unrealizedPnL` USD, not %.
 
-### Page Entrance Animations
+### Motion
 
-`animate-fade-in-up` on page headers only — no staggered section animations. Respects `prefers-reduced-motion`; `index.css` reduced-motion block zeroes tailwindcss-animate/collapsible utilities via attribute selectors (plain class selectors can't match variant-prefixed classes) — cover new animation utilities there.
+Follow the [motion contract](docs/UI-CONTRACTS.md#motion) before adding, removing or retiming an animation, transition or number ticker.
 
 ### Settings & Investors Page Layouts
 
