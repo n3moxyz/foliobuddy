@@ -23,11 +23,18 @@ interface ThemeState {
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
-  if (resolveTheme(theme) === 'dark') {
-    root.classList.add('dark');
-  } else {
-    root.classList.remove('dark');
-  }
+  const dark = resolveTheme(theme) === 'dark';
+  if (root.classList.contains('dark') === dark) return;
+
+  // The color transitions on buttons and rows are hover feedback. Left on during the swap they
+  // fade those elements' old-theme colors over the new background, which has already snapped.
+  const guard = document.createElement('style');
+  guard.textContent = '*,*::before,*::after{transition:none!important}';
+  document.head.appendChild(guard);
+  root.classList.toggle('dark', dark);
+  // Restyle with the guard on, then remove it once a frame has painted the new theme.
+  void window.getComputedStyle(document.body).color;
+  requestAnimationFrame(() => requestAnimationFrame(() => guard.remove()));
 }
 
 export const useThemeStore = create<ThemeState>()(
