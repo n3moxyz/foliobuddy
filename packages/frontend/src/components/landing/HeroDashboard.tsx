@@ -162,7 +162,8 @@ function HeroPositionRow({
  */
 export function HeroDashboard() {
   const tiltRef = useRef<HTMLDivElement>(null);
-  const transform = usePointerTilt(tiltRef, 6);
+  const panelRef = useRef<HTMLDivElement>(null);
+  usePointerTilt(tiltRef, panelRef, 6);
   const reduced = usePrefersReducedMotion();
   const [mounted, setMounted] = useState(false);
   const [tick, setTick] = useState(0);
@@ -186,8 +187,9 @@ export function HeroDashboard() {
   return (
     <div ref={tiltRef} className="group relative" aria-hidden="true">
       <div
+        ref={panelRef}
         className="relative rounded-lg border bg-card shadow-2xl shadow-black/40"
-        style={{ transform, transformStyle: 'preserve-3d', willChange: 'transform' }}
+        style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}
       >
         {/* Window chrome: quietly signals "this is the product" */}
         <div className="flex items-center justify-between border-b px-4 py-2.5">
