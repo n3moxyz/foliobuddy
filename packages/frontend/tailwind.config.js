@@ -66,6 +66,11 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      // Strong ease-out for popups (tailwindcss-animate reads it as `ease-out-expo` too): the
+      // curve of animate-fade-in-up and the chart period cue in index.css.
+      transitionTimingFunction: {
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
       keyframes: {
         'accordion-down': {
           from: { height: '0' },
