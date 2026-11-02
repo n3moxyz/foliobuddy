@@ -28,9 +28,6 @@ export function DbStatusBanner() {
           className="flex items-center gap-1.5 px-2 py-1 rounded-md cursor-default hover:bg-muted/50 transition-colors"
         >
           <span className="relative flex h-2 w-2">
-            {isHealthy && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-profit/60 opacity-75" />
-            )}
             <span className={cn('relative inline-flex rounded-full h-2 w-2', dotClass)} />
           </span>
           <span className="text-xs font-medium text-muted-foreground">{label}</span>
