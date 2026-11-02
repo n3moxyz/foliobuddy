@@ -147,9 +147,14 @@ export function NetWorthCard({
       ? summary.totalValueSgd * stakeMultiplier
       : summary.totalValueUsd * stakeMultiplier;
 
-  // One shared rAF loop for every animated monetary figure in the hero.
+  // One shared rAF loop for every animated monetary figure in the hero. Figures tick when their
+  // value changes; switching currency or investors shows the new figures at once.
   const [animatedValue, animatedPnl, animatedCostBasis, animatedYtdAth, animatedAltValue] =
-    useAnimatedNumbers([value, pnlValue, costBasisValue, ytdAthValue, altValue]);
+    useAnimatedNumbers(
+      [value, pnlValue, costBasisValue, ytdAthValue, altValue],
+      undefined,
+      `${currency}:${stakeMultiplier}`
+    );
 
   const stats: NetWorthStat[] = [
     {
