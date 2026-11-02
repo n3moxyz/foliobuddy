@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { HelpCircle } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProviderIfMissing,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface HelpTooltipProps {
   content: string;
@@ -33,8 +38,8 @@ export function HelpTooltip({ content, label }: HelpTooltipProps) {
   const pressRef = useRef<{ pointerType: string; wasOpen: boolean } | null>(null);
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip open={open} onOpenChange={setOpen}>
+    <TooltipProviderIfMissing>
+      <Tooltip open={open} onOpenChange={setOpen} delayDuration={200}>
         <TooltipTrigger asChild>
           <button
             type="button"
@@ -70,6 +75,6 @@ export function HelpTooltip({ content, label }: HelpTooltipProps) {
           {content}
         </TooltipContent>
       </Tooltip>
-    </TooltipProvider>
+    </TooltipProviderIfMissing>
   );
 }

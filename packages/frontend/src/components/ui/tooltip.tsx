@@ -2,7 +2,26 @@ import * as React from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { cn } from '@/lib/utils';
 
-const TooltipProvider = TooltipPrimitive.Provider;
+const InsideTooltipProvider = React.createContext(false);
+
+const TooltipProvider = ({
+  children,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Provider>) => (
+  <InsideTooltipProvider.Provider value>
+    <TooltipPrimitive.Provider {...props}>{children}</TooltipPrimitive.Provider>
+  </InsideTooltipProvider.Provider>
+);
+
+// Tooltips under one provider share its warm window: after one closes, the next opens at once.
+// A provider of its own would cut a tooltip out of that, so a component that can also render
+// alone (HelpTooltip in isolated tests) adds one only when no ancestor has one.
+const TooltipProviderIfMissing = ({ children }: { children: React.ReactNode }) =>
+  React.useContext(InsideTooltipProvider) ? (
+    children
+  ) : (
+    <TooltipProvider>{children}</TooltipProvider>
+  );
 
 const Tooltip = TooltipPrimitive.Root;
 
@@ -18,8 +37,10 @@ const TooltipContent = React.forwardRef<
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      // Only a tooltip that waited out its hover delay fades in. Focus, taps and the next tooltip
+      // along a row (Radix's instant-open) appear at once, and every tooltip closes at once.
       className={cn(
-        'z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+        'z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md ease-out-expo data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0',
         className
       )}
       {...props}
@@ -28,4 +49,4 @@ const TooltipContent = React.forwardRef<
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, TooltipProviderIfMissing };

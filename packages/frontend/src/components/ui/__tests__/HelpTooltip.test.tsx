@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { HelpTooltip } from '../HelpTooltip';
+import { TooltipProvider } from '../tooltip';
 
 // Radix Popper measures with ResizeObserver, which jsdom doesn't implement.
 beforeAll(() => {
@@ -113,6 +114,40 @@ describe('HelpTooltip', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent(
       'Largest peak-to-trough decline this year.'
     );
+  });
+
+  it('opens the next definition along a row at once, without a fade', () => {
+    vi.useFakeTimers();
+    try {
+      // The app's provider, which every HelpTooltip on a page shares.
+      render(
+        <TooltipProvider>
+          <HelpTooltip label="MDD" content="Largest peak-to-trough decline this year." />
+          <HelpTooltip label="YTD Start" content="First recorded portfolio value this year." />
+        </TooltipProvider>
+      );
+      const popup = () => screen.getByRole('tooltip').parentElement;
+
+      // The first waits out its hover delay and fades in.
+      fireEvent.pointerMove(screen.getByRole('button', { name: 'Help: MDD' }), {
+        pointerType: 'mouse',
+      });
+      act(() => vi.advanceTimersByTime(200));
+      expect(popup()).toHaveAttribute('data-state', 'delayed-open');
+      expect(popup()).toHaveClass('data-[state=delayed-open]:animate-in');
+
+      // Its neighbour opens as the pointer arrives, with no entrance animation.
+      fireEvent.pointerMove(screen.getByRole('button', { name: 'Help: YTD Start' }), {
+        pointerType: 'mouse',
+      });
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'First recorded portfolio value this year.'
+      );
+      expect(popup()).toHaveAttribute('data-state', 'instant-open');
+      expect(popup()).not.toHaveClass('animate-in');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('still toggles from the keyboard after a press that never became a click', () => {
