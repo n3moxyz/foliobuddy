@@ -59,6 +59,8 @@ export function PortfolioChart({
 }: PortfolioChartProps) {
   const [period, setPeriod] = useState<TimePeriod>('YTD');
   const [chartMode, setChartMode] = useState<ChartMode>('value');
+  // The period cue answers a period or mode change, so the chart's first appearance stays still.
+  const [showPeriodCue, setShowPeriodCue] = useState(false);
   const [chartWidth, setChartWidth] = useState(0);
   const [activeMilestone, setActiveMilestone] = useState<PortfolioMilestone['kind'] | null>(null);
   const handleMilestoneActiveChange = useCallback(
@@ -188,10 +190,9 @@ export function PortfolioChart({
   }, [chartData.length, chartWidth]);
 
   const periods: TimePeriod[] = ['7D', '1M', '3M', '1Y', 'YTD', 'Max'];
-  const lastChartPoint = chartData[chartData.length - 1];
-  const chartAnimationKey = `${period}-${chartMode}-${chartData[0]?.timestamp ?? 'empty'}-${
-    lastChartPoint?.timestamp ?? 'empty'
-  }`;
+  // Not keyed on the last point: it is the live quote, so every price refresh would remount
+  // and re-animate the chart.
+  const chartAnimationKey = `${period}-${chartMode}-${chartData[0]?.timestamp ?? 'empty'}`;
   const chartDataKey = chartMode === 'percent' ? 'percentChange' : 'value';
   const formattedCurrencyChange = valueChange
     ? formatSignedCurrency(valueChange.change, currency, 0)
@@ -230,6 +231,7 @@ export function PortfolioChart({
                   className="h-11 w-11 rounded-r-none sm:h-8 sm:w-8"
                   onClick={() => {
                     setActiveMilestone(null);
+                    setShowPeriodCue(true);
                     setChartMode('value');
                   }}
                   aria-label="Show portfolio value in currency"
@@ -245,6 +247,7 @@ export function PortfolioChart({
                   className="h-11 w-11 rounded-l-none sm:h-8 sm:w-8"
                   onClick={() => {
                     setActiveMilestone(null);
+                    setShowPeriodCue(true);
                     setChartMode('percent');
                   }}
                   aria-label="Show portfolio value as percentage change"
@@ -261,11 +264,12 @@ export function PortfolioChart({
                     key={p}
                     variant={period === p ? 'secondary' : 'ghost'}
                     size="sm"
-                    className={`h-11 px-3 rounded-none transition-colors duration-200 first:rounded-l-md last:rounded-r-md sm:h-8 ${
+                    className={`h-11 px-3 rounded-none transition-colors first:rounded-l-md last:rounded-r-md sm:h-8 ${
                       period === p ? '' : 'hover:bg-muted'
                     }`}
                     onClick={() => {
                       setActiveMilestone(null);
+                      setShowPeriodCue(true);
                       setPeriod(p);
                     }}
                     aria-pressed={period === p}
@@ -306,7 +310,7 @@ export function PortfolioChart({
         ) : (
           <div
             key={chartAnimationKey}
-            className="relative animate-chart-period-change"
+            className={showPeriodCue ? 'relative animate-chart-period-change' : 'relative'}
             onMouseDown={(event) => {
               // Recharts resets the tooltip to its first date on SVG focus.
               // Preserve pointer selection, including clicks on its active-dot overlay.
