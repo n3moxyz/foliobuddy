@@ -1,5 +1,9 @@
 # FOR[ET].md - FolioBuddy
 
+## Add/Reduce amount presets (6 November 2026)
+
+The amount panel now follows the supplied swap reference. Balance sits above the amount, with a fixed ticker badge beside it. The estimated USD value uses the current quote and respects value privacy. Reduce has 25%, 50%, 75%, and 100% buttons instead of the slider. The balance shortcut and 100% preserve every fractional unit. Add has the same layout without reduction shortcuts.
+
 ## Animation sweep: motion only where it means something (2 November 2026)
 
 A full motion pass (remove, then improve, then performance) found that most of the app's animation was already disciplined, but a few pieces moved for the wrong reasons. The worst was invisible in code review: the portfolio chart's "period changed" cue was keyed on the chart's first and last timestamps, and the last point is the live quote. The backend stamps `lastUpdated` with the request time, so every summary refetch (a price push, coming back to the tab, Refresh prices) remounted the whole Recharts chart and replayed the fade. The key now leaves the live point out, and the cue only plays after you change the period or the `$`/`%` lens. The net worth figures had a cousin of the same bug: they counted up from $0 when YTD ATH arrived after the summary, and switching USD to SGD counted from 250,206 to 319,964 as if the portfolio had grown 28%. `useAnimatedNumbers` now shows a value's first arrival, and any currency or investor switch, at once. Only a real change to a figure already on screen ticks.

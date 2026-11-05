@@ -95,54 +95,65 @@ describe('PositionDeltaEditor', () => {
           mode: 'reduce',
         }).nextQuantity
       ).toBe(0);
-      const slider = screen.getByRole('slider', { name: 'Percentage to reduce' });
-      fireEvent.keyDown(slider, { key: 'Home' });
-      fireEvent.keyDown(slider, { key: 'End' });
+      fireEvent.click(screen.getByRole('button', { name: 'Reduce 25%' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Reduce 100%' }));
       expect(onChange.mock.calls.at(-1)?.[0]).toBe(value);
     }
   );
 
-  it('groups the amount, balance, Max action, and slider together', () => {
+  it('groups the amount, balance, estimate, and four percentage buttons without a slider', () => {
     renderEditor({ deltaMode: 'reduce' });
-    const amountPanel = screen.getByRole('group', { name: 'Reduce quantity controls' });
-    expect(amountPanel).toContainElement(screen.getByLabelText('Reduce Quantity'));
-    expect(within(amountPanel).getByRole('button', { name: 'Reduce max SOL' })).toHaveTextContent(
-      'Max'
+    const panel = screen.getByRole('group', { name: 'Reduce quantity controls' });
+    expect(panel).toContainElement(screen.getByLabelText('Reduce Quantity'));
+    expect(within(panel).getByRole('button', { name: 'Reduce max SOL' })).toHaveTextContent(
+      'Balance:'
     );
-    expect(within(amountPanel).getByRole('slider', { name: 'Percentage to reduce' })).toHaveValue(
-      '0'
-    );
-    expect(screen.queryByText('Current quantity')).not.toBeInTheDocument();
+    expect(within(panel).getByRole('group', { name: 'Reduce percentage' })).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
   });
 
-  it('keeps the slider in sync with typed quantities and the Max button', () => {
+  it.each([25, 50, 75, 100])('fills %s percent without submitting the form', (percentage) => {
     renderEditor({ deltaMode: 'reduce' });
-    const slider = screen.getByRole('slider', { name: 'Percentage to reduce' });
+    const button = screen.getByRole('button', { name: 'Reduce ' + percentage + '%' });
+    expect(button).toHaveAttribute('type', 'button');
+    fireEvent.click(button);
+    expect(screen.getByLabelText('Reduce Quantity')).toHaveValue(String(percentage / 10));
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('keeps preset selection in sync with typed quantities', () => {
+    renderEditor({ deltaMode: 'reduce' });
     const input = screen.getByLabelText('Reduce Quantity');
-    fireEvent.change(slider, { target: { value: '33' } });
-    expect(input).toHaveValue('3.3');
-    expect(slider).toHaveAttribute('aria-valuetext', '33% of balance');
-    fireEvent.change(slider, { target: { value: '26.7' } });
-    expect(input).toHaveValue('2.7');
+    fireEvent.change(input, { target: { value: '5' } });
+    expect(screen.getByRole('button', { name: 'Reduce 50%' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
     fireEvent.change(input, { target: { value: '6.25' } });
-    expect(slider).toHaveValue('62.5');
+    expect(screen.getByRole('button', { name: 'Reduce 50%' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Reduce max SOL' }));
-    expect(input).toHaveValue('10');
-    expect(slider).toHaveValue('100');
+    expect(screen.getByRole('button', { name: 'Reduce 100%' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
   });
 
-  it('supports precise keyboard adjustments and full-balance endpoints', () => {
-    renderEditor({ deltaMode: 'reduce', additionalQuantity: '5' });
-    const slider = screen.getByRole('slider', { name: 'Percentage to reduce' });
-    const input = screen.getByLabelText('Reduce Quantity');
-    fireEvent.keyDown(slider, { key: 'ArrowRight' });
-    expect(input).toHaveValue('5.1');
-    fireEvent.keyDown(slider, { key: 'PageDown' });
-    expect(input).toHaveValue('4.1');
-    fireEvent.keyDown(slider, { key: 'Home' });
-    expect(input).toHaveValue('0');
-    fireEvent.keyDown(slider, { key: 'End' });
-    expect(input).toHaveValue('10');
+  it('shows a masked USD estimate from the current quote, never from cost basis', () => {
+    renderEditor({
+      deltaMode: 'reduce',
+      additionalQuantity: '2',
+      position: {
+        ...position,
+        asset: { ...position.asset, currentPriceUsd: 150 },
+      },
+    });
+    expect(screen.getByLabelText('Estimated value in USD')).toHaveTextContent('$300.00');
+    act(() => usePrivacyStore.getState().setValuesHidden(true));
+    expect(screen.getByLabelText('Estimated value in USD')).toHaveTextContent(MASKED_MONEY_VALUE);
+    expect(screen.getByLabelText('Reduce Quantity')).toHaveValue('2');
   });
 
   it('keeps an over-balance typed quantity for validation without silently capping it', () => {
@@ -153,7 +164,10 @@ describe('PositionDeltaEditor', () => {
     expect(input).toHaveValue('12');
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByRole('alert')).toHaveTextContent('Exceeds balance');
-    expect(screen.getByRole('slider', { name: 'Percentage to reduce' })).toHaveValue('100');
+    expect(screen.getByRole('button', { name: 'Reduce 100%' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
     fireEvent.change(input, { target: { value: '5' } });
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(input).not.toHaveAttribute('aria-invalid');
@@ -178,7 +192,9 @@ describe('PositionDeltaEditor', () => {
       });
       const reduceMax = screen.getByRole('button', { name: 'Reduce max SOL' });
       expect(reduceMax).toBeDisabled();
-      expect(screen.getByRole('slider', { name: 'Percentage to reduce' })).toBeDisabled();
+      for (const stop of [25, 50, 75, 100]) {
+        expect(screen.getByRole('button', { name: 'Reduce ' + stop + '%' })).toBeDisabled();
+      }
       fireEvent.click(reduceMax);
       expect(onChange).not.toHaveBeenCalled();
     }
@@ -198,8 +214,8 @@ describe('PositionDeltaEditor', () => {
     const input = screen.getByLabelText('Additional Quantity');
     expect(amount).toContainElement(input);
     expect(within(amount).getByText('SOL')).toBeInTheDocument();
-    expect(within(amount).getByText('Current quantity:')).toBeInTheDocument();
-    expect(within(amount).getByText('10')).toBeInTheDocument();
+    expect(within(amount).getByText('Balance:')).toBeInTheDocument();
+    expect(within(amount).getByText('10 SOL')).toBeInTheDocument();
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
     fireEvent.change(input, { target: { value: '50' } });
     expect(input).toHaveValue('50');
@@ -220,7 +236,10 @@ describe('PositionDeltaEditor', () => {
         nextTotalCost: 1375,
       },
     });
-    expect(screen.getAllByText(MASKED_MONEY_VALUE)).toHaveLength(7);
+    expect(screen.getAllByText(MASKED_MONEY_VALUE)).toHaveLength(6);
+    expect(screen.getByRole('group', { name: 'Additional Quantity controls' })).toHaveTextContent(
+      `${MASKED_MONEY_VALUE} SOL`
+    );
     expect(screen.getByLabelText('Additional Quantity')).toHaveValue('2.5');
     expect(screen.queryByText('12.5')).not.toBeInTheDocument();
     act(() => usePrivacyStore.getState().toggleValuesHidden());
