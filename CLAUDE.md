@@ -136,6 +136,7 @@ Queue-based: 2.1s between calls, 30s in-memory cache, batch up to 50 coins.
 
 - React Query: server state. No global `refetchInterval`; global `refetchOnWindowFocus` stays `false`. Money-sensitive `usePortfolio.ts` queries opt into `refetchOnWindowFocus` + `refetchOnReconnect`. First-load skeletons gate on `isPending`, not `isLoading` (a paused offline/hidden-tab load isn't fetching); never on `enabled: false` queries.
 - Zustand: client state (currency + global monetary-privacy preferences)
+- Shared preference cache: cancel pending reads before saving and merging success. Merge/roll back only changed fields. See [the runbook](docs/solutions/2026-11-06-shared-preference-cache.md).
 
 ### Structured Logging
 
@@ -276,7 +277,7 @@ Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/soluti
 `PositionForm.tsx`: `Edit Totals` (corrections) + `Add/Reduce Position` tabs.
 
 - `Add`: extra quantity + required total/avg cost → weighted avg. `Reduce`: quantity + same pair as optional sale proceeds (`Total Proceeds`/`Avg Price`); basis removed at current avg; proceeds never alter avg/basis. Quantity 0 deletes unlinked positions; linked IBKR holdings retain history.
-- Add New, Edit Totals, and Add/Reduce share `PositionAmountInput`, `PositionAssetSummary`, and `PositionCostFields`. Add/Reduce place Balance above the amount and an estimated USD value below it. Only Reduce adds a clickable balance and 25%, 50%, 75%, and 100% buttons. Typed quantities and the selected button stay in sync. The balance shortcut and 100% preserve the exact balance. Keep read-only balances masked. These controls do not submit.
+- Add New, Edit Totals, and Add/Reduce share the amount, asset, and cost fields. Follow the [position amount controls contract](docs/UI-CONTRACTS.md#position-amount-controls) for layout, privacy, exact balances, and editable percentage defaults.
 - Optional `Fund From` (Add: debit pile, balance ≥ cost) / `Fund To` (Reduce: credit proceeds >0, empty piles allowed). Tab switch clears amounts + pile; direction-aware confirmation.
 - Both tabs persist custody. `applyPositionDelta()` drives preview (qty/avg/total) and submit; never duplicate math. UI/math/submit: `PositionDeltaEditor.tsx`/`positionFormMath.ts`/`PositionForm.tsx`.
 

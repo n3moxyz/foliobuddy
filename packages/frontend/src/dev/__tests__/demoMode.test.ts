@@ -343,6 +343,19 @@ describe('demo mode API mock', () => {
     expect(resetPreferences.perpExposureUsd).toBeNull();
   });
 
+  it('round-trips custom reduce percentages and restores defaults on demo reset', async () => {
+    await demoRequest('/users/me/preferences', 'PATCH', { reducePercentages: [10, 20, 60, 100] });
+    const saved = await readJson<{ reducePercentages: number[] }>(
+      await demoRequest('/users/me/preferences')
+    );
+    expect(saved.reducePercentages).toEqual([10, 20, 60, 100]);
+    resetDemoDataForTests();
+    const reset = await readJson<{ reducePercentages: number[] }>(
+      await demoRequest('/users/me/preferences')
+    );
+    expect(reset.reducePercentages).toEqual([25, 50, 75, 100]);
+  });
+
   it('serves the deterministic news feed grouped by portfolio buckets', async () => {
     const news = await readJson<{
       crypto: Array<{ symbol: string; openTradeOnly: boolean; items: Array<{ id: string }> }>;

@@ -1481,6 +1481,7 @@ const INITIAL_DEMO_PREFERENCES: UserPreferences = {
   snapshotHour: 5,
   snapshotTimezone: 'Asia/Singapore',
   perpExposureUsd: null,
+  reducePercentages: [25, 50, 75, 100],
 };
 let demoPreferences: UserPreferences = { ...INITIAL_DEMO_PREFERENCES };
 const fxRates: FxRate[] = [

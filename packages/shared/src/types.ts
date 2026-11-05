@@ -601,12 +601,14 @@ export interface UserPreferences {
   snapshotHour: number;
   snapshotTimezone: string;
   perpExposureUsd: number | null;
+  reducePercentages?: number[];
 }
 
 export interface UpdateUserPreferencesData {
   snapshotHour?: number;
   snapshotTimezone?: string;
   perpExposureUsd?: number;
+  reducePercentages?: number[];
 }
 
 export interface CurrencyConversion {

@@ -5,6 +5,15 @@ import type { UpdateUserPreferencesData, UserPreferences } from '@/lib/types';
 
 export const USER_PREFERENCES_QUERY_KEY = ['user', 'preferences'] as const;
 
+function changedFields(
+  preferences: UserPreferences,
+  updates: UpdateUserPreferencesData
+): Partial<UserPreferences> {
+  return Object.fromEntries(
+    Object.keys(updates).map((key) => [key, preferences[key as keyof UserPreferences]])
+  );
+}
+
 /** The signed-in user's server-backed app preferences. */
 export function useUserPreferences() {
   return useQuery({
@@ -38,13 +47,19 @@ export function useUpdateUserPreferences() {
       }
       return { previous };
     },
-    onError: (_error, _data, context) => {
+    onError: (_error, data, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(USER_PREFERENCES_QUERY_KEY, context.previous);
+        const previous = context.previous;
+        queryClient.setQueryData<UserPreferences>(USER_PREFERENCES_QUERY_KEY, (current) =>
+          current ? { ...current, ...changedFields(previous, data) } : previous
+        );
       }
     },
-    onSuccess: (saved) => {
-      queryClient.setQueryData(USER_PREFERENCES_QUERY_KEY, saved);
+    onSuccess: async (saved, data) => {
+      await queryClient.cancelQueries({ queryKey: USER_PREFERENCES_QUERY_KEY });
+      queryClient.setQueryData<UserPreferences>(USER_PREFERENCES_QUERY_KEY, (current) =>
+        current ? { ...current, ...changedFields(saved, data) } : saved
+      );
       toast.success('Snapshot schedule saved');
     },
   });

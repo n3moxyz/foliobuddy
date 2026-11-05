@@ -1,10 +1,13 @@
+import { useEffect, useRef, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { QueryErrorNotice } from '@/components/ui/QueryErrorNotice';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import type { Position } from '@/lib/types';
 import { PositionAmountInput } from './PositionAmountInput';
 import { PositionQuantityValue } from './PositionQuantityValue';
-
-const PERCENTAGE_STOPS = [25, 50, 75, 100];
+import { ReducePresetEditor } from './ReducePresetEditor';
+import { useReducePercentages } from '@/hooks/useReducePercentages';
 
 function quantityAtPercentage(balance: number, percentage: number) {
   // The endpoint must use the original balance, including every fractional unit.
@@ -28,6 +31,20 @@ export function ReduceQuantityInput({
   disabled: boolean;
 }) {
   const { formatQuantity } = useMoneyFormatter();
+  const { percentages, hasLoaded, canEdit, save, loadError, retry } = useReducePercentages();
+  const [editing, setEditing] = useState(false);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
+  const closeEditor = () => {
+    returnFocus.current = true;
+    setEditing(false);
+  };
+  useEffect(() => {
+    if (!editing && canEdit && returnFocus.current) {
+      editButton.current?.focus();
+      returnFocus.current = false;
+    }
+  }, [editing, canEdit]);
   const balance = position.quantity;
   const hasBalance = Number.isFinite(balance) && balance > 0;
   const controlsDisabled = disabled || !hasBalance;
@@ -79,7 +96,7 @@ export function ReduceQuantityInput({
             role="group"
             aria-label="Reduce percentage"
           >
-            {PERCENTAGE_STOPS.map((stop) => (
+            {percentages.map((stop) => (
               <Button
                 key={stop}
                 type="button"
@@ -92,16 +109,40 @@ export function ReduceQuantityInput({
                   value !== '' &&
                   amount === Number(quantityAtPercentage(balance, stop))
                 }
-                disabled={controlsDisabled}
+                disabled={controlsDisabled || !hasLoaded}
                 onClick={() => selectPercentage(stop)}
               >
                 {stop}%
               </Button>
             ))}
+            <Button
+              ref={editButton}
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground sm:h-9 sm:w-9"
+              aria-label="Edit Reduce Percentages"
+              aria-expanded={editing}
+              disabled={disabled || !canEdit}
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+            </Button>
           </div>
         </div>
       }
     >
+      {loadError && <QueryErrorNotice subject="reduce percentages" onRetry={retry} />}
+      {editing && (
+        <ReducePresetEditor
+          percentages={percentages}
+          onCancel={closeEditor}
+          onSave={async (values) => {
+            await save(values);
+            closeEditor();
+          }}
+        />
+      )}
       <span
         id="reduce-quantity-status"
         role={exceedsBalance ? 'alert' : undefined}

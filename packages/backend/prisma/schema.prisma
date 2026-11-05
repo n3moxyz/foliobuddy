@@ -18,6 +18,7 @@ model User {
   snapshotTimezone String            @default("Asia/Singapore")
   // Null means this legacy local-only preference has not yet been synced by any device.
   perpExposureUsd  Float?
+  reducePercentages Int[]            @default([25, 50, 75, 100])
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   positions        Position[]

@@ -50,6 +50,38 @@ function createDeferred<T>(): Deferred<T> {
 }
 
 describe('usePerpExposure', () => {
+  it.each(['success', 'failure'])(
+    'preserves newer reduction defaults after a delayed perp %s',
+    async (outcome) => {
+      const pending = createDeferred<UserPreferences>();
+      vi.mocked(api.getUserPreferences).mockResolvedValue(preferences(100));
+      vi.mocked(api.updateUserPreferences).mockReturnValue(pending.promise);
+      const client = createTestQueryClient();
+      client.setQueryData(USER_PREFERENCES_QUERY_KEY, preferences(100));
+      const { result } = renderHook(() => usePerpExposure(), {
+        wrapper: createQueryClientWrapper(client),
+      });
+      act(() => {
+        result.current.savePerpExposure(200);
+      });
+      await waitFor(() => expect(api.updateUserPreferences).toHaveBeenCalled());
+      act(() => {
+        client.setQueryData<UserPreferences>(USER_PREFERENCES_QUERY_KEY, {
+          ...preferences(200),
+          reducePercentages: [10, 20, 60, 100],
+        });
+      });
+      await act(async () => {
+        if (outcome === 'success')
+          pending.resolve({ ...preferences(200), reducePercentages: [25, 50, 75, 100] });
+        else pending.reject(new Error('Offline'));
+      });
+      await waitFor(() => expect(result.current.isSaving).toBe(false));
+      expect(
+        client.getQueryData<UserPreferences>(USER_PREFERENCES_QUERY_KEY)?.reducePercentages
+      ).toEqual([10, 20, 60, 100]);
+    }
+  );
   beforeEach(() => {
     // Reset, not clear: a test that fails early must not leave queued replies for the next one.
     vi.resetAllMocks();
