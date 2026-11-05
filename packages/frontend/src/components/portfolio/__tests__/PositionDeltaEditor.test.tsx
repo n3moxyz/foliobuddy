@@ -1,3 +1,5 @@
+import { createTestQueryClient, createQueryClientWrapper } from '@/test/utils';
+import { USER_PREFERENCES_QUERY_KEY } from '@/hooks/useUserPreferences';
 import { useState, type ComponentProps } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -65,7 +67,14 @@ function renderEditor(overrides: Partial<ComponentProps<typeof PositionDeltaEdit
       />
     );
   }
-  return render(<EditorHarness />);
+  const client = createTestQueryClient();
+  client.setQueryData(USER_PREFERENCES_QUERY_KEY, {
+    snapshotHour: 5,
+    snapshotTimezone: 'Asia/Singapore',
+    perpExposureUsd: null,
+    reducePercentages: [25, 50, 75, 100],
+  });
+  return render(<EditorHarness />, { wrapper: createQueryClientWrapper(client) });
 }
 
 describe('PositionDeltaEditor', () => {

@@ -1,5 +1,14 @@
 # FOR[ET].md - FolioBuddy
 
+## Editable reduction percentages (6 November 2026)
+
+The pencil beside the Reduce buttons opens four editable percentages. Save stores them in the user's account, so every position uses the same defaults across devices. The API accepts four distinct whole percentages from 1 to 100. Their entered order stays intact. The existing balance shortcut still fills the exact full quantity, even when 100% is no longer a preset.
+
+Saving waits for the server before changing the buttons. A failed save keeps the draft and previous buttons. Escape cancels the editor and returns focus to its pencil. It does not close the position dialog. Shared preference writes now merge and roll back only their own fields. Pending reads are cancelled before saving and before merging success. Otherwise, a delayed refresh or unrelated save could replace newly saved buttons with old values. Deferred-response tests cover these races.
+
+The new database column defaults to the original four percentages for all users. An older backend leaves the pencil disabled during deployment. The demo mirrors the preference round-trip and resets on refresh.
+
+
 ## Add/Reduce amount presets (6 November 2026)
 
 The amount panel now follows the supplied swap reference. Balance sits above the amount, with a fixed ticker badge beside it. The estimated USD value uses the current quote and respects value privacy. Reduce has 25%, 50%, 75%, and 100% buttons instead of the slider. The balance shortcut and 100% preserve every fractional unit. Add has the same layout without reduction shortcuts.

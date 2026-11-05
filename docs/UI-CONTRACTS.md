@@ -72,3 +72,10 @@ Motion confirms an action or orients the user (PRODUCT.md). Keep it off keyboard
 - **Loops**: no infinite animation on persistent UI. Status dots are static. Spinners, skeleton shimmer and pulses run only while something loads. The landing page keeps its own live-dot ping.
 - **Per-frame motion**: a hand-written `requestAnimationFrame` or pointer loop writes to the element's `style` through a ref, never to React state. State re-renders the component on every frame. The landing hero tilt (`usePointerTilt`) is the example.
 - **Reduced motion**: the `index.css` reduced-motion block zeroes tailwindcss-animate and collapsible utilities through attribute selectors. A plain class selector can't match a variant-prefixed class. The block also stops `.skeleton`. Cover new animation utilities there. Scripted scrolls use `behavior: 'auto'` when reduced motion is on.
+
+
+## Position Amount Controls
+
+Add New, Edit Totals, and Add/Reduce share `PositionAmountInput`, `PositionAssetSummary`, and `PositionCostFields`. Add/Reduce place Balance above the amount and an estimated USD value below it. Only Reduce adds a clickable balance and percentage buttons (default 25%, 50%, 75%, 100%). Its Pencil editor saves four distinct whole percentages (1–100) through `User.reducePercentages` in `/users/me/preferences`. The defaults apply to all current and future positions across devices. Keep the old buttons until saving succeeds. Cancel and Escape discard edits without closing the position dialog. Typed quantities and the selected button stay in sync. The balance shortcut and 100% preserve the exact balance. Keep read-only balances masked. These controls do not submit.
+
+Quantity inputs use the same bordered input, type size, height, padding, and background as cost/proceeds inputs. Amount panels share cost panels' corner radius and padding. Only editable quantities remain visible when value privacy is on.

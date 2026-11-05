@@ -7,17 +7,24 @@ import { isValidTimeZone, resolvePreference } from '../lib/snapshotSchedule.js';
 const router = Router();
 
 const MAX_PERP_EXPOSURE_USD = 1_000_000_000_000;
+const DEFAULT_REDUCE_PERCENTAGES = [25, 50, 75, 100];
+const reducePercentagesSchema = z
+  .array(z.number().int().min(1).max(100))
+  .length(4)
+  .refine((values) => new Set(values).size === 4, 'Percentages must be different');
 
 const PREFERENCE_SELECT = {
   snapshotHour: true,
   snapshotTimezone: true,
   perpExposureUsd: true,
+  reducePercentages: true,
 } as const;
 
 type PreferenceRow = {
   snapshotHour: number;
   snapshotTimezone: string;
   perpExposureUsd: number | null;
+  reducePercentages?: number[];
 };
 
 const updatePreferencesSchema = z
@@ -30,13 +37,15 @@ const updatePreferencesSchema = z
       .refine(isValidTimeZone, { message: 'Must be a valid IANA timezone (e.g. Asia/Singapore)' })
       .optional(),
     perpExposureUsd: z.number().finite().min(0).max(MAX_PERP_EXPOSURE_USD).optional(),
+    reducePercentages: reducePercentagesSchema.optional(),
   })
   .strict()
   .refine(
     (data) =>
       data.snapshotHour !== undefined ||
       data.snapshotTimezone !== undefined ||
-      data.perpExposureUsd !== undefined,
+      data.perpExposureUsd !== undefined ||
+      data.reducePercentages !== undefined,
     { message: 'Provide at least one preference' }
   );
 
@@ -51,7 +60,15 @@ function toPreferencesResponse(row: PreferenceRow | null) {
     storedPerpExposure <= MAX_PERP_EXPOSURE_USD
       ? storedPerpExposure
       : null;
-  return { snapshotHour: hour, snapshotTimezone: timeZone, perpExposureUsd };
+  const parsedPercentages = reducePercentagesSchema.safeParse(row?.reducePercentages);
+  return {
+    snapshotHour: hour,
+    snapshotTimezone: timeZone,
+    perpExposureUsd,
+    reducePercentages: parsedPercentages.success
+      ? parsedPercentages.data
+      : DEFAULT_REDUCE_PERCENTAGES,
+  };
 }
 
 // GET /api/v1/users/me/preferences - the caller's own app preferences

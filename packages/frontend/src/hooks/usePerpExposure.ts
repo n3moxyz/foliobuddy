@@ -85,7 +85,10 @@ export function usePerpExposure() {
     },
     onError: (error, variables, context) => {
       if (context?.didOptimisticallyUpdate && context.previous !== undefined) {
-        queryClient.setQueryData(USER_PREFERENCES_QUERY_KEY, context.previous);
+        const previous = context.previous;
+        queryClient.setQueryData<UserPreferences>(USER_PREFERENCES_QUERY_KEY, (current) =>
+          current ? { ...current, perpExposureUsd: previous.perpExposureUsd } : previous
+        );
       }
       // A failed background migration keeps the legacy value and retries on the next load,
       // so only a person's own save reports the failure (as only it reports success).
@@ -96,8 +99,11 @@ export function usePerpExposure() {
         );
       }
     },
-    onSuccess: (saved, variables) => {
-      queryClient.setQueryData(USER_PREFERENCES_QUERY_KEY, saved);
+    onSuccess: async (saved, variables) => {
+      await queryClient.cancelQueries({ queryKey: USER_PREFERENCES_QUERY_KEY });
+      queryClient.setQueryData<UserPreferences>(USER_PREFERENCES_QUERY_KEY, (current) =>
+        current ? { ...current, perpExposureUsd: saved.perpExposureUsd } : saved
+      );
       clearLegacyPerpExposure();
 
       if (variables.source === 'manual') {

@@ -30,6 +30,7 @@ const PREFERENCE_SELECT = {
   snapshotHour: true,
   snapshotTimezone: true,
   perpExposureUsd: true,
+  reducePercentages: true,
 };
 
 describe('users routes — user preferences', () => {
@@ -43,6 +44,7 @@ describe('users routes — user preferences', () => {
         snapshotHour: 1,
         snapshotTimezone: 'Asia/Tokyo',
         perpExposureUsd: 350_000,
+        reducePercentages: [25, 50, 75, 100],
       });
 
       const response = await request(app).get('/api/users/me/preferences');
@@ -52,6 +54,7 @@ describe('users routes — user preferences', () => {
         snapshotHour: 1,
         snapshotTimezone: 'Asia/Tokyo',
         perpExposureUsd: 350_000,
+        reducePercentages: [25, 50, 75, 100],
       });
       expect(mocks.userFindUnique).toHaveBeenCalledWith({
         where: { id: 'test-user-id' },
@@ -64,6 +67,7 @@ describe('users routes — user preferences', () => {
         snapshotHour: 5,
         snapshotTimezone: 'Mars/Olympus',
         perpExposureUsd: null,
+        reducePercentages: [25, 50, 75, 100],
       });
 
       const response = await request(app).get('/api/users/me/preferences');
@@ -73,6 +77,7 @@ describe('users routes — user preferences', () => {
         snapshotHour: 5,
         snapshotTimezone: 'Asia/Singapore',
         perpExposureUsd: null,
+        reducePercentages: [25, 50, 75, 100],
       });
     });
 
@@ -104,11 +109,47 @@ describe('users routes — user preferences', () => {
   });
 
   describe('PATCH /me/preferences', () => {
+    it('stores custom reduction buttons for the caller without changing other preferences', async () => {
+      const reducePercentages = [10, 20, 60, 100];
+      mocks.userUpdate.mockResolvedValue({
+        snapshotHour: 5,
+        snapshotTimezone: 'Asia/Singapore',
+        perpExposureUsd: null,
+        reducePercentages,
+      });
+      const response = await request(app)
+        .patch('/api/users/me/preferences')
+        .send({ reducePercentages });
+      expect(response.status).toBe(200);
+      expect(response.body.reducePercentages).toEqual(reducePercentages);
+      expect(mocks.userUpdate).toHaveBeenCalledWith({
+        where: { id: 'test-user-id' },
+        data: { reducePercentages },
+        select: PREFERENCE_SELECT,
+      });
+    });
+
+    it.each([
+      [0, 25, 50, 100],
+      [10, 25, 50, 101],
+      [10.5, 25, 50, 100],
+      [25, 25, 75, 100],
+      [25, 50, 100],
+      [1, 25, 50, 75, 100],
+      ['10', 25, 50, 100],
+    ])('rejects invalid reduction buttons %j', async (...reducePercentages) => {
+      const response = await request(app)
+        .patch('/api/users/me/preferences')
+        .send({ reducePercentages });
+      expect(response.status).toBe(400);
+      expect(mocks.userUpdate).not.toHaveBeenCalled();
+    });
     it('updates hour and timezone scoped to the caller only', async () => {
       mocks.userUpdate.mockResolvedValue({
         snapshotHour: 1,
         snapshotTimezone: 'Asia/Singapore',
         perpExposureUsd: null,
+        reducePercentages: [25, 50, 75, 100],
       });
 
       const response = await request(app)
@@ -120,6 +161,7 @@ describe('users routes — user preferences', () => {
         snapshotHour: 1,
         snapshotTimezone: 'Asia/Singapore',
         perpExposureUsd: null,
+        reducePercentages: [25, 50, 75, 100],
       });
       expect(mocks.userUpdate).toHaveBeenCalledWith({
         where: { id: 'test-user-id' },
@@ -133,6 +175,7 @@ describe('users routes — user preferences', () => {
         snapshotHour: 22,
         snapshotTimezone: 'Asia/Singapore',
         perpExposureUsd: null,
+        reducePercentages: [25, 50, 75, 100],
       });
 
       const response = await request(app)
@@ -150,6 +193,7 @@ describe('users routes — user preferences', () => {
         snapshotHour: 5,
         snapshotTimezone: 'Asia/Singapore',
         perpExposureUsd: 350_000,
+        reducePercentages: [25, 50, 75, 100],
       });
 
       const response = await request(app)
