@@ -85,7 +85,7 @@ export function ReduceQuantityInput({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="min-h-11 px-2 text-xs tabular-nums text-muted-foreground aria-pressed:bg-primary/10 aria-pressed:text-primary sm:min-h-9"
+                className="min-h-11 px-2 text-xs tabular-nums text-muted-foreground aria-pressed:bg-primary/10 aria-pressed:text-[hsl(var(--primary-text))] sm:min-h-9"
                 aria-label={`Reduce ${stop}%`}
                 aria-pressed={
                   hasBalance &&
