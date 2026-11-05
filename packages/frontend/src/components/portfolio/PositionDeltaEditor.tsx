@@ -9,6 +9,7 @@ import { ReduceQuantityInput } from './ReduceQuantityInput';
 import { PositionAmountInput } from './PositionAmountInput';
 import { PositionAssetSummary } from './PositionAssetSummary';
 import { PositionCostFields } from './PositionCostFields';
+import { PositionQuantityValue } from './PositionQuantityValue';
 
 interface PositionDeltaEditorProps {
   position: Position;
@@ -108,14 +109,15 @@ export function PositionDeltaEditor({
           onValueChange={onAdditionalQuantityChange}
           required
           disabled={isLoading}
-          footer={
-            <div className="flex min-h-11 flex-wrap items-center justify-end gap-x-2 text-xs text-muted-foreground sm:min-h-9">
-              <span>Current quantity:</span>
-              <span className="break-all font-mono tabular-nums sm:text-sm">
-                {formatPositionQuantity(position.quantity)}
+          balance={
+            <div className="flex min-h-11 max-w-full flex-wrap items-center justify-end gap-x-1 text-xs text-muted-foreground sm:min-h-9">
+              <span>Balance:</span>
+              <span className="break-all font-mono tabular-nums text-primary">
+                {formatPositionQuantity(position.quantity)} {position.asset.symbol}
               </span>
             </div>
           }
+          footer={<PositionQuantityValue position={position} value={additionalQuantity} />}
         />
       ) : (
         <ReduceQuantityInput
