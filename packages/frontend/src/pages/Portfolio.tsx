@@ -326,6 +326,10 @@ export default function Portfolio() {
     };
   }, [positions]);
 
+  const nonCashPositionCount = positions
+    ? ownedPositions.filter((position) => !isStablecoinCategory(position.asset.category)).length
+    : undefined;
+
   const ibkrSyncAnchor = ownedPositions.find(isIbkrCashPosition);
 
   const sections = useMemo(() => {
@@ -695,10 +699,10 @@ export default function Portfolio() {
                       <p className="text-muted-foreground text-sm">Positions</p>
                       <HelpTooltip
                         label="Positions"
-                        content="Number of positions you own. Positions held for others are excluded."
+                        content="Number of positions you own, excluding cash, stablecoins, and positions held for others."
                       />
                     </div>
-                    <p className="font-medium tabular-nums">{summary.positionCount}</p>
+                    <p className="font-medium tabular-nums">{nonCashPositionCount ?? '-'}</p>
                   </div>
                   <div className="pl-4">
                     <div className="flex items-center gap-1">
