@@ -233,6 +233,45 @@ describe('Portfolio responsive grouping', () => {
     summaryMocks.maxDrawdownDate = null;
   });
 
+  it.each([
+    ['mixed holdings', 2],
+    ['cash only', 0],
+  ])('counts owned non-cash positions for %s', async (scenario, expectedCount) => {
+    const stablecoin = {
+      ...positions[2],
+      id: 'stablecoin-position',
+      asset: { ...positions[2].asset, category: 'STABLECOIN' },
+    } as Position;
+    const cashPositions = [positions[2], stablecoin];
+    navMocks.positions =
+      scenario === 'cash only'
+        ? cashPositions
+        : [
+            ...positionsWithoutCash,
+            ...cashPositions,
+            { ...positions[0], id: 'custody-position', custodyOf: 'Someone else' },
+          ];
+    summaryMocks.data = {
+      totalValueUsd: 74_000,
+      totalValueSgd: 94_720,
+      totalCostBasis: 63_000,
+      unrealizedPnL: 11_000,
+      unrealizedPnLPct: 17.46,
+      positionCount: scenario === 'cash only' ? 2 : 4,
+      lastUpdated: '2026-11-06T00:00:00Z',
+      ytdStartDate: '2026-01-01T00:00:00Z',
+    };
+    render(<Portfolio />);
+
+    const help = screen.getByRole('button', { name: 'Help: Positions' });
+    const cell = help.closest('.px-4') as HTMLElement;
+    expect(within(cell).getByText(String(expectedCount))).toBeInTheDocument();
+    fireEvent.click(help);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Number of positions you own, excluding cash, stablecoins, and positions held for others.'
+    );
+  });
+
   it('shows historical MDD after YTD Start, distinct from the current drawdown', () => {
     summaryMocks.data = {
       totalValueUsd: 74_000,
