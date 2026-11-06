@@ -223,6 +223,10 @@ function syncPatches(rows: Row[], cashId: string, capture: IbkrCapture, cash: Ib
       `${row.asset.symbol}: an unlinked holding is absent from IBKR; review required`
     );
     if (row.quantity === 0) continue;
+    requireIbkr(
+      !capture.executionsFrom || row.ibkrSyncedAt!.getTime() >= Date.parse(capture.executionsFrom),
+      `${row.asset.symbol}: available trade history does not cover the prior sync; review required`
+    );
     // A missing contract can be closed only with identified executions after the last sync.
     const code = row.asset.symbol.replace(/\.(KS|KQ|T|OL|SI|TW)$/, '');
     const sold = capture.executions

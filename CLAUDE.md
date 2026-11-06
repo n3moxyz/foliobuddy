@@ -272,7 +272,7 @@ Create-only sub-type toggle (edit infers category). Provider contract: **Stock/E
 
 ### Position Edit Modes
 
-Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/solutions/2026-09-30-native-cost-reconciliation.md). IBKR [runbook](docs/solutions/2026-10-02-ibkr-merlin-background-sync.md): owner-bound devices/permits, session isolation, reconnect/recovery. No agent-key writes.
+Native costs: `avgCostNative` primary; `avgCostUsd` ledger. [Repair](docs/solutions/2026-09-30-native-cost-reconciliation.md). IBKR [runbook](docs/solutions/2026-10-02-ibkr-merlin-background-sync.md): owner-bound devices/permits, session isolation, reconnect/recovery. No agent-key writes. If IBKR rejects rolling trade history with `INVALID_ARGUMENT`, sync uses month-to-date with explicit `executionsFrom` coverage. Missing holdings require history covering their prior sync.
 
 `PositionForm.tsx`: `Edit Totals` (corrections) + `Add/Reduce Position` tabs.
 

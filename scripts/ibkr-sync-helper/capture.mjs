@@ -142,8 +142,30 @@ export async function collectCapture(client, save) {
     return normalizeSample(receipt);
   }
   const first = await sample('first');
-  const trades = await client.read('executions');
+  let trades = await client.read('executions');
+  let executionsFrom;
+  if (trades?.isError === true && trades.structuredContent?.error_code === 'INVALID_ARGUMENT') {
+    await save('execution-rejected-receipt.json', {
+      receivedAt: new Date().toISOString(),
+      response: trades,
+    });
+    const requestedAt = new Date();
+    executionsFrom = new Date(
+      Date.UTC(requestedAt.getUTCFullYear(), requestedAt.getUTCMonth(), 1)
+    ).toISOString();
+    trades = await client.read('executions', 'MONTH_TO_DATE');
+    requireValue(
+      new Date().getUTCFullYear() === requestedAt.getUTCFullYear() &&
+        new Date().getUTCMonth() === requestedAt.getUTCMonth(),
+      'The broker trade-history month changed during collection. Start a fresh sync.'
+    );
+  }
   await save('execution-receipt.json', { receivedAt: new Date().toISOString(), response: trades });
+  requireValue(
+    trades && trades.isError !== true,
+    'IBKR trade history could not be read. Nothing was applied. Try again later.'
+  );
+  sourceData(trades);
   const second = await sample('second');
   requireValue(
     Date.parse(second.capturedAt) - Date.parse(first.capturedAt) <= 180000,
@@ -154,6 +176,7 @@ export async function collectCapture(client, save) {
     first,
     second,
     executions: normalizeExecutions(trades, second.capturedAt),
+    ...(executionsFrom ? { executionsFrom } : {}),
   };
   await save('broker-capture.json', capture);
   return capture;

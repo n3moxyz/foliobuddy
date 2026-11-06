@@ -11,6 +11,14 @@ separate IBKR gateway login. An expired Codex or IBKR connection still needs the
 owner to reconnect it; the helper never signs in, extracts credentials, grants
 permissions or approves a broker action.
 
+## Historical trade request compatibility
+
+Some IBKR connections reject rolling trade periods with `INVALID_ARGUMENT`, although the connector advertises them. Positions, cash, and summary reads can still work. The helper first requests `DAYS_90`. Only that exact argument error triggers a `MONTH_TO_DATE` request. It saves both receipts and records the UTC month boundary as `executionsFrom` in the capture.
+
+The backend and private checkpoint verifier refuse to close a missing holding if its prior sync predates that boundary. Present holdings and cash can still reconcile. A failed fallback stops before apply. Authentication errors and other failures do not trigger this fallback. The helper rejects a month change during the fallback request.
+
+Deploy the backend coverage check before updating installed helper or worker runtimes. Preserve pairing state, pending guards, and private checkpoints during an update. The ordinary helper setup command resets pairing, so do not run it merely to refresh these runtime files.
+
 ## One-time setup
 
 Prerequisites: macOS, Node 20+, the FolioBuddy workspace, and Codex with its existing

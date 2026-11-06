@@ -283,6 +283,12 @@ try {
       date: new Date(capturedAt.getTime() + 10).toISOString(),
     },
   ];
+  closedInput.executionsFrom = new Date(capturedAt.getTime() + 5).toISOString();
+  await assert.rejects(
+    () => reconcileIbkr(owner, { ...options, input: closedInput }),
+    /trade history does not cover the prior sync/
+  );
+  closedInput.executionsFrom = capturedAt.toISOString();
   const closedPreview = await reconcileIbkr(owner, { ...options, input: closedInput });
   const closed = await reconcileIbkr(owner, {
     ...options,
