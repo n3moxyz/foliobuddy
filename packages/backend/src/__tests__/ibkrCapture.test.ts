@@ -4,6 +4,25 @@ import { validateIbkrCapture, ibkrYahooSymbol } from '../services/ibkrCapture.js
 import { fictionalIbkrCapture } from './helpers/ibkr.js';
 
 describe('IBKR source completeness', () => {
+  it('preserves explicit execution coverage and rejects an invalid range', () => {
+    const input = fictionalIbkrCapture();
+    input.executionsFrom = new Date(Date.now() - 86400000).toISOString();
+    expect(validateIbkrCapture(input).capture.executionsFrom).toBe(input.executionsFrom);
+    input.executionsFrom = new Date(Date.now() + 86400000).toISOString();
+    expect(() => validateIbkrCapture(input)).toThrow(/coverage/);
+    input.executionsFrom = new Date(Date.now() - 86400000).toISOString();
+    input.executions = [
+      {
+        id: 'outside-window',
+        symbol: 'TEST',
+        currency: 'USD',
+        side: 'SELL',
+        quantity: 1,
+        date: new Date(Date.now() - 2 * 86400000).toISOString(),
+      },
+    ];
+    expect(() => validateIbkrCapture(input)).toThrow(/coverage/);
+  });
   it('counts the aggregate once and retains debt, original currencies and FX', () => {
     const { cash } = validateIbkrCapture(fictionalIbkrCapture());
     expect(cash.netCashUsd).toBe(-200);

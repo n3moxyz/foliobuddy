@@ -12,6 +12,78 @@ import { hash, savePrivate, verifyCheckpoint, verifyReadback } from './audit.mjs
 import { createHelper, storeState, secretHash } from './server.mjs';
 import { fixtureCapture, fixtureCheckpoint, response } from './fixtures.test-support.mjs';
 import { stopLaunchAgent } from './launch-agent.mjs';
+import { CodexClient } from './codex-client.mjs';
+
+test('execution reads use only the supported explicit periods', async () => {
+  const client = new CodexClient();
+  client.threadId = 'fictional-thread';
+  const requests = [];
+  client.rpc = async (_method, params) => requests.push(params.arguments);
+  await client.read('executions');
+  await client.read('executions', 'MONTH_TO_DATE');
+  await assert.rejects(client.read('executions', 'TODAY'), /Unsupported/);
+  assert.deepEqual(requests, [{ period: 'DAYS_90' }, { period: 'MONTH_TO_DATE' }]);
+});
+
+test('invalid rolling trade history falls back with explicit coverage and retained receipts', async () => {
+  const fixture = fixtureCapture();
+  const saved = new Map();
+  const calls = [];
+  const client = {
+    read: async (kind, period) => {
+      calls.push([kind, period]);
+      if (kind === 'executions')
+        return period === 'MONTH_TO_DATE'
+          ? response({ trades: [] })
+          : { isError: true, content: [], structuredContent: { error_code: 'INVALID_ARGUMENT' } };
+      return response(kind === 'summary' ? fixture.first.summary : { [kind]: fixture.first[kind] });
+    },
+  };
+  const capture = await collectCapture(client, async (name, value) => saved.set(name, value));
+  const date = new Date(capture.first.capturedAt);
+  assert.equal(
+    capture.executionsFrom,
+    new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)).toISOString()
+  );
+  assert.deepEqual(
+    calls.filter(([kind]) => kind === 'executions'),
+    [
+      ['executions', undefined],
+      ['executions', 'MONTH_TO_DATE'],
+    ]
+  );
+  assert(saved.has('execution-rejected-receipt.json'));
+  assert.equal(saved.get('execution-receipt.json').response.isError, false);
+  assert(saved.has('broker-capture.json'));
+});
+
+test('trade-history failures stop before a second sample and never become empty trades', async () => {
+  for (const errorCode of ['INVALID_ARGUMENT', 'UNAUTHORIZED', 'INTERNAL_ERROR']) {
+    const calls = [];
+    const fixture = fixtureCapture();
+    const client = {
+      read: async (kind, period) => {
+        calls.push([kind, period]);
+        if (kind === 'executions')
+          return { isError: true, content: [], structuredContent: { error_code: errorCode } };
+        return response(
+          kind === 'summary' ? fixture.first.summary : { [kind]: fixture.first[kind] }
+        );
+      },
+    };
+    const saved = new Map();
+    await assert.rejects(
+      collectCapture(client, async (name, value) => saved.set(name, value)),
+      /trade history could not be read/
+    );
+    assert.equal(calls.filter(([kind]) => kind === 'summary').length, 1);
+    assert.equal(
+      calls.filter(([kind]) => kind === 'executions').length,
+      errorCode === 'INVALID_ARGUMENT' ? 2 : 1
+    );
+    assert(!saved.has('broker-capture.json'));
+  }
+});
 
 test('installer verifies stop and preserves registration when unloading fails', () => {
   const service = 'gui/501/fictional.helper';
@@ -138,6 +210,48 @@ test('checkpoint refuses ownership, ledger/history, source and state mismatches'
       /newer sync or cash edit/
     );
   }
+});
+
+test('shorter trade history cannot certify a close across an uncovered interval', () => {
+  const capture = fixtureCapture();
+  const start = Date.parse(capture.first.capturedAt) - 10000;
+  capture.executionsFrom = new Date(start).toISOString();
+  capture.executions = [
+    {
+      id: 'closed-sale',
+      symbol: 'CLOSED',
+      currency: 'USD',
+      side: 'SELL',
+      quantity: 8,
+      date: new Date(start + 5000).toISOString(),
+    },
+  ];
+  const { backup } = fixtureCheckpoint(capture);
+  const closed = {
+    ...structuredClone(backup.before[1]),
+    id: 'closed',
+    ibkrContractId: 888,
+    ibkrSyncedAt: new Date(start - 1000).toISOString(),
+    asset: { ...backup.before[1].asset, symbol: 'CLOSED' },
+  };
+  backup.before.push(closed);
+  backup.after.push({
+    ...structuredClone(closed),
+    quantity: 0,
+    ibkrSyncedAt: capture.second.capturedAt,
+  });
+  assert.throws(
+    () =>
+      verifyCheckpoint(
+        backup,
+        capture,
+        'cash',
+        hash({ before: backup.before, after: backup.after })
+      ),
+    /trade history does not cover/
+  );
+  closed.ibkrSyncedAt = capture.executionsFrom;
+  verifyCheckpoint(backup, capture, 'cash', hash({ before: backup.before, after: backup.after }));
 });
 
 test('independent readback verifies all records, history and timestamp', () => {

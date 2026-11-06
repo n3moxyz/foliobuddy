@@ -121,14 +121,16 @@ export class CodexClient {
     });
   }
 
-  async read(kind) {
+  async read(kind, period = 'DAYS_90') {
     const tool = READ_TOOLS[kind];
     if (!tool || !this.threadId) throw new Error('Unsupported broker read.');
+    if (kind === 'executions' && !['DAYS_90', 'MONTH_TO_DATE'].includes(period))
+      throw new Error('Unsupported broker execution period.');
     return this.rpc('mcpServer/tool/call', {
       threadId: this.threadId,
       server: 'codex_apps',
       tool,
-      arguments: kind === 'executions' ? { period: 'DAYS_90' } : {},
+      arguments: kind === 'executions' ? { period } : {},
     });
   }
 

@@ -34,6 +34,7 @@ export const ibkrCaptureSchema = z.object({
   version: z.literal(1),
   first: sample,
   second: sample,
+  executionsFrom: z.string().datetime().optional(),
   executions: z
     .array(
       z.object({
@@ -239,6 +240,14 @@ export function validateIbkrCapture(raw: unknown, now = Date.now()) {
     new Set(capture.executions.map((e) => e.id)).size === capture.executions.length,
     'Duplicate broker executions'
   );
+  if (capture.executionsFrom) {
+    const from = Date.parse(capture.executionsFrom);
+    requireIbkr(
+      from <= Date.parse(capture.first.capturedAt) &&
+        capture.executions.every((e) => Date.parse(e.date) >= from),
+      'IBKR trade-history coverage is invalid'
+    );
+  }
   return { capture, cash };
 }
 

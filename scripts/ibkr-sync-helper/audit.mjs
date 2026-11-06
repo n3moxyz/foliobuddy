@@ -170,6 +170,11 @@ export function verifyCheckpoint(backup, capture, anchor, state) {
           'A missing holding has an invalid close.'
         );
         if (row.quantity !== 0) {
+          check(
+            !capture.executionsFrom ||
+              Date.parse(row.ibkrSyncedAt) >= Date.parse(capture.executionsFrom),
+            'Available trade history does not cover the prior sync of a missing holding.'
+          );
           const code = row.asset.symbol.replace(/\.(KS|KQ|T|OL|SI|TW)$/, '');
           const sold = capture.executions
             .filter(
