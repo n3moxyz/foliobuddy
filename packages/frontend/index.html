@@ -30,6 +30,24 @@
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://foliobuddy.xyz/" />
+    <style>
+      .app-startup {
+        display: grid;
+        min-height: 100vh;
+        place-content: center;
+        justify-items: center;
+        gap: 0.75rem;
+        font:
+          500 0.875rem system-ui,
+          sans-serif;
+        color: #4d5166;
+        background: #fcfcfd;
+      }
+      .dark .app-startup {
+        color: #b9bbcd;
+        background: #11121d;
+      }
+    </style>
     <script>
       // Prevent flash of wrong theme on initial load
       (function () {
@@ -45,7 +63,12 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-startup" role="status">
+        <img src="/logo.svg" width="40" height="40" alt="" />
+        <span>Loading FolioBuddy…</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

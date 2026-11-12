@@ -41,23 +41,27 @@ export function useInViewOnce<T extends Element>(ref: RefObject<T>, rootMargin =
 }
 
 /**
- * Scroll progress (0..1) through a tall container: 0 when its top reaches the
- * viewport top, 1 when its bottom reaches the viewport bottom. rAF-throttled,
- * passive listeners, no state updates when the value is unchanged.
+ * Scroll progress (0..1) while the chart is pinned below the landing header.
+ * rAF-throttled, with no updates when the value is unchanged.
  */
-export function useScrollProgress<T extends HTMLElement>(ref: RefObject<T>): number {
+export function useScrollProgress(
+  containerRef: RefObject<HTMLElement>,
+  viewportRef: RefObject<HTMLElement>,
+  enabled: boolean
+): number {
   const [progress, setProgress] = useState(0);
   const frame = useRef(0);
   const last = useRef(-1);
 
   useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
+    const container = containerRef.current;
+    const viewport = viewportRef.current;
+    if (!enabled || !container || !viewport) return;
 
     const measure = () => {
       frame.current = 0;
-      const rect = element.getBoundingClientRect();
-      const scrollable = rect.height - window.innerHeight;
+      const rect = container.getBoundingClientRect();
+      const scrollable = rect.height - viewport.clientHeight;
       if (scrollable <= 0) {
         if (last.current !== 1) {
           last.current = 1;
@@ -65,7 +69,8 @@ export function useScrollProgress<T extends HTMLElement>(ref: RefObject<T>): num
         }
         return;
       }
-      const raw = -rect.top / scrollable;
+      const stickyTop = Number.parseFloat(window.getComputedStyle(viewport).top);
+      const raw = (stickyTop - rect.top) / scrollable;
       const next = Math.min(Math.max(raw, 0), 1);
       // Quantize so a 1px scroll doesn't trigger a render for an invisible change.
       const quantized = Math.round(next * 1000) / 1000;
@@ -88,7 +93,7 @@ export function useScrollProgress<T extends HTMLElement>(ref: RefObject<T>): num
       window.removeEventListener('resize', schedule);
       if (frame.current) cancelAnimationFrame(frame.current);
     };
-  }, [ref]);
+  }, [containerRef, viewportRef, enabled]);
 
   return progress;
 }

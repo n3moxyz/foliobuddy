@@ -1,4 +1,4 @@
-import { useEffect, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,21 +17,31 @@ import { Reveal } from '@/components/landing/Reveal';
 export default function Landing() {
   useEffect(() => {
     document.title = 'FolioBuddy — every asset, one quiet dashboard';
+    const story = document.getElementById('story');
+    if (story && window.location.hash === '#story') {
+      const jump = () => story.scrollIntoView({ behavior: 'instant' });
+      story.focus({ preventScroll: true });
+      jump();
+
+      // The font swap can change the hero height after a cold deep link.
+      const initialScroll = window.scrollY;
+      void document.fonts.ready.then(() => {
+        if (
+          document.activeElement === story &&
+          window.location.hash === '#story' &&
+          window.scrollY === initialScroll
+        ) {
+          jump();
+        }
+      });
+    }
     return () => {
       document.title = 'FolioBuddy';
     };
   }, []);
 
-  const scrollToStory = (event: ReactMouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? 'auto'
-      : 'smooth';
-    document.getElementById('story')?.scrollIntoView({ behavior });
-  };
-
   return (
-    <div className="dark min-h-screen bg-background font-sans text-foreground antialiased">
+    <div className="landing-page dark min-h-screen bg-background font-sans text-foreground antialiased">
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
@@ -39,7 +49,7 @@ export default function Landing() {
             <BrandMark className="h-7 w-7" />
             <span className="text-[15px] font-bold tracking-tight">FolioBuddy</span>
           </div>
-          <Button asChild size="sm" className="landing-press">
+          <Button asChild size="sm" className="landing-press [@media(pointer:coarse)]:min-h-11">
             <Link to="/sign-in">Sign in</Link>
           </Button>
         </div>
@@ -59,7 +69,7 @@ export default function Landing() {
               </div>
               <h1
                 id="hero-heading"
-                className="mt-4 text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-[3.4rem]"
+                className="mt-4 text-[clamp(1.75rem,8.25vw,2.25rem)] font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-[clamp(2.625rem,4.2vw,3rem)]"
               >
                 Every asset you own.
                 <br />
@@ -70,11 +80,11 @@ export default function Landing() {
                 snapshots, honest benchmarks. The full picture, without the spreadsheet.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button asChild size="lg" className="landing-press">
+                <Button asChild size="lg" className="landing-press px-5 sm:px-8">
                   <Link to="/sign-in">Sign in</Link>
                 </Button>
-                <Button asChild variant="ghost" size="lg" className="landing-press">
-                  <a href="#story" onClick={scrollToStory}>
+                <Button asChild variant="ghost" size="lg" className="landing-press px-5 sm:px-8">
+                  <a href="#story">
                     See how it works
                     <ArrowDown className="ml-1.5 h-4 w-4" aria-hidden="true" />
                   </a>
@@ -92,7 +102,7 @@ export default function Landing() {
         </section>
 
         {/* Scroll story */}
-        <div id="story" className="border-t border-border/60">
+        <div id="story" tabIndex={-1} className="border-t border-border/60 outline-none">
           <ScrollStory />
         </div>
 

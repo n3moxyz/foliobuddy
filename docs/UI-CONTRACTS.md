@@ -8,6 +8,8 @@ Signed-out: `/` → lazy `pages/Landing.tsx` (`components/landing/` sections), e
 
 **Hero:** `HeroNetWorthScrub` is a looping Stageshow demo: a pointer scrubs the net worth line, pauses on the max drawdown and rests on the all-time high. `stageshow-kit/` is a vendored MIT subset of Benji Taylor's kit. Keep it verbatim: Prettier ignores it, and the demo imports single files from it, never an index, so the kit's other parts stay out of the bundle. Its tokens map to the app's theme variables in `heroNetWorthScrub.css`. `heroScrubData.ts` samples `PORTFOLIO_CONTROLS` so the drawn peak, trough and end match the landing copy (−9.6% drawdown, +18.4%). A test enforces that match. The stage is `aria-hidden`. Under reduced motion it shows its poster, the drawdown beat. Rehearsal notes, and how to re-film after a change: `components/landing/HeroNetWorthScrub.REHEARSAL.md`.
 
+**Scroll story:** Keep `#story` a focusable fragment target so direct links and browser history work. The animated chart pins below the landing header. Short viewports and reduced motion show the completed chart and all captions in normal page flow. The benchmark legend has its own row below the chart.
+
 ## Responsive Mobile Design
 
 iOS HIG, all pages:

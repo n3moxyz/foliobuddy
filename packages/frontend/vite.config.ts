@@ -5,7 +5,6 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 const manualChunkGroups: Array<[chunkName: string, packageNames: string[]]> = [
-  ['recharts', ['recharts']],
   ['socket-io', ['socket.io-client']],
   ['sentry', ['@sentry/react']],
   ['clerk', ['@clerk/clerk-react']],
