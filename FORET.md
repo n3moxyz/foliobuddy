@@ -8,6 +8,8 @@ The lesson came from the data. The first port reused the landing page's series w
 
 A review then caught the trap the animation sweep fixed in the old hero (see below): the scrub put the pointer's x into React state on every frame, and the kit runs that update in `flushSync`, so the whole stage re-rendered sixty times a second. Now a small `ScrubMarker` moves the hairline and dot through refs, and state changes only when the readout's day does. Same rule, new place: a per-frame loop writes to the DOM node, not to state.
 
+Testing on the iOS Simulator taught one more thing: a freshly booted simulator drops frames even on an idle page. The first Safari runs showed 49 to 53 fps, and a plausible fix (moving the hairline by `transform` instead of `left`) measured near 60. A baseline with the hero offscreen also dropped 55 to 60 frames, though. Once the simulator warmed up, the unchanged production code measured 60 fps with no misses, so the fix was dropped. Measure the floor before you blame the code, and compare A and B in the same warmed-up session.
+
 The kit is vendored as a small MIT subset under `components/landing/stageshow-kit/`. Prettier ignores it so it stays verbatim, and the hero imports single files from it so the rest of the kit never reaches the bundle.
 
 ## Editable reduction percentages (6 November 2026)
