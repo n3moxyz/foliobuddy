@@ -72,7 +72,7 @@ Motion confirms an action or orients the user (PRODUCT.md). Keep it off keyboard
 - **Popups**: popovers, dropdown menus and selects scale from their trigger (Radix `--radix-*-content-transform-origin`) with `ease-out-expo`, the `cubic-bezier(0.16, 1, 0.3, 1)` curve of the page and chart cues.
 - **Hover**: color or opacity only, at Tailwind's default 150 ms. No hover transforms.
 - **Loops**: no infinite animation on persistent UI. Status dots are static. Spinners, skeleton shimmer and pulses run only while something loads. The landing page keeps its own live-dot ping.
-- **Per-frame motion**: a hand-written `requestAnimationFrame` or pointer loop writes to the element's `style` through a ref, never to React state. State re-renders the component on every frame. The landing hero tilt (`usePointerTilt`) is the example.
+- **Per-frame motion**: a hand-written `requestAnimationFrame` or pointer loop writes to the element's `style` through a ref, never to React state. State re-renders the component on every frame. The landing hero scrub is the example: `ScrubMarker` in `HeroNetWorthScrub.tsx` moves the hairline and dot through refs, and the script changes state only when the readout's day changes.
 - **Reduced motion**: the `index.css` reduced-motion block zeroes tailwindcss-animate and collapsible utilities through attribute selectors. A plain class selector can't match a variant-prefixed class. The block also stops `.skeleton`. Cover new animation utilities there. Scripted scrolls use `behavior: 'auto'` when reduced motion is on.
 
 

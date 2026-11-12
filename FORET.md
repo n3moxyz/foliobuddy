@@ -6,6 +6,8 @@ The landing hero was a static dashboard card that tilted toward the pointer. It 
 
 The lesson came from the data. The first port reused the landing page's series with its texture, and a test comparing the hero with the scroll story failed: the hero said −9.7% where the story says −9.6%. The texture had nudged the trough. The fix samples the year so every control point lands exactly on a sample, then draws those points exactly. Two parts of one page that quote the same number should share one source, and a test should hold them to it.
 
+A review then caught the trap the animation sweep fixed in the old hero (see below): the scrub put the pointer's x into React state on every frame, and the kit runs that update in `flushSync`, so the whole stage re-rendered sixty times a second. Now a small `ScrubMarker` moves the hairline and dot through refs, and state changes only when the readout's day does. Same rule, new place: a per-frame loop writes to the DOM node, not to state.
+
 The kit is vendored as a small MIT subset under `components/landing/stageshow-kit/`. Prettier ignores it so it stays verbatim, and the hero imports single files from it so the rest of the kit never reaches the bundle.
 
 ## Editable reduction percentages (6 November 2026)
