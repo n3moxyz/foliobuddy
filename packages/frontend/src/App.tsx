@@ -1,8 +1,9 @@
 import { useState, lazy, Suspense, type ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { SignedIn, SignedOut } from '@clerk/clerk-react';
+import { ClerkLoading, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { AppShell } from './components/layout/AppShell';
+import { BrandMark } from './components/layout/BrandMark';
 import { Skeleton } from './components/ui/skeleton';
 import {
   useAuthSetup,
@@ -28,6 +29,15 @@ const SignInPage = lazy(() => import('./pages/SignInPage'));
 const DemoModeApp = import.meta.env.DEV
   ? lazy(() => import('./dev/demoMode').then((module) => ({ default: module.DemoModeApp })))
   : null;
+
+function PublicLoadingStatus() {
+  return (
+    <div className="app-startup" role="status">
+      <BrandMark className="h-10 w-10" />
+      <span>Loading FolioBuddy…</span>
+    </div>
+  );
+}
 
 // Route-chunk fallback: skeleton (matching page loading states) + SR announcement.
 function RouteFallback() {
@@ -112,18 +122,7 @@ function LocalDemoApp() {
 function PublicApp() {
   useSignedOutImportCleanup();
   return (
-    <Suspense
-      fallback={
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex min-h-screen items-center justify-center bg-background"
-        >
-          <span className="sr-only">Loading page…</span>
-          <Skeleton className="h-8 w-40" />
-        </div>
-      }
-    >
+    <Suspense fallback={<PublicLoadingStatus />}>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="*" element={<SignInPage />} />
@@ -145,6 +144,10 @@ function App() {
             <LocalAuthenticatedApp />
           ) : (
             <>
+              <ClerkLoading>
+                <PublicLoadingStatus />
+              </ClerkLoading>
+
               <SignedOut>
                 <PublicApp />
               </SignedOut>

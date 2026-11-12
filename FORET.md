@@ -1,5 +1,11 @@
 # FOR[ET].md - FolioBuddy
 
+## Public landing page browser QA (12 November 2026)
+
+The story link now uses a native fragment, so keyboard focus, deep links, and Back work. The scroll story pins below the header on tall screens and shows all captions in normal flow on short screens. The benchmark legend sits below the plot, where it cannot overlap the value chip.
+
+Cold 3G testing exposed a blank screen while the entry bundle and Clerk loaded. The HTML and React now show the same branded loading status. Removing the manual Recharts chunk also kept the dashboard chart library out of the landing page's initial requests. Check the generated HTML and the browser waterfall to verify where a library actually loads.
+
 ## Landing hero: a scrub instead of a still (12 November 2026)
 
 The landing hero was a static dashboard card that tilted toward the pointer. It now plays a short loop: a pointer runs along the net worth line, and the headline reads out each point it passes. It pauses on the max drawdown and rests on the all-time high. It was built with the Stageshow skill. The skill builds the scene in a playground, films it frame by frame, and refuses to pass it until a rehearsal gate finds no spacing, crop or framing faults. An independent review then caught details the gate cannot see, such as a traffic light cut in half on phones and a dot that flashed in the corner as the pointer left.

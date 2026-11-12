@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { BRAND_COLORS, PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
 import { cn, formatCurrency } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
   BENCHMARK_SERIES,
   buildChartGeometry,
@@ -35,9 +36,14 @@ function clamp01(value: number): number {
  */
 export function ScrollStory() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const reduced = usePrefersReducedMotion();
-  const rawProgress = useScrollProgress(containerRef);
-  const progress = reduced ? 1 : rawProgress;
+  const shortViewport = useMediaQuery(
+    '(max-height: 40rem), (min-width: 48rem) and (max-height: 50rem)'
+  );
+  const isStatic = reduced || shortViewport;
+  const rawProgress = useScrollProgress(containerRef, viewportRef, !isStatic);
+  const progress = isStatic ? 1 : rawProgress;
   const [hoverT, setHoverT] = useState<number | null>(null);
 
   const { portfolio, benchmark } = useMemo(() => {
@@ -81,6 +87,7 @@ export function ScrollStory() {
   const readoutValue = valueAt(PORTFOLIO_SERIES, readoutT);
   const readoutX = portfolio.xAt(readoutT);
   const readoutY = portfolio.yAt(readoutT);
+  const readoutPosition = `${(readoutX / CHART_WIDTH) * 100}%`;
 
   const activeMilestones = SCROLL_MILESTONES.filter((m) => tipT >= m.anchor);
   const currentMilestone = activeMilestones[activeMilestones.length - 1] ?? null;
@@ -101,11 +108,14 @@ export function ScrollStory() {
         18.4 percent.
       </p>
 
-      <div ref={containerRef} className={cn(!reduced && 'h-[320vh]')}>
+      <div ref={containerRef} className={cn(!isStatic && 'h-[320svh]')}>
         <div
+          ref={viewportRef}
           className={cn(
             'mx-auto flex max-w-6xl flex-col justify-center px-4 sm:px-6',
-            !reduced && 'sticky top-0 h-screen'
+            isStatic
+              ? 'pt-6'
+              : 'sticky top-[57px] h-[calc(100svh-57px)] sm:top-[65px] sm:h-[calc(100svh-65px)]'
           )}
         >
           <div className="mb-6 sm:mb-10">
@@ -264,10 +274,11 @@ export function ScrollStory() {
 
             {/* Value readout chip, mirrored in DOM for crisp text */}
             <div
-              className="pointer-events-none absolute -top-2 rounded-md border bg-card px-2.5 py-1.5 font-mono text-xs tabular-nums shadow-sm transition-opacity duration-200"
+              className="pointer-events-none absolute -top-2 w-max rounded-md border bg-card px-2.5 py-1.5 font-mono text-xs tabular-nums shadow-sm transition-opacity duration-200"
               style={{
-                left: `${(readoutX / CHART_WIDTH) * 100}%`,
-                transform: `translateX(${readoutX > CHART_WIDTH * 0.8 ? '-100%' : '-50%'})`,
+                // Keep both edges inside the plot, including at its endpoints.
+                left: readoutPosition,
+                transform: `translateX(-${readoutPosition})`,
                 opacity: tipT > 0.02 ? 1 : 0,
               }}
             >
@@ -275,10 +286,9 @@ export function ScrollStory() {
               <span className="font-medium">{formatCurrency(readoutValue, 'USD', 0)}</span>
             </div>
 
-            {/* Benchmark legend appears with the benchmark line (desktop only —
-                on mobile it collides with the value readout chip) */}
+            {/* Reserve a row so the legend can appear without covering the readout. */}
             <div
-              className="pointer-events-none absolute right-0 top-0 hidden items-center gap-2 font-mono text-[11px] text-muted-foreground transition-opacity duration-300 sm:flex"
+              className="flex items-center justify-end gap-2 font-mono text-[11px] text-muted-foreground transition-opacity duration-300"
               style={{ opacity: benchT > 0 ? 1 : 0 }}
             >
               <span
@@ -289,8 +299,7 @@ export function ScrollStory() {
             </div>
           </div>
 
-          {/* Milestone caption rail (scroll mode only; reduced motion gets the static grid) */}
-          {!reduced && (
+          {!isStatic && (
             <div className="relative mt-6 min-h-[88px] sm:mt-8" aria-hidden="true">
               {SCROLL_MILESTONES.map((milestone) => (
                 <div
@@ -321,9 +330,8 @@ export function ScrollStory() {
         </div>
       </div>
 
-      {/* Reduced motion / no-JS style fallback captions, rendered statically */}
-      {reduced && (
-        <div className="mx-auto grid grid-cols-1 max-w-6xl gap-6 px-4 pb-8 sm:grid-cols-2 sm:px-6">
+      {isStatic && (
+        <div className="mx-auto mt-4 grid grid-cols-1 max-w-6xl gap-6 px-4 pb-8 sm:grid-cols-2 sm:px-6">
           {SCROLL_MILESTONES.map((milestone) => (
             <div key={milestone.id}>
               <div className="font-mono text-xs font-medium uppercase tracking-wider text-primary">

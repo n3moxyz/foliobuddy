@@ -356,6 +356,12 @@
 
 /* ---------- Public landing page (marketing route) ---------- */
 
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.landing-page) {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Press feedback for landing CTAs and demo controls. Longhand properties, not
    the `transition` shorthand: this unlayered rule beats Tailwind's layered
    `transition-colors`, and a shorthand would silently strip the color fade
