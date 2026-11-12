@@ -1,8 +1,6 @@
 // Deterministic illustrative data for the public landing page.
 // Everything here is fake but plausible — no live API calls, no user data.
 
-import { CATEGORY_COLORS } from '@/lib/chartColors';
-
 export interface SeriesPoint {
   /** 0..1 fraction along the x axis */
   t: number;
@@ -10,14 +8,14 @@ export interface SeriesPoint {
   value: number;
 }
 
-interface ControlPoint {
+export interface ControlPoint {
   t: number;
   /** Value in thousands of USD */
   k: number;
 }
 
 /** Cosine-interpolate control points into a dense series with a deterministic wiggle. */
-function buildSeries(
+export function buildSeries(
   controls: ControlPoint[],
   samples: number,
   wiggleScale: number
@@ -45,26 +43,24 @@ function buildSeries(
 export const SERIES_SAMPLES = 121;
 
 /** One illustrative year of portfolio value: +18.4%, one honest drawdown, new ATH at the end. */
-export const PORTFOLIO_SERIES: SeriesPoint[] = buildSeries(
-  [
-    { t: 0, k: 411.6 },
-    { t: 0.08, k: 418 },
-    { t: 0.16, k: 428 },
-    { t: 0.24, k: 436 },
-    { t: 0.32, k: 449 },
-    { t: 0.38, k: 456.2 },
-    { t: 0.44, k: 438 },
-    { t: 0.5, k: 412.4 },
-    { t: 0.58, k: 425 },
-    { t: 0.66, k: 438 },
-    { t: 0.74, k: 449 },
-    { t: 0.82, k: 462 },
-    { t: 0.9, k: 478 },
-    { t: 1, k: 487.2 },
-  ],
-  SERIES_SAMPLES,
-  1
-);
+export const PORTFOLIO_CONTROLS: ControlPoint[] = [
+  { t: 0, k: 411.6 },
+  { t: 0.08, k: 418 },
+  { t: 0.16, k: 428 },
+  { t: 0.24, k: 436 },
+  { t: 0.32, k: 449 },
+  { t: 0.38, k: 456.2 },
+  { t: 0.44, k: 438 },
+  { t: 0.5, k: 412.4 },
+  { t: 0.58, k: 425 },
+  { t: 0.66, k: 438 },
+  { t: 0.74, k: 449 },
+  { t: 0.82, k: 462 },
+  { t: 0.9, k: 478 },
+  { t: 1, k: 487.2 },
+];
+
+export const PORTFOLIO_SERIES: SeriesPoint[] = buildSeries(PORTFOLIO_CONTROLS, SERIES_SAMPLES, 1);
 
 /** BTC over the same year, rebased to the same starting value: +10.4%, wilder ride. */
 export const BENCHMARK_SERIES: SeriesPoint[] = buildSeries(
@@ -210,70 +206,3 @@ export const SCROLL_MILESTONES: ScrollMilestone[] = [
       'A year later: +18.4%, one honest drawdown survived, and the full record of how you got here — every trade, every snapshot.',
   },
 ];
-
-export interface HeroPosition {
-  symbol: string;
-  name: string;
-  venue: string;
-  /** Tailwind background class for the category dot */
-  accentClass: string;
-  price: number;
-  /** Per-tick price drift amplitude */
-  drift: number;
-  changePct: number;
-}
-
-export const HERO_POSITIONS: HeroPosition[] = [
-  {
-    symbol: 'BTC',
-    name: 'Bitcoin',
-    venue: 'Binance',
-    accentClass: 'bg-crypto',
-    price: 67240,
-    drift: 42,
-    changePct: 2.1,
-  },
-  {
-    symbol: 'NVDA',
-    name: 'NVIDIA',
-    venue: 'IBKR',
-    accentClass: 'bg-equities',
-    price: 903.12,
-    drift: 0.85,
-    changePct: -0.8,
-  },
-  {
-    symbol: 'SOL',
-    name: 'Solana',
-    venue: 'Onchain',
-    accentClass: 'bg-crypto',
-    price: 158.4,
-    drift: 0.6,
-    changePct: 4.6,
-  },
-  {
-    symbol: 'USDC',
-    name: 'USD Coin',
-    venue: 'Onchain',
-    accentClass: 'bg-cash',
-    price: 1.0,
-    drift: 0,
-    changePct: 0.0,
-  },
-];
-
-export interface AllocationSlice {
-  label: string;
-  pct: number;
-  /** CSS color for SVG strokes (category accent tokens) */
-  color: string;
-}
-
-export const HERO_ALLOCATION: AllocationSlice[] = [
-  { label: 'Crypto', pct: 54, color: CATEGORY_COLORS.crypto },
-  { label: 'Equities', pct: 31, color: CATEGORY_COLORS.equities },
-  { label: 'Cash', pct: 15, color: CATEGORY_COLORS.cash },
-];
-
-export const HERO_NET_WORTH = 487230;
-export const HERO_YTD_PCT = 18.4;

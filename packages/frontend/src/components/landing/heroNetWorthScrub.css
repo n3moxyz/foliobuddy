@@ -1,0 +1,251 @@
+/* HeroNetWorthScrub. Every rule is scoped to .fbn. The kit's tokens map to
+   the app's own theme variables (index.css .dark), so the hero follows the
+   design system instead of copying its colors. */
+.fbn .ss-stage[data-theme='dark'] {
+  --ss-canvas: hsl(var(--background));
+  --ss-well: hsl(var(--background));
+  --ss-surface: hsl(var(--card));
+  --ss-chrome: hsl(var(--card));
+  --ss-raised: hsl(var(--secondary));
+  --ss-fill: hsl(var(--input));
+  --ss-ink-1: hsl(234 20% 15%);
+  --ss-ink-2: hsl(234 18% 17%);
+  --ss-ink-3: hsl(234 17% 20%);
+  --ss-ink-4: hsl(234 15% 24%);
+  --ss-ink-5: hsl(234 13% 30%);
+  --ss-line: hsl(var(--border));
+  --ss-line-faint: hsl(234 18% 15%);
+  --ss-text-strong: hsl(var(--foreground));
+  --ss-text: hsl(230 16% 74%);
+  --ss-text-faint: hsl(var(--muted-foreground));
+  --ss-icon: hsl(var(--muted-foreground));
+  --ss-icon-faint: hsl(230 12% 40%);
+  --ss-accent: hsl(var(--primary));
+  --ss-accent-text: hsl(var(--primary-text));
+  --ss-accent-soft: color-mix(in oklab, hsl(var(--primary)) 18%, hsl(var(--card)));
+  --ss-success: hsl(var(--profit));
+  --ss-success-text: hsl(var(--profit-foreground));
+  --ss-success-soft: color-mix(in oklab, hsl(var(--profit)) 14%, hsl(var(--card)));
+  --ss-danger: hsl(var(--loss));
+  --ss-danger-text: hsl(var(--loss-foreground));
+  --ss-danger-soft: color-mix(in oklab, hsl(var(--loss)) 14%, hsl(var(--card)));
+  --ss-font: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --ss-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --ss-radius-sm: 4px;
+  --ss-radius-md: 6px;
+  --ss-radius-lg: 8px;
+  --ss-radius-window: 12px;
+  --fb-portfolio-line: oklch(var(--chart-portfolio));
+  --fb-ath: hsl(var(--profit));
+  --fb-mdd: hsl(var(--loss));
+}
+
+/* Corner bleed: the window sits one gutter in from the top and left and runs
+   off the right and bottom. The page is the ground, so the stage paints none. */
+.fbn .ss-stage {
+  --gutter: 32px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.fbn .ss-stage[data-layout='compact'] {
+  --gutter: 16px;
+}
+
+.fbn .fbn-win {
+  position: absolute;
+  top: var(--gutter);
+  left: var(--gutter);
+  width: 640px;
+  height: 440px;
+  box-shadow: var(--ss-shadow-hero);
+}
+
+.fbn .ss-stage[data-layout='compact'] .fbn-win {
+  width: 400px;
+  height: 400px;
+}
+
+/* The collapsed icon rail, as the app draws it at 72px */
+.fbn .fbn-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 54px 0 16px;
+}
+
+.fbn .fbn-nav {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--ss-radius-md);
+  color: var(--ss-icon);
+}
+
+.fbn .fbn-nav[data-active] {
+  border-color: hsl(var(--primary) / 0.3);
+  background: var(--ss-accent-soft);
+  color: var(--ss-accent-text);
+}
+
+.fbn .fbn-nav--end {
+  margin-top: auto;
+}
+
+.fbn .fbn-body {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  height: 100%;
+  padding: 20px 16px;
+  background: var(--ss-surface);
+}
+
+.fbn .ss-stage[data-layout='compact'] .fbn-body {
+  gap: 16px;
+  padding: 18px 16px;
+}
+
+.fbn .fbn-head {
+  display: grid;
+  gap: 0;
+}
+
+/* The label and its badge share a line, the badge pinned to the chart's right
+   edge so a changing label never shoves it */
+.fbn .fbn-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 22px;
+}
+
+.fbn .fbn-label {
+  color: var(--ss-text-faint);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.fbn .fbn-value {
+  margin-top: -2px;
+  color: var(--ss-text-strong);
+  font-family: var(--ss-mono);
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.fbn .ss-stage[data-layout='compact'] .fbn-value {
+  font-size: 24px;
+}
+
+.fbn .fbn-badge {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--ss-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The line in the app's portfolio slate, not the brand indigo */
+.fbn .fbn-plot {
+  position: relative;
+  --ss-accent: var(--fb-portfolio-line);
+}
+
+/* Milestones: the same small circle the app draws for ATH and MDD */
+.fbn .fbn-mile {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -6px 0 0 -6px;
+  border: 2px solid var(--ss-surface);
+  border-radius: 50%;
+  box-sizing: content-box;
+}
+
+.fbn .fbn-mile[data-kind='mdd'] {
+  background: var(--fb-mdd);
+}
+
+.fbn .fbn-mile[data-kind='ath'] {
+  background: var(--fb-ath);
+}
+
+.fbn .fbn-hair {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--ss-line);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.fbn .fbn-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 2px solid var(--ss-surface);
+  border-radius: 50%;
+  background: var(--ss-text-strong);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+/* On a milestone the dot takes its color, so the marker reads, not hides */
+.fbn .fbn-dot[data-kind='mdd'] {
+  background: var(--fb-mdd);
+}
+
+.fbn .fbn-dot[data-kind='ath'] {
+  background: var(--fb-ath);
+}
+
+.fbn .fbn-hair[data-on],
+.fbn .fbn-dot[data-on] {
+  opacity: 1;
+}
+
+.fbn .fbn-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -8px;
+  color: var(--ss-text-faint);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+/* The metric rail under the chart: filler, cut by the stage's foot */
+.fbn .fbn-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 108px);
+  gap: 10px;
+}
+
+.fbn .ss-stage[data-layout='compact'] .fbn-stats {
+  grid-template-columns: repeat(2, 139px);
+  gap: 16px;
+}
+
+.fbn .fbn-stat {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  min-height: 72px;
+  align-content: start;
+  border-radius: var(--ss-radius-lg);
+  background: var(--ss-raised);
+}

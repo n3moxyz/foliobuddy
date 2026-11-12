@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandMark } from '@/components/layout/BrandMark';
-import { HeroDashboard } from '@/components/landing/HeroDashboard';
+import { HeroNetWorthScrub } from '@/components/landing/HeroNetWorthScrub';
 import { ScrollStory } from '@/components/landing/ScrollStory';
 import { CapabilityBento } from '@/components/landing/CapabilityBento';
 import { HowItWorks } from '@/components/landing/HowItWorks';
@@ -86,7 +86,7 @@ export default function Landing() {
             </div>
 
             <div className="animate-fade-in-up [animation-delay:120ms]">
-              <HeroDashboard />
+              <HeroNetWorthScrub />
             </div>
           </div>
         </section>

@@ -1,5 +1,13 @@
 # FOR[ET].md - FolioBuddy
 
+## Landing hero: a scrub instead of a still (12 November 2026)
+
+The landing hero was a static dashboard card that tilted toward the pointer. It now plays a short loop: a pointer runs along the net worth line, and the headline reads out each point it passes. It pauses on the max drawdown and rests on the all-time high. It was built with the Stageshow skill. The skill builds the scene in a playground, films it frame by frame, and refuses to pass it until a rehearsal gate finds no spacing, crop or framing faults. An independent review then caught details the gate cannot see, such as a traffic light cut in half on phones and a dot that flashed in the corner as the pointer left.
+
+The lesson came from the data. The first port reused the landing page's series with its texture, and a test comparing the hero with the scroll story failed: the hero said −9.7% where the story says −9.6%. The texture had nudged the trough. The fix samples the year so every control point lands exactly on a sample, then draws those points exactly. Two parts of one page that quote the same number should share one source, and a test should hold them to it.
+
+The kit is vendored as a small MIT subset under `components/landing/stageshow-kit/`. Prettier ignores it so it stays verbatim, and the hero imports single files from it so the rest of the kit never reaches the bundle.
+
 ## Editable reduction percentages (6 November 2026)
 
 The pencil beside the Reduce buttons opens four editable percentages. Save stores them in the user's account, so every position uses the same defaults across devices. The API accepts four distinct whole percentages from 1 to 100. Their entered order stays intact. The existing balance shortcut still fills the exact full quantity, even when 100% is no longer a preset.
