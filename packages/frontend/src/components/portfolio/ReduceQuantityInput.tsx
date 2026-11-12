@@ -8,16 +8,7 @@ import { PositionAmountInput } from './PositionAmountInput';
 import { PositionQuantityValue } from './PositionQuantityValue';
 import { ReducePresetEditor } from './ReducePresetEditor';
 import { useReducePercentages } from '@/hooks/useReducePercentages';
-
-function quantityAtPercentage(balance: number, percentage: number) {
-  // The endpoint must use the original balance, including every fractional unit.
-  const quantity =
-    percentage === 100 ? balance : Number((balance * (percentage / 100)).toPrecision(15));
-  return quantity.toLocaleString('en-US', {
-    useGrouping: false,
-    maximumSignificantDigits: 21,
-  });
-}
+import { quantityAtPercentage } from './positionFormMath';
 
 export function ReduceQuantityInput({
   position,

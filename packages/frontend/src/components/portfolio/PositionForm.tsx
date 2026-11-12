@@ -101,6 +101,7 @@ import {
   usdPerCostCurrency,
   type CostCurrency,
   type CostInputMode,
+  quantityAtPercentage,
 } from './positionFormMath';
 import {
   findMatchingUnitTrustPosition,
@@ -171,6 +172,7 @@ function parseFundUrl(raw: string): { code: string; name: string } | null {
 
 interface PositionFormProps {
   position?: Position;
+  initialReduceMax?: boolean;
   onSuccess: () => void;
   cryptoCount?: number;
   cashCount?: number;
@@ -251,6 +253,7 @@ function saveSkipFundingConfirm() {
 
 export function PositionForm({
   position,
+  initialReduceMax = false,
   onSuccess,
   cryptoCount = 0,
   cashCount = 0,
@@ -258,8 +261,10 @@ export function PositionForm({
 }: PositionFormProps) {
   const { formatCurrency, formatQuantity } = useMoneyFormatter();
   const [mode, setMode] = useState<FormMode>('add');
-  const [editMode, setEditMode] = useState<'edit' | 'delta'>('edit');
-  const [deltaMode, setDeltaMode] = useState<PositionDeltaMode>('add');
+  const [editMode, setEditMode] = useState<'edit' | 'delta'>(initialReduceMax ? 'delta' : 'edit');
+  const [deltaMode, setDeltaMode] = useState<PositionDeltaMode>(
+    initialReduceMax ? 'reduce' : 'add'
+  );
   const queryClient = useQueryClient();
   const isEditing = !!position;
   const [ibkrCashPosition, setIbkrCashPosition] = useState<Position | null>(null);
@@ -393,7 +398,9 @@ export function PositionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingCustodyNames, custodyNamesVersion]);
   const [notes, setNotes] = useState(position?.notes || '');
-  const [additionalQuantity, setAdditionalQuantity] = useState('');
+  const [additionalQuantity, setAdditionalQuantity] = useState(() =>
+    initialReduceMax && position ? quantityAtPercentage(position.quantity, 100) : ''
+  );
   const [additionalCostInputMode, setAdditionalCostInputMode] = useState<CostInputMode>('total');
   const [additionalTotalCost, setAdditionalTotalCost] = useState('');
   const [additionalAvgCostInput, setAdditionalAvgCostInput] = useState('');

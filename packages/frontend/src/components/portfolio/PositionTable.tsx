@@ -8,7 +8,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -25,11 +24,7 @@ import {
   getPnLColorClass,
   cn,
 } from '@/lib/utils';
-import {
-  useCancelPositionHistory,
-  useDeletePosition,
-  usePositionHistory,
-} from '@/hooks/usePortfolio';
+import { useCancelPositionHistory, usePositionHistory } from '@/hooks/usePortfolio';
 import { PositionForm } from './PositionForm';
 import { IbkrCashPanel } from './IbkrCashPanel';
 import { IbkrSyncButton } from './IbkrSyncButton';
@@ -74,8 +69,6 @@ import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { NavStatus } from './NavStatus';
 import { AssetLabel } from '@/components/ui/asset-label';
 
-const SKIP_DELETE_CONFIRM_KEY = 'foliobuddy-skip-delete-confirm';
-const LEGACY_SKIP_DELETE_KEY = 'pa-portfolio-skip-delete-confirm';
 type PositionGroupBy = 'storage' | 'equityType' | 'broker';
 type MobilePositionVariant = 'focus' | 'compact';
 
@@ -173,20 +166,11 @@ export function PositionTable({
   const setViewPosition = useCallback((position: Position | null) => {
     setViewPositionId(position?.id ?? null);
   }, []);
-  const [editPosition, setEditPosition] = useState<Position | null>(null);
-  const [deletePosition, setDeletePosition] = useState<Position | null>(null);
+  const [positionEditor, setPositionEditor] = useState<{
+    position: Position;
+    reduceAll: boolean;
+  } | null>(null);
   const [cancelHistoryEntry, setCancelHistoryEntry] = useState<PositionHistoryEntry | null>(null);
-  const [dontAskAgain, setDontAskAgain] = useState(false);
-  const [skipConfirm, setSkipConfirm] = useState(() => {
-    // Migrates users from the old pa-portfolio key to the new foliobuddy key on first render
-    const legacy = localStorage.getItem(LEGACY_SKIP_DELETE_KEY);
-    if (legacy !== null) {
-      localStorage.setItem(SKIP_DELETE_CONFIRM_KEY, legacy);
-      localStorage.removeItem(LEGACY_SKIP_DELETE_KEY);
-      return legacy === 'true';
-    }
-    return localStorage.getItem(SKIP_DELETE_CONFIRM_KEY) === 'true';
-  });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);
   // SGD last so it wins over any DB USD->SGD rate in usdFxRates: the native SGD label
@@ -195,7 +179,6 @@ export function PositionTable({
     () => ({ USD: 1, ...(usdFxRates ?? {}), SGD: fxRate }),
     [fxRate, usdFxRates]
   );
-  const deletePositionMutation = useDeletePosition();
   const cancelPositionHistoryMutation = useCancelPositionHistory();
   const {
     data: positionHistory = [],
@@ -383,30 +366,6 @@ export function PositionTable({
   const singleId = sectionPrefix ? `${sectionPrefix}-single` : 'single';
   const fundId = sectionPrefix ? `${sectionPrefix}-fund` : 'fund';
 
-  const handleDeleteClick = useCallback(
-    (position: Position) => {
-      if (skipConfirm) {
-        deletePositionMutation.mutate(position.id);
-      } else {
-        setDeletePosition(position);
-      }
-    },
-    [skipConfirm, deletePositionMutation]
-  );
-
-  const handleDelete = async () => {
-    if (!deletePosition) return;
-
-    if (dontAskAgain) {
-      localStorage.setItem(SKIP_DELETE_CONFIRM_KEY, 'true');
-      setSkipConfirm(true);
-    }
-
-    await deletePositionMutation.mutateAsync(deletePosition.id);
-    setDeletePosition(null);
-    setDontAskAgain(false);
-  };
-
   const handleCancelHistoryEntry = async () => {
     if (!viewPosition || !cancelHistoryEntry) return;
 
@@ -426,7 +385,14 @@ export function PositionTable({
     (position: Position) => setViewPosition(position),
     [setViewPosition]
   );
-  const handleEdit = useCallback((position: Position) => setEditPosition(position), []);
+  const handleEdit = useCallback(
+    (position: Position) => setPositionEditor({ position, reduceAll: false }),
+    []
+  );
+  const handleReduceAll = useCallback(
+    (position: Position) => setPositionEditor({ position, reduceAll: true }),
+    []
+  );
 
   const renderPositionRow = useCallback(
     (position: Position, options: { showUnitTrustBadge?: boolean } = {}) => {
@@ -441,7 +407,7 @@ export function PositionTable({
           showAllColumns={showAllColumns}
           onView={handleView}
           onEdit={handleEdit}
-          onDelete={handleDeleteClick}
+          onReduceAll={handleReduceAll}
           onCopy={handleCopy}
           onUpdateNav={onUpdateNav}
           showUnitTrustBadge={options.showUnitTrustBadge}
@@ -456,7 +422,7 @@ export function PositionTable({
       showAllColumns,
       handleView,
       handleEdit,
-      handleDeleteClick,
+      handleReduceAll,
       handleCopy,
       onUpdateNav,
     ]
@@ -526,22 +492,22 @@ export function PositionTable({
           className="min-h-11"
           onClick={(event) => {
             event.stopPropagation();
-            setEditPosition(position);
+            handleEdit(position);
           }}
         >
           <Pencil className="h-4 w-4 mr-2" />
           Edit
         </DropdownMenuItem>
-        {!position.ibkrCash && position.ibkrContractId == null && (
+        {!position.ibkrCash && position.ibkrContractId == null && position.quantity > 0 && (
           <DropdownMenuItem
             className="min-h-11 text-destructive focus:text-destructive"
             onClick={(event) => {
               event.stopPropagation();
-              handleDeleteClick(position);
+              handleReduceAll(position);
             }}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Delete
+            Reduce all
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
@@ -1472,7 +1438,7 @@ export function PositionTable({
         )}
       </div>
 
-      <Dialog open={!!editPosition} onOpenChange={() => setEditPosition(null)}>
+      <Dialog open={!!positionEditor} onOpenChange={() => setPositionEditor(null)}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Position</DialogTitle>
@@ -1480,55 +1446,13 @@ export function PositionTable({
               Edit totals or add and reduce the selected position.
             </DialogDescription>
           </DialogHeader>
-          {editPosition && (
-            <PositionForm position={editPosition} onSuccess={() => setEditPosition(null)} />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={!!deletePosition}
-        onOpenChange={() => {
-          setDeletePosition(null);
-          setDontAskAgain(false);
-        }}
-      >
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Delete Position</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete your {deletePosition?.asset.symbol} position? This
-              action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center space-x-2 py-2">
-            <Checkbox
-              id="dontAskAgain"
-              checked={dontAskAgain}
-              onCheckedChange={(checked) => setDontAskAgain(checked === true)}
+          {positionEditor && (
+            <PositionForm
+              position={positionEditor.position}
+              initialReduceMax={positionEditor.reduceAll}
+              onSuccess={() => setPositionEditor(null)}
             />
-            <label htmlFor="dontAskAgain" className="text-sm text-muted-foreground cursor-pointer">
-              Don't ask me again
-            </label>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDeletePosition(null);
-                setDontAskAgain(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deletePositionMutation.isPending}
-            >
-              {deletePositionMutation.isPending ? 'Deleting…' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -1698,25 +1622,27 @@ export function PositionTable({
                   size="sm"
                   onClick={() => {
                     setViewPosition(null);
-                    setEditPosition(viewPosition);
+                    handleEdit(viewPosition);
                   }}
                 >
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   Edit
                 </Button>
-                {!viewPosition.ibkrCash && viewPosition.ibkrContractId == null && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      setViewPosition(null);
-                      handleDeleteClick(viewPosition);
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    Delete
-                  </Button>
-                )}
+                {!viewPosition.ibkrCash &&
+                  viewPosition.ibkrContractId == null &&
+                  viewPosition.quantity > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        setViewPosition(null);
+                        handleReduceAll(viewPosition);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      Reduce all
+                    </Button>
+                  )}
               </div>
             </div>
           )}

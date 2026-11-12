@@ -65,7 +65,7 @@ interface PositionRowProps {
   showAllColumns?: boolean;
   onView: (position: Position) => void;
   onEdit: (position: Position) => void;
-  onDelete: (position: Position) => void;
+  onReduceAll: (position: Position) => void;
   onCopy: (position: Position, e: React.MouseEvent) => void;
   onUpdateNav?: (position: Position) => void;
   showUnitTrustBadge?: boolean;
@@ -80,7 +80,7 @@ export const PositionRow = React.memo(function PositionRow({
   showAllColumns = false,
   onView,
   onEdit,
-  onDelete,
+  onReduceAll,
   onCopy,
   onUpdateNav,
   showUnitTrustBadge = false,
@@ -274,13 +274,14 @@ export const PositionRow = React.memo(function PositionRow({
           >
             <Pencil className="h-4 w-4" />
           </Button>
-          {!position.ibkrCash && position.ibkrContractId == null && (
+          {!position.ibkrCash && position.ibkrContractId == null && position.quantity > 0 && (
             <Button
               variant="ghost"
               size="icon"
               className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
-              onClick={() => onDelete(position)}
-              aria-label="Delete position"
+              onClick={() => onReduceAll(position)}
+              aria-label="Reduce all"
+              title="Reduce all"
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
