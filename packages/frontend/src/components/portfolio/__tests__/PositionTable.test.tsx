@@ -10,7 +10,6 @@ const { historyMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/hooks/usePortfolio', () => ({
-  useDeletePosition: () => ({ mutateAsync: vi.fn() }),
   useCancelPositionHistory: () => ({ mutateAsync: vi.fn() }),
   usePositionHistory: historyMock,
 }));

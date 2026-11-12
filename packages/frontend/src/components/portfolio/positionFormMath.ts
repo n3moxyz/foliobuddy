@@ -190,3 +190,13 @@ export function buildPositionDeltaPreview(params: {
     return null;
   }
 }
+
+export function quantityAtPercentage(balance: number, percentage: number) {
+  // The endpoint must use the original balance, including every fractional unit.
+  const quantity =
+    percentage === 100 ? balance : Number((balance * (percentage / 100)).toPrecision(15));
+  return quantity.toLocaleString('en-US', {
+    useGrouping: false,
+    maximumSignificantDigits: 21,
+  });
+}

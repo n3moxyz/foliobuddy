@@ -83,11 +83,11 @@ const stablecoinXRow = catalogAsset({
   exchange: 'NASDAQ',
 });
 
-function renderForm(position?: Position) {
+function renderForm(position?: Position, initialReduceMax = false) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <PositionForm onSuccess={vi.fn()} position={position} />
+      <PositionForm onSuccess={vi.fn()} position={position} initialReduceMax={initialReduceMax} />
     </QueryClientProvider>
   );
 }
@@ -338,6 +338,35 @@ describe('PositionForm: picking an unpriced equity', () => {
 });
 
 describe('PositionForm: amount panels', () => {
+  it('submits the full fractional balance with optional proceeds only after confirmation', async () => {
+    const position = {
+      id: 'reduce-all',
+      assetId: stablecoinXRow.id,
+      asset: stablecoinXRow,
+      quantity: 0.0000000123456789,
+      avgCostUsd: 10,
+    } as Position;
+    renderForm(position, true);
+
+    expect(screen.getByLabelText('Reduce Quantity')).toHaveValue('0.0000000123456789');
+    expect(updatePositionMutate).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Total Proceeds (USD)'), { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reduce Position' }));
+
+    await waitFor(() =>
+      expect(updatePositionMutate).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          id: position.id,
+          data: expect.objectContaining({
+            quantity: 0,
+            positionDelta: { mode: 'reduce', quantity: position.quantity, proceedsUsd: 12 },
+          }),
+        })
+      )
+    );
+  });
+
   it('shows a unit trust code beside its editable units without reduction controls', async () => {
     renderForm();
     await chooseSelectOption('Category', 'Equities');

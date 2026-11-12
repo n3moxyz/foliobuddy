@@ -194,11 +194,12 @@ The Reduce Quantity field now contains the balance, Max action, and a percentage
 The amount stays prominent beside its ticker. Slider stops mark quarters of the holding, and keyboard controls adjust the selection.
 Typing an amount updates the slider. Max and the 100% endpoint preserve the complete balance, including fractional units.
 
-## Reduce the full position (28 October 2026)
+## Reduce the full position (28 October 2026, updated 12 November)
 
 Reduce mode now makes the available balance clickable. `Reduce max` fills the quantity field with the complete held amount.
 The display still follows quantity privacy and normal decimal formatting. The input keeps full precision, including small token balances.
 The existing preview shows the resulting zero balance. The user still submits the reduction with `Reduce Position`.
+The rubbish-bin icon now opens the same form with the exact balance filled in. This lets the user enter sale proceeds and choose a cash destination before submitting.
 
 ## Portfolio drawdown summary (28 October 2026)
 
