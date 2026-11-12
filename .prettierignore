@@ -5,3 +5,4 @@ build
 coverage
 packages/backend/prisma/migrations
 package-lock.json
+packages/frontend/src/components/landing/stageshow-kit
