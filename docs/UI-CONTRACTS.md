@@ -6,6 +6,8 @@ Read the affected section before changing these surfaces. These rules also apply
 
 Signed-out: `/` → lazy `pages/Landing.tsx` (`components/landing/` sections), else `pages/SignInPage.tsx`; signed-in `/sign-in` → `/`. `dark` wrapper forces dark; only deterministic local `landingData.ts` (no API calls); hand-rolled SVG (never recharts); `landing-*` `index.css` utils (reduced-motion covered); never grow the signed-in bundle. **Key-feature rule**: each major user-facing feature (new tab/page, headline capability) → assess landing fit; if yes, usually a `CapabilityBento` on local data (mirror real UI, never fetch); News = reference.
 
+**Hero:** `HeroNetWorthScrub` is a looping Stageshow demo: a pointer scrubs the net worth line, pauses on the max drawdown and rests on the all-time high. `stageshow-kit/` is a vendored MIT subset of Benji Taylor's kit. Keep it verbatim: Prettier ignores it, and the demo imports single files from it, never an index, so the kit's other parts stay out of the bundle. Its tokens map to the app's theme variables in `heroNetWorthScrub.css`. `heroScrubData.ts` samples `PORTFOLIO_CONTROLS` so the drawn peak, trough and end match the landing copy (−9.6% drawdown, +18.4%). A test enforces that match. The stage is `aria-hidden`. Under reduced motion it shows its poster, the drawdown beat. Rehearsal notes, and how to re-film after a change: `components/landing/HeroNetWorthScrub.REHEARSAL.md`.
+
 ## Responsive Mobile Design
 
 iOS HIG, all pages:
@@ -70,7 +72,7 @@ Motion confirms an action or orients the user (PRODUCT.md). Keep it off keyboard
 - **Popups**: popovers, dropdown menus and selects scale from their trigger (Radix `--radix-*-content-transform-origin`) with `ease-out-expo`, the `cubic-bezier(0.16, 1, 0.3, 1)` curve of the page and chart cues.
 - **Hover**: color or opacity only, at Tailwind's default 150 ms. No hover transforms.
 - **Loops**: no infinite animation on persistent UI. Status dots are static. Spinners, skeleton shimmer and pulses run only while something loads. The landing page keeps its own live-dot ping.
-- **Per-frame motion**: a hand-written `requestAnimationFrame` or pointer loop writes to the element's `style` through a ref, never to React state. State re-renders the component on every frame. The landing hero tilt (`usePointerTilt`) is the example.
+- **Per-frame motion**: a hand-written `requestAnimationFrame` or pointer loop writes to the element's `style` through a ref, never to React state. State re-renders the component on every frame. The landing hero scrub is the example: `ScrubMarker` in `HeroNetWorthScrub.tsx` moves the hairline and dot through refs, and the script changes state only when the readout's day changes.
 - **Reduced motion**: the `index.css` reduced-motion block zeroes tailwindcss-animate and collapsible utilities through attribute selectors. A plain class selector can't match a variant-prefixed class. The block also stops `.skeleton`. Cover new animation utilities there. Scripted scrolls use `behavior: 'auto'` when reduced motion is on.
 
 
