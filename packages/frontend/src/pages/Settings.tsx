@@ -22,6 +22,7 @@ import { SnapshotScheduleSection } from '@/components/settings/SnapshotScheduleS
 import { IbkrDeviceSettings } from '@/components/settings/IbkrDeviceSettings';
 import { TradeSortSelect } from '@/components/trades/TradeSortSelect';
 import { RefreshCw, Download, Camera } from 'lucide-react';
+import { version } from '../../../../package.json';
 
 export default function Settings() {
   usePageTitle('Settings');
@@ -334,13 +335,22 @@ export default function Settings() {
           <div className="flex items-center gap-3">
             <BrandMark className="h-10 w-10" />
             <p>
-              <strong>FolioBuddy</strong> v1.0.0
+              <strong>FolioBuddy</strong> v{version}
+              {__BUILD_SHA__ && (
+                <span className="text-muted-foreground"> · Build {__BUILD_SHA__}</span>
+              )}
             </p>
           </div>
           <p className="text-muted-foreground">
             A private portfolio dashboard for a small circle: crypto, equities, funds and cash side
             by side, with live prices, daily snapshots and honest benchmarks.
           </p>
+          <a
+            className="inline-block text-primary underline underline-offset-4"
+            href="https://github.com/n3moxyz/foliobuddy/blob/main/CHANGELOG.md"
+          >
+            Changelog
+          </a>
           <div className="pt-4">
             <p className="text-muted-foreground">Data Sources:</p>
             <ul className="list-disc list-inside text-muted-foreground">

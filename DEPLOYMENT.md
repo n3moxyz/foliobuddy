@@ -13,6 +13,16 @@
 
 Auto-deploys: backend via `.github/workflows/deploy-backend.yml` on push to `main` (touching `packages/backend/**`). Frontend via Vercel's GitHub integration on every push.
 
+### Release versions
+
+1. Bump the root `package.json` version and root lockfile entries with `npm version <version> --no-git-tag-version --workspaces=false`.
+2. Add the release notes to [CHANGELOG.md](CHANGELOG.md) in the same PR.
+3. After merge, verify that Vercel serves the merge commit and that its Settings bundle contains the expected version and build ID.
+4. Tag that commit with `v<version>` and push the tag. Reuse the same release version for rebuilds of the same release.
+
+Settings → About reads the root package version at build time. Vercel supplies the frontend Git commit for the build ID.
+The [historical deployment record](docs/DEPLOYMENT-HISTORY.md) maps earlier builds to reconstructed release numbers.
+
 Requested implementation work includes publication through this existing release process.
 Follow the publication authorization in [AGENTS.md](AGENTS.md). Required checks,
 review resolution, and deployment verification still apply. Honor explicit release holds.

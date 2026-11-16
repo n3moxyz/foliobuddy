@@ -3,7 +3,7 @@
 A personal investing dashboard for tracking holdings, net worth and trades across crypto, equities and cash.
 Bring positions from different brokers, exchanges, wallets and banks into one view, then review allocation and performance over time.
 
-[Open the app](https://foliobuddy.xyz) · [Run locally](#run-locally) · [Architecture](docs/CODEBASE.md)
+[Open the app](https://foliobuddy.xyz) · [Run locally](#run-locally) · [Architecture](docs/CODEBASE.md) · [Changelog](CHANGELOG.md)
 
 ![FolioBuddy dashboard showing net worth, portfolio performance and benchmark comparisons](docs/screenshots/dashboard.png)
 
