@@ -10,8 +10,13 @@ const manualChunkGroups: Array<[chunkName: string, packageNames: string[]]> = [
   ['clerk', ['@clerk/clerk-react']],
 ];
 
+const commitSha = process.env.VERCEL_GIT_COMMIT_SHA ?? '';
+
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __BUILD_SHA__: JSON.stringify(/^[a-f0-9]{40}$/i.test(commitSha) ? commitSha.slice(0, 7) : ''),
+  },
   build: {
     rollupOptions: {
       output: {

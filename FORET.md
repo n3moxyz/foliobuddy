@@ -1,5 +1,9 @@
 # FOR[ET].md - FolioBuddy
 
+## Release versions in About (17 November 2026)
+
+About used to show a fixed v1.0.0 while production got newer builds. It now reads the root package version and, on Vercel, shows the first seven characters of the build commit. The changelog links to the backfill. Old GitHub deployment statuses filled gaps in Vercel's retained list, and the earliest CLI build had no commit to tag.
+
 ## Public landing page browser QA (12 November 2026)
 
 The story link now uses a native fragment, so keyboard focus, deep links, and Back work. The scroll story pins below the header on tall screens and shows all captions in normal flow on short screens. The benchmark legend sits below the plot, where it cannot overlap the value chip.
