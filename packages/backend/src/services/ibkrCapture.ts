@@ -6,7 +6,7 @@ const currency = z.string().regex(/^[A-Z]{3}$/);
 const holding = z.object({
   contract_id: z.number().int().positive().max(2147483647),
   contract_description: z.string().trim().min(1).max(100),
-  position: number.positive(),
+  position: number.min(0),
   average_price: number.min(0),
   market_price: number.min(0),
   market_value: number.min(0),
@@ -93,7 +93,13 @@ export function ibkrYahooSymbol(position: IbkrHolding): string {
 
 /** Validate completeness independently of the app's holdings or a caller's flag. */
 export function validateIbkrCapture(raw: unknown, now = Date.now()) {
-  const capture = ibkrCaptureSchema.parse(raw);
+  const parsed = ibkrCaptureSchema.safeParse(raw);
+  if (!parsed.success)
+    throw new AppError(
+      'IBKR returned unsupported data for this sync. Review your broker account.',
+      422
+    );
+  const capture = parsed.data;
   const firstTime = Date.parse(capture.first.capturedAt);
   const secondTime = Date.parse(capture.second.capturedAt);
   requireIbkr(
@@ -186,6 +192,10 @@ export function validateIbkrCapture(raw: unknown, now = Date.now()) {
       'IBKR cash summary differs from its currency balances'
     );
     for (const p of s.positions) {
+      if (p.position === 0) {
+        requireIbkr(p.market_value === 0, 'An IBKR position with zero shares has a market value');
+        continue;
+      }
       requireIbkr(
         Number.isFinite(p.position * p.average_price),
         'IBKR native cost exceeds the supported numeric range'
@@ -197,6 +207,7 @@ export function validateIbkrCapture(raw: unknown, now = Date.now()) {
       ibkrYahooSymbol(p);
     }
     const gross = s.positions.reduce((total, p) => {
+      if (p.position === 0) return total;
       const rate = s.balances.find((b) => b.currency === p.currency)?.exchange_rate;
       requireIbkr(rate, 'A holding currency is missing from the IBKR balances');
       return total + p.market_value * rate;
