@@ -5,6 +5,7 @@ import { PositionTable } from '../PositionTable';
 import * as ibkrSync from '../ibkrDirectSync';
 import type { Position, PositionHistoryEntry } from '@/lib/types';
 import { MASKED_MONEY_VALUE, usePrivacyStore } from '@/stores/privacyStore';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const { historyMock } = vi.hoisted(() => ({
   historyMock: vi.fn(() => ({ data: [] as PositionHistoryEntry[] })),
@@ -15,10 +16,12 @@ vi.mock('@/hooks/usePortfolio', () => ({
   usePositionHistory: historyMock,
 }));
 vi.mock('../PositionForm', () => ({ PositionForm: () => null }));
+vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: vi.fn(() => false) }));
 
 afterEach(() => {
   act(() => usePrivacyStore.getState().setValuesHidden(false));
   historyMock.mockReturnValue({ data: [] });
+  vi.mocked(useMediaQuery).mockReturnValue(false);
   vi.restoreAllMocks();
 });
 
@@ -62,14 +65,13 @@ it.each(['CASH', 'STABLECOIN', 'LIQUID_CRYPTO', 'EQUITY', 'UNIT_TRUST'])(
   'masks %s quantities in desktop/mobile rows and details while showing current quotes',
   (category) => {
     act(() => usePrivacyStore.getState().setValuesHidden(true));
-    render(
-      <PositionTable
-        positions={[
-          { ...privatePosition, asset: { ...privatePosition.asset, category } } as Position,
-        ]}
-        usdFxRates={{ JPY: 150 }}
-      />
-    );
+    const props = {
+      positions: [
+        { ...privatePosition, asset: { ...privatePosition.asset, category } } as Position,
+      ],
+      usdFxRates: { JPY: 150 },
+    };
+    const { rerender } = render(<PositionTable {...props} />);
     const row = screen.getByRole('row', { name: 'View PRIVATE position' });
     const cells = within(row).getAllByRole('cell');
     expect(cells[1]).toHaveTextContent(MASKED_MONEY_VALUE);
@@ -79,11 +81,6 @@ it.each(['CASH', 'STABLECOIN', 'LIQUID_CRYPTO', 'EQUITY', 'UNIT_TRUST'])(
     expect(cells[4]).toHaveTextContent('JPY 1,851');
     expect(cells[5]).toHaveTextContent(MASKED_MONEY_VALUE);
     expect(cells[2]).not.toHaveTextContent('JPY 1,500');
-
-    const mobile = within(screen.getByRole('button', { name: 'View PRIVATE position' }));
-    expect(mobile.getByText('Qty')).toHaveTextContent(`Qty${MASKED_MONEY_VALUE}`);
-    expect(mobile.getByText('Price')).toHaveTextContent('$12.34');
-    expect(mobile.getByText('Avg')).toHaveTextContent(MASKED_MONEY_VALUE);
 
     fireEvent.click(within(row).getByRole('button', { name: 'View details' }));
     const dialog = screen.getByRole('dialog');
@@ -99,6 +96,16 @@ it.each(['CASH', 'STABLECOIN', 'LIQUID_CRYPTO', 'EQUITY', 'UNIT_TRUST'])(
     expect(cells[2]).toHaveTextContent('$10.00');
     expect(cells[2]).toHaveTextContent('JPY 1,500');
     expect(within(dialog).getByText('Quantity').parentElement).toHaveTextContent('54,321.25');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    act(() => usePrivacyStore.getState().setValuesHidden(true));
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    rerender(<PositionTable {...props} />);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    const mobile = within(screen.getByRole('button', { name: 'View PRIVATE position' }));
+    expect(mobile.getByText('Qty')).toHaveTextContent(`Qty${MASKED_MONEY_VALUE}`);
+    expect(mobile.getByText('Price')).toHaveTextContent('$12.34');
+    expect(mobile.getByText('Avg')).toHaveTextContent(MASKED_MONEY_VALUE);
   }
 );
 

@@ -2,7 +2,10 @@ import type { ReactNode } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PortfolioSummary, Position } from '@/lib/types';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import Portfolio from '../Portfolio';
+
+vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: vi.fn(() => false) }));
 
 const perpMocks = vi.hoisted(() => ({
   exposure: 0,
@@ -200,7 +203,7 @@ function navPosition(id: string, provider: 'fund-manager' | 'manual'): Position 
 
 function openNav(symbol = 'AMOVA') {
   fireEvent.click(
-    within(screen.getByTestId('position-table-mobile-equities')).getByRole('button', {
+    within(screen.getByTestId('position-table-equities')).getByRole('button', {
       name: `Update NAV ${symbol}`,
     })
   );
@@ -217,6 +220,7 @@ async function openMenuItem(menu: 'More options' | 'More actions', item: string)
 
 describe('Portfolio responsive grouping', () => {
   beforeEach(() => {
+    vi.mocked(useMediaQuery).mockReturnValue(false);
     perpMocks.exposure = 0;
     perpMocks.loaded = true;
     perpMocks.error = false;
@@ -347,6 +351,7 @@ describe('Portfolio responsive grouping', () => {
   });
 
   it('keeps desktop asset categories on mobile while using compact rows', () => {
+    vi.mocked(useMediaQuery).mockReturnValue(true);
     render(<Portfolio />);
 
     const crypto = screen.getByTestId('position-table-mobile-crypto');
@@ -365,25 +370,26 @@ describe('Portfolio responsive grouping', () => {
       expect(table).toHaveAttribute('data-mobile-column-toggle', 'false');
     }
 
-    expect(screen.queryByTestId('position-table-mobile-owned')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('position-table-equities')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'By Type' })[0]);
     expect(equities).toHaveAttribute('data-group-by', 'equityType');
   });
 
-  it('keeps custody discoverable as a heading with named help in both layouts', () => {
+  it.each([
+    { isPhone: false, heading: 'Held for Others (1)', section: 'custody' },
+    { isPhone: true, heading: 'Held for Others', section: 'mobile-custody' },
+  ])('keeps custody discoverable in layout $section', ({ isPhone, heading, section }) => {
+    vi.mocked(useMediaQuery).mockReturnValue(isPhone);
     navMocks.positions = [
       ...positions,
       { ...positions[0], id: 'custody-position', custodyOf: 'Family' },
     ];
     render(<Portfolio />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Held for Others' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Held for Others (1)' })
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Help: Held for Others' })).toHaveLength(2);
-    expect(screen.getByTestId('position-table-mobile-custody')).toHaveTextContent('BTC');
+    expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Help: Held for Others' })).toBeInTheDocument();
+    expect(screen.getByTestId(`position-table-${section}`)).toHaveTextContent('BTC');
   });
 
   it('does not save an invalid perp dialog value', async () => {

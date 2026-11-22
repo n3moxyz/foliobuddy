@@ -4,9 +4,67 @@ import { Check, ChevronRight, Circle } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
+const ToggleFromTap = React.createContext<(() => void) | null>(null);
 
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+function DropdownMenu({
+  open,
+  defaultOpen = false,
+  onOpenChange,
+  children,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+  const isOpen = open ?? uncontrolledOpen;
+  const changeOpen = (next: boolean) => {
+    if (open === undefined) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
+  return (
+    <ToggleFromTap.Provider value={() => changeOpen(!isOpen)}>
+      <DropdownMenuPrimitive.Root {...props} open={isOpen} onOpenChange={changeOpen}>
+        {children}
+      </DropdownMenuPrimitive.Root>
+    </ToggleFromTap.Provider>
+  );
+}
+
+const DropdownMenuTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
+>(({ onPointerDown, onPointerCancel, onClick, disabled, ...props }, ref) => {
+  const toggleFromTap = React.useContext(ToggleFromTap);
+  const tap = React.useRef(false);
+  return (
+    <DropdownMenuPrimitive.Trigger
+      {...props}
+      ref={ref}
+      disabled={disabled}
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        tap.current =
+          !event.defaultPrevented &&
+          event.button === 0 &&
+          !!event.pointerType &&
+          event.pointerType !== 'mouse';
+        // Let a finger pan the page. Radix opens on pointerdown by default.
+        if (tap.current) event.preventDefault();
+      }}
+      onPointerCancel={(event) => {
+        tap.current = false;
+        onPointerCancel?.(event);
+      }}
+      onClick={(event) => {
+        const fromTap = tap.current;
+        tap.current = false;
+        onClick?.(event);
+        if ((fromTap || event.detail === 0) && !disabled && !event.defaultPrevented) {
+          toggleFromTap?.();
+        }
+      }}
+    />
+  );
+});
+DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName;
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 
@@ -44,7 +102,7 @@ const DropdownMenuSubContent = React.forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      'z-50 min-w-[8rem] origin-[--radix-dropdown-menu-content-transform-origin] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg ease-out-expo data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+      'z-50 min-w-[8rem] origin-[--radix-dropdown-menu-content-transform-origin] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-x-hidden overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-lg ease-out-expo data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
       className
     )}
     {...props}
@@ -61,7 +119,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-50 min-w-[8rem] origin-[--radix-dropdown-menu-content-transform-origin] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md ease-out-expo data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+        'z-50 min-w-[8rem] origin-[--radix-dropdown-menu-content-transform-origin] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-x-hidden overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md ease-out-expo data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
         className
       )}
       {...props}

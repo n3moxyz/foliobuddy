@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.68.2
+
+- Keep Portfolio scrolling when a swipe starts on a menu button. Let menus scroll on short screens.
+- Keep the current page visible while the next page loads. Restore scroll position on Back.
+- Keep the Portfolio summary steady during loading and render only the active holdings layout.
+
 ## v1.68.1
 
 - Swipe up to dismiss an IBKR sync toast on mobile, or close it on desktop. The sync keeps running and shows a temporary result.

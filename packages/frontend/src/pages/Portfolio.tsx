@@ -63,6 +63,7 @@ import type { Position } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { usePerpExposure } from '@/hooks/usePerpExposure';
 import { calculateExposurePct } from '@/lib/exposure';
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
@@ -72,7 +73,6 @@ import { formatMilestoneDate } from '@/lib/portfolioHistory';
 
 const PERP_EXPOSURE_INPUT_ID = 'perp-exposure-input';
 const PERP_EXPOSURE_INLINE_INPUT_ID = 'perp-exposure-inline-input';
-const PORTFOLIO_SUMMARY_SKELETON_KEYS = ['total', 'exposure', 'positions', 'pnl', 'cash'] as const;
 const PORTFOLIO_SECTION_SKELETON_KEYS = ['primary', 'secondary'] as const;
 const PORTFOLIO_ROW_SKELETON_KEYS = ['first', 'second', 'third'] as const;
 const EQUITY_GROUP_BY_KEY = 'foliobuddy-equity-group-by';
@@ -138,6 +138,7 @@ function saveEquityGroupBy(value: EquityGroupBy) {
 }
 
 export default function Portfolio() {
+  const isPhone = useMediaQuery('(max-width: 639.98px)');
   usePageTitle('Portfolio');
   const { currency } = useCurrencyStore();
   const { formatCurrency } = useMoneyFormatter();
@@ -150,7 +151,13 @@ export default function Portfolio() {
     refetch: retryPositions,
     isFetching: positionsFetching,
   } = usePositions();
-  const { data: summary } = usePortfolioSummary();
+  const {
+    data: summary,
+    isPending: summaryPending,
+    isError: summaryError,
+    isFetching: summaryFetching,
+    refetch: retrySummary,
+  } = usePortfolioSummary();
   const { data: fxRates } = useFxRates();
   const { currentDrawdownPct, maxDrawdownPct, maxDrawdownDate } = useDrawdownStats(
     summary?.totalValueUsd ?? 0,
@@ -379,6 +386,16 @@ export default function Portfolio() {
       }),
     [positions, summary?.totalValueUsd, perpExposure, perpExposureLoaded]
   );
+  const summaryTotal = summary
+    ? formatCurrency(convertValue(summary.totalValueUsd), currency, 0)
+    : '-';
+  const summaryPnl = summary
+    ? formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)
+    : '-';
+  const summaryPnlColor = getPnLColorClass(summary?.unrealizedPnL);
+  const summaryCostBasis = summary
+    ? formatCurrency(convertValue(summary.totalCostBasis), currency, 0)
+    : '-';
 
   return (
     <div className="space-y-6">
@@ -535,26 +552,27 @@ export default function Portfolio() {
           </>
         }
       >
-        {summary && (
+        <section aria-label="Portfolio summary" aria-busy={summaryPending || undefined}>
           <div className="pb-1">
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-border/80 bg-card/50 p-3 shadow-sm sm:hidden">
               <div className="min-w-0">
                 <p className="text-xs leading-none text-muted-foreground">Total Value</p>
                 <p className="mt-1 truncate font-mono text-base font-semibold tabular-nums">
-                  {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
+                  {summaryTotal}
                 </p>
               </div>
               <div className="min-w-0">
                 <p className="text-xs leading-none text-muted-foreground">YTD P&L</p>
                 <p
-                  className={`mt-1 truncate font-mono text-base font-semibold tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
+                  className={`mt-1 truncate font-mono text-base font-semibold tabular-nums ${summaryPnlColor}`}
                 >
-                  {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}
+                  {summaryPnl}
                 </p>
                 <p
-                  className={`font-mono text-[11px] leading-none tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
+                  className={`font-mono text-[11px] leading-none tabular-nums ${summaryPnlColor}`}
+                  aria-hidden={!summary || undefined}
                 >
-                  {formatPercent(summary.unrealizedPnLPct)}
+                  {summary ? formatPercent(summary.unrealizedPnLPct) : '\u00a0'}
                 </p>
               </div>
               <Button
@@ -575,9 +593,7 @@ export default function Portfolio() {
                       content="First recorded portfolio value this year"
                     />
                   </div>
-                  <p className="font-mono text-sm font-medium tabular-nums">
-                    {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
-                  </p>
+                  <p className="font-mono text-sm font-medium tabular-nums">{summaryCostBasis}</p>
                 </div>
                 <div className="pl-3">
                   <div className="flex items-center gap-1">
@@ -592,11 +608,18 @@ export default function Portfolio() {
                   >
                     {formatDrawdown(maxDrawdownPct)}
                   </p>
-                  {maxDrawdownDateLabel && (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      (<time dateTime={maxDrawdownDate!}>{maxDrawdownDateLabel}</time>)
-                    </p>
-                  )}
+                  <p
+                    className="mt-1 text-[11px] text-muted-foreground"
+                    aria-hidden={!maxDrawdownDateLabel || undefined}
+                  >
+                    {maxDrawdownDateLabel ? (
+                      <>
+                        (<time dateTime={maxDrawdownDate!}>{maxDrawdownDateLabel}</time>)
+                      </>
+                    ) : (
+                      '\u00a0'
+                    )}
+                  </p>
                 </div>
               </div>
             </div>
@@ -604,9 +627,9 @@ export default function Portfolio() {
             <div className="hidden sm:block">
               <div className="flex items-baseline gap-3 flex-wrap">
                 <p className="text-[2rem] font-bold leading-none tracking-tight tabular-nums sm:text-4xl">
-                  {formatCurrency(convertValue(summary.totalValueUsd), currency, 0)}
+                  {summaryTotal}
                 </p>
-                {summary.unrealizedPnL !== 0 && (
+                {summary && summary.unrealizedPnL !== 0 && (
                   <span
                     className={`inline-flex items-center gap-1 text-sm font-medium ${getPnLColorClass(summary.unrealizedPnL)}`}
                   >
@@ -615,8 +638,7 @@ export default function Portfolio() {
                     ) : (
                       <TrendingDown className="h-4 w-4" />
                     )}
-                    {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)} (
-                    {formatPercent(summary.unrealizedPnLPct)})
+                    {summaryPnl} ({formatPercent(summary.unrealizedPnLPct)})
                   </span>
                 )}
               </div>
@@ -636,9 +658,7 @@ export default function Portfolio() {
                         content="First recorded portfolio value this year"
                       />
                     </div>
-                    <p className="font-medium tabular-nums">
-                      {formatCurrency(convertValue(summary.totalCostBasis), currency, 0)}
-                    </p>
+                    <p className="font-medium tabular-nums">{summaryCostBasis}</p>
                   </div>
                   <div className="px-4">
                     <div className="flex items-center gap-1">
@@ -671,12 +691,12 @@ export default function Portfolio() {
                     </div>
                     <p
                       className={`font-medium tabular-nums ${
-                        currentDrawdownPct && currentDrawdownPct > 0
+                        summary && currentDrawdownPct && currentDrawdownPct > 0
                           ? 'text-loss'
                           : 'text-muted-foreground'
                       }`}
                     >
-                      {formatDrawdown(currentDrawdownPct)}
+                      {formatDrawdown(summary ? currentDrawdownPct : null)}
                     </p>
                     <p className="mt-1 whitespace-nowrap text-[11px] text-muted-foreground">
                       Today (Live)
@@ -712,31 +732,32 @@ export default function Portfolio() {
                         content="Unrealised profit or loss since the start of the year"
                       />
                     </div>
-                    <p
-                      className={`font-medium tabular-nums ${getPnLColorClass(summary.unrealizedPnL)}`}
-                    >
-                      {formatCurrency(convertValue(summary.unrealizedPnL), currency, 0)}{' '}
-                      <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
+                    <p className={`font-medium tabular-nums ${summaryPnlColor}`}>
+                      {summaryPnl}{' '}
+                      {summary && (
+                        <span className="text-xs">({formatPercent(summary.unrealizedPnLPct)})</span>
+                      )}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </section>
       </PageActionHeader>
+
+      {summaryError && (
+        <QueryErrorNotice
+          subject="portfolio summary"
+          hasData={!!summary}
+          retrying={summaryFetching}
+          onRetry={() => void retrySummary()}
+        />
+      )}
 
       {positionsPending && (
         <div className="space-y-3" role="status" aria-live="polite">
           <span className="sr-only">Loading positions…</span>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
-            {PORTFOLIO_SUMMARY_SKELETON_KEYS.map((key) => (
-              <div key={key} className="py-3 px-4">
-                <Skeleton className="h-3 w-16 mb-2" />
-                <Skeleton className="h-6 w-24" />
-              </div>
-            ))}
-          </div>
           {PORTFOLIO_SECTION_SKELETON_KEYS.map((sectionKey) => (
             <div key={sectionKey} className="rounded-md border p-4 space-y-3">
               <div className="flex items-center gap-2">
@@ -790,8 +811,8 @@ export default function Portfolio() {
         </div>
       )}
 
-      {!positionsPending && ownedPositions.length > 0 && (
-        <div className="space-y-4 sm:hidden">
+      {isPhone && !positionsPending && ownedPositions.length > 0 && (
+        <div className="space-y-4">
           {sections.map((section) => (
             <CollapsibleCard
               key={`mobile-${section.id}`}
@@ -838,8 +859,8 @@ export default function Portfolio() {
         </div>
       )}
 
-      {!positionsPending && custodyPositions.length > 0 && (
-        <div className="mt-6 sm:hidden">
+      {isPhone && !positionsPending && custodyPositions.length > 0 && (
+        <div className="mt-6">
           <div className="mb-2 flex items-center gap-2 px-1">
             <Users className={CUSTODY_CONFIG.iconClass} />
             <h2 className="text-sm font-semibold">Held for Others</h2>
@@ -872,7 +893,8 @@ export default function Portfolio() {
       )}
 
       <div className="hidden space-y-6 sm:block">
-        {!positionsPending &&
+        {!isPhone &&
+          !positionsPending &&
           sections.map((section) => (
             <CollapsibleCard
               key={section.id}
@@ -1025,7 +1047,7 @@ export default function Portfolio() {
             </CollapsibleCard>
           ))}
 
-        {!positionsPending && custodyPositions.length > 0 && (
+        {!isPhone && !positionsPending && custodyPositions.length > 0 && (
           <CollapsibleCard
             title={`Held for Others (${custodyPositions.length})`}
             titleHelp={
