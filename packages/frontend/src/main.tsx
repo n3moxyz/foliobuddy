@@ -27,7 +27,7 @@ const app = (
       fallback={({ error, eventId }) => <ErrorFallback error={error as Error} eventId={eventId} />}
     >
       <TooltipProvider delayDuration={300}>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true }}>
           <App />
         </BrowserRouter>
         <AppToaster />

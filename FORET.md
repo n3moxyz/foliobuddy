@@ -1,5 +1,13 @@
 # FOR[ET].md - FolioBuddy
 
+## Mobile menus, navigation and Portfolio scrolling (22 November 2026)
+
+Radix dropdowns opened on touch contact, so starting a swipe on a row menu locked the page. The shared trigger now opens on a completed tap. Menus use the available viewport height and scroll when needed.
+
+React Router uses a transition to keep the current page visible while a route bundle loads. A new path scrolls to the top when it commits. Browser Back and Forward restore the prior position, and drawer focus does not scroll the page.
+
+Portfolio mounts one layout at each breakpoint. In the 120-row sandbox, the phone previously built 480 rows and hid 360. The summary reserves its space before data arrives to keep the holdings below it in place.
+
 ## Dismissible IBKR progress and mobile motion (22 November 2026)
 
 Sonner disables swipes and close controls on loading toasts. IBKR progress uses a regular toast with a spinner and no timer. Closing it hides further progress. Completion uses a fresh, timed toast so a progress toast that is leaving cannot remove the result.

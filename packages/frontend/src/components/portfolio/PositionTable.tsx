@@ -44,6 +44,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useCollapsibleState } from '@/hooks/useCollapsibleState';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   DropdownMenu,
@@ -213,6 +214,7 @@ export function PositionTable({
   }, []);
 
   const { isExpanded, toggle } = useCollapsibleState();
+  const useMobileRows = useMediaQuery('(max-width: 767.98px)');
 
   const {
     defaultCex,
@@ -958,22 +960,10 @@ export function PositionTable({
     <Collapsible key={id} open={isExpanded(id)} onOpenChange={() => toggle(id)}>
       {renderSectionTrigger(id, label, helpContent, sectionPositions, total)}
       <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-        <div
-          className={`rounded-md border overflow-x-auto ${showAllColumns ? '' : 'hidden md:block'}`}
-        >
-          <Table className={tableClass}>
-            {renderTableHeader(sortState)}
-            <TableBody>
-              {sectionPositions.map((position) =>
-                renderPositionRow(position, { showUnitTrustBadge })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        {!showAllColumns && (
+        {useMobileRows && !showAllColumns ? (
           <div
             className={cn(
-              'divide-y divide-border/70 md:hidden',
+              'divide-y divide-border/70',
               mobileVariant === 'compact'
                 ? 'overflow-hidden rounded-b-md bg-muted/10'
                 : 'border-y border-border/70 bg-transparent'
@@ -982,6 +972,17 @@ export function PositionTable({
             {sectionPositions.map((position) =>
               renderMobilePositionRow(position, { showUnitTrustBadge })
             )}
+          </div>
+        ) : (
+          <div className="rounded-md border overflow-x-auto">
+            <Table className={tableClass}>
+              {renderTableHeader(sortState)}
+              <TableBody>
+                {sectionPositions.map((position) =>
+                  renderPositionRow(position, { showUnitTrustBadge })
+                )}
+              </TableBody>
+            </Table>
           </div>
         )}
       </CollapsibleContent>

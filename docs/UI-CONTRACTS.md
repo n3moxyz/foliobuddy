@@ -14,11 +14,12 @@ Signed-out: `/` → lazy `pages/Landing.tsx` (`components/landing/` sections), e
 
 iOS HIG, all pages:
 
-- **Tables → cards**: `PositionTable` → `renderMobilePositionRow` below `md`; full table only on "All Columns" (`showMobileColumnToggle`). `mobileVariant` `focus` (symbol+name, value, P&L pill, meta) / `compact` (value + P&L); row actions → 44px `⋮` menu; Trades column-hides (`hidden md:table-cell`).
+- **Tables → cards**: `PositionTable` mounts only the active view. Below `md`, it renders cards via `renderMobilePositionRow` unless "All Columns" is active (`showMobileColumnToggle`). `mobileVariant` `focus` (symbol+name, value, P&L pill, meta) / `compact` (value + P&L); row actions → 44px `⋮` menu; Trades column-hides (`hidden md:table-cell`).
 - **Dialogs**: use `DialogContent mobileSheet` for content-heavy bottom sheets. They dock full-width below `sm`, use rounded top corners and safe-area padding, and center on larger screens. The panel scrolls within `85vh`.
 - **Touch**: 44px, compacting `sm+`/`md+`; `Input`/`SelectTrigger`/`DropdownMenuItem`/asset-search options/creatable-select row actions bake `h-11`/`min-h-11` → `sm:`; never redo per-call-site heights; dense row actions need `shrink-0`.
 - **Headers**: `flex-col gap-3 sm:flex-row`; secondary actions → `DropdownMenu` overflow.
 - Mobile navigation uses a modal Radix dialog. Closed navigation has no hidden focus targets. App shortcuts pause while overlays are open.
+- Dropdowns open after a completed touch tap so a drag on the trigger can scroll the page. Open menus scroll if their content exceeds the available height.
 - `DialogContent` restores its opener. Escape goes first to an open asset search or a focused `data-cancel-on-escape` box, each closing or cancelling only itself. `DialogHeader` reserves close-button space.
 - Mobile text inputs use 16px text. Keep import textareas at 16px below `sm`. `SelectItem` has a 44px mobile target.
 - `PageActionHeader` measures its sticky height for focus scroll offsets. Dashboard charts use container queries for layout and larger text.
@@ -68,6 +69,7 @@ Only free-text location dropdowns (CEX/wallet/broker/bank) use `CreatableSelect`
 Motion confirms an action or orients the user (PRODUCT.md). Keep it off keyboard actions, live data and persistent UI.
 
 - **Pages**: `animate-fade-in-up` on page headers only. No staggered section animations.
+- **Route changes**: keep the current page visible while a lazy route loads. Scroll to the top when a new path commits. The browser restores scroll on Back and Forward.
 - **Keyboard**: a surface opened only from the keyboard (the Cmd/Ctrl+K shortcuts dialog) opens and closes without animation.
 - **Theme**: a theme swap is instant. `applyTheme()` turns transitions off until the browser paints one frame of the new theme. Keep that guard when you add color transitions.
 - **Tooltips**: one 150 ms fade, only after the hover delay (`data-state=delayed-open`). Focus, taps and the next tooltip along a row (`instant-open`) appear at once. Every tooltip closes at once. Tooltips share the root `TooltipProvider` and its warm window. `HelpTooltip` uses `TooltipProviderIfMissing`, never a provider of its own.

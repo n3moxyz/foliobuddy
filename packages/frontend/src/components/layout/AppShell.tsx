@@ -1,6 +1,6 @@
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as NavigationDialog from '@radix-ui/react-dialog';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigationType } from 'react-router-dom';
 import {
   LayoutDashboard,
   Wallet,
@@ -106,6 +106,7 @@ function AppShellContent({
   lastUpdate,
 }: AppShellContentProps) {
   const location = useLocation();
+  const navigationType = useNavigationType();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -117,12 +118,12 @@ function AppShellContent({
     if (isDesktop) setSidebarOpen(false);
   }, [isDesktop]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (previousPath.current === location.pathname) return;
     previousPath.current = location.pathname;
     mainRef.current?.focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [location.pathname]);
+    if (navigationType !== 'POP') window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location.pathname, navigationType]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
   const [refreshing, setRefreshing] = useState(false);
   const { currency, toggleCurrency } = useCurrencyStore();
@@ -272,7 +273,8 @@ function AppShellContent({
             className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-2rem))] flex-col overflow-y-auto overscroll-contain border-r bg-card pb-[env(safe-area-inset-bottom)] shadow-lg outline-none data-[state=open]:animate-in data-[state=open]:slide-in-from-left-full data-[state=open]:[animation-duration:240ms] data-[state=open]:ease-out-expo data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left-full data-[state=closed]:duration-150 data-[state=closed]:ease-in"
             onCloseAutoFocus={(event) => {
               event.preventDefault();
-              if (menuPath.current === location.pathname) menuTriggerRef.current?.focus();
+              if (menuPath.current === location.pathname)
+                menuTriggerRef.current?.focus({ preventScroll: true });
               else mainRef.current?.focus({ preventScroll: true });
             }}
           >
