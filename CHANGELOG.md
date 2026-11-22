@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.68.1
+
+- Swipe up to dismiss an IBKR sync toast on mobile, or close it on desktop. The sync keeps running and shows a temporary result.
+- Ease the mobile navigation drawer in from the side and give bottom sheets their own vertical motion.
+
 ## v1.68.0
 
 - Start an IBKR sync from your phone through a connected Mac and follow the verified result in a toast.

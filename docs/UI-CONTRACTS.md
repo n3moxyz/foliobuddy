@@ -15,7 +15,7 @@ Signed-out: `/` → lazy `pages/Landing.tsx` (`components/landing/` sections), e
 iOS HIG, all pages:
 
 - **Tables → cards**: `PositionTable` → `renderMobilePositionRow` below `md`; full table only on "All Columns" (`showMobileColumnToggle`). `mobileVariant` `focus` (symbol+name, value, P&L pill, meta) / `compact` (value + P&L); row actions → 44px `⋮` menu; Trades column-hides (`hidden md:table-cell`).
-- **Dialogs**: content-heavy dock full-width to mobile's bottom (`!bottom-0`, rounded top, safe-area bottom padding), centered modal `sm+`; all `w-[calc(100%-2rem)]` + `max-h-[85vh] overflow-y-auto`.
+- **Dialogs**: use `DialogContent mobileSheet` for content-heavy bottom sheets. They dock full-width below `sm`, use rounded top corners and safe-area padding, and center on larger screens. The panel scrolls within `85vh`.
 - **Touch**: 44px, compacting `sm+`/`md+`; `Input`/`SelectTrigger`/`DropdownMenuItem`/asset-search options/creatable-select row actions bake `h-11`/`min-h-11` → `sm:`; never redo per-call-site heights; dense row actions need `shrink-0`.
 - **Headers**: `flex-col gap-3 sm:flex-row`; secondary actions → `DropdownMenu` overflow.
 - Mobile navigation uses a modal Radix dialog. Closed navigation has no hidden focus targets. App shortcuts pause while overlays are open.
@@ -72,6 +72,7 @@ Motion confirms an action or orients the user (PRODUCT.md). Keep it off keyboard
 - **Theme**: a theme swap is instant. `applyTheme()` turns transitions off until the browser paints one frame of the new theme. Keep that guard when you add color transitions.
 - **Tooltips**: one 150 ms fade, only after the hover delay (`data-state=delayed-open`). Focus, taps and the next tooltip along a row (`instant-open`) appear at once. Every tooltip closes at once. Tooltips share the root `TooltipProvider` and its warm window. `HelpTooltip` uses `TooltipProviderIfMissing`, never a provider of its own.
 - **Popups**: popovers, dropdown menus and selects scale from their trigger (Radix `--radix-*-content-transform-origin`) with `ease-out-expo`, the `cubic-bezier(0.16, 1, 0.3, 1)` curve of the page and chart cues.
+- **Mobile overlays**: navigation slides from the left, and bottom sheets slide from the bottom. Both enter in 240 ms, exit in 150 ms, and use transform keyframes for Radix presence. Scrims fade. Centered mobile dialogs fade and scale in place.
 - **Hover**: color or opacity only, at Tailwind's default 150 ms. No hover transforms.
 - **Loops**: no infinite animation on persistent UI. Status dots are static. Spinners, skeleton shimmer and pulses run only while something loads. The landing page keeps its own live-dot ping.
 - **Per-frame motion**: a hand-written `requestAnimationFrame` or pointer loop writes to the element's `style` through a ref, never to React state. State re-renders the component on every frame. The landing hero scrub is the example: `ScrubMarker` in `HeroNetWorthScrub.tsx` moves the hairline and dot through refs, and the script changes state only when the readout's day changes.

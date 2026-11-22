@@ -206,7 +206,7 @@ function AppShellContent({
                   sidebarCollapsed && 'lg:h-11 lg:justify-center lg:px-0',
                   isActive
                     ? 'border-primary/30 bg-primary/10 text-primary font-semibold'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground font-medium'
+                    : 'font-medium text-muted-foreground [@media(hover:hover)]:hover:bg-muted [@media(hover:hover)]:hover:text-foreground'
                 )}
                 onClick={() => setSidebarOpen(false)}
                 aria-label={sidebarCollapsed ? item.name : undefined}
@@ -266,10 +266,10 @@ function AppShellContent({
       </aside>
       <NavigationDialog.Root open={sidebarOpen && !isDesktop} onOpenChange={setSidebarOpen}>
         <NavigationDialog.Portal>
-          <NavigationDialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
+          <NavigationDialog.Overlay className="fixed inset-0 z-40 bg-black/40 duration-150 ease-out data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
           <NavigationDialog.Content
             aria-describedby={undefined}
-            className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-2rem))] flex-col overflow-y-auto overscroll-contain border-r bg-card pb-[env(safe-area-inset-bottom)] shadow-lg outline-none"
+            className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-2rem))] flex-col overflow-y-auto overscroll-contain border-r bg-card pb-[env(safe-area-inset-bottom)] shadow-lg outline-none data-[state=open]:animate-in data-[state=open]:slide-in-from-left-full data-[state=open]:[animation-duration:240ms] data-[state=open]:ease-out-expo data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left-full data-[state=closed]:duration-150 data-[state=closed]:ease-in"
             onCloseAutoFocus={(event) => {
               event.preventDefault();
               if (menuPath.current === location.pathname) menuTriggerRef.current?.focus();

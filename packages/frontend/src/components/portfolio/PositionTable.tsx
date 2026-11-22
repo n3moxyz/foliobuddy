@@ -1463,7 +1463,7 @@ export function PositionTable({
           setCancelHistoryEntry(null);
         }}
       >
-        <DialogContent className="!bottom-0 !left-0 !top-auto max-h-[85vh] w-full max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg pb-[max(1rem,env(safe-area-inset-bottom))] sm:!bottom-auto sm:!left-[50%] sm:!top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-lg sm:pb-6">
+        <DialogContent mobileSheet>
           <DialogHeader>
             <DialogTitle className="flex flex-wrap items-center gap-2">
               <span>{viewPosition?.asset.symbol}</span>

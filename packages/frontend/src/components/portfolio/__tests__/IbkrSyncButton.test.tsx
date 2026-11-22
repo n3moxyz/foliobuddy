@@ -8,7 +8,14 @@ import { installAuthSession } from '@/lib/authSession';
 import { toast } from 'sonner';
 
 vi.mock('sonner', () => ({
-  toast: { loading: vi.fn(() => 'sync-toast'), success: vi.fn(), error: vi.fn(), dismiss: vi.fn() },
+  toast: Object.assign(
+    vi.fn(() => 'sync-toast'),
+    {
+      success: vi.fn(() => 'result-toast'),
+      error: vi.fn(() => 'result-toast'),
+      dismiss: vi.fn(),
+    }
+  ),
 }));
 beforeEach(() => {
   installAuthSession('button-owner', 'button-session', async () => 'button-token');
@@ -89,9 +96,14 @@ describe('one-click IBKR control', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     }
   );
-  it.each(['success', 'failure'])(
-    'replaces persistent progress with a timed %s toast after leaving Portfolio',
-    async (outcome) => {
+  it.each([
+    ['success', false],
+    ['failure', false],
+    ['success', true],
+    ['failure', true],
+  ])(
+    'shows a timed %s after leaving Portfolio (progress dismissed: %s)',
+    async (outcome, dismissed) => {
       let resolve!: (value: directSync.DirectSyncState) => void;
       let reject!: (error: Error) => void;
       let state: directSync.DirectSyncState = { phase: 'idle' };
@@ -111,15 +123,18 @@ describe('one-click IBKR control', () => {
       const view = show();
       fireEvent.click(screen.getByRole('button', { name: 'Sync IBKR' }));
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      expect(toast.loading).toHaveBeenCalledWith(
+      expect(toast).toHaveBeenCalledWith(
         'Syncing IBKR…',
-        expect.objectContaining({ description: expect.stringContaining('Checking your IBKR') })
+        expect.objectContaining({
+          duration: Infinity,
+          description: expect.stringContaining('Checking your IBKR'),
+        })
       );
       act(() => {
         state = { phase: 'reading' };
         listeners.forEach((listener) => listener());
       });
-      expect(toast.loading).toHaveBeenLastCalledWith(
+      expect(toast).toHaveBeenLastCalledWith(
         'Syncing IBKR…',
         expect.objectContaining({
           id: 'sync-toast',
@@ -128,6 +143,14 @@ describe('one-click IBKR control', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: 'Syncing IBKR…' }));
       expect(sync).toHaveBeenCalledOnce();
+      if (dismissed) {
+        vi.mocked(toast).mock.lastCall?.[1]?.onDismiss?.({ id: 'sync-toast' });
+        act(() => {
+          state = { phase: 'verifying' };
+          listeners.forEach((listener) => listener());
+        });
+        expect(toast).toHaveBeenCalledTimes(2);
+      }
       view.unmount();
       await act(async () => {
         if (outcome === 'success') resolve({ phase: 'done', unchanged: true });
@@ -137,8 +160,10 @@ describe('one-click IBKR control', () => {
       const completedToast = outcome === 'success' ? toast.success : toast.error;
       expect(completedToast).toHaveBeenCalledWith(
         outcome === 'success' ? 'IBKR synced and verified' : 'IBKR sync stopped',
-        expect.objectContaining({ id: 'sync-toast', onAutoClose: expect.any(Function) })
+        expect.objectContaining({ onAutoClose: expect.any(Function) })
       );
+      expect(toast.dismiss).toHaveBeenCalledTimes(dismissed ? 0 : 1);
+      expect(vi.mocked(completedToast).mock.calls[0]?.[1]).not.toHaveProperty('id');
       expect(vi.mocked(completedToast).mock.calls[0]?.[1]).not.toHaveProperty('duration');
     }
   );

@@ -1,5 +1,11 @@
 # FOR[ET].md - FolioBuddy
 
+## Dismissible IBKR progress and mobile motion (22 November 2026)
+
+Sonner disables swipes and close controls on loading toasts. IBKR progress uses a regular toast with a spinner and no timer. Closing it hides further progress. Completion uses a fresh, timed toast so a progress toast that is leaving cannot remove the result.
+
+The drawer slides from its own edge. Navigation links only show hover styles on devices that can hover. Bottom sheets share the `mobileSheet` dialog variant and move along the vertical axis. Both overlays use Radix presence for exit and the shared reduced-motion rule.
+
 ## Release versions in About (17 November 2026)
 
 About used to show a fixed v1.0.0 while production got newer builds. It now reads the root package version and, on Vercel, shows the first seven characters of the build commit. The changelog links to the backfill. Old GitHub deployment statuses filled gaps in Vercel's retained list, and the earliest CLI build had no commit to tag.

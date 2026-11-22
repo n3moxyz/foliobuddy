@@ -113,8 +113,17 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
     setOpen(false);
     dismissPreviousSyncToast?.();
     let shownPhase: SyncPhase = 'checking';
-    const progressOptions = { dismissible: false, className: 'pointer-events-none' };
-    const id = toast.loading('Syncing IBKR…', {
+    let progressHidden = false;
+    let resultId: ReturnType<typeof toast> | undefined;
+    // Sonner's loading variant disables both the close button and swipe gestures.
+    const progressOptions = {
+      duration: Infinity,
+      icon: <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />,
+      onDismiss: () => {
+        progressHidden = true;
+      },
+    };
+    const progressId = toast('Syncing IBKR…', {
       ...progressOptions,
       description: local
         ? `${phaseLabels.checking} Keep this tab open.`
@@ -124,27 +133,30 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
       session.signal.removeEventListener('abort', dismiss);
       if (dismissPreviousSyncToast === dismiss) dismissPreviousSyncToast = undefined;
     }
+    function hideProgress() {
+      if (progressHidden) return;
+      progressHidden = true;
+      toast.dismiss(progressId);
+    }
     function dismiss() {
       cleanup();
-      toast.dismiss(id);
+      hideProgress();
+      if (resultId !== undefined) toast.dismiss(resultId);
     }
     dismissPreviousSyncToast = dismiss;
     session.signal.addEventListener('abort', dismiss, { once: true });
     const options = {
-      id,
-      dismissible: true,
-      className: '',
       onDismiss: cleanup,
       onAutoClose: cleanup,
     };
     const unsubscribe = subscribeDirectSync(() => {
-      if (!isAuthSessionCurrent(session)) return;
+      if (progressHidden || !isAuthSessionCurrent(session)) return;
       const { phase, deviceName } = getDirectSyncState(position.id);
       if (!isSyncBusy(phase) || shownPhase === phase) return;
       shownPhase = phase;
-      toast.loading('Syncing IBKR…', {
+      toast('Syncing IBKR…', {
         ...progressOptions,
-        id,
+        id: progressId,
         description: local
           ? `${phaseLabels[phase]} Keep this tab open.`
           : phase === 'queued' && deviceName
@@ -157,19 +169,20 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
     try {
       const result = await (local ? syncIbkrDirect(position.id) : syncIbkrOnDemand(position.id));
       if (!isAuthSessionCurrent(session)) return;
+      hideProgress();
       if (!result) {
         if (!mobileBrowser) {
           dismiss();
           configure();
           return;
         }
-        toast.error('Connect a Mac to sync IBKR', {
+        resultId = toast.error('Connect a Mac to sync IBKR', {
           ...options,
           description: 'Open Daily Sync on your IBKR cash position to connect a Mac.',
         });
         return;
       }
-      toast.success(phaseLabels.done, {
+      resultId = toast.success(phaseLabels.done, {
         ...options,
         description: result.unchanged
           ? 'Shares, native cost bases and currency balances are unchanged.'
@@ -177,7 +190,8 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
       });
     } catch (cause) {
       if (!isAuthSessionCurrent(session)) return;
-      toast.error(local ? 'IBKR sync stopped' : 'IBKR sync needs attention', {
+      hideProgress();
+      resultId = toast.error(local ? 'IBKR sync stopped' : 'IBKR sync needs attention', {
         ...options,
         description: cause instanceof Error ? cause.message : 'Check the sync details.',
       });
@@ -265,7 +279,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="!bottom-0 !left-0 !top-auto max-h-[85vh] w-full max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg pb-[max(1rem,env(safe-area-inset-bottom))] sm:!bottom-auto sm:!left-[50%] sm:!top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-lg sm:pb-6"
+          mobileSheet
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             triggerRef.current?.focus();
