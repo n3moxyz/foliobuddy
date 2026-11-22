@@ -69,9 +69,31 @@ import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupM
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { NavStatus } from './NavStatus';
 import { AssetLabel } from '@/components/ui/asset-label';
+import { captureAuthSession } from '@/lib/authSession';
+import { PositionGroupOrderDialog } from './PositionGroupOrderDialog';
 
-type PositionGroupBy = 'storage' | 'equityType' | 'broker';
+const GROUPING_MODES = ['storage', 'equityType', 'broker'] as const;
+type PositionGroupBy = (typeof GROUPING_MODES)[number];
+type GroupOrders = Partial<Record<PositionGroupBy, string[]>>;
 type MobilePositionVariant = 'focus' | 'compact';
+
+function readGroupOrders(key: string): GroupOrders {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string, unknown> | null;
+    const orders: GroupOrders = {};
+    for (const mode of GROUPING_MODES) {
+      const order = saved?.[mode];
+      if (Array.isArray(order)) {
+        orders[mode] = [
+          ...new Set(order.filter((item): item is string => typeof item === 'string')),
+        ];
+      }
+    }
+    return orders;
+  } catch {
+    return {};
+  }
+}
 
 interface BrokerGroupMeta {
   id: string;
@@ -174,6 +196,10 @@ export function PositionTable({
   const [cancelHistoryEntry, setCancelHistoryEntry] = useState<PositionHistoryEntry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);
+  const section = sectionPrefix?.replace(/^mobile-/, '') ?? 'portfolio';
+  const owner = captureAuthSession().ownerId;
+  const groupOrderKey = `foliobuddy-position-group-order:${encodeURIComponent(owner)}:${section}`;
+  const [groupOrders, setGroupOrders] = useState(() => readGroupOrders(groupOrderKey));
   // SGD last so it wins over any DB USD->SGD rate in usdFxRates: the native SGD label
   // then uses the same portfolio-summary rate as the primary column (avoids bps drift).
   const priceFxRates = useMemo(
@@ -938,6 +964,7 @@ export function PositionTable({
 
   const renderPositionSection = ({
     id,
+    orderKey,
     label,
     helpContent,
     positions: sectionPositions,
@@ -946,6 +973,7 @@ export function PositionTable({
     showUnitTrustBadge = false,
   }: {
     id: string;
+    orderKey: string;
     label: string;
     helpContent: string;
     positions: Position[];
@@ -957,7 +985,11 @@ export function PositionTable({
     };
     showUnitTrustBadge?: boolean;
   }) => (
-    <Collapsible key={id} open={isExpanded(id)} onOpenChange={() => toggle(id)}>
+    <Collapsible
+      key={`${groupBy}:${orderKey}`}
+      open={isExpanded(id)}
+      onOpenChange={() => toggle(id)}
+    >
       {renderSectionTrigger(id, label, helpContent, sectionPositions, total)}
       <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
         {useMobileRows && !showAllColumns ? (
@@ -1325,6 +1357,105 @@ export function PositionTable({
     );
   };
 
+  const groups = {
+    storage: [
+      {
+        id: cexId,
+        orderKey: 'cex',
+        label: 'CEX',
+        helpContent: 'Centralised exchange: assets held on platforms like Binance or Coinbase',
+        positions: cexPositions,
+        total: cexTotal,
+        sortState: cexSort,
+      },
+      {
+        id: brokerageId,
+        orderKey: 'brokerage',
+        label: 'Broker Account',
+        helpContent: 'Assets held in broker accounts or fund platforms',
+        positions: brokeragePositions,
+        total: brokerageTotal,
+        sortState: brokerageSort,
+      },
+      {
+        id: bankId,
+        orderKey: 'bank',
+        label: 'Bank',
+        helpContent: 'Cash held directly in bank accounts',
+        positions: bankPositions,
+        total: bankTotal,
+        sortState: bankSort,
+      },
+      {
+        id: onchainId,
+        orderKey: 'onchain',
+        label: 'Onchain',
+        helpContent: 'Assets in your own wallets (not on an exchange)',
+        positions: onchainPositions,
+        total: onchainTotal,
+        sortState: onchainSort,
+      },
+    ],
+    equityType: [
+      {
+        id: singleId,
+        orderKey: 'single',
+        label: 'Stock / ETF',
+        helpContent: 'Stocks and ETFs (e.g. AAPL, D05.SI, EWY) priced live via Yahoo Finance',
+        positions: singlePositions,
+        total: singleTotal,
+        sortState: singleSort,
+      },
+      {
+        id: fundId,
+        orderKey: 'fund',
+        label: 'Unit Trust',
+        helpContent:
+          'Unit trusts and managed funds: NAV tracked per fund, often from broker statements',
+        positions: fundPositions,
+        total: fundTotal,
+        sortState: fundSort,
+      },
+    ],
+    broker: brokerGroups.map((group) => ({
+      id: group.id,
+      orderKey: group.key,
+      label: group.label,
+      helpContent: 'Positions held at this broker or fund platform',
+      positions: group.positions,
+      total: group.total,
+      sortState: brokerSort,
+      showUnitTrustBadge: true,
+    })),
+  }[groupBy].filter((group) => group.positions.length > 0);
+  const order = groupOrders[groupBy];
+  if (order?.length) {
+    const ranks = new Map(order.map((key, index) => [key, index]));
+    groups.sort(
+      (left, right) =>
+        (ranks.get(left.orderKey) ?? ranks.size) - (ranks.get(right.orderKey) ?? ranks.size)
+    );
+  }
+
+  function saveGroupOrder(keys: string[]) {
+    const saved = readGroupOrders(groupOrderKey);
+    // Replace the visible slots while preserving the saved slots of currently empty groups.
+    const visible = new Set(keys);
+    let index = 0;
+    const previous = (saved[groupBy] ?? []).map((key) => (visible.has(key) ? keys[index++] : key));
+    saved[groupBy] = [...previous, ...keys.slice(index)];
+    try {
+      localStorage.setItem(groupOrderKey, JSON.stringify(saved));
+      setGroupOrders(saved);
+      return true;
+    } catch {
+      toast.error('Could not save group order', {
+        description: 'Check browser storage and try again.',
+      });
+      return false;
+    }
+  }
+
   return (
     <>
       <div className="space-y-4">
@@ -1343,85 +1474,12 @@ export function PositionTable({
           </div>
         )}
 
-        {groupBy === 'storage' &&
-          cexPositions.length > 0 &&
-          renderPositionSection({
-            id: cexId,
-            label: 'CEX',
-            helpContent: 'Centralised exchange: assets held on platforms like Binance or Coinbase',
-            positions: cexPositions,
-            total: cexTotal,
-            sortState: cexSort,
-          })}
-
-        {groupBy === 'storage' &&
-          brokeragePositions.length > 0 &&
-          renderPositionSection({
-            id: brokerageId,
-            label: 'Broker Account',
-            helpContent: 'Assets held in broker accounts or fund platforms',
-            positions: brokeragePositions,
-            total: brokerageTotal,
-            sortState: brokerageSort,
-          })}
-
-        {groupBy === 'storage' &&
-          bankPositions.length > 0 &&
-          renderPositionSection({
-            id: bankId,
-            label: 'Bank',
-            helpContent: 'Cash held directly in bank accounts',
-            positions: bankPositions,
-            total: bankTotal,
-            sortState: bankSort,
-          })}
-
-        {groupBy === 'equityType' &&
-          singlePositions.length > 0 &&
-          renderPositionSection({
-            id: singleId,
-            label: 'Stock / ETF',
-            helpContent: 'Stocks and ETFs (e.g. AAPL, D05.SI, EWY) priced live via Yahoo Finance',
-            positions: singlePositions,
-            total: singleTotal,
-            sortState: singleSort,
-          })}
-
-        {groupBy === 'equityType' &&
-          fundPositions.length > 0 &&
-          renderPositionSection({
-            id: fundId,
-            label: 'Unit Trust',
-            helpContent:
-              'Unit trusts and managed funds: NAV tracked per fund, often from broker statements',
-            positions: fundPositions,
-            total: fundTotal,
-            sortState: fundSort,
-          })}
-
-        {groupBy === 'broker' &&
-          brokerGroups.map((brokerGroup) =>
-            renderPositionSection({
-              id: brokerGroup.id,
-              label: brokerGroup.label,
-              helpContent: 'Positions held at this broker or fund platform',
-              positions: brokerGroup.positions,
-              total: brokerGroup.total,
-              sortState: brokerSort,
-              showUnitTrustBadge: true,
-            })
-          )}
-
-        {groupBy === 'storage' &&
-          onchainPositions.length > 0 &&
-          renderPositionSection({
-            id: onchainId,
-            label: 'Onchain',
-            helpContent: 'Assets in your own wallets (not on an exchange)',
-            positions: onchainPositions,
-            total: onchainTotal,
-            sortState: onchainSort,
-          })}
+        {groups.length > 1 && (
+          <div className="flex justify-end">
+            <PositionGroupOrderDialog key={groupBy} groups={groups} onSave={saveGroupOrder} />
+          </div>
+        )}
+        {groups.map(renderPositionSection)}
 
         {positions.length === 0 && (
           <div className="rounded-md border overflow-hidden">

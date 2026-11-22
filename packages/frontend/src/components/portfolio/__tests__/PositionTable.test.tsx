@@ -61,6 +61,33 @@ it('names group help for its storage topic', () => {
   expect(screen.queryByRole('button', { name: 'Help' })).not.toBeInTheDocument();
 });
 
+it('applies the saved group order and keeps it across phone and desktop layouts', () => {
+  const positions: Position[] = [
+    { ...privatePosition, id: 'cex-row', storageType: 'CEX', storageLocation: 'Binance' },
+    { ...privatePosition, id: 'bank-row', storageType: 'BANK', storageLocation: 'DBS' },
+    { ...privatePosition, id: 'broker-row' },
+  ];
+  vi.mocked(useMediaQuery).mockReturnValue(true);
+  const view = render(<PositionTable positions={positions} sectionPrefix="mobile-cash" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Reorder groups' }));
+  const dialog = within(screen.getByRole('dialog', { name: 'Reorder groups' }));
+  fireEvent.click(dialog.getByRole('button', { name: 'Move Bank up' }));
+  fireEvent.click(dialog.getByRole('button', { name: 'Move Bank up' }));
+  fireEvent.click(dialog.getByRole('button', { name: 'Save order' }));
+  view.unmount();
+
+  vi.mocked(useMediaQuery).mockReturnValue(false);
+  render(<PositionTable positions={positions} sectionPrefix="cash" />);
+  const groupTriggers = screen.getAllByRole('button', {
+    name: /^(CEX|Broker Account|Bank) \(/,
+  });
+  expect(groupTriggers.map((button) => button.textContent?.split('(')[0])).toEqual([
+    'Bank',
+    'CEX',
+    'Broker Account',
+  ]);
+});
+
 it.each(['CASH', 'STABLECOIN', 'LIQUID_CRYPTO', 'EQUITY', 'UNIT_TRUST'])(
   'masks %s quantities in desktop/mobile rows and details while showing current quotes',
   (category) => {

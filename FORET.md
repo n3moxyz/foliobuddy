@@ -1,5 +1,9 @@
 # FOR[ET].md - FolioBuddy
 
+## Custom Portfolio group order (22 November 2026)
+
+Reorder groups opens a compact list. Drag handles and move buttons reorder storage types, equity brokers or equity types. Save applies the order without moving or collapsing positions during the drag. Orders are scoped to the signed-in account, section and grouping mode in browser storage. Phone and desktop layouts at the same browser origin use the same order. Unknown groups follow the default sort, and saved groups retain their slots while empty.
+
 ## Mobile menus, navigation and Portfolio scrolling (22 November 2026)
 
 Radix dropdowns opened on touch contact, so starting a swipe on a row menu locked the page. The shared trigger now opens on a completed tap. Menus use the available viewport height and scroll when needed.
