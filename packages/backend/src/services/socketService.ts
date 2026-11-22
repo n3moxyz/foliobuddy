@@ -111,6 +111,10 @@ class SocketService {
     logger.info(`[WebSocket] Sent portfolio:updated to user ${userId}`);
   }
 
+  broadcastPortfolioGroupOrdersUpdate(userId: string): void {
+    this.io?.to(`user:${userId}`).emit('portfolio-group-orders:updated');
+  }
+
   /**
    * Get connected client count
    */

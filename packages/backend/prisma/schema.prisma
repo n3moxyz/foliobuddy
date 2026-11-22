@@ -28,6 +28,16 @@ model User {
   snapshots        Snapshot[]
   ibkrSyncRuns     IbkrSyncRun[]
   ibkrSyncDevices  IbkrSyncDevice[]
+  portfolioGroupOrders PortfolioGroupOrder[]
+}
+
+model PortfolioGroupOrder {
+  userId  String
+  scope   String
+  order   String[]
+  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, scope])
 }
 
 // Asset model - represents any tradeable asset

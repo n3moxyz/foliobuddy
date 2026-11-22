@@ -37,23 +37,49 @@ interface Group {
 
 interface GroupOrderProps {
   groups: readonly Group[];
-  onSave: (keys: string[]) => boolean;
+  onSave: (keys: string[]) => Promise<void>;
 }
 
-export function PositionGroupOrderDialog({ groups, onSave }: GroupOrderProps) {
+export function PositionGroupOrderDialog({
+  groups,
+  disabled,
+  onSave,
+}: GroupOrderProps & { disabled: boolean }) {
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const dragging = useRef(false);
+
+  async function save(keys: string[]) {
+    setSaving(true);
+    setSaveFailed(false);
+    try {
+      await onSave(keys);
+      setOpen(false);
+    } catch {
+      setSaveFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
+        if (saving) return;
         if (!next) dragging.current = false;
+        setSaveFailed(false);
         setOpen(next);
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-11 text-muted-foreground sm:h-9">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={disabled}
+          className="h-11 text-muted-foreground sm:h-9"
+        >
           <ListOrdered aria-hidden className="mr-1.5 h-4 w-4" />
           Reorder groups
         </Button>
@@ -71,14 +97,12 @@ export function PositionGroupOrderDialog({ groups, onSave }: GroupOrderProps) {
         </DialogHeader>
         <GroupOrderEditor
           groups={groups}
+          saving={saving}
+          saveFailed={saveFailed}
           onDragChange={(active) => {
             dragging.current = active;
           }}
-          onSave={(keys) => {
-            if (!onSave(keys)) return false;
-            setOpen(false);
-            return true;
-          }}
+          onSave={save}
         />
       </DialogContent>
     </Dialog>
@@ -89,7 +113,13 @@ function GroupOrderEditor({
   groups,
   onSave,
   onDragChange,
-}: GroupOrderProps & { onDragChange: (active: boolean) => void }) {
+  saving,
+  saveFailed,
+}: GroupOrderProps & {
+  onDragChange: (active: boolean) => void;
+  saving: boolean;
+  saveFailed: boolean;
+}) {
   const [initialGroups] = useState(groups);
   const [draft, setDraft] = useState(() => [...initialGroups]);
   const [announcement, setAnnouncement] = useState('');
@@ -127,6 +157,7 @@ function GroupOrderEditor({
                 group={group}
                 first={index === 0}
                 last={index === draft.length - 1}
+                saving={saving}
                 reduceMotion={reduceMotion}
                 onMove={(offset) => move(index, index + offset, true)}
               />
@@ -137,12 +168,19 @@ function GroupOrderEditor({
       <p role="status" className="sr-only">
         {announcement}
       </p>
+      {saveFailed && (
+        <p role="alert" className="text-sm text-destructive">
+          Could not save group order. Try again.
+        </p>
+      )}
       <DialogFooter>
         <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
+          <Button variant="outline" disabled={saving}>
+            Cancel
+          </Button>
         </DialogClose>
-        <Button disabled={!changed} onClick={() => onSave(keys)}>
-          Save order
+        <Button disabled={!changed || saving} onClick={() => void onSave(keys)}>
+          {saving ? 'Saving…' : 'Save order'}
         </Button>
       </DialogFooter>
     </>
@@ -153,12 +191,14 @@ function SortableGroup({
   group,
   first,
   last,
+  saving,
   reduceMotion,
   onMove,
 }: {
   group: Group;
   first: boolean;
   last: boolean;
+  saving: boolean;
   reduceMotion: boolean;
   onMove: (offset: number) => void;
 }) {
@@ -170,7 +210,7 @@ function SortableGroup({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: group.orderKey });
+  } = useSortable({ id: group.orderKey, disabled: saving });
 
   return (
     <li
@@ -190,6 +230,7 @@ function SortableGroup({
         ref={setActivatorNodeRef}
         variant="ghost"
         size="icon"
+        disabled={saving}
         className="h-11 w-11 shrink-0 touch-none cursor-grab text-muted-foreground active:cursor-grabbing"
         aria-label={`Drag ${group.label} to reorder`}
       >
@@ -202,6 +243,7 @@ function SortableGroup({
         className="h-11 w-11 shrink-0 aria-disabled:opacity-35"
         aria-label={`Move ${group.label} up`}
         aria-disabled={first}
+        disabled={saving}
         onClick={() => onMove(-1)}
       >
         <ArrowUp className="h-4 w-4" aria-hidden />
@@ -212,6 +254,7 @@ function SortableGroup({
         className="h-11 w-11 shrink-0 aria-disabled:opacity-35"
         aria-label={`Move ${group.label} down`}
         aria-disabled={last}
+        disabled={saving}
         onClick={() => onMove(1)}
       >
         <ArrowDown className="h-4 w-4" aria-hidden />

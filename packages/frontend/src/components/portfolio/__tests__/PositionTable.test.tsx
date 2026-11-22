@@ -61,23 +61,40 @@ it('names group help for its storage topic', () => {
   expect(screen.queryByRole('button', { name: 'Help' })).not.toBeInTheDocument();
 });
 
-it('applies the saved group order and keeps it across phone and desktop layouts', () => {
+it('saves a phone edit and applies the account order in the desktop layout', async () => {
   const positions: Position[] = [
     { ...privatePosition, id: 'cex-row', storageType: 'CEX', storageLocation: 'Binance' },
     { ...privatePosition, id: 'bank-row', storageType: 'BANK', storageLocation: 'DBS' },
     { ...privatePosition, id: 'broker-row' },
   ];
+  const save = vi.fn(async () => {});
   vi.mocked(useMediaQuery).mockReturnValue(true);
-  const view = render(<PositionTable positions={positions} sectionPrefix="mobile-cash" />);
+  const view = render(
+    <PositionTable
+      positions={positions}
+      sectionPrefix="mobile-cash"
+      groupOrder={{ ready: true, save }}
+    />
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Reorder groups' }));
   const dialog = within(screen.getByRole('dialog', { name: 'Reorder groups' }));
   fireEvent.click(dialog.getByRole('button', { name: 'Move Bank up' }));
   fireEvent.click(dialog.getByRole('button', { name: 'Move Bank up' }));
   fireEvent.click(dialog.getByRole('button', { name: 'Save order' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Reorder groups' })).not.toBeInTheDocument()
+  );
+  expect(save).toHaveBeenCalledWith(['bank', 'cex', 'brokerage']);
   view.unmount();
 
   vi.mocked(useMediaQuery).mockReturnValue(false);
-  render(<PositionTable positions={positions} sectionPrefix="cash" />);
+  render(
+    <PositionTable
+      positions={positions}
+      sectionPrefix="cash"
+      groupOrder={{ ready: true, save, order: ['bank', 'cex', 'brokerage'] }}
+    />
+  );
   const groupTriggers = screen.getAllByRole('button', {
     name: /^(CEX|Broker Account|Bank) \(/,
   });

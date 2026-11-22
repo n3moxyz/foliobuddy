@@ -363,6 +363,19 @@ describe('demo mode API mock', () => {
     expect(reset.reducePercentages).toEqual([25, 50, 75, 100]);
   });
 
+  it('keeps saved demo group orders when a legacy import arrives', async () => {
+    const path = '/users/me/preferences/portfolio-group-orders';
+    const scope = 'cash:storage';
+    await demoRequest(path, 'PATCH', { scope, order: ['bank', 'cex'] });
+    const imported = await demoRequest(path, 'POST', {
+      orders: [{ scope, order: ['cex', 'bank'] }],
+    });
+    expect(imported?.status).toBe(204);
+    expect(await readJson(await demoRequest(path))).toEqual({ [scope]: ['bank', 'cex'] });
+    resetDemoDataForTests();
+    expect(await readJson(await demoRequest(path))).toEqual({});
+  });
+
   it('serves the deterministic news feed grouped by portfolio buckets', async () => {
     const news = await readJson<{
       crypto: Array<{ symbol: string; openTradeOnly: boolean; items: Array<{ id: string }> }>;

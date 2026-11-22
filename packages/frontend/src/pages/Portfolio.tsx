@@ -65,6 +65,7 @@ import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { usePerpExposure } from '@/hooks/usePerpExposure';
+import { usePortfolioGroupOrders } from '@/hooks/usePortfolioGroupOrders';
 import { calculateExposurePct } from '@/lib/exposure';
 import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupMath';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
@@ -139,6 +140,7 @@ function saveEquityGroupBy(value: EquityGroupBy) {
 
 export default function Portfolio() {
   const isPhone = useMediaQuery('(max-width: 639.98px)');
+  const groupOrders = usePortfolioGroupOrders();
   usePageTitle('Portfolio');
   const { currency } = useCurrencyStore();
   const { formatCurrency } = useMoneyFormatter();
@@ -396,6 +398,11 @@ export default function Portfolio() {
   const summaryCostBasis = summary
     ? formatCurrency(convertValue(summary.totalCostBasis), currency, 0)
     : '-';
+
+  function groupPreference(sectionId: string) {
+    if (sectionId === 'equities') return groupOrders.preference(`equities:${equityGroupBy}`);
+    return groupOrders.preference(sectionId === 'cash' ? 'cash:storage' : 'crypto:storage');
+  }
 
   return (
     <div className="space-y-6">
@@ -755,6 +762,15 @@ export default function Portfolio() {
         />
       )}
 
+      {groupOrders.isError && !groupOrders.hasData && (
+        <QueryErrorNotice
+          subject="portfolio group order"
+          hasData={false}
+          retrying={groupOrders.isFetching}
+          onRetry={() => void groupOrders.refetch()}
+        />
+      )}
+
       {positionsPending && (
         <div className="space-y-3" role="status" aria-live="polite">
           <span className="sr-only">Loading positions…</span>
@@ -848,6 +864,7 @@ export default function Portfolio() {
                 usdFxRates={usdFxRates}
                 sectionPrefix={`mobile-${section.id}`}
                 groupBy={section.id === 'equities' ? equityGroupBy : 'storage'}
+                groupOrder={groupPreference(section.id)}
                 mobileVariant="compact"
                 showMobileColumnToggle={false}
                 onUpdateNav={
@@ -886,6 +903,7 @@ export default function Portfolio() {
             fxRate={fxRate}
             usdFxRates={usdFxRates}
             sectionPrefix="mobile-custody"
+            groupOrder={groupOrders.preference('custody:storage')}
             mobileVariant="compact"
             showMobileColumnToggle={false}
           />
@@ -1040,6 +1058,7 @@ export default function Portfolio() {
                 usdFxRates={usdFxRates}
                 sectionPrefix={section.id}
                 groupBy={section.id === 'equities' ? equityGroupBy : 'storage'}
+                groupOrder={groupPreference(section.id)}
                 onUpdateNav={
                   section.id === 'equities' ? (p) => setNavAssetId(p.assetId) : undefined
                 }
@@ -1092,6 +1111,7 @@ export default function Portfolio() {
               fxRate={fxRate}
               usdFxRates={usdFxRates}
               sectionPrefix="custody"
+              groupOrder={groupOrders.preference('custody:storage')}
             />
           </CollapsibleCard>
         )}

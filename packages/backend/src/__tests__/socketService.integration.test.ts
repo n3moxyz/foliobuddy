@@ -136,4 +136,26 @@ describe('socketService integration', () => {
     await expect(connectClient(port)).rejects.toThrow(/Authentication required/);
     await waitForConnectedCount(0);
   });
+
+  it('notifies both devices on the same account when a group order changes', async () => {
+    socketService.initialize(httpServer, ['http://localhost:4000']);
+    const port = await listen(httpServer);
+    const [phone, desktop, otherUser] = await Promise.all([
+      connectClient(port, 'user-1'),
+      connectClient(port, 'user-1'),
+      connectClient(port, 'user-2'),
+    ]);
+    clients.push(phone, desktop, otherUser);
+    const event = 'portfolio-group-orders:updated';
+    const received = [waitForEvent(phone, event), waitForEvent(desktop, event)];
+    const otherReceived = vi.fn();
+    otherUser.on(event, otherReceived);
+    socketService.broadcastPortfolioGroupOrdersUpdate('user-1');
+    await Promise.all(received);
+    // Socket order is preserved. After a later broadcast arrives, any leaked event would have arrived.
+    const laterEvent = waitForEvent(otherUser, 'prices:updated');
+    socketService.broadcastPriceUpdate(0);
+    await laterEvent;
+    expect(otherReceived).not.toHaveBeenCalled();
+  });
 });

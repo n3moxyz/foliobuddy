@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.70.0
+
+- Sync Portfolio group order across devices signed into the same account. Import browser orders for sections that have no account order yet.
+
 ## v1.69.0
 
 - Reorder Portfolio subgroups by dragging them or using the move buttons. FolioBuddy remembers the order in the current browser.

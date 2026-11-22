@@ -1,8 +1,12 @@
 # FOR[ET].md - FolioBuddy
 
+## Portfolio group order follows the account (22 November 2026)
+
+Each user and grouping has its own database row. A save for one grouping leaves the others alone. Browser orders import only into missing rows. The first saved account order wins over later imports. Open Portfolio tabs refresh from the existing user-scoped socket, and focus and reconnect refresh the order too.
+
 ## Custom Portfolio group order (22 November 2026)
 
-Reorder groups opens a compact list. Drag handles and move buttons reorder storage types, equity brokers or equity types. Save applies the order without moving or collapsing positions during the drag. Orders are scoped to the signed-in account, section and grouping mode in browser storage. Phone and desktop layouts at the same browser origin use the same order. Unknown groups follow the default sort, and saved groups retain their slots while empty.
+Reorder groups opens a compact list. Drag handles and move buttons reorder storage types, equity brokers or equity types. Save applies the order without moving or collapsing positions during the drag. Unknown groups follow the default sort, and saved groups retain their slots while empty.
 
 iOS Simulator showed a Back scroll bug. WebKit tried to restore Portfolio's scroll while Settings was still mounted, so the shorter page clipped the offset. AppShell now remembers each signed-in history entry's scroll offset and restores it when the destination commits.
 
