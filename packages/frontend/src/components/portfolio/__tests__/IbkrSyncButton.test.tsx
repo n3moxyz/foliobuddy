@@ -89,7 +89,7 @@ describe('one-click IBKR control', () => {
     }
   );
   it.each(['success', 'failure'])(
-    'updates one persistent toast through %s even after leaving Portfolio',
+    'replaces persistent progress with a timed %s toast after leaving Portfolio',
     async (outcome) => {
       let resolve!: (value: directSync.DirectSyncState) => void;
       let reject!: (error: Error) => void;
@@ -133,10 +133,12 @@ describe('one-click IBKR control', () => {
         else reject(new Error('The backup could not be verified.'));
       });
       expect(listeners.size).toBe(0);
-      const result = expect.objectContaining({ id: 'sync-toast', duration: Infinity });
-      if (outcome === 'success')
-        expect(toast.success).toHaveBeenCalledWith('IBKR synced and verified', result);
-      else expect(toast.error).toHaveBeenCalledWith('IBKR sync stopped', result);
+      const completedToast = outcome === 'success' ? toast.success : toast.error;
+      expect(completedToast).toHaveBeenCalledWith(
+        outcome === 'success' ? 'IBKR synced and verified' : 'IBKR sync stopped',
+        expect.objectContaining({ id: 'sync-toast', onAutoClose: expect.any(Function) })
+      );
+      expect(vi.mocked(completedToast).mock.calls[0]?.[1]).not.toHaveProperty('duration');
     }
   );
   it.each(['success', 'failure'])(

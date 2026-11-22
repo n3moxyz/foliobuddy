@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.67.3
+
+- Keep the IBKR toast visible during sync and automatically dismiss it after showing the result.
+
 ## v1.67.2
 
 - Show IBKR sync progress and its result in a persistent toast so you can keep using FolioBuddy.

@@ -121,10 +121,10 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
     session.signal.addEventListener('abort', dismiss, { once: true });
     const options = {
       id,
-      duration: Infinity,
       dismissible: true,
       className: '',
       onDismiss: cleanup,
+      onAutoClose: cleanup,
     };
     const unsubscribe = subscribeDirectSync(() => {
       if (!isAuthSessionCurrent(session)) return;
