@@ -13,7 +13,7 @@ import {
 import { loadWorkerIdentity, workerDirectory } from './enrollment.mjs';
 import { readJson, syncDirectory, writeJson } from './files.mjs';
 import { singaporeSchedule } from './schedule.mjs';
-import { createSignedClient } from './signed-client.mjs';
+import { createSignedClient, UUID } from './signed-client.mjs';
 
 const terminal = new Set(['idle', 'verified', 'failed']);
 const id = (value) => typeof value === 'string' && value.length > 0 && value.length <= 100;
@@ -109,6 +109,7 @@ export async function runWorker({
   let audit;
   let client;
   let grant;
+  let requestId;
   let attemptId;
   let runId;
   let stage = 'worker';
@@ -131,11 +132,21 @@ export async function runWorker({
         'The previous worker run is blocked or interrupted. Review its saved evidence before resuming.'
       );
     const schedule = singaporeSchedule(now(), state.lastAttemptedDate);
-    if (mode === 'tick' && !schedule.due) return { skipped: true, date: schedule.date };
     const { config, privateKey } = await loadWorkerIdentity(root);
     client =
       api ??
       createSignedClient({ audience: config.audience, deviceId: config.deviceId, privateKey, now });
+    if (mode === 'tick') {
+      grant = await client.request('claim', {});
+      verifyStatus(grant, config, state);
+      if (
+        grant.requestId !== null &&
+        (typeof grant.requestId !== 'string' || !UUID.test(grant.requestId))
+      )
+        throw new Error('The on-demand IBKR request identity is invalid.');
+      requestId = grant.requestId;
+      if (!schedule.due && !requestId) return { skipped: true, date: schedule.date };
+    }
     audit = path.join(root, '.local', 'ibkr-sync', schedule.date, `worker-${randomUUID()}`);
     await privateDirectory(path.dirname(path.dirname(audit)));
     await privateDirectory(path.dirname(audit));
@@ -145,11 +156,12 @@ export async function runWorker({
     await persist({
       version: 1,
       phase: 'checking',
-      lastAttemptedDate: schedule.date,
+      lastAttemptedDate: mode === 'once' || schedule.due ? schedule.date : state.lastAttemptedDate,
       startedAt: now().toISOString(),
       deviceId: config.deviceId,
       audit,
       attemptId: null,
+      requestId: requestId ?? null,
       runId: null,
       capturedAt: null,
       verifiedAt: null,
@@ -185,7 +197,7 @@ export async function runWorker({
     }
     stage = 'capture';
     await persist({ phase: 'previewing', capturedAt: capture.second.capturedAt });
-    const preview = await client.request('preview', { capture });
+    const preview = await client.request('preview', { capture, ...(requestId && { requestId }) });
     if (id(preview.attemptId)) attemptId = preview.attemptId;
     if (
       !attemptId ||
@@ -260,16 +272,17 @@ export async function runWorker({
     if (!started) throw error;
     const blocked = mayHaveChanged || state?.phase === 'blocked';
     let failureReported = false;
+    const failureScope = attemptId ? { attemptId } : requestId ? { requestId } : {};
     if (client && !blocked) {
       try {
-        await client.request('failure', { ...(attemptId ? { attemptId } : {}), stage });
+        await client.request('failure', { ...failureScope, stage });
         failureReported = true;
       } catch {
         /* Keep the first error and the local evidence. */
       }
     } else if (client && mayHaveChanged) {
       try {
-        await client.request('failure', { ...(attemptId ? { attemptId } : {}), stage });
+        await client.request('failure', { ...failureScope, stage });
         failureReported = true;
       } catch {
         /* An unavailable server cannot clear the local block. */

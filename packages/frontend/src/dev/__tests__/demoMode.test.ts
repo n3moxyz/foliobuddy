@@ -118,6 +118,13 @@ describe('demo mode API mock', () => {
     );
     expect(registered.deviceId).toBe(enrollment.deviceId);
     expect(registered.lastVerifiedAt).toBeNull();
+    const queued = await readJson<{ id: string; status: string }>(
+      await demoRequest('/ibkr/devices/sync-requests', 'POST', { cashPositionId })
+    );
+    expect(queued.status).toBe('queued');
+    expect(await readJson(await demoRequest(`/ibkr/devices/sync-requests/${queued.id}`))).toEqual(
+      queued
+    );
     expect(
       (await demoRequest('/ibkr/devices', 'POST', { cashPositionId, enrollment })).status
     ).toBe(409);

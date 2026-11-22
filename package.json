@@ -1,6 +1,6 @@
 {
   "name": "foliobuddy",
-  "version": "1.67.3",
+  "version": "1.68.0",
   "license": "Apache-2.0",
   "private": true,
   "packageManager": "npm@10.8.2",

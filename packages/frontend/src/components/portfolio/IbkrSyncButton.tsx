@@ -34,12 +34,15 @@ import {
   recordedBrokerUpdate,
   subscribeDirectSync,
   syncIbkrDirect,
+  syncIbkrOnDemand,
   type SyncPhase,
 } from './ibkrDirectSync';
 
 const phaseLabels: Record<SyncPhase, string> = {
   idle: 'Ready to sync',
   checking: 'Checking your IBKR portfolio…',
+  queued: 'Waiting for your connected Mac…',
+  running: 'Your connected Mac is syncing IBKR…',
   reading: 'Reading IBKR twice…',
   retrying: "Waiting for IBKR's currency totals to settle…",
   reviewing: 'Checking shares, costs and cash…',
@@ -78,6 +81,11 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
     () => hasHelperConnection(position.id),
     () => false
   );
+  const mobileBrowser =
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const useMacHelper = connected && !mobileBrowser;
+  const showPairing = !connected && !mobileBrowser && !state.deviceName;
   const busy = isSyncBusy(state.phase);
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
@@ -95,9 +103,10 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
       queryClient.invalidateQueries({ queryKey: ['positions'] }),
       queryClient.invalidateQueries({ queryKey: ['portfolio'] }),
       queryClient.invalidateQueries({ queryKey: ['ibkr-runs'] }),
+      queryClient.invalidateQueries({ queryKey: ['ibkr-devices'] }),
     ]);
   }
-  async function sync() {
+  async function sync(local: boolean) {
     if (isSyncBusy(getDirectSyncState(position.id).phase)) return;
     const session = captureAuthSession();
     setError(null);
@@ -107,7 +116,9 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
     const progressOptions = { dismissible: false, className: 'pointer-events-none' };
     const id = toast.loading('Syncing IBKR…', {
       ...progressOptions,
-      description: `${phaseLabels.checking} Keep this tab open.`,
+      description: local
+        ? `${phaseLabels.checking} Keep this tab open.`
+        : 'Requesting a sync on your connected Mac…',
     });
     function cleanup() {
       session.signal.removeEventListener('abort', dismiss);
@@ -128,18 +139,36 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
     };
     const unsubscribe = subscribeDirectSync(() => {
       if (!isAuthSessionCurrent(session)) return;
-      const { phase } = getDirectSyncState(position.id);
+      const { phase, deviceName } = getDirectSyncState(position.id);
       if (!isSyncBusy(phase) || shownPhase === phase) return;
       shownPhase = phase;
       toast.loading('Syncing IBKR…', {
         ...progressOptions,
         id,
-        description: `${phaseLabels[phase]} Keep this tab open.`,
+        description: local
+          ? `${phaseLabels[phase]} Keep this tab open.`
+          : phase === 'queued' && deviceName
+            ? `Waiting for ${deviceName}…`
+            : phase === 'running' && deviceName
+              ? `${deviceName} is syncing IBKR…`
+              : phaseLabels[phase],
       });
     });
     try {
-      const result = await syncIbkrDirect(position.id);
+      const result = await (local ? syncIbkrDirect(position.id) : syncIbkrOnDemand(position.id));
       if (!isAuthSessionCurrent(session)) return;
+      if (!result) {
+        if (!mobileBrowser) {
+          dismiss();
+          configure();
+          return;
+        }
+        toast.error('Connect a Mac to sync IBKR', {
+          ...options,
+          description: 'Open Daily Sync on your IBKR cash position to connect a Mac.',
+        });
+        return;
+      }
       toast.success(phaseLabels.done, {
         ...options,
         description: result.unchanged
@@ -148,7 +177,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
       });
     } catch (cause) {
       if (!isAuthSessionCurrent(session)) return;
-      toast.error('IBKR sync stopped', {
+      toast.error(local ? 'IBKR sync stopped' : 'IBKR sync needs attention', {
         ...options,
         description: cause instanceof Error ? cause.message : 'Check the sync details.',
       });
@@ -165,7 +194,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
       await pairHelper(position.id, code);
       if (!isAuthSessionCurrent(session)) return;
       setCode('');
-      await sync();
+      await sync(true);
     } catch (cause) {
       if (!isAuthSessionCurrent(session)) return;
       setError(cause instanceof Error ? cause.message : 'This Mac could not connect.');
@@ -191,8 +220,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
           aria-busy={busy}
           onClick={() => {
             if (busy) return;
-            if (connected) void sync();
-            else configure();
+            void sync(useMacHelper);
           }}
         >
           {busy ? (
@@ -216,7 +244,7 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={configure}>Sync Details</DropdownMenuItem>
-            {connected && (
+            {useMacHelper && (
               <DropdownMenuItem
                 onSelect={() => {
                   try {
@@ -244,14 +272,14 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
           }}
         >
           <DialogHeader className="pr-10 text-left">
-            <DialogTitle>{connected ? 'Sync IBKR' : 'Connect This Mac Once'}</DialogTitle>
+            <DialogTitle>{showPairing ? 'Connect This Mac Once' : 'Sync IBKR'}</DialogTitle>
             <DialogDescription>
-              {connected
-                ? 'Updates your IBKR shares, native cost bases and currency cash or debt. Your trade history stays intact.'
-                : 'Connect the Mac helper once. After that, press Sync IBKR to update directly from the app.'}
+              {showPairing
+                ? 'Connect the Mac helper once. After that, press Sync IBKR to update directly from the app.'
+                : 'Updates your IBKR shares, native cost bases and currency cash or debt. Your trade history stays intact.'}
             </DialogDescription>
           </DialogHeader>
-          {!connected ? (
+          {showPairing ? (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Install the FolioBuddy Mac helper, then enter the code from its setup page. It uses
@@ -341,14 +369,16 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
                     ))}
                   </dl>
                 )}
-              {busy && (
+              {busy && useMacHelper && (
                 <p className="text-sm text-muted-foreground">
                   Keep FolioBuddy open. A private backup is verified before any changes are saved.
                 </p>
               )}
               {visiblePhase === 'idle' && (
                 <p className="text-sm text-muted-foreground">
-                  This browser is paired with your Mac helper. No chat message is needed.
+                  {useMacHelper
+                    ? 'This browser is paired with your Mac helper.'
+                    : 'Sync Now sends a request to your connected Mac.'}
                 </p>
               )}
             </div>
@@ -359,17 +389,17 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
               {formatDateTime(capturedAt)}.
             </p>
           )}
-          {(error || (connected && state.error)) && (
+          {(error || (!showPairing && state.error)) && (
             <p id={`${fieldId}-error`} role="alert" className="text-sm text-destructive">
               {error || state.error}
             </p>
           )}
           <DialogFooter>
-            {connected ? (
+            {!showPairing ? (
               <Button
                 type="button"
                 disabled={busy || connecting || disabled}
-                onClick={() => (completed ? setOpen(false) : void sync())}
+                onClick={() => (completed ? setOpen(false) : void sync(useMacHelper))}
               >
                 {completed ? 'Done' : 'Sync Now'}
               </Button>

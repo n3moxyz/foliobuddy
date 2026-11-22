@@ -17,6 +17,10 @@ import {
   ibkrDeviceRequest,
 } from '../src/services/ibkrDeviceService.js';
 import {
+  getIbkrSyncRequest,
+  queueIbkrSyncRequest,
+} from '../src/services/ibkrSyncRequestService.js';
+import {
   canonicalIbkrDevice,
   hashIbkrDevice,
   verifyIbkrEnrollment,
@@ -926,22 +930,50 @@ try {
     /signature/i
   );
   await assert.rejects(() => call('status', { cashPositionId: 'other' }));
+  await assert.rejects(() => queueIbkrSyncRequest(owner, cashId), /update the connected mac/i);
+  assert.equal((await call('claim')).requestId, null);
+  await assert.rejects(() => queueIbkrSyncRequest('another-owner', cashId), /owned/i);
+  const expiringRequest = await queueIbkrSyncRequest(owner, cashId);
+  assert(expiringRequest);
+  await prisma.ibkrSyncRequest.update({
+    where: { id: expiringRequest.id },
+    data: { expiresAt: new Date(0) },
+  });
+  assert.equal((await call('claim')).requestId, null);
+  assert.equal((await getIbkrSyncRequest(owner, expiringRequest.id)).status, 'expired');
 
   const beforePreview = await financial();
   const abandoned = await call('preview', { capture: capture() });
   assert.equal(abandoned.applied, false);
   assert.deepEqual(await financial(), beforePreview);
   assert.equal((await call('status')).blocked, true);
+  await assert.rejects(() => queueIbkrSyncRequest(owner, cashId), /unfinished/i);
   await assert.rejects(() => call('preview', { capture: capture() }), /unfinished|blocked|review/i);
   await call('failure', { attemptId: abandoned.attemptId, stage: 'checkpoint' });
   assert.equal((await call('status')).blocked, false);
 
-  const preview = await call('preview', { capture: capture() });
+  const [queued, duplicate] = await Promise.all([
+    queueIbkrSyncRequest(owner, cashId),
+    queueIbkrSyncRequest(owner, cashId),
+  ]);
+  assert(queued);
+  assert.equal(queued.status, 'queued');
+  assert.equal(duplicate?.id, queued.id);
+  await assert.rejects(() => getIbkrSyncRequest('another-owner', queued.id), /unavailable/i);
+  await assert.rejects(
+    () => call('preview', { capture: capture(), requestId: queued.id }),
+    /expired or was already used/i
+  );
+  const claims = await Promise.all([call('claim'), call('claim')]);
+  assert.deepEqual(claims.map((claim) => claim.requestId).sort(), [queued.id, null].sort());
+  assert.equal((await getIbkrSyncRequest(owner, queued.id)).status, 'running');
+  const preview = await call('preview', { capture: capture(), requestId: queued.id });
   const applied = await call('apply', {
     attemptId: preview.attemptId,
     checkpointHash: hashIbkrDevice(preview.backup),
   });
   assert.equal(applied.applied, true);
+  assert.equal((await getIbkrSyncRequest(owner, queued.id)).status, 'running');
   assert(applied.runId);
   await assert.rejects(
     () =>
@@ -963,6 +995,10 @@ try {
   });
   assert.equal(completed.verified, true);
   assert.equal(completed.unchanged, false);
+  const finishedRequest = await getIbkrSyncRequest(owner, queued.id);
+  assert.equal(finishedRequest.status, 'verified');
+  assert.equal(finishedRequest.capturedAt, completed.capturedAt);
+  assert.equal(finishedRequest.unchanged, false);
   assert.equal((await call('status')).blocked, false);
   const recorded = (await listIbkrDevices(owner, cashId))[0];
   assert.equal(recorded.lastStatus, 'verified');
@@ -978,6 +1014,12 @@ try {
     777
   );
   assert.deepEqual(await prisma.positionHistory.findMany({ where: { userId: owner } }), history);
+
+  const failedRequest = await queueIbkrSyncRequest(owner, cashId);
+  assert(failedRequest);
+  assert.equal((await call('claim')).requestId, failedRequest.id);
+  await call('failure', { requestId: failedRequest.id, stage: 'broker' });
+  assert.equal((await getIbkrSyncRequest(owner, failedRequest.id)).status, 'failed');
 
   const fxCapture = capture();
   for (const sample of [fxCapture.first, fxCapture.second]) {
@@ -1066,7 +1108,13 @@ try {
   stale.first.capturedAt = new Date(Date.now() - 1000).toISOString();
   stale.second.capturedAt = stale.first.capturedAt;
   await assert.rejects(() => call('preview', { capture: stale }), /newer|older|capture/i);
-  const changedPreview = await call('preview', { capture: capture() });
+  const blockedRequest = await queueIbkrSyncRequest(owner, cashId);
+  assert(blockedRequest);
+  assert.equal((await call('claim')).requestId, blockedRequest.id);
+  const changedPreview = await call('preview', {
+    capture: capture(),
+    requestId: blockedRequest.id,
+  });
   await prisma.position.update({ where: { id: stockId }, data: { notes: 'Fictional owner edit' } });
   await assert.rejects(
     () =>
@@ -1077,6 +1125,8 @@ try {
     /changed after preview/i
   );
   assert.equal((await call('status')).blocked, true);
+  assert.equal((await getIbkrSyncRequest(owner, blockedRequest.id)).status, 'blocked');
+  await assert.rejects(() => queueIbkrSyncRequest(owner, cashId), /unfinished/i);
   await call('failure', { attemptId: changedPreview.attemptId, stage: 'checkpoint' });
   assert.equal(
     (await call('status')).blocked,

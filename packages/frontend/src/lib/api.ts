@@ -26,6 +26,7 @@ import type {
   IbkrReconciliationResult,
   IbkrSyncRun,
   IbkrSyncDevice,
+  IbkrSyncRequest,
   IbkrDeviceEnrollment,
   PaginatedResponse,
   ParsedStatementResponse,
@@ -479,6 +480,22 @@ export interface IbkrHelperChallenge {
 export function apiForSession(session: AuthSession) {
   return {
     getPositions: () => request<Position[]>('/positions', undefined, session),
+    queueIbkrSync: (cashPositionId: string) =>
+      request<IbkrSyncRequest | null>(
+        '/ibkr/devices/sync-requests',
+        {
+          method: 'POST',
+          body: JSON.stringify({ cashPositionId }),
+          signal: AbortSignal.timeout(15000),
+        },
+        session
+      ),
+    getIbkrSyncRequest: (id: string) =>
+      request<IbkrSyncRequest>(
+        `/ibkr/devices/sync-requests/${encodeURIComponent(id)}`,
+        { signal: AbortSignal.timeout(15000) },
+        session
+      ),
     reconcileIbkr: (payload: Parameters<typeof api.reconcileIbkr>[0], onDispatch?: () => void) =>
       request<IbkrReconciliationResult>(
         '/ibkr/reconcile',

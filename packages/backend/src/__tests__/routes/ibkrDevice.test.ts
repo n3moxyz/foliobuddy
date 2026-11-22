@@ -9,12 +9,18 @@ const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   revoke: vi.fn(),
   operate: vi.fn(),
+  queue: vi.fn(),
+  getRequest: vi.fn(),
 }));
 vi.mock('../../services/ibkrDeviceService.js', () => ({
   enrollIbkrDevice: mocks.enroll,
   listIbkrDevices: mocks.list,
   revokeIbkrDevice: mocks.revoke,
   ibkrDeviceRequest: mocks.operate,
+}));
+vi.mock('../../services/ibkrSyncRequestService.js', () => ({
+  queueIbkrSyncRequest: mocks.queue,
+  getIbkrSyncRequest: mocks.getRequest,
 }));
 vi.mock('../../lib/logger.js', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
@@ -29,6 +35,25 @@ device.use(errorHandler);
 
 beforeEach(() => vi.clearAllMocks());
 describe('owner IBKR device routes', () => {
+  it('queues from the signed-in owner and reads an uncached result', async () => {
+    const result = { id: '2927c799-4158-41f3-a7b9-8889794a05e0', status: 'queued' };
+    const path = '/api/v1/ibkr/devices/sync-requests';
+    mocks.queue.mockResolvedValue(result);
+    mocks.getRequest.mockResolvedValue(result);
+    const queued = await request(owner).post(path).send({ cashPositionId: 'owned-cash' });
+    expect(queued.status).toBe(200);
+    expect(queued.body).toEqual(result);
+    expect(mocks.queue).toHaveBeenCalledWith('test-user-id', 'owned-cash');
+    const observed = await request(owner).get(`${path}/${result.id}`);
+    expect(observed.headers['cache-control']).toBe('no-store');
+    expect(observed.body).toEqual(result);
+    expect(mocks.getRequest).toHaveBeenCalledWith('test-user-id', result.id);
+    expect(
+      (await request(owner).post(path).send({ cashPositionId: 'owned-cash', deviceId: result.id }))
+        .status
+    ).toBe(400);
+    expect(mocks.queue).toHaveBeenCalledOnce();
+  });
   it('lists only the requested owned anchor and passes the signed-in owner', async () => {
     mocks.list.mockResolvedValue([{ deviceId: 'public-id', cashPositionId: 'owned-cash' }]);
     expect(

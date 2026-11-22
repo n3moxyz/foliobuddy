@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Position } from '@/lib/types';
@@ -13,6 +13,7 @@ vi.mock('sonner', () => ({
 beforeEach(() => {
   installAuthSession('button-owner', 'button-session', async () => 'button-token');
   vi.clearAllMocks();
+  vi.spyOn(directSync, 'syncIbkrOnDemand').mockResolvedValue(null);
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -176,19 +177,46 @@ describe('one-click IBKR control', () => {
   ])('is absent outside owned IBKR records %o', (change) => {
     expect(show({ ...position, ...change } as Position).container).toBeEmptyDOMElement();
   });
-  it('explains one-time setup without asking for a chat link or Send', () => {
+  it('offers local pairing on desktop when no Mac is registered for remote sync', async () => {
     show();
     fireEvent.click(screen.getByRole('button', { name: 'Sync IBKR' }));
-    expect(screen.getByRole('heading', { name: 'Connect This Mac Once' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Connect This Mac Once' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('One-Time Setup Code')).toBeInTheDocument();
     expect(screen.queryByLabelText('Codex chat link')).not.toBeInTheDocument();
     expect(screen.queryByText(/Press Send/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connect and Sync' })).toBeInTheDocument();
   });
+  it('sends a request to the connected Mac from an iPhone without local pairing', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone');
+    vi.spyOn(directSync, 'hasHelperConnection').mockReturnValue(true);
+    const local = vi.spyOn(directSync, 'syncIbkrDirect');
+    vi.mocked(directSync.syncIbkrOnDemand).mockResolvedValue({
+      phase: 'done',
+      capturedAt: '2026-11-22T08:00:00Z',
+      deviceName: 'Merlin',
+    });
+    show();
+    fireEvent.click(screen.getByRole('button', { name: 'Sync IBKR' }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(directSync.syncIbkrOnDemand).toHaveBeenCalledWith(position.id);
+    expect(local).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+  it('shows a connection hint on mobile when no Mac is registered', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone');
+    show();
+    fireEvent.click(screen.getByRole('button', { name: 'Sync IBKR' }));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('Connect a Mac to sync IBKR', expect.anything())
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
   it.each([
     ['manual', 'Last manual cash edit'],
     ['ibkr', 'Last saved broker capture'],
-  ] as const)('labels %s source timestamps accurately', (source, label) => {
+  ] as const)('labels %s source timestamps accurately', async (source, label) => {
     show({
       ...position,
       ibkrSyncedAt: '2026-10-02T08:00:00Z',
@@ -203,7 +231,7 @@ describe('one-click IBKR control', () => {
       },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Sync IBKR' }));
-    expect(screen.getByText(new RegExp(label))).toHaveTextContent('1 Oct 2026');
+    expect(await screen.findByText(new RegExp(label))).toHaveTextContent('1 Oct 2026');
     expect(screen.queryByText(/2 Oct 2026/)).not.toBeInTheDocument();
   });
   it('respects a cash-panel operation already in progress', () => {

@@ -2831,6 +2831,10 @@ One-time setup pairs one browser origin, owned cash anchor and connector link.
 **Sync IBKR** shows progress and the result in the app's toast while the user
 continues to navigate. The toast stays open during sync and dismisses automatically
 after showing the result. **Sync Details** shows the capture time and exact changes.
+On a phone, the button queues a request for the owner's connected Mac. The device
+claims it with its existing signed grant and runs the same backup and verification
+steps as the daily sync. Duplicate taps share one request, and an unclaimed request
+expires after five minutes. A request before the daily hour leaves the daily run due.
 The helper accepts no arbitrary tools or commands, never sees Clerk credentials,
 and cannot approve authentication or broker actions. A connection change requires
 pairing again. The app fails visibly on uncertain outcomes instead of declaring a

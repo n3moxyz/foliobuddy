@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '@/lib/api';
 import { installAuthSession } from '@/lib/authSession';
-import type { Position } from '@/lib/types';
+import type { IbkrSyncRequest, Position } from '@/lib/types';
 import {
   checkpointCashChanges,
   getDirectSyncState,
@@ -9,9 +9,11 @@ import {
   isDirectSyncResultCurrent,
   pairHelper,
   syncIbkrDirect,
+  syncIbkrOnDemand,
 } from '../ibkrDirectSync';
 
 const permits = vi.hoisted(() => ({ issue: vi.fn() }));
+const remote = vi.hoisted(() => ({ queueIbkrSync: vi.fn(), getIbkrSyncRequest: vi.fn() }));
 vi.mock('@/lib/api', () => {
   const api = { getPositions: vi.fn(), reconcileIbkr: vi.fn(), restoreIbkr: vi.fn() };
   return {
@@ -23,6 +25,7 @@ vi.mock('@/lib/api', () => {
         return api.reconcileIbkr(input);
       },
       helperPermit: permits.issue,
+      ...remote,
     }),
   };
 });
@@ -34,6 +37,60 @@ const jobId = 'j'.repeat(43);
 const fxError = 'IBKR currency cash does not tally with BASE; incomplete capture';
 let captureCount: number;
 let latestCaptureTime: string;
+const queuedRequest: IbkrSyncRequest = {
+  id: 'remote-request',
+  status: 'queued',
+  deviceName: 'Merlin',
+  error: null,
+  capturedAt: null,
+  unchanged: null,
+};
+
+describe('sync on the connected Mac', () => {
+  it('polls the same request through verification and retries a temporary read failure', async () => {
+    vi.useFakeTimers();
+    try {
+      remote.queueIbkrSync.mockResolvedValue(queuedRequest);
+      remote.getIbkrSyncRequest
+        .mockRejectedValueOnce(new TypeError('Network lost'))
+        .mockResolvedValueOnce({ ...queuedRequest, status: 'running' })
+        .mockResolvedValueOnce({
+          ...queuedRequest,
+          status: 'verified',
+          capturedAt: captureTime,
+          unchanged: true,
+        });
+      const sync = syncIbkrOnDemand(id);
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(getDirectSyncState(id)).toMatchObject({ phase: 'queued', deviceName: 'Merlin' });
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(getDirectSyncState(id)).toMatchObject({ phase: 'running', deviceName: 'Merlin' });
+      await vi.advanceTimersByTimeAsync(6000);
+      await expect(sync).resolves.toMatchObject({ phase: 'done', capturedAt: captureTime });
+      expect(remote.queueIbkrSync).toHaveBeenCalledExactlyOnceWith(id);
+      expect(remote.getIbkrSyncRequest.mock.calls).toEqual(Array(3).fill([queuedRequest.id]));
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stops watching the previous owner after a session switch', async () => {
+    vi.useFakeTimers();
+    try {
+      remote.queueIbkrSync.mockResolvedValue(queuedRequest);
+      const result = expect(syncIbkrOnDemand(id)).rejects.toThrow(/account changed/i);
+      await vi.advanceTimersByTimeAsync(0);
+      installAuthSession('owner-b', 'other-session', async () => 'token-b');
+      await result;
+      expect(remote.getIbkrSyncRequest).not.toHaveBeenCalled();
+      expect(getDirectSyncState(id).phase).toBe('idle');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 function brokerCapture(index: number) {
   latestCaptureTime = new Date(Date.parse(captureTime) + index * 30000).toISOString();
   const sample = {

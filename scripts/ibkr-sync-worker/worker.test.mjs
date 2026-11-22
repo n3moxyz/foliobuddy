@@ -210,13 +210,14 @@ async function workerFixture(t, hooks = {}) {
     async request(operation, body) {
       calls.push(operation);
       if (hooks.before) await hooks.before(operation, body, root);
-      if (operation === 'status')
+      if (operation === 'status' || operation === 'claim')
         return {
           deviceId: enrollment.deviceId,
           userId: 'fictional-owner',
           cashPositionId: 'cash',
           connectorFingerprint: fingerprint,
           blocked: false,
+          ...(operation === 'claim' && { requestId: hooks.claim?.() ?? null }),
         };
       if (operation === 'preview') {
         capture = body.capture;
@@ -401,8 +402,29 @@ test('daily tick claims a Singapore date once while explicit once may run again'
   const before = fixture.calls.length;
   const tick = await runWorker({ ...fixture.options, now, mode: 'tick' });
   assert.equal(tick.skipped, true);
-  assert.equal(fixture.calls.length, before);
+  assert.deepEqual(fixture.calls.slice(before), ['claim']);
   assert.equal((await runWorker({ ...fixture.options, now, mode: 'once' })).verified, true);
+});
+
+test('a queued request runs before the daily hour without claiming that day', async (t) => {
+  const requestId = 'a3e2ccab-7479-4061-bff7-a78f75e6236f';
+  let queued = requestId;
+  const fixture = await workerFixture(t, {
+    claim: () => {
+      const request = queued;
+      queued = null;
+      return request;
+    },
+    before: (operation, body) => {
+      if (operation === 'preview' && queued === null && !fixture.calls.includes('complete'))
+        assert.equal(body.requestId, requestId);
+    },
+  });
+  const early = () => new Date('2026-11-22T20:00:00Z');
+  const daily = () => new Date('2026-11-22T23:00:00Z');
+  assert.equal((await runWorker({ ...fixture.options, now: early, mode: 'tick' })).verified, true);
+  assert.equal((await runWorker({ ...fixture.options, now: early, mode: 'tick' })).skipped, true);
+  assert.equal((await runWorker({ ...fixture.options, now: daily, mode: 'tick' })).verified, true);
 });
 
 test('an interrupted marker or existing lock prevents work before any network request', async (t) => {
