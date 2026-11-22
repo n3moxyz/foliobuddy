@@ -11,6 +11,10 @@ const DialogPortal = DialogPrimitive.Portal;
 
 const DialogClose = DialogPrimitive.Close;
 
+type DialogPanelProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+  mobileSheet?: boolean;
+};
+
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -30,8 +34,8 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 // including controlled dialogs that do not use a Radix DialogTrigger.
 const DialogPanel = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, onCloseAutoFocus, onEscapeKeyDown, ...props }, ref) => {
+  DialogPanelProps
+>(({ className, children, mobileSheet, onCloseAutoFocus, onEscapeKeyDown, ...props }, ref) => {
   const opener = React.useRef(document.activeElement);
   return (
     <DialogPrimitive.Content
@@ -61,7 +65,11 @@ const DialogPanel = React.forwardRef<
         }
       }}
       className={cn(
-        'fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-4 sm:p-6 shadow-lg duration-200 ease-out-expo data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-lg',
+        'fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain rounded-lg border bg-background p-4 shadow-lg duration-200 ease-out-expo data-[state=open]:animate-in data-[state=closed]:animate-out sm:p-6',
+        'sm:data-[state=open]:fade-in-0 sm:data-[state=closed]:fade-out-0 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%] sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%]',
+        mobileSheet
+          ? 'max-h-[85vh] max-sm:bottom-0 max-sm:left-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:data-[state=open]:slide-in-from-bottom-full max-sm:data-[state=open]:[animation-duration:240ms] max-sm:data-[state=closed]:slide-out-to-bottom-full max-sm:data-[state=closed]:duration-150 max-sm:data-[state=closed]:ease-in'
+          : 'max-sm:data-[state=open]:fade-in-0 max-sm:data-[state=open]:zoom-in-95 max-sm:data-[state=closed]:fade-out-0 max-sm:data-[state=closed]:zoom-out-95 max-sm:data-[state=closed]:duration-150',
         className
       )}
       {...props}
@@ -78,7 +86,7 @@ DialogPanel.displayName = 'DialogPanel';
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+  DialogPanelProps
 >((props, ref) => (
   <DialogPortal>
     <DialogOverlay />
