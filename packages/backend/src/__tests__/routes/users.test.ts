@@ -5,6 +5,10 @@ import { createTestApp } from '../helpers/createTestApp.js';
 const mocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   userUpdate: vi.fn(),
+  groupOrderFindMany: vi.fn(),
+  groupOrderUpsert: vi.fn(),
+  groupOrderCreateMany: vi.fn(),
+  notifyGroupOrder: vi.fn(),
 }));
 
 vi.mock('../../lib/prisma.js', () => ({
@@ -13,7 +17,15 @@ vi.mock('../../lib/prisma.js', () => ({
       findUnique: mocks.userFindUnique,
       update: mocks.userUpdate,
     },
+    portfolioGroupOrder: {
+      findMany: mocks.groupOrderFindMany,
+      upsert: mocks.groupOrderUpsert,
+      createMany: mocks.groupOrderCreateMany,
+    },
   },
+}));
+vi.mock('../../services/socketService.js', () => ({
+  socketService: { broadcastPortfolioGroupOrdersUpdate: mocks.notifyGroupOrder },
 }));
 vi.mock('../../lib/sentry.js', () => ({
   Sentry: { captureException: vi.fn() },
@@ -32,6 +44,57 @@ const PREFERENCE_SELECT = {
   perpExposureUsd: true,
   reducePercentages: true,
 };
+
+describe('portfolio group orders', () => {
+  const path = '/api/users/me/preferences/portfolio-group-orders';
+  const order = ['bank', 'cex'];
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it('loads only the signed-in user’s orders', async () => {
+    mocks.groupOrderFindMany.mockResolvedValue([{ scope: 'cash:storage', order }]);
+    const result = await request(app).get(path).expect(200);
+    expect(result.body).toEqual({ 'cash:storage': order });
+    expect(mocks.groupOrderFindMany).toHaveBeenCalledWith({
+      where: { userId: 'test-user-id' },
+      select: { scope: true, order: true },
+    });
+  });
+
+  it('writes only the selected scope, then notifies the user’s devices', async () => {
+    const scope = 'cash:storage';
+    mocks.groupOrderUpsert.mockResolvedValue({ order });
+    const result = await request(app).patch(path).send({ scope, order }).expect(200);
+    expect(result.body).toEqual({ order });
+    expect(mocks.groupOrderUpsert).toHaveBeenCalledWith({
+      where: { userId_scope: { userId: 'test-user-id', scope } },
+      create: { userId: 'test-user-id', scope, order },
+      update: { order },
+      select: { order: true },
+    });
+    expect(mocks.notifyGroupOrder).toHaveBeenCalledWith('test-user-id');
+  });
+
+  it('imports only missing orders and never updates an existing scope', async () => {
+    const orders = [{ scope: 'cash:storage', order }];
+    mocks.groupOrderCreateMany.mockResolvedValue({ count: 0 });
+    await request(app).post(path).send({ orders }).expect(204);
+    expect(mocks.groupOrderCreateMany).toHaveBeenCalledWith({
+      data: [{ userId: 'test-user-id', ...orders[0] }],
+      skipDuplicates: true,
+    });
+    expect(mocks.notifyGroupOrder).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { scope: 'invalid:scope', order },
+    { scope: 'cash:storage', order: ['bank', 'bank'] },
+    { scope: 'cash:storage', order, userId: 'another-account' },
+  ])('rejects an invalid or cross-account update', async (payload) => {
+    await request(app).patch(path).send(payload).expect(400);
+    expect(mocks.groupOrderUpsert).not.toHaveBeenCalled();
+  });
+});
 
 describe('users routes — user preferences', () => {
   beforeEach(() => {

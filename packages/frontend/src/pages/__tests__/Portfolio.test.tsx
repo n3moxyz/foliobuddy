@@ -6,6 +6,12 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import Portfolio from '../Portfolio';
 
 vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: vi.fn(() => false) }));
+vi.mock('@/hooks/usePortfolioGroupOrders', () => ({
+  usePortfolioGroupOrders: () => ({
+    preference: () => ({ ready: true, save: vi.fn() }),
+    hasData: true,
+  }),
+}));
 
 const perpMocks = vi.hoisted(() => ({
   exposure: 0,

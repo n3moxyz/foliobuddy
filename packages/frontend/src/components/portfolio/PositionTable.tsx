@@ -69,31 +69,10 @@ import { calculatePositionGroupPnL } from '@/components/portfolio/positionGroupM
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { NavStatus } from './NavStatus';
 import { AssetLabel } from '@/components/ui/asset-label';
-import { captureAuthSession } from '@/lib/authSession';
 import { PositionGroupOrderDialog } from './PositionGroupOrderDialog';
 
-const GROUPING_MODES = ['storage', 'equityType', 'broker'] as const;
-type PositionGroupBy = (typeof GROUPING_MODES)[number];
-type GroupOrders = Partial<Record<PositionGroupBy, string[]>>;
+type PositionGroupBy = 'storage' | 'equityType' | 'broker';
 type MobilePositionVariant = 'focus' | 'compact';
-
-function readGroupOrders(key: string): GroupOrders {
-  try {
-    const saved = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string, unknown> | null;
-    const orders: GroupOrders = {};
-    for (const mode of GROUPING_MODES) {
-      const order = saved?.[mode];
-      if (Array.isArray(order)) {
-        orders[mode] = [
-          ...new Set(order.filter((item): item is string => typeof item === 'string')),
-        ];
-      }
-    }
-    return orders;
-  } catch {
-    return {};
-  }
-}
 
 interface BrokerGroupMeta {
   id: string;
@@ -123,6 +102,11 @@ interface PositionTableProps {
    * - 'broker': individual broker/fund platform names — used for Equities
    */
   groupBy?: PositionGroupBy;
+  groupOrder?: {
+    order?: readonly string[];
+    ready: boolean;
+    save: (keys: string[]) => Promise<void>;
+  };
   mobileVariant?: MobilePositionVariant;
   showMobileColumnToggle?: boolean;
 }
@@ -179,6 +163,7 @@ export function PositionTable({
   sectionPrefix,
   onUpdateNav,
   groupBy = 'storage',
+  groupOrder,
   mobileVariant = 'focus',
   showMobileColumnToggle = true,
 }: PositionTableProps) {
@@ -196,10 +181,6 @@ export function PositionTable({
   const [cancelHistoryEntry, setCancelHistoryEntry] = useState<PositionHistoryEntry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAllColumns, setShowAllColumns] = useState(false);
-  const section = sectionPrefix?.replace(/^mobile-/, '') ?? 'portfolio';
-  const owner = captureAuthSession().ownerId;
-  const groupOrderKey = `foliobuddy-position-group-order:${encodeURIComponent(owner)}:${section}`;
-  const [groupOrders, setGroupOrders] = useState(() => readGroupOrders(groupOrderKey));
   // SGD last so it wins over any DB USD->SGD rate in usdFxRates: the native SGD label
   // then uses the same portfolio-summary rate as the primary column (avoids bps drift).
   const priceFxRates = useMemo(
@@ -1428,32 +1409,13 @@ export function PositionTable({
       showUnitTrustBadge: true,
     })),
   }[groupBy].filter((group) => group.positions.length > 0);
-  const order = groupOrders[groupBy];
+  const order = groupOrder?.order;
   if (order?.length) {
     const ranks = new Map(order.map((key, index) => [key, index]));
     groups.sort(
       (left, right) =>
         (ranks.get(left.orderKey) ?? ranks.size) - (ranks.get(right.orderKey) ?? ranks.size)
     );
-  }
-
-  function saveGroupOrder(keys: string[]) {
-    const saved = readGroupOrders(groupOrderKey);
-    // Replace the visible slots while preserving the saved slots of currently empty groups.
-    const visible = new Set(keys);
-    let index = 0;
-    const previous = (saved[groupBy] ?? []).map((key) => (visible.has(key) ? keys[index++] : key));
-    saved[groupBy] = [...previous, ...keys.slice(index)];
-    try {
-      localStorage.setItem(groupOrderKey, JSON.stringify(saved));
-      setGroupOrders(saved);
-      return true;
-    } catch {
-      toast.error('Could not save group order', {
-        description: 'Check browser storage and try again.',
-      });
-      return false;
-    }
   }
 
   return (
@@ -1474,9 +1436,14 @@ export function PositionTable({
           </div>
         )}
 
-        {groups.length > 1 && (
+        {groups.length > 1 && groupOrder && (
           <div className="flex justify-end">
-            <PositionGroupOrderDialog key={groupBy} groups={groups} onSave={saveGroupOrder} />
+            <PositionGroupOrderDialog
+              key={groupBy}
+              groups={groups}
+              disabled={!groupOrder.ready}
+              onSave={groupOrder.save}
+            />
           </div>
         )}
         {groups.map(renderPositionSection)}

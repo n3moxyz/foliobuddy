@@ -62,6 +62,12 @@ import {
 } from './authSession';
 import { ApiError } from './apiError';
 
+import {
+  PORTFOLIO_GROUP_ORDER_PATH,
+  type PortfolioGroupOrders,
+  type PortfolioGroupOrderUpdate,
+} from './portfolioGroupOrders';
+
 export * from './types';
 export { ApiError };
 
@@ -480,6 +486,28 @@ export interface IbkrHelperChallenge {
 export function apiForSession(session: AuthSession) {
   return {
     getPositions: () => request<Position[]>('/positions', undefined, session),
+    getPortfolioGroupOrders: (signal: AbortSignal) =>
+      request<PortfolioGroupOrders>(PORTFOLIO_GROUP_ORDER_PATH, { signal }, session),
+    savePortfolioGroupOrder: (update: PortfolioGroupOrderUpdate) =>
+      request<{ order: string[] }>(
+        PORTFOLIO_GROUP_ORDER_PATH,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(update),
+          signal: AbortSignal.timeout(15000),
+        },
+        session
+      ),
+    importPortfolioGroupOrders: (orders: PortfolioGroupOrderUpdate[]) =>
+      request<void>(
+        PORTFOLIO_GROUP_ORDER_PATH,
+        {
+          method: 'POST',
+          body: JSON.stringify({ orders }),
+          signal: AbortSignal.timeout(15000),
+        },
+        session
+      ),
     queueIbkrSync: (cashPositionId: string) =>
       request<IbkrSyncRequest | null>(
         '/ibkr/devices/sync-requests',

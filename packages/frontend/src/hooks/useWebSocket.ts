@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@clerk/clerk-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { PORTFOLIO_GROUP_ORDER_QUERY_KEY } from '@/lib/portfolioGroupOrders';
 
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
@@ -52,7 +53,14 @@ export function useWebSocket(): UseWebSocketReturn {
         reconnectionDelayMax: 5000,
       });
 
-      socket.on('connect', () => setStatus('connected'));
+      const refreshGroupOrders = () => {
+        void queryClient.invalidateQueries({ queryKey: PORTFOLIO_GROUP_ORDER_QUERY_KEY });
+      };
+      socket.on('connect', () => {
+        setStatus('connected');
+        refreshGroupOrders();
+      });
+      socket.on('portfolio-group-orders:updated', refreshGroupOrders);
       socket.on('disconnect', () => setStatus('disconnected'));
       socket.on('connect_error', () => setStatus('disconnected'));
       socket.on('reconnecting', () => setStatus('connecting'));

@@ -49,7 +49,7 @@ Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tab
 
 2-level, all breakpoints: **Crypto/Equities/Cash** (`Portfolio.tsx` via `CollapsibleCard`, `icon` + `accentColor`) → **CEX/Broker Account/Bank/Onchain** (`PositionTable`, trigger $ totals). Equities: persisted By Broker/By Type. Accent tokens `crypto`/`equities`/`cash`/`custody` in `index.css`/`tailwind.config.js`, never raw `-500`; custody accent `CUSTODY_CONFIG`. Heading wraps trigger (`<h2><button>`), never reversed: invalid HTML hides headings from SR nav. Desktop `hidden sm:block` full table rows; mobile `sm:hidden` `mobileVariant="compact"`, no column toggle; custody own section on both.
 
-Each section offers **Reorder groups** when two or more subgroups are visible. Use a compact dialog with dedicated drag handles and move buttons. Save applies the order to the section without resetting group expansion or column sort. Browser storage separates orders by account, section and grouping mode. Keep the same storage key across viewport layouts.
+Each section offers **Reorder groups** when two or more subgroups are visible. Use a compact dialog with drag handles and move buttons. Save updates the account order per section and grouping mode without resetting group expansion or column sort. Phone and desktop use the same account order. Import a legacy browser order only if that scope has no account order.
 
 ## Perp Exposure Controls
 

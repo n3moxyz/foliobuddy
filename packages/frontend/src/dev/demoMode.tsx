@@ -6,6 +6,7 @@ import { ShortcutsHelpModal } from '@/components/layout/ShortcutsHelpModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useThemeEffect } from '@/hooks/useThemeEffect';
 import { setTokenGetter } from '@/lib/api';
+import type { PortfolioGroupOrders, PortfolioGroupOrderUpdate } from '@/lib/portfolioGroupOrders';
 import { impliedYahooTicker } from '@/components/portfolio/assetSearchMatching';
 import { handleDemoIbkr, resetDemoIbkr } from './demoIbkr';
 import type {
@@ -1484,6 +1485,7 @@ const INITIAL_DEMO_PREFERENCES: UserPreferences = {
   reducePercentages: [25, 50, 75, 100],
 };
 let demoPreferences: UserPreferences = { ...INITIAL_DEMO_PREFERENCES };
+let demoGroupOrders: PortfolioGroupOrders = {};
 const fxRates: FxRate[] = [
   { id: 'usd-sgd', fromCcy: 'USD', toCcy: 'SGD', rate: 1.3471, timestamp: NOW },
   { id: 'usd-jpy', fromCcy: 'USD', toCcy: 'JPY', rate: 150, timestamp: NOW },
@@ -1506,6 +1508,7 @@ const demoPositionImports = new Map<string, { input: string; rows: Map<number, s
 export function resetDemoDataForTests() {
   resetDemoIbkr();
   demoPreferences = { ...INITIAL_DEMO_PREFERENCES };
+  demoGroupOrders = {};
   demoAssets = [...initialAssets];
   demoPositions = initialPositions.map(currentDemoCashPosition);
   demoPositionHistory = [...initialPositionHistory];
@@ -3323,6 +3326,21 @@ export async function handleDemoApi(url: URL, method: string, init?: RequestInit
     const body = JSON.parse((init?.body as string | undefined) ?? '{}') as Partial<UserPreferences>;
     demoPreferences = { ...demoPreferences, ...body };
     return json(demoPreferences);
+  }
+  if (path === '/api/users/me/preferences/portfolio-group-orders') {
+    if (method === 'GET') return json(demoGroupOrders);
+    if (method === 'PATCH') {
+      const { scope, order } = JSON.parse(String(init?.body)) as PortfolioGroupOrderUpdate;
+      demoGroupOrders[scope] = order;
+      return json({ order });
+    }
+    if (method === 'POST') {
+      const { orders } = JSON.parse(String(init?.body)) as {
+        orders: PortfolioGroupOrderUpdate[];
+      };
+      for (const { scope, order } of orders) demoGroupOrders[scope] ??= order;
+      return new Response(null, { status: 204 });
+    }
   }
   if (path === '/api/fx/rates' && method === 'GET') return json(fxRates);
   if (path === '/api/news' && method === 'GET') return json(demoNews);
