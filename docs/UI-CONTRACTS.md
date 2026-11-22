@@ -71,7 +71,7 @@ Only free-text location dropdowns (CEX/wallet/broker/bank) use `CreatableSelect`
 Motion confirms an action or orients the user (PRODUCT.md). Keep it off keyboard actions, live data and persistent UI.
 
 - **Pages**: `animate-fade-in-up` on page headers only. No staggered section animations.
-- **Route changes**: keep the current page visible while a lazy route loads. Scroll to the top when a new path commits. The browser restores scroll on Back and Forward.
+- **Route changes**: keep the current page visible while a lazy route loads. Scroll to the top when a new path commits. On Back and Forward, restore the entry's saved scroll position after the page commits.
 - **Keyboard**: a surface opened only from the keyboard (the Cmd/Ctrl+K shortcuts dialog) opens and closes without animation.
 - **Theme**: a theme swap is instant. `applyTheme()` turns transitions off until the browser paints one frame of the new theme. Keep that guard when you add color transitions.
 - **Tooltips**: one 150 ms fade, only after the hover delay (`data-state=delayed-open`). Focus, taps and the next tooltip along a row (`instant-open`) appear at once. Every tooltip closes at once. Tooltips share the root `TooltipProvider` and its warm window. `HelpTooltip` uses `TooltipProviderIfMissing`, never a provider of its own.

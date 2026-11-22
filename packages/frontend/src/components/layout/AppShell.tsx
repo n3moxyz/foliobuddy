@@ -111,19 +111,35 @@ function AppShellContent({
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const mainRef = useRef<HTMLElement>(null);
-  const previousPath = useRef(location.pathname);
+  const committedLocation = useRef(location);
+  const scrollPositions = useRef(new Map<string, number>());
   const menuPath = useRef(location.pathname);
 
   useEffect(() => {
     if (isDesktop) setSidebarOpen(false);
   }, [isDesktop]);
 
+  useEffect(() => {
+    const rememberScroll = () => {
+      const key = committedLocation.current.key;
+      // A browser can scroll after history changes, while the old route is still visible.
+      if ((window.history.state?.key ?? 'default') === key) {
+        scrollPositions.current.set(key, window.scrollY);
+      }
+    };
+    window.addEventListener('scroll', rememberScroll, { passive: true });
+    return () => window.removeEventListener('scroll', rememberScroll);
+  }, []);
+
   useLayoutEffect(() => {
-    if (previousPath.current === location.pathname) return;
-    previousPath.current = location.pathname;
+    const previousPath = committedLocation.current.pathname;
+    committedLocation.current = location;
+    if (previousPath === location.pathname) return;
     mainRef.current?.focus({ preventScroll: true });
-    if (navigationType !== 'POP') window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [location.pathname, navigationType]);
+    // WebKit may restore native history scroll while the departing page is still mounted.
+    const top = navigationType === 'POP' ? scrollPositions.current.get(location.key) : 0;
+    if (top !== undefined) window.scrollTo({ top, behavior: 'instant' });
+  }, [location, navigationType]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
   const [refreshing, setRefreshing] = useState(false);
   const { currency, toggleCurrency } = useCurrencyStore();
