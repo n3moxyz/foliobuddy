@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.69.0
+
+- Reorder Portfolio subgroups by dragging them or using the move buttons. FolioBuddy remembers the order in the current browser.
+- Restore the full scroll position when returning to a taller page with Back in iOS Safari.
+
 ## v1.68.2
 
 - Keep Portfolio scrolling when a swipe starts on a menu button. Let menus scroll on short screens.

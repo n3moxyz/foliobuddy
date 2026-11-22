@@ -49,6 +49,8 @@ Borderless hero (matching Net Worth). **Desktop** (`hidden sm:block`): large tab
 
 2-level, all breakpoints: **Crypto/Equities/Cash** (`Portfolio.tsx` via `CollapsibleCard`, `icon` + `accentColor`) → **CEX/Broker Account/Bank/Onchain** (`PositionTable`, trigger $ totals). Equities: persisted By Broker/By Type. Accent tokens `crypto`/`equities`/`cash`/`custody` in `index.css`/`tailwind.config.js`, never raw `-500`; custody accent `CUSTODY_CONFIG`. Heading wraps trigger (`<h2><button>`), never reversed: invalid HTML hides headings from SR nav. Desktop `hidden sm:block` full table rows; mobile `sm:hidden` `mobileVariant="compact"`, no column toggle; custody own section on both.
 
+Each section offers **Reorder groups** when two or more subgroups are visible. Use a compact dialog with dedicated drag handles and move buttons. Save applies the order to the section without resetting group expansion or column sort. Browser storage separates orders by account, section and grouping mode. Keep the same storage key across viewport layouts.
+
 ## Perp Exposure Controls
 
 Perps outlive positions (Delete All keeps them), but the Cash section goes with its last owned position. So both Portfolio ⋮ menus (desktop "More options", mobile "More actions") always offer Add Perp/Edit Perp, which opens the USD dialog; its Remove, shown once a value exists, saves 0. Desktop's Cash section adds shortcuts: Add Perp in its header, or the Perp row (Available, inline edit in the display currency, Remove). One gate covers every control: disabled until the setting first loads (`usePerpExposure().hasLoaded`) and while a save or migration runs. A failed refresh keeps the value editable, because a save sends the whole value and reports its own failure. A failed first load shows `QueryErrorNotice` ("Couldn't load perp exposure") with Try again.
@@ -69,7 +71,7 @@ Only free-text location dropdowns (CEX/wallet/broker/bank) use `CreatableSelect`
 Motion confirms an action or orients the user (PRODUCT.md). Keep it off keyboard actions, live data and persistent UI.
 
 - **Pages**: `animate-fade-in-up` on page headers only. No staggered section animations.
-- **Route changes**: keep the current page visible while a lazy route loads. Scroll to the top when a new path commits. The browser restores scroll on Back and Forward.
+- **Route changes**: keep the current page visible while a lazy route loads. Scroll to the top when a new path commits. On Back and Forward, restore the entry's saved scroll position after the page commits.
 - **Keyboard**: a surface opened only from the keyboard (the Cmd/Ctrl+K shortcuts dialog) opens and closes without animation.
 - **Theme**: a theme swap is instant. `applyTheme()` turns transitions off until the browser paints one frame of the new theme. Keep that guard when you add color transitions.
 - **Tooltips**: one 150 ms fade, only after the hover delay (`data-state=delayed-open`). Focus, taps and the next tooltip along a row (`instant-open`) appear at once. Every tooltip closes at once. Tooltips share the root `TooltipProvider` and its warm window. `HelpTooltip` uses `TooltipProviderIfMissing`, never a provider of its own.
