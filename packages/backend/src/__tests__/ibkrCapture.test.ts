@@ -4,6 +4,25 @@ import { validateIbkrCapture, ibkrYahooSymbol } from '../services/ibkrCapture.js
 import { fictionalIbkrCapture } from './helpers/ibkr.js';
 
 describe('IBKR source completeness', () => {
+  it('retains closed rows in the capture without requiring their currency in the live balances', () => {
+    const input = fictionalIbkrCapture();
+    for (const sample of [input.first, input.second]) {
+      sample.positions.push({
+        ...sample.positions[0],
+        contract_id: 102,
+        contract_description: 'CLOSED @OSE',
+        currency: 'NOK',
+        position: 0,
+        average_price: 0,
+        market_value: 0,
+      });
+    }
+    expect(validateIbkrCapture(input).capture).toEqual(input);
+    input.second.positions[1].market_value = 0.01;
+    expect(() => validateIbkrCapture(input)).toThrow(/zero shares has a market value/);
+    input.second.positions[1].position = -1;
+    expect(() => validateIbkrCapture(input)).toThrow(/IBKR returned unsupported data/);
+  });
   it('preserves explicit execution coverage and rejects an invalid range', () => {
     const input = fictionalIbkrCapture();
     input.executionsFrom = new Date(Date.now() - 86400000).toISOString();

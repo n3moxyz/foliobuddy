@@ -226,6 +226,16 @@ test('shorter trade history cannot certify a close across an uncovered interval'
       date: new Date(start + 5000).toISOString(),
     },
   ];
+  for (const sample of [capture.first, capture.second]) {
+    sample.positions.push({
+      ...sample.positions[0],
+      contract_id: 888,
+      contract_description: 'CLOSED @NASDAQ',
+      position: 0,
+      average_price: 0,
+      market_value: 0,
+    });
+  }
   const { backup } = fixtureCheckpoint(capture);
   const closed = {
     ...structuredClone(backup.before[1]),
@@ -252,6 +262,18 @@ test('shorter trade history cannot certify a close across an uncovered interval'
   );
   closed.ibkrSyncedAt = capture.executionsFrom;
   verifyCheckpoint(backup, capture, 'cash', hash({ before: backup.before, after: backup.after }));
+  capture.executions = [];
+  backup.captureHash = hash({ kind: 'sync', cashPositionId: 'cash', source: capture });
+  assert.throws(
+    () =>
+      verifyCheckpoint(
+        backup,
+        capture,
+        'cash',
+        hash({ before: backup.before, after: backup.after })
+      ),
+    /complete closing-sale evidence/
+  );
 });
 
 test('independent readback verifies all records, history and timestamp', () => {

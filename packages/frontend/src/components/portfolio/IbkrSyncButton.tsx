@@ -50,6 +50,8 @@ const phaseLabels: Record<SyncPhase, string> = {
   error: 'Sync needs attention',
 };
 
+let dismissPreviousSyncToast: (() => void) | undefined;
+
 export function IbkrSyncButton({
   position,
   disabled = false,
@@ -96,13 +98,50 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
     ]);
   }
   async function sync() {
+    if (isSyncBusy(getDirectSyncState(position.id).phase)) return;
     const session = captureAuthSession();
     setError(null);
-    setOpen(true);
+    setOpen(false);
+    dismissPreviousSyncToast?.();
+    let shownPhase: SyncPhase = 'checking';
+    const progressOptions = { dismissible: false, className: 'pointer-events-none' };
+    const id = toast.loading('Syncing IBKR…', {
+      ...progressOptions,
+      description: `${phaseLabels.checking} Keep this tab open.`,
+    });
+    function cleanup() {
+      session.signal.removeEventListener('abort', dismiss);
+      if (dismissPreviousSyncToast === dismiss) dismissPreviousSyncToast = undefined;
+    }
+    function dismiss() {
+      cleanup();
+      toast.dismiss(id);
+    }
+    dismissPreviousSyncToast = dismiss;
+    session.signal.addEventListener('abort', dismiss, { once: true });
+    const options = {
+      id,
+      duration: Infinity,
+      dismissible: true,
+      className: '',
+      onDismiss: cleanup,
+    };
+    const unsubscribe = subscribeDirectSync(() => {
+      if (!isAuthSessionCurrent(session)) return;
+      const { phase } = getDirectSyncState(position.id);
+      if (!isSyncBusy(phase) || shownPhase === phase) return;
+      shownPhase = phase;
+      toast.loading('Syncing IBKR…', {
+        ...progressOptions,
+        id,
+        description: `${phaseLabels[phase]} Keep this tab open.`,
+      });
+    });
     try {
       const result = await syncIbkrDirect(position.id);
       if (!isAuthSessionCurrent(session)) return;
-      toast.success('IBKR synced and verified', {
+      toast.success(phaseLabels.done, {
+        ...options,
         description: result.unchanged
           ? 'Shares, native cost bases and currency balances are unchanged.'
           : 'Your IBKR shares, cost bases and currency balances are up to date.',
@@ -110,9 +149,11 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
     } catch (cause) {
       if (!isAuthSessionCurrent(session)) return;
       toast.error('IBKR sync stopped', {
+        ...options,
         description: cause instanceof Error ? cause.message : 'Check the sync details.',
       });
     } finally {
+      unsubscribe();
       if (isAuthSessionCurrent(session)) await refresh();
     }
   }
@@ -146,8 +187,13 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
           variant="outline"
           size="sm"
           disabled={disabled || connecting}
+          aria-disabled={busy || undefined}
           aria-busy={busy}
-          onClick={() => (busy ? configure() : connected ? void sync() : configure())}
+          onClick={() => {
+            if (busy) return;
+            if (connected) void sync();
+            else configure();
+          }}
         >
           {busy ? (
             <Loader2 className="mr-1 h-4 w-4 animate-spin motion-reduce:animate-none" />

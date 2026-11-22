@@ -2828,7 +2828,8 @@ local backup, apply the same state, then independent saved-record verification.
 There is no separate broker gateway or daily gateway login.
 
 One-time setup pairs one browser origin, owned cash anchor and connector link.
-Normal use is **Sync IBKR → verified result**, with exact changed lines in the app.
+**Sync IBKR** shows progress and the result in the app's toast while the user
+continues to navigate. **Sync Details** shows the capture time and exact changes.
 The helper accepts no arbitrary tools or commands, never sees Clerk credentials,
 and cannot approve authentication or broker actions. A connection change requires
 pairing again. The app fails visibly on uncertain outcomes instead of declaring a
@@ -2837,7 +2838,10 @@ request sent or a database write alone to be success.
 The real sandbox rehearsal changed fictional holdings and cash, then verified the
 checkpoint and preserved ledger/history. Native amounts keep stored precision;
 the result display uses the same clean price/amount formatting and privacy mask as
-the rest of the app. See the [setup and maintenance runbook](docs/solutions/2026-10-01-ibkr-one-click-sync.md).
+the rest of the app. A broker capture can include a sold holding with zero shares
+and zero market value. Reconciliation and the checkpoint verifier treat it like
+an absent holding, requiring complete sale evidence before closing a saved row.
+See the [setup and maintenance runbook](docs/solutions/2026-10-01-ibkr-one-click-sync.md).
 
 The first production button test exposed a timing case: IBKR had refreshed its
 BASE cash total while a currency row still carried an older exchange rate. The

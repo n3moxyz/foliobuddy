@@ -93,6 +93,7 @@ export function verifyCheckpoint(backup, capture, anchor, state) {
     ibkrCash: _cash,
     ...row
   }) => row;
+  const openHoldings = capture.second.positions.filter((holding) => holding.position !== 0);
   for (const row of before) {
     const next = after.find((candidate) => candidate.id === row.id);
     for (const savedTime of [row.ibkrSyncedAt, row.ibkrCash?.capturedAt]) {
@@ -153,7 +154,7 @@ export function verifyCheckpoint(backup, capture, anchor, state) {
         'A currency cash or debt value differs from IBKR.'
       );
     } else {
-      const holding = capture.second.positions.find((p) => p.contract_id === next.ibkrContractId);
+      const holding = openHoldings.find((p) => p.contract_id === next.ibkrContractId);
       if (holding)
         check(
           next.quantity === holding.position &&
@@ -194,7 +195,7 @@ export function verifyCheckpoint(backup, capture, anchor, state) {
     }
   }
   check(
-    capture.second.positions.every(
+    openHoldings.every(
       (p) => after.filter((row) => row.ibkrContractId === p.contract_id).length === 1
     ),
     'A broker holding is missing from the checkpoint.'

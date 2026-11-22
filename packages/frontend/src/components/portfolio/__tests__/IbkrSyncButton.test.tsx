@@ -7,7 +7,9 @@ import * as directSync from '../ibkrDirectSync';
 import { installAuthSession } from '@/lib/authSession';
 import { toast } from 'sonner';
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('sonner', () => ({
+  toast: { loading: vi.fn(() => 'sync-toast'), success: vi.fn(), error: vi.fn(), dismiss: vi.fn() },
+}));
 beforeEach(() => {
   installAuthSession('button-owner', 'button-session', async () => 'button-token');
   vi.clearAllMocks();
@@ -56,9 +58,10 @@ describe('one-click IBKR control', () => {
       vi.spyOn(directSync, 'getDirectSyncState').mockReturnValue(completed);
       const sync = vi.spyOn(directSync, 'syncIbkrDirect').mockResolvedValue(completed);
       const view = show(current);
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sync IBKR' }));
+      fireEvent.keyDown(screen.getByRole('button', { name: 'IBKR sync options' }), {
+        key: 'ArrowDown',
       });
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Sync Details' }));
       const done = screen.getByRole('button', { name: 'Done' });
       fireEvent.pointerDown(done, { button: 0 });
       const nextTime = change === 'older cache' ? '2026-10-01T08:00:00Z' : '2026-10-02T09:00:00Z';
@@ -81,8 +84,59 @@ describe('one-click IBKR control', () => {
       await act(async () => {
         fireEvent.click(done);
       });
-      expect(sync).toHaveBeenCalledOnce();
+      expect(sync).not.toHaveBeenCalled();
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    }
+  );
+  it.each(['success', 'failure'])(
+    'updates one persistent toast through %s even after leaving Portfolio',
+    async (outcome) => {
+      let resolve!: (value: directSync.DirectSyncState) => void;
+      let reject!: (error: Error) => void;
+      let state: directSync.DirectSyncState = { phase: 'idle' };
+      const listeners = new Set<() => void>();
+      vi.spyOn(directSync, 'hasHelperConnection').mockReturnValue(true);
+      vi.spyOn(directSync, 'getDirectSyncState').mockImplementation(() => state);
+      vi.spyOn(directSync, 'subscribeDirectSync').mockImplementation((listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      });
+      const sync = vi.spyOn(directSync, 'syncIbkrDirect').mockReturnValue(
+        new Promise((done, fail) => {
+          resolve = done;
+          reject = fail;
+        })
+      );
+      const view = show();
+      fireEvent.click(screen.getByRole('button', { name: 'Sync IBKR' }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(toast.loading).toHaveBeenCalledWith(
+        'Syncing IBKR…',
+        expect.objectContaining({ description: expect.stringContaining('Checking your IBKR') })
+      );
+      act(() => {
+        state = { phase: 'reading' };
+        listeners.forEach((listener) => listener());
+      });
+      expect(toast.loading).toHaveBeenLastCalledWith(
+        'Syncing IBKR…',
+        expect.objectContaining({
+          id: 'sync-toast',
+          description: expect.stringContaining('Reading IBKR twice'),
+        })
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Syncing IBKR…' }));
+      expect(sync).toHaveBeenCalledOnce();
+      view.unmount();
+      await act(async () => {
+        if (outcome === 'success') resolve({ phase: 'done', unchanged: true });
+        else reject(new Error('The backup could not be verified.'));
+      });
+      expect(listeners.size).toBe(0);
+      const result = expect.objectContaining({ id: 'sync-toast', duration: Infinity });
+      if (outcome === 'success')
+        expect(toast.success).toHaveBeenCalledWith('IBKR synced and verified', result);
+      else expect(toast.error).toHaveBeenCalledWith('IBKR sync stopped', result);
     }
   );
   it.each(['success', 'failure'])(
@@ -107,6 +161,7 @@ describe('one-click IBKR control', () => {
       });
       expect(toast.success).not.toHaveBeenCalled();
       expect(toast.error).not.toHaveBeenCalled();
+      expect(toast.dismiss).toHaveBeenCalledWith('sync-toast');
       expect(invalidate).not.toHaveBeenCalled();
     }
   );

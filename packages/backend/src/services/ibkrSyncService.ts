@@ -176,6 +176,9 @@ function syncPatches(rows: Row[], cashId: string, capture: IbkrCapture, cash: Ib
   const matched = new Set<string>();
   const patches: Patch[] = [];
   for (const holding of capture.second.positions) {
+    // IBKR can keep reporting closed contracts. Route them through the same
+    // closing-sale checks as absent holdings and preserve the saved cost basis.
+    if (holding.position === 0) continue;
     const symbol = ibkrYahooSymbol(holding);
     const matches = securities.filter((p) =>
       p.ibkrContractId != null

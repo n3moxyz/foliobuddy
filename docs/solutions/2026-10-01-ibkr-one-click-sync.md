@@ -72,6 +72,10 @@ forgets that browser's local token; it does not change the IBKR connection.
 
 ## Data flow and fail-closed behavior
 
+With a paired browser, **Sync IBKR** starts immediately. The app toast shows
+progress across pages and keeps the result visible until dismissal or another
+sync. Open **Sync Details** for the capture time and verified changes.
+
 1. The signed-in browser freshly verifies the owned IBKR USD cash anchor. Each
    helper operation requires a fresh owner-bound permit. Switching accounts or
    signing out aborts the workflow; late results cannot continue under the next login.
@@ -87,6 +91,13 @@ forgets that browser's local token; it does not change the IBKR connection.
    currency balance, owner scope, original USD ledger and unchanged history hashes.
    A capture older than any saved sync or cash-edit timestamp is rejected, including
    a newer sync saved by another Mac between collection and preview.
+   IBKR can include closed contracts with zero shares and zero market value in
+   both reads. Keep these rows in the private capture. Treat them as absent
+   holdings when planning and verifying changes. Complete closing-sale evidence
+   is still required to close a saved holding, and its saved cost basis is retained.
+   Update the backend and the installed helper or worker checkpoint verifier to
+   support these captures. The helper refresh must preserve the existing pairing
+   and pending checkpoints.
 5. The helper writes the checkpoint with mode 0600, fsyncs it and reads it back.
    It also durably saves `pending-sync.json` before allowing apply. Logout, connection
    loss or a helper restart preserves this guard; an uncertain result blocks another
@@ -153,7 +164,7 @@ source capture is never re-timestamped to make it appear fresh.
 - `scripts/ibkr-sync-helper/`: fixed RPC client, source parser, audit checks, HTTP
   service, one-time installer and fictional tests. Node built-ins only.
 - `ibkrDirectSync.ts`: owner-session orchestration and shared in-flight status.
-- `IbkrSyncButton.tsx`: one-time pairing, progress, exact changed lines and results.
+- `IbkrSyncButton.tsx`: one-time pairing, progress toast and Sync Details.
 - Owner-only `/ibkr/helper-permits` issues hashed, expiring permits; the narrowly
   scoped `/ibkr-helper/consume` endpoint consumes them atomically. A shared connector
   ownership binding persists across revocation. No agent-key or broker writes.

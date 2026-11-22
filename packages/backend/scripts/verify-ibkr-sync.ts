@@ -273,6 +273,20 @@ try {
     () => reconcileIbkr(owner, { ...options, input: closedInput }),
     /closing-sale evidence/
   );
+  for (const sample of [closedInput.first, closedInput.second]) {
+    sample.positions.push({
+      ...sample.positions[0],
+      contract_id: 102,
+      contract_description: `${secondSymbol} @NASDAQ`,
+      position: 0,
+      average_price: 0,
+      market_value: 0,
+    });
+  }
+  await assert.rejects(
+    () => reconcileIbkr(owner, { ...options, input: closedInput }),
+    /closing-sale evidence/
+  );
   closedInput.executions = [
     {
       id: 'fictional-close',
@@ -297,6 +311,10 @@ try {
   });
   const closedPosition = await prisma.position.findUniqueOrThrow({ where: { id: stock2Id } });
   assert.equal(closedPosition.quantity, 0);
+  assert.equal(
+    closedPosition.avgCostNative,
+    closedPreview.review.find((row) => row.id === stock2Id)?.previousAvgCostNative
+  );
   assert(!isActiveIbkrPosition(closedPosition));
   assert.deepEqual(await prisma.positionHistory.findMany({ where: { userId: owner } }), history);
   await restoreIbkr(owner, closed.runId!, true);
