@@ -23,20 +23,29 @@ import {
   restoreIbkrInTransaction,
   type IbkrTransaction,
 } from './ibkrSyncService.js';
+import {
+  cancelRevokedIbkrSyncRequest,
+  claimIbkrSyncRequest,
+  finishIbkrSyncRequest,
+  requireClaimedIbkrSyncRequest,
+} from './ibkrSyncRequestService.js';
 import { navTransaction } from './unitTrustNavService.js';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const attemptId = z.string().min(1).max(100);
+const requestId = z.string().uuid();
 const maxDeviceGrants = 50;
 const operationSchemas = {
   status: z.object({}).strict(),
-  preview: z.object({ capture: z.unknown() }).strict(),
+  claim: z.object({}).strict(),
+  preview: z.object({ capture: z.unknown(), requestId: requestId.optional() }).strict(),
   apply: z.object({ attemptId, checkpointHash: digest }).strict(),
   readback: z.object({ attemptId }).strict(),
   complete: z.object({ attemptId, readbackHash: digest }).strict(),
   failure: z
     .object({
       attemptId: attemptId.optional(),
+      requestId: requestId.optional(),
       stage: z.enum(['broker', 'capture', 'checkpoint', 'apply', 'readback', 'worker']),
     })
     .strict(),
@@ -208,12 +217,19 @@ export async function revokeIbkrDevice(userId: string, deviceId: string) {
       where: { id: deviceId, userId },
       data: { revokedAt: device.revokedAt ?? new Date(), activeCashPositionId: null },
     });
-    return dto(revoked, await pendingFor(tx, device.cashPositionId));
+    const pending = await pendingFor(tx, device.cashPositionId);
+    await cancelRevokedIbkrSyncRequest(tx, device.id, pending !== null);
+    return dto(revoked, pending);
   });
 }
 
 /** The grant row write serializes revoke with replay acceptance and financial writes. */
-async function authorize(tx: Tx, identity: Identity, signature: IbkrDeviceSignature) {
+async function authorize(
+  tx: Tx,
+  identity: Identity,
+  signature: IbkrDeviceSignature,
+  supportsOnDemand = false
+) {
   requireFreshIbkrSignature(signature.timestamp);
   await requireIbkrConnector(tx, identity.userId, identity.connectorFingerprint);
   const touched = await tx.ibkrSyncDevice.updateMany({
@@ -222,7 +238,7 @@ async function authorize(tx: Tx, identity: Identity, signature: IbkrDeviceSignat
       revokedAt: null,
       activeCashPositionId: identity.cashPositionId,
     },
-    data: { lastSeenAt: new Date() },
+    data: supportsOnDemand ? { supportsOnDemand: true } : { lastSeenAt: new Date() },
   });
   if (touched.count !== 1) unauthorized();
   await ownedIbkrCash(tx, identity.userId, identity.cashPositionId);
@@ -354,7 +370,13 @@ function changesFor(beforeRaw: unknown, afterRaw: unknown, anchor: string): Ibkr
 }
 
 /** Bound error stages prevent source payloads, credentials or runtime diagnostics reaching UI. */
-async function recordFailure(tx: Tx, identity: Identity, stage: FailureStage, id?: string) {
+async function recordFailure(
+  tx: Tx,
+  identity: Identity,
+  stage: FailureStage,
+  id?: string,
+  requestId?: string
+) {
   const pending = await pendingFor(tx, identity.cashPositionId);
   const attempt = id ? await attemptFor(tx, identity, id) : null;
   if (attempt) {
@@ -374,11 +396,22 @@ async function recordFailure(tx: Tx, identity: Identity, stage: FailureStage, id
     });
   }
   const blocked = await pendingFor(tx, identity.cashPositionId);
+  const error = blocked ? blockedMessage : failureMessages[stage];
+  if (attempt?.requestId)
+    await finishIbkrSyncRequest(
+      tx,
+      identity.id,
+      attempt.requestId,
+      blocked ? 'blocked' : 'failed',
+      error
+    );
+  else if (!id && requestId && !blocked)
+    await finishIbkrSyncRequest(tx, identity.id, requestId, 'failed', error, true);
   await tx.ibkrSyncDevice.update({
     where: { id: identity.id, userId: identity.userId },
     data: {
       lastStatus: 'failed',
-      lastError: blocked ? blockedMessage : failureMessages[stage],
+      lastError: error,
     },
   });
   // A failure without an attempt never releases an existing claim, including another grant's claim.
@@ -429,15 +462,20 @@ export async function ibkrDeviceRequest(request: {
   try {
     return await navTransaction(async (tx) => {
       blockOnFailure = undefined;
-      await authorize(tx, device, signature);
-      if (operation === 'status')
+      await authorize(tx, device, signature, operation === 'claim');
+      if (operation === 'status' || operation === 'claim') {
+        const blocked = (await pendingFor(tx, device.cashPositionId)) !== null;
         return {
           deviceId: device.id,
           userId: device.userId,
           cashPositionId: device.cashPositionId,
           connectorFingerprint: device.connectorFingerprint,
-          blocked: (await pendingFor(tx, device.cashPositionId)) !== null,
+          blocked,
+          ...(operation === 'claim' && {
+            requestId: blocked ? null : await claimIbkrSyncRequest(tx, device.id),
+          }),
         };
+      }
       if (operation === 'preview') {
         requireIbkr(!(await pendingFor(tx, device.cashPositionId)), blockedMessage);
         requireIbkr(
@@ -449,7 +487,8 @@ export async function ibkrDeviceRequest(request: {
           })) < 12,
           'Too many IBKR sync attempts today; owner review is required'
         );
-        const captureRaw = operationSchemas.preview.parse(payload).capture;
+        const { capture: captureRaw, requestId } = operationSchemas.preview.parse(payload);
+        if (requestId) await requireClaimedIbkrSyncRequest(tx, device.id, requestId);
         const { capture } = validateIbkrCapture(captureRaw);
         requireIbkr(
           hashIbkrDevice(captureRaw) === hashIbkrDevice(capture),
@@ -472,6 +511,7 @@ export async function ibkrDeviceRequest(request: {
         const attempt = await tx.ibkrSyncAttempt.create({
           data: {
             deviceId: device.id,
+            requestId,
             activeCashPositionId: device.cashPositionId,
             capture: json(capture),
             captureText: JSON.stringify(canonicalIbkrDevice(capture)),
@@ -491,7 +531,7 @@ export async function ibkrDeviceRequest(request: {
       }
       if (operation === 'failure') {
         const failure = operationSchemas.failure.parse(payload);
-        return recordFailure(tx, device, failure.stage, failure.attemptId);
+        return recordFailure(tx, device, failure.stage, failure.attemptId, failure.requestId);
       }
       const id = (payload as { attemptId: string }).attemptId;
       const attempt = await attemptFor(tx, device, id);
@@ -554,6 +594,8 @@ export async function ibkrDeviceRequest(request: {
         where: { id, deviceId: device.id },
         data: { status: 'verified', activeCashPositionId: null, unchanged: changes.length === 0 },
       });
+      if (attempt.requestId)
+        await finishIbkrSyncRequest(tx, device.id, attempt.requestId, 'verified');
       await tx.ibkrSyncDevice.update({
         where: { id: device.id, userId: device.userId },
         data: {

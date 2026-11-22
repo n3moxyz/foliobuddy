@@ -2,7 +2,15 @@ import { createPrivateKey, randomUUID, sign } from 'node:crypto';
 import { canonical, hash } from '../ibkr-sync-helper/audit.mjs';
 
 export const DEFAULT_AUDIENCE = 'https://api.foliobuddy.xyz';
-const operations = new Set(['status', 'preview', 'apply', 'readback', 'complete', 'failure']);
+const operations = new Set([
+  'status',
+  'claim',
+  'preview',
+  'apply',
+  'readback',
+  'complete',
+  'failure',
+]);
 export const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 export const canonicalBytes = (value) => Buffer.from(JSON.stringify(canonical(value)));
 

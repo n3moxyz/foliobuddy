@@ -79,6 +79,15 @@ export interface IbkrSyncDevice {
   }>;
 }
 
+export interface IbkrSyncRequest {
+  id: string;
+  deviceName: string;
+  status: 'queued' | 'running' | 'verified' | 'failed' | 'blocked' | 'expired';
+  error: string | null;
+  capturedAt: string | null;
+  unchanged: boolean | null;
+}
+
 // -- Frontend-only types --
 
 /** Time-period selector used by PortfolioChart and BenchmarkComparisonChart */

@@ -1,14 +1,16 @@
 import type { FxRate, IbkrCashSnapshot, Position, PositionHistoryEntry } from '@foliobuddy/shared';
-import type { IbkrSyncDevice, IbkrSyncRun } from '@/lib/types';
+import type { IbkrSyncDevice, IbkrSyncRequest, IbkrSyncRun } from '@/lib/types';
 import { isIbkrCashPosition } from '@/components/portfolio/ibkrCash';
 import { parsePublicEnrollment } from '@/components/portfolio/ibkrBackgroundStatus';
 
 type Run = IbkrSyncRun & { source: string; before: Position[]; after: Position[]; history: string };
 let runs: Run[] = [];
 let devices: Array<IbkrSyncDevice & { cashPositionId: string }> = [];
+let requests: Array<{ id: string; deviceId: string; requestedAt: number }> = [];
 export function resetDemoIbkr() {
   runs = [];
   devices = [];
+  requests = [];
 }
 
 /** Cash edits are stateful in the disposable demo; broker validation uses the real sandbox. */
@@ -84,6 +86,46 @@ export function handleDemoIbkr(
       devices.push(device);
       return json(device, 201);
     }
+  }
+  function simulatedRequest(request: (typeof requests)[number], device: IbkrSyncDevice) {
+    const elapsed = Date.now() - request.requestedAt;
+    const status = device.revokedAt
+      ? 'failed'
+      : elapsed >= 9000
+        ? 'verified'
+        : elapsed >= 3000
+          ? 'running'
+          : 'queued';
+    const response: IbkrSyncRequest = {
+      id: request.id,
+      status,
+      deviceName: device.name,
+      error: device.revokedAt ? 'The connected Mac was disconnected.' : null,
+      capturedAt: status === 'verified' ? new Date(request.requestedAt + 9000).toISOString() : null,
+      unchanged: status === 'verified' ? true : null,
+    };
+    return response;
+  }
+  if (path === '/api/ibkr/devices/sync-requests' && method === 'POST') {
+    const device = devices.find(
+      (entry) => entry.cashPositionId === body.cashPositionId && !entry.revokedAt
+    );
+    if (!device) return json(null);
+    let request = requests.find(
+      (row) => row.deviceId === device.deviceId && Date.now() - row.requestedAt < 9000
+    );
+    if (!request) {
+      request = { id: crypto.randomUUID(), deviceId: device.deviceId, requestedAt: Date.now() };
+      requests.push(request);
+    }
+    return json(simulatedRequest(request, device));
+  }
+  if (path.startsWith('/api/ibkr/devices/sync-requests/') && method === 'GET') {
+    const request = requests.find((row) => row.id === path.split('/').at(-1));
+    const device = devices.find((row) => row.deviceId === request?.deviceId);
+    return request && device
+      ? json(simulatedRequest(request, device))
+      : json({ error: 'The IBKR sync request is unavailable.' }, 404);
   }
   if (path.startsWith('/api/ibkr/devices/') && method === 'DELETE') {
     const device = devices.find((d) => d.deviceId === path.split('/').at(-1));

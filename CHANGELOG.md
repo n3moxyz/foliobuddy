@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.68.0
+
+- Start an IBKR sync from your phone through a connected Mac and follow the verified result in a toast.
+
 ## v1.67.3
 
 - Keep the IBKR toast visible during sync and automatically dismiss it after showing the result.

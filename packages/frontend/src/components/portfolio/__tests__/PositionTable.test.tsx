@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, it, expect, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PositionTable } from '../PositionTable';
+import * as ibkrSync from '../ibkrDirectSync';
 import type { Position, PositionHistoryEntry } from '@/lib/types';
 import { MASKED_MONEY_VALUE, usePrivacyStore } from '@/stores/privacyStore';
 
@@ -18,6 +19,7 @@ vi.mock('../PositionForm', () => ({ PositionForm: () => null }));
 afterEach(() => {
   act(() => usePrivacyStore.getState().setValuesHidden(false));
   historyMock.mockReturnValue({ data: [] });
+  vi.restoreAllMocks();
 });
 
 const privatePosition = {
@@ -143,6 +145,7 @@ it('masks baseline, operation and resulting quantities in position history', () 
 });
 
 it('keeps IBKR sync outside the collapse toggle and excludes other brokers and custody', async () => {
+  vi.spyOn(ibkrSync, 'syncIbkrOnDemand').mockResolvedValue(null);
   const holding = {
     id: 'ibkr-stock',
     assetId: 'stock',
@@ -180,7 +183,7 @@ it('keeps IBKR sync outside the collapse toggle and excludes other brokers and c
   expect(group.contains(sync)).toBe(false);
   fireEvent.click(sync);
   expect(group).toHaveAttribute('aria-expanded', expanded);
-  expect(screen.getByRole('dialog')).toHaveTextContent('Connect This Mac Once');
+  expect(await screen.findByRole('dialog')).toHaveTextContent('Connect This Mac Once');
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   await waitFor(() => expect(sync).toHaveFocus());
   rerender(

@@ -4,7 +4,15 @@ import { AppError } from '../middleware/errorHandler.js';
 
 const productionAudience = 'https://api.foliobuddy.xyz';
 const requestWindowMs = 180_000;
-const operations = new Set(['status', 'preview', 'apply', 'readback', 'complete', 'failure']);
+const operations = new Set([
+  'status',
+  'claim',
+  'preview',
+  'apply',
+  'readback',
+  'complete',
+  'failure',
+]);
 const enrollmentSchema = z
   .object({
     version: z.literal(1),

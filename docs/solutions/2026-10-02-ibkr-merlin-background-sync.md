@@ -7,7 +7,28 @@ login. Expired connector access still requires the owner to reconnect it.
 
 The owner explicitly authorized this new, revocable app permission. The browser
 helper and general agent API have not gained background write access. The existing
-one-click **Sync IBKR** control still runs on the Mac paired with that browser.
+**Sync IBKR** still uses a paired browser's local Mac helper. A phone or unpaired
+browser can send an on-demand request to the owner's connected Mac.
+
+## On-demand sync from a phone
+
+Press **Sync IBKR** in Portfolio. The connected Mac checks for requests once per
+minute while it is awake and online. The toast shows when the Mac starts and
+reports the verified result. Closing the app leaves the request on the server.
+Check **Settings → IBKR Daily Sync** for the latest verified run.
+
+Only the signed-in owner can queue and read a request for the active grant on
+their IBKR cash position. Repeated taps share the active request. An unclaimed
+request expires after five minutes. A claimed request expires after ten minutes
+if the Mac has created no preview. If the attempt is unresolved, FolioBuddy
+keeps the existing review guard and reports that verification is unconfirmed.
+A request before the daily hour leaves that day's scheduled run due. At the
+daily hour a queued request and the scheduled run use one capture.
+
+Deploy the backend migration before updating the worker. On an enrolled Mac,
+run `npm run ibkr:worker:setup -- --enable` from the updated workspace. The
+installer retains the grant, key, schedule and unresolved-run guard. The server
+accepts on-demand requests after the updated worker makes its first signed check.
 
 ## Setup and activation
 
@@ -129,8 +150,8 @@ external account ownership.
 ## Authentication and write boundaries
 
 Only public key material is enrolled through the existing Clerk owner session.
-The dedicated `/api/v1/ibkr-device/` endpoints accept signed requests for six fixed
-operations: status, preview, apply, readback, complete and failure. Each request
+The dedicated `/api/v1/ibkr-device/` endpoints accept signed requests for status,
+claim, preview, apply, readback, complete and failure. Each request
 binds its device, exact HTTP method/path, body hash, audience, timestamp and random
 nonce. The server enforces Ed25519, clock freshness, persisted replay protection
 and the immutable owner/cash-anchor/connector grant. Production requests use HTTPS,

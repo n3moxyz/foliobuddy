@@ -60,8 +60,9 @@ before the frontend; the updated helper requires them before broker reads.
 
 The LaunchAgent starts at login. Re-running setup refreshes the installed runtime
 and replaces the pairing, so connect the browser again. Other Macs and browser
-profiles each need setup. The button does not work on a phone or when the Mac is
-asleep. To remove the helper from login items and stop it:
+profiles each need setup for direct sync. From a phone, **Sync IBKR** uses the
+[connected Mac worker](2026-10-02-ibkr-merlin-background-sync.md#on-demand-sync-from-a-phone).
+To remove the local helper from login items and stop it:
 
 ```sh
 npm run ibkr:helper:remove

@@ -2,6 +2,7 @@
 
 import type { Position, IbkrReconciliationResult } from '@/lib/types';
 import { apiForSession, type IbkrHelperChallenge, type IbkrHelperOperation } from '@/lib/api';
+import { ApiError } from '@/lib/apiError';
 import {
   assertAuthSession,
   captureAuthSession,
@@ -16,6 +17,8 @@ import { ibkrRetryBaseline, isIbkrFxTimingError } from './ibkrCaptureRetry';
 export type SyncPhase =
   | 'idle'
   | 'checking'
+  | 'queued'
+  | 'running'
   | 'reading'
   | 'retrying'
   | 'reviewing'
@@ -29,6 +32,7 @@ export interface DirectSyncState {
   error?: string;
   capturedAt?: string;
   unchanged?: boolean;
+  deviceName?: string;
   changes?: {
     positions: IbkrReconciliationResult['review'];
     cash: Array<{ currency: string; previous: number | null; current: number | null }>;
@@ -301,6 +305,64 @@ export function isDirectSyncResultCurrent(state: DirectSyncState, position: Posi
   );
 }
 
+export async function syncIbkrOnDemand(id: string) {
+  const session = captureAuthSession();
+  assertAuthSession(session);
+  if (isSyncBusy(getDirectSyncState(id).phase)) throw new Error('An IBKR sync is already running.');
+  if (uncertain.has(ownerKey(id, session)))
+    throw new Error('Review the previous sync checkpoint before starting another sync.');
+  update(id, { phase: 'checking' }, session);
+  const api = apiForSession(session);
+  let deviceName: string | undefined;
+  try {
+    let request = await api.queueIbkrSync(id);
+    if (!request) {
+      update(id, initial, session);
+      return null;
+    }
+    deviceName = request.deviceName;
+    const requestId = request.id;
+    // The server allows five minutes to claim a request and ten more to finish it.
+    const deadline = Date.now() + 16 * 60_000;
+    while (request.status === 'queued' || request.status === 'running') {
+      if (getDirectSyncState(id).phase !== request.status)
+        update(id, { phase: request.status, deviceName }, session);
+      await waitForSync(session, 6000);
+      try {
+        request = await api.getIbkrSyncRequest(requestId);
+      } catch (error) {
+        assertAuthSession(session);
+        if (error instanceof ApiError && error.status < 500 && error.status !== 429)
+          throw new Error('FolioBuddy could not check the sync. Check IBKR Daily Sync.');
+        // The Mac can finish independently while the phone reconnects.
+      }
+      if (Date.now() >= deadline && (request.status === 'queued' || request.status === 'running'))
+        throw new Error('FolioBuddy could not confirm the result. Check IBKR Daily Sync.');
+    }
+    if (request.status !== 'verified' || !request.capturedAt)
+      throw new Error(request.error ?? 'Check IBKR Daily Sync for the result.');
+    const result: DirectSyncState = {
+      phase: 'done',
+      deviceName: request.deviceName,
+      capturedAt: request.capturedAt,
+      unchanged: request.unchanged ?? undefined,
+    };
+    update(id, result, session);
+    return result;
+  } catch (error) {
+    update(
+      id,
+      {
+        phase: 'error',
+        deviceName,
+        error: error instanceof Error ? error.message : 'Check IBKR Daily Sync.',
+      },
+      session
+    );
+    throw error;
+  }
+}
+
 /** The owner session remains in this browser; it is never sent to the Mac helper. */
 export async function syncIbkrDirect(id: string) {
   const session = captureAuthSession();
@@ -400,7 +462,7 @@ export async function syncIbkrDirect(id: string) {
           });
         jobId = undefined;
         update(id, { phase: 'retrying' }, session);
-        await retryDelay(session);
+        await waitForSync(session, 10000);
       }
     }
     if (preview.applied || !preview.state || !preview.backup)
@@ -484,7 +546,7 @@ export async function syncIbkrDirect(id: string) {
   }
 }
 
-function retryDelay(session: AuthSession) {
+function waitForSync(session: AuthSession, delay: number) {
   assertAuthSession(session);
   return new Promise<void>((resolve, reject) => {
     const cancelled = () => {
@@ -494,7 +556,7 @@ function retryDelay(session: AuthSession) {
     const timer = window.setTimeout(() => {
       session.signal.removeEventListener('abort', cancelled);
       resolve();
-    }, 10000);
+    }, delay);
     session.signal.addEventListener('abort', cancelled, { once: true });
   });
 }

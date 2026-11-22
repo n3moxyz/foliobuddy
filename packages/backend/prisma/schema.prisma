@@ -164,8 +164,10 @@ model IbkrSyncDevice {
   lastStatus            String   @default("authorized")
   lastError             String?
   lastChanges           Json?
+  supportsOnDemand      Boolean @default(false)
   nonces                IbkrSyncDeviceNonce[]
   attempts              IbkrSyncAttempt[]
+  requests              IbkrSyncRequest[]
 
   @@index([userId, cashPositionId, createdAt])
 }
@@ -217,6 +219,8 @@ model IbkrSyncAttempt {
   id                   String   @id @default(cuid())
   deviceId             String
   device               IbkrSyncDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  requestId            String? @unique
+  request              IbkrSyncRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
   activeCashPositionId String?  @unique
   status               String   @default("previewed")
   capture              Json
@@ -233,6 +237,30 @@ model IbkrSyncAttempt {
   errorStage           String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+
+  @@index([deviceId, createdAt])
+}
+
+enum IbkrSyncRequestStatus {
+  queued
+  running
+  verified
+  failed
+  blocked
+  expired
+}
+
+// One active owner request per device. Financial evidence stays on the attempt.
+model IbkrSyncRequest {
+  id             String @id @default(uuid())
+  deviceId       String
+  device         IbkrSyncDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  activeDeviceId String? @unique
+  status         IbkrSyncRequestStatus @default(queued)
+  expiresAt      DateTime
+  error          String?
+  createdAt      DateTime @default(now())
+  attempt        IbkrSyncAttempt?
 
   @@index([deviceId, createdAt])
 }
