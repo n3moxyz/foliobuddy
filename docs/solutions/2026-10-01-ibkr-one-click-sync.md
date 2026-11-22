@@ -72,9 +72,9 @@ forgets that browser's local token; it does not change the IBKR connection.
 
 ## Data flow and fail-closed behavior
 
-With a paired browser, **Sync IBKR** starts immediately. The app toast shows
-progress across pages and keeps the result visible until dismissal or another
-sync. Open **Sync Details** for the capture time and verified changes.
+With a paired browser, **Sync IBKR** starts immediately. The app toast stays
+visible across pages during the sync. The result dismisses automatically like
+other notifications. Open **Sync Details** for the capture time and verified changes.
 
 1. The signed-in browser freshly verifies the owned IBKR USD cash anchor. Each
    helper operation requires a fresh owner-bound permit. Switching accounts or

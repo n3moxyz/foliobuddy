@@ -2829,7 +2829,8 @@ There is no separate broker gateway or daily gateway login.
 
 One-time setup pairs one browser origin, owned cash anchor and connector link.
 **Sync IBKR** shows progress and the result in the app's toast while the user
-continues to navigate. **Sync Details** shows the capture time and exact changes.
+continues to navigate. The toast stays open during sync and dismisses automatically
+after showing the result. **Sync Details** shows the capture time and exact changes.
 The helper accepts no arbitrary tools or commands, never sees Clerk credentials,
 and cannot approve authentication or broker actions. A connection change requires
 pairing again. The app fails visibly on uncertain outcomes instead of declaring a
