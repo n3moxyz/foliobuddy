@@ -3,11 +3,18 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 
 interface ErrorFallbackProps {
+  title?: string;
+  description?: string;
   error?: Error;
   eventId?: string;
 }
 
-export function ErrorFallback({ error, eventId }: ErrorFallbackProps) {
+export function ErrorFallback({
+  title = 'Something went wrong',
+  description = 'An unexpected error occurred. Please try reloading the page.',
+  error,
+  eventId,
+}: ErrorFallbackProps) {
   const handleReload = () => window.location.reload();
 
   return (
@@ -16,14 +23,10 @@ export function ErrorFallback({ error, eventId }: ErrorFallbackProps) {
         <CardHeader className="text-center">
           <AlertTriangle className="mx-auto mb-4 h-10 w-10 text-destructive" />
           {/* h1: this is the entire page when the app crashes */}
-          <h1 className="text-2xl font-semibold leading-none tracking-tight">
-            Something went wrong
-          </h1>
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">{title}</h1>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground text-center">
-            An unexpected error occurred. Please try reloading the page.
-          </p>
+          <p className="text-sm text-muted-foreground text-center">{description}</p>
           {error?.message && (
             <div className="p-3 bg-muted rounded-md">
               <p className="text-xs font-mono text-muted-foreground break-all">{error.message}</p>

@@ -1,5 +1,9 @@
 # FOR[ET].md - FolioBuddy
 
+## Clerk startup recovery (24 November 2026)
+
+Production builds serve the pinned Clerk browser script and its lazy UI chunks from FolioBuddy. Clerk still uses its existing Frontend API to sign in and refresh sessions. If Clerk reports a startup failure, signed-out visitors and returning users get a reload screen.
+
 ## Portfolio group order follows the account (22 November 2026)
 
 Each user and grouping has its own database row. A save for one grouping leaves the others alone. Browser orders import only into missing rows. The first saved account order wins over later imports. Open Portfolio tabs refresh from the existing user-scoped socket, and focus and reconnect refresh the order too.

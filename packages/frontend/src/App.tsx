@@ -1,10 +1,11 @@
 import { useState, lazy, Suspense, type ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ClerkLoading, SignedIn, SignedOut } from '@clerk/clerk-react';
+import { ClerkFailed, ClerkLoading, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { AppShell } from './components/layout/AppShell';
 import { BrandMark } from './components/layout/BrandMark';
 import { Skeleton } from './components/ui/skeleton';
+import { ErrorFallback } from './components/ErrorFallback';
 import {
   useAuthSetup,
   useLocalAuthBypassSetup,
@@ -147,6 +148,13 @@ function App() {
               <ClerkLoading>
                 <PublicLoadingStatus />
               </ClerkLoading>
+
+              <ClerkFailed>
+                <ErrorFallback
+                  title="Couldn’t load sign-in"
+                  description="Reload the page to try connecting again."
+                />
+              </ClerkFailed>
 
               <SignedOut>
                 <PublicApp />
