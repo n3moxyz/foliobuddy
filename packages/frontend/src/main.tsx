@@ -42,6 +42,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   ) : (
     <ClerkProvider
       publishableKey={CLERK_PUBLISHABLE_KEY}
+      clerkJSUrl={__CLERK_JS_URL__ || undefined}
       localization={{
         signIn: {
           start: { title: 'Sign in to FolioBuddy', titleCombined: 'Sign in to FolioBuddy' },
