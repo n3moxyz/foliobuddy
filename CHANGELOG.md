@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.70.2
+
+- Show whole dollars and up to one decimal for percentages and ratios in Trade Analytics.
+
 ## v1.70.1
 
 - Clear saved trade notes and preserve opening and closing times when their dates stay the same.
