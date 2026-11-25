@@ -38,6 +38,36 @@ const analytics: TradeAnalytics = {
   monthlyBreakdown: [],
 };
 
+it('shows whole dollars and at most one decimal for percentages and ratios', () => {
+  render(
+    <TradeStatsCard
+      analytics={{
+        ...analytics,
+        winRate: 49.34,
+        totalPnL: 533.55,
+        profitFactor: 0.51,
+        avgWin: 61.67,
+        avgLoss: 121.51,
+        breakdown: {
+          long: { count: 6, winRate: 66.67, pnl: 403.37 },
+          short: { count: 4, winRate: 50, pnl: 130.18 },
+        },
+        bestTrade: { id: 'best', asset: 'BTC', pnl: 224.56, pnlPct: 27.33, date: '2026-10-10' },
+        worstTrade: { id: 'worst', asset: 'BTC', pnl: -131.55, pnlPct: -14.59, date: '2026-10-12' },
+      }}
+    />
+  );
+
+  for (const amount of ['$534', '-$18', '$62', '-$122', '$403', '$130', '$225', '-$132']) {
+    expect(screen.getByText(amount)).toBeInTheDocument();
+  }
+  for (const metric of ['0.5', '1 : 0.5', '49.3%', 'Win rate: 66.7%', 'Win rate: 50%']) {
+    expect(screen.getByText(metric)).toBeInTheDocument();
+  }
+  expect(screen.getByText('(+27.3%)')).toBeInTheDocument();
+  expect(screen.getByText('(-14.6%)')).toBeInTheDocument();
+});
+
 describe('TradeStatsCard risk : reward grade', () => {
   it.each([
     { avgWin: 250, avgLoss: 100, grade: 'Good' },

@@ -1,7 +1,13 @@
 import { useRef } from 'react';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
-import { formatCount, formatNumber, formatDate, getPnLColorClass } from '@/lib/utils';
+import {
+  formatCount,
+  formatNumber,
+  formatDate,
+  formatTrimmedNumber,
+  getPnLColorClass,
+} from '@/lib/utils';
 import type { TradeAnalytics } from '@/lib/types';
 import { useTradeStatsStore, type SegmentId } from '@/stores/tradeStatsStore';
 import {
@@ -133,7 +139,7 @@ function MetricsSegment({
       <div>
         <MetricLabel label="Total P&L" help="Sum of all realised profits and losses." />
         <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(analytics.totalPnL)}`}>
-          {formatCurrency(convert(analytics.totalPnL), currency)}
+          {formatCurrency(convert(analytics.totalPnL), currency, 0)}
         </p>
       </div>
       <div>
@@ -142,7 +148,7 @@ function MetricsSegment({
           help="Expected result per trade: (win rate × average win) − (loss rate × average loss)."
         />
         <p className={`text-xl font-bold tabular-nums ${getPnLColorClass(expectancy)}`}>
-          {formatCurrency(convert(expectancy), currency)}
+          {formatCurrency(convert(expectancy), currency, 0)}
         </p>
         <p className="text-[10px] text-muted-foreground">expected per trade</p>
       </div>
@@ -152,7 +158,7 @@ function MetricsSegment({
           help="Total profit on winning trades ÷ total loss on losing trades. Above 1.0 means your closed trades made money overall."
         />
         <p className="text-xl font-bold tabular-nums">
-          {analytics.profitFactor === null ? '∞' : formatNumber(analytics.profitFactor)}
+          {analytics.profitFactor === null ? '∞' : formatTrimmedNumber(analytics.profitFactor, 1)}
         </p>
         <p className={`text-[10px] ${pfRating.color}`}>{pfRating.text}</p>
       </div>
@@ -162,7 +168,7 @@ function MetricsSegment({
           help="Average win ÷ average loss. Above 1.0 means your average win is bigger than your average loss."
         />
         <p className="text-xl font-bold tabular-nums">
-          1 : {riskReward === Infinity ? '∞' : formatNumber(riskReward)}
+          1 : {riskReward === Infinity ? '∞' : formatTrimmedNumber(riskReward, 1)}
         </p>
         <p className={`text-[10px] ${rrRating.color}`}>{rrRating.text}</p>
       </div>
@@ -175,7 +181,9 @@ function WinRateSegment({ analytics }: { analytics: TradeAnalytics }) {
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
         <MetricLabel label="Win Rate" help="Winning trades ÷ closed trades." />
-        <p className="text-xl font-bold tabular-nums">{formatNumber(analytics.winRate)}%</p>
+        <p className="text-xl font-bold tabular-nums">
+          {formatTrimmedNumber(analytics.winRate, 1)}%
+        </p>
       </div>
       <div className="relative h-2.5 rounded-full overflow-hidden bg-muted">
         {analytics.totalTrades > 0 && (
@@ -234,7 +242,7 @@ function AvgWinLossSegment({
             />
           </div>
           <span className="text-xs font-medium tabular-nums text-profit w-20 text-right">
-            {formatCurrency(convert(analytics.avgWin), currency)}
+            {formatCurrency(convert(analytics.avgWin), currency, 0)}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -280,12 +288,12 @@ function ByDirectionSegment({
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Win rate: {formatNumber(analytics.breakdown.long.winRate)}%
+            Win rate: {formatTrimmedNumber(analytics.breakdown.long.winRate, 1)}%
           </p>
           <p
             className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.long.pnl)}`}
           >
-            {formatCurrency(convert(analytics.breakdown.long.pnl), currency)}
+            {formatCurrency(convert(analytics.breakdown.long.pnl), currency, 0)}
           </p>
         </div>
         <div className="space-y-1 rounded-md bg-muted/50 p-3">
@@ -296,12 +304,12 @@ function ByDirectionSegment({
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Win rate: {formatNumber(analytics.breakdown.short.winRate)}%
+            Win rate: {formatTrimmedNumber(analytics.breakdown.short.winRate, 1)}%
           </p>
           <p
             className={`text-sm font-semibold tabular-nums ${getPnLColorClass(analytics.breakdown.short.pnl)}`}
           >
-            {formatCurrency(convert(analytics.breakdown.short.pnl), currency)}
+            {formatCurrency(convert(analytics.breakdown.short.pnl), currency, 0)}
           </p>
         </div>
       </div>
@@ -333,10 +341,10 @@ function NotableTradesSegment({
       >
         <p className="text-xs text-muted-foreground">{type === 'best' ? 'Best' : 'Worst'}</p>
         <p className={`font-medium ${colorClass} tabular-nums`}>
-          {formatCurrency(convert(trade.pnl), currency)}
+          {formatCurrency(convert(trade.pnl), currency, 0)}
           <span className="text-xs ml-1">
             ({trade.pnlPct >= 0 ? '+' : ''}
-            {formatNumber(trade.pnlPct)}%)
+            {formatTrimmedNumber(trade.pnlPct, 1)}%)
           </span>
         </p>
         <p className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2">
