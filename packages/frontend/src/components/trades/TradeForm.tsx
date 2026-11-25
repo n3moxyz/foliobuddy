@@ -110,14 +110,22 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
       entryDate,
       exitDate: exitDate || undefined,
       fundingCost: fundingCost ? Number(fundingCost) : 0,
-      notes: notes || undefined,
+      notes: notes || (trade?.notes ? '' : undefined),
     };
 
     // React's pending state can lag behind a second submit event in the same tick.
     submissionInFlight.current = true;
     try {
       if (isEditing) {
-        await updateTrade.mutateAsync({ id: trade.id, data });
+        await updateTrade.mutateAsync({
+          id: trade.id,
+          data: {
+            ...data,
+            // An unchanged calendar day must keep its original timestamp.
+            entryDate: entryDate === trade.entryDate.slice(0, 10) ? undefined : entryDate,
+            exitDate: exitDate === trade.exitDate?.slice(0, 10) ? undefined : data.exitDate,
+          },
+        });
       } else {
         await createTrade.mutateAsync(data);
       }
