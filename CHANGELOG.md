@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.70.1
+
+- Clear saved trade notes and preserve opening and closing times when their dates stay the same.
+
 ## v1.70.0
 
 - Sync Portfolio group order across devices signed into the same account. Import browser orders for sections that have no account order yet.

@@ -117,8 +117,8 @@ describe('TradeForm submission recovery', () => {
         entryPrice: 100,
         exitPrice: 110,
         quantity: 2,
-        entryDate: '2026-10-23',
-        exitDate: '2026-10-28',
+        entryDate: mode === 'edit' ? undefined : '2026-10-23',
+        exitDate: mode === 'edit' ? undefined : '2026-10-28',
         fundingCost: 5,
         notes: 'Keep these notes after failure',
       };
@@ -166,6 +166,26 @@ describe('TradeForm submission recovery', () => {
       expect(onSuccess).toHaveBeenCalledTimes(1);
     }
   );
+});
+
+it('clears notes without overwriting either timestamp', async () => {
+  render(
+    <TradeForm
+      trade={{
+        ...testTrade,
+        entryDate: '2026-10-23T18:31:45.000Z',
+        exitDate: '2026-10-28T12:30:00.000Z',
+      }}
+      onSuccess={vi.fn()}
+    />
+  );
+  fireEvent.change(screen.getByLabelText('Notes (Optional)'), { target: { value: '' } });
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Update Trade' })));
+
+  expect(updateTrade).toHaveBeenCalledWith({
+    id: testTrade.id,
+    data: expect.objectContaining({ notes: '', entryDate: undefined, exitDate: undefined }),
+  });
 });
 
 describe('TradeForm P&L preview', () => {

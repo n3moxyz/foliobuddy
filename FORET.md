@@ -1,5 +1,9 @@
 # FOR[ET].md - FolioBuddy
 
+## Editing notes on timestamped trades (25 November 2026)
+
+Trade date inputs display UTC calendar days. The editor omits unchanged dates from updates so the backend keeps the full timestamps. When a user clears an existing note, the editor sends an empty string so the backend saves the change.
+
 ## Clerk startup recovery (24 November 2026)
 
 Production builds serve the pinned Clerk browser script and its lazy UI chunks from FolioBuddy. Clerk still uses its existing Frontend API to sign in and refresh sessions. If Clerk reports a startup failure, signed-out visitors and returning users get a reload screen.
