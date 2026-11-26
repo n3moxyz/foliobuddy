@@ -152,6 +152,7 @@ it('shows an inline name error with aria wiring and focus when submitting an emp
   expect(name).toHaveAttribute('aria-invalid', 'true');
   expect(name).toHaveAttribute('aria-describedby', 'investor-name-error');
   expect(name).toHaveAccessibleDescription('Enter a name');
+  expect(within(dialog).getByRole('alert')).toHaveTextContent('Enter a name');
   expect(name).toHaveFocus();
   expect(create).not.toHaveBeenCalled();
 });

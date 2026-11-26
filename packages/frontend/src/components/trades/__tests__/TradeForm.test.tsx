@@ -256,6 +256,9 @@ describe('TradeForm validation on submit', () => {
     expect(screen.getByText('Entry price must be greater than 0')).toBeInTheDocument();
     expect(screen.getByText('Quantity must be greater than 0')).toBeInTheDocument();
     expect(screen.getByText('Please select an asset')).toBeInTheDocument();
+    // Enter in an invalid field submits without moving focus, so the errors announce
+    // themselves as alerts.
+    expect(screen.getByText('Entry price must be greater than 0')).toHaveAttribute('role', 'alert');
     expect(createTrade).not.toHaveBeenCalled();
     fireEvent.change(entryPrice, { target: { value: '10' } });
     expect(entryPrice).not.toHaveAttribute('aria-invalid');

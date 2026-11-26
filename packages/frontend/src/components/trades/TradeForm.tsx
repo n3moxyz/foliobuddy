@@ -50,7 +50,7 @@ function FieldError({
 }) {
   if (!errors[field]) return null;
   return (
-    <p id={`${FIELD_IDS[field]}-error`} className="text-xs text-destructive">
+    <p id={`${FIELD_IDS[field]}-error`} role="alert" className="text-xs text-destructive">
       {errors[field]}
     </p>
   );

@@ -612,7 +612,7 @@ function InvestorForm({
           aria-describedby={nameError ? 'investor-name-error' : undefined}
         />
         {nameError && (
-          <p id="investor-name-error" className="text-xs text-destructive">
+          <p id="investor-name-error" role="alert" className="text-xs text-destructive">
             {nameError}
           </p>
         )}
@@ -638,7 +638,7 @@ function InvestorForm({
               aria-describedby={stakeDescribedBy}
             />
             {stakeError && (
-              <p id="investor-stake-error" className="text-xs text-destructive">
+              <p id="investor-stake-error" role="alert" className="text-xs text-destructive">
                 {stakeError}
               </p>
             )}

@@ -1051,7 +1051,11 @@ export default function Portfolio() {
                         )}
                       </div>
                       {editingPerpInline && perpInputShowsError && (
-                        <p id={PERP_EXPOSURE_INLINE_ERROR_ID} className="text-xs text-destructive">
+                        <p
+                          id={PERP_EXPOSURE_INLINE_ERROR_ID}
+                          role="alert"
+                          className="text-xs text-destructive"
+                        >
                           {PERP_EXPOSURE_ERROR_TEXT}
                         </p>
                       )}
