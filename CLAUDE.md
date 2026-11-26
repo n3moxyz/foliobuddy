@@ -202,7 +202,7 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 - sonner `AppToaster` (`components/layout/AppToaster.tsx`): raw `theme` (Sonner resolves `system` + tracks OS); Radix `DismissableLayerBranch` prevents toast clicks/focus closing any Radix layer. Keep its Radix pin: `docs/DEPENDENCIES.md`.
 - Toaster `pointer-events-auto` counters modal pointer lock; `top-center` below `sm`, top offset 64px clears `h-14`. Modal FocusScope traps Tab: toasts unreachable by keyboard while a modal is open.
 - `MutationCache.onError` toasts every failed mutation; handlers never fail silently (`console.error`-only catch = bug); copy/refresh/snapshot toast success + failure. Import `toast` from `@/lib/toast`: error toasts stay until dismissed (WCAG 2.2.1). Story: FORET.md.
-- Skeletons `role="status"` + sr-only text; inline errors `role="alert"` + `aria-invalid`/`aria-describedby`.
+- Skeletons announce via `DeferredStatus` (mounts empty); inline errors `role="alert"` + `aria-invalid`/`aria-describedby`.
 - Retry: `QueryErrorNotice` (search: `SearchErrorNotice`). Keep loaded data on refresh failure. Empty states need a successful empty response.
 
 ### Responsive Mobile Design
@@ -219,7 +219,7 @@ Use `useMoneyFormatter().formatQuantity()` for read-only quantity displays (tabl
 
 ### Formatted Amount Inputs
 
-Use `FormattedNumberInput` for editable amounts — renders `10,000` over raw-string state; payloads stay safe. Avoid raw `type="number"` for finance amounts unless min/max needed. Never coerce leading-negative input positive (`sanitizeNumberInput('-1')` → `''`). Validate on submit with `isPositiveNumberInput()`/`isNonNegativeNumberInput()` (`src/lib/formValidation.ts`), not `required`/`parseFloat`, so the UI matches backend Zod. Never disable submit until valid: show field errors (`aria-invalid` + `aria-describedby`), focus the first.
+Use `FormattedNumberInput` for editable amounts — renders `10,000` over raw-string state; payloads stay safe. Avoid raw `type="number"` for finance amounts unless min/max needed. Never coerce leading-negative input positive (`sanitizeNumberInput('-1')` → `''`). Validate on submit with `isPositiveNumberInput()`/`isNonNegativeNumberInput()` (`src/lib/formValidation.ts`), not `required`/`parseFloat`, so the UI matches backend Zod. Never disable submit until valid: show field errors, focus the first.
 
 ### Trades Review Lenses
 

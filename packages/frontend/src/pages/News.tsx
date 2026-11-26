@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
@@ -72,8 +73,8 @@ function SectionEmpty({ text }: { text: string }) {
 
 function NewsSkeleton() {
   return (
-    <div role="status" aria-live="polite" className="space-y-4">
-      <span className="sr-only">Loading news…</span>
+    <div className="space-y-4">
+      <DeferredStatus>Loading news…</DeferredStatus>
       <Skeleton className="h-44 w-full" />
       <Skeleton className="h-44 w-full" />
       <Skeleton className="h-44 w-full" />

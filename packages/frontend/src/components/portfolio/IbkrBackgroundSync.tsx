@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { api, type IbkrDeviceEnrollment, type IbkrSyncDevice, type Position } from '@/lib/api';
@@ -111,8 +112,9 @@ function BackgroundConnection({ cashPositionId }: { cashPositionId: string }) {
         <span className="text-xs text-muted-foreground">6:00am · Singapore</span>
       </div>
       {devices.isPending ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          Checking connection…
+        <p className="text-sm text-muted-foreground">
+          <span aria-hidden="true">Checking connection…</span>
+          <DeferredStatus>Checking connection…</DeferredStatus>
         </p>
       ) : devices.isError ? (
         <>

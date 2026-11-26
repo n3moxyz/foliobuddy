@@ -25,26 +25,32 @@ describe('pages while the first load is paused (offline or hidden tab)', () => {
     ['Trades', Trades, 'Loading trades…', 'No trades logged'],
     ['History', History, 'Loading snapshots…', 'No snapshots yet'],
     ['Investors', Investors, 'Loading investors…', 'No investors yet'],
-  ])('%s shows its loading state, not an empty one', (_page, Page, loadingText, emptyText) => {
-    // Real React Query pause, not mocked flags.
-    onlineManager.setOnline(false);
-    const queryClient = createTestQueryClient();
-    const Wrapper = createQueryClientWrapper(queryClient);
+  ])(
+    '%s shows its loading state, not an empty one',
+    async (_page, Page, loadingText, emptyText) => {
+      // Real React Query pause, not mocked flags.
+      onlineManager.setOnline(false);
+      const queryClient = createTestQueryClient();
+      const Wrapper = createQueryClientWrapper(queryClient);
 
-    render(
-      <Wrapper>
-        {/* Same providers as main.tsx, so a regression fails on the assertion, not a crash. */}
-        <TooltipProvider>
-          <MemoryRouter>
-            <Page />
-          </MemoryRouter>
-        </TooltipProvider>
-      </Wrapper>
-    );
+      render(
+        <Wrapper>
+          {/* Same providers as main.tsx, so a regression fails on the assertion, not a crash. */}
+          <TooltipProvider>
+            <MemoryRouter>
+              <Page />
+            </MemoryRouter>
+          </TooltipProvider>
+        </Wrapper>
+      );
 
-    const queries = queryClient.getQueryCache().getAll();
-    expect(queries.some((query) => query.state.fetchStatus === 'paused')).toBe(true);
-    expect(screen.getAllByText(loadingText)[0].closest('[role="status"]')).not.toBeNull();
-    if (emptyText) expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
-  });
+      const queries = queryClient.getQueryCache().getAll();
+      expect(queries.some((query) => query.state.fetchStatus === 'paused')).toBe(true);
+      // The status region mounts empty and fills in a moment later (DeferredStatus).
+      expect(
+        (await screen.findAllByText(loadingText))[0].closest('[role="status"]')
+      ).not.toBeNull();
+      if (emptyText) expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
+    }
+  );
 });

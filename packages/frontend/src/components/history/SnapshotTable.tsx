@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -176,8 +177,8 @@ export function SnapshotTable({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border" role="status" aria-live="polite">
-        <span className="sr-only">Loading snapshots…</span>
+      <div className="rounded-md border">
+        <DeferredStatus>Loading snapshots…</DeferredStatus>
         <div className="p-4 space-y-3">
           <div className="flex gap-4">
             {SNAPSHOT_TABLE_HEADER_SKELETON_KEYS.map((key) => (
@@ -419,7 +420,8 @@ export function SnapshotTable({
                           <div className="p-4">
                             {isLoadingPos ? (
                               <div className="text-center py-4 text-muted-foreground text-sm">
-                                Loading positions…
+                                <span aria-hidden="true">Loading positions…</span>
+                                <DeferredStatus>Loading positions…</DeferredStatus>
                               </div>
                             ) : positions && positions.length > 0 ? (
                               <div className="space-y-2">

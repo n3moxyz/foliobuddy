@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { api, type IbkrSyncDevice } from '@/lib/api';
@@ -58,8 +59,9 @@ export function IbkrDeviceSettings() {
         </p>
       </div>
       {devices.isPending ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          Checking connections…
+        <p className="text-sm text-muted-foreground">
+          <span aria-hidden="true">Checking connections…</span>
+          <DeferredStatus>Checking connections…</DeferredStatus>
         </p>
       ) : devices.isError ? (
         <div className="space-y-2">

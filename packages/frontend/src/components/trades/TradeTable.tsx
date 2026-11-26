@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -138,8 +139,8 @@ export function TradeTable({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border" role="status" aria-live="polite">
-        <span className="sr-only">Loading trades…</span>
+      <div className="rounded-md border">
+        <DeferredStatus>Loading trades…</DeferredStatus>
         <div className="p-4 space-y-3">
           <div className="flex gap-4">
             {TRADE_TABLE_HEADER_SKELETON_KEYS.map((key) => (

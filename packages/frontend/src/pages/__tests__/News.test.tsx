@@ -236,12 +236,12 @@ describe('News page', () => {
     ['loading', { isLoading: true, isFetching: true }],
     // React Query pauses a first load while offline or in a hidden tab: pending, not fetching.
     ['paused (hidden tab or offline)', { isLoading: false, isFetching: false }],
-  ])('shows the feed skeleton while the first load is %s', (_state, flags) => {
+  ])('shows the feed skeleton while the first load is %s', async (_state, flags) => {
     mocks.useNews.mockReturnValue(newsQueryState({ isPending: true, ...flags }));
 
     renderNews();
 
-    expect(screen.getByText('Loading news…').closest('[role="status"]')).not.toBeNull();
+    expect((await screen.findByText('Loading news…')).closest('[role="status"]')).not.toBeNull();
     expect(screen.queryByText("Couldn't load news")).not.toBeInTheDocument();
     expect(screen.queryByText('No news yet')).not.toBeInTheDocument();
   });
@@ -778,21 +778,25 @@ describe('News page', () => {
       return renderNews('/news?asset=asset-btc');
     }
 
-    it('shows a loading state titled from the feed holding while the dossier loads', () => {
+    it('shows a loading state titled from the feed holding while the dossier loads', async () => {
       renderDossier({ isPending: true, isLoading: true, isFetching: true });
 
       expect(screen.getByRole('heading', { level: 2, name: 'BTC Bitcoin' })).toHaveFocus();
-      expect(screen.getByText('Loading BTC news…').closest('[role="status"]')).not.toBeNull();
+      expect(
+        (await screen.findByText('Loading BTC news…')).closest('[role="status"]')
+      ).not.toBeNull();
       // The dossier replaces Top stories and the sections.
       expect(screen.queryByText('Top Stories')).not.toBeInTheDocument();
       expect(mocks.useAssetNews).toHaveBeenCalledWith('asset-btc');
     });
 
-    it('keeps the loading state while a retry is paused (hidden tab or offline)', () => {
+    it('keeps the loading state while a retry is paused (hidden tab or offline)', async () => {
       // React Query pauses retries while unfocused/offline: pending, but not fetching.
       renderDossier({ isPending: true, isLoading: false, isFetching: false });
 
-      expect(screen.getByText('Loading BTC news…').closest('[role="status"]')).not.toBeNull();
+      expect(
+        (await screen.findByText('Loading BTC news…')).closest('[role="status"]')
+      ).not.toBeNull();
     });
 
     it('shows the server error with a retry', () => {

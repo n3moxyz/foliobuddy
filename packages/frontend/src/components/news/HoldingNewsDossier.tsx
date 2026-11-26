@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type RefObject } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Newspaper, X } from 'lucide-react';
 import { NewsRow, type NewsFeedbackHandler } from '@/components/news/NewsRow';
@@ -78,8 +79,8 @@ function DossierBody({
   // is still "no data yet", and must not render an empty dossier.
   if (isPending) {
     return (
-      <div role="status" aria-live="polite" className="space-y-3">
-        <span className="sr-only">Loading {symbol ?? 'holding'} news…</span>
+      <div className="space-y-3">
+        <DeferredStatus>Loading {symbol ?? 'holding'} news…</DeferredStatus>
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-16 w-full" />
