@@ -102,7 +102,7 @@ describe('one-click IBKR control', () => {
     ['success', true],
     ['failure', true],
   ])(
-    'shows a timed %s after leaving Portfolio (progress dismissed: %s)',
+    'shows the %s result after leaving Portfolio (progress dismissed: %s)',
     async (outcome, dismissed) => {
       let resolve!: (value: directSync.DirectSyncState) => void;
       let reject!: (error: Error) => void;
@@ -164,7 +164,12 @@ describe('one-click IBKR control', () => {
       );
       expect(toast.dismiss).toHaveBeenCalledTimes(dismissed ? 0 : 1);
       expect(vi.mocked(completedToast).mock.calls[0]?.[1]).not.toHaveProperty('id');
-      expect(vi.mocked(completedToast).mock.calls[0]?.[1]).not.toHaveProperty('duration');
+      // Success times out. A failure stays until dismissed (lib/toast.ts, WCAG 2.2.1).
+      if (outcome === 'success') {
+        expect(vi.mocked(completedToast).mock.calls[0]?.[1]).not.toHaveProperty('duration');
+      } else {
+        expect(vi.mocked(completedToast).mock.calls[0]?.[1]).toHaveProperty('duration', Infinity);
+      }
     }
   );
   it.each(['success', 'failure'])(

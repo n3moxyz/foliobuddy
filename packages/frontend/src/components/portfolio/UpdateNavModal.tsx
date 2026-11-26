@@ -15,7 +15,7 @@ import { formatPrice, getPriceAgeInfo, priceAgeClass } from '@/lib/utils';
 import type { Asset } from '@/lib/types';
 import { ExternalLink } from 'lucide-react';
 import { NavStatus } from './NavStatus';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface UpdateNavModalProps {
   asset: Asset | null;

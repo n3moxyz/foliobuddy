@@ -163,4 +163,34 @@ describe('TradeStatsCard accessibility', () => {
       'To pick up this section, press Space or Enter. Use the up and down arrow keys to move it'
     );
   });
+
+  it('reorders sections with move buttons, without dragging', () => {
+    render(<TradeStatsCard analytics={analytics} />);
+    const handleOrder = () =>
+      screen
+        .getAllByRole('button', { name: /^Reorder / })
+        .map((handle) => handle.getAttribute('aria-label'));
+
+    expect(screen.getByRole('button', { name: 'Move Key Metrics section up' })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+
+    const moveUp = screen.getByRole('button', { name: 'Move Win Rate section up' });
+    fireEvent.click(moveUp);
+
+    expect(handleOrder().slice(0, 2)).toEqual([
+      'Reorder Win Rate section',
+      'Reorder Key Metrics section',
+    ]);
+    expect(screen.getByText('Win Rate section moved to position 1 of 4.')).toHaveAttribute(
+      'role',
+      'status'
+    );
+
+    // At the top the button stays focusable and does nothing.
+    fireEvent.click(moveUp);
+    expect(handleOrder()[0]).toBe('Reorder Win Rate section');
+    expect(moveUp).toHaveAttribute('aria-disabled', 'true');
+  });
 });

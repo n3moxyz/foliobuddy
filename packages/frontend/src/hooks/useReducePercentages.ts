@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { api } from '@/lib/api';
 import type { UserPreferences } from '@/lib/types';
 import { USER_PREFERENCES_QUERY_KEY, useUserPreferences } from './useUserPreferences';

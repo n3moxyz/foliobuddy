@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
@@ -47,14 +47,25 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
   };
   const valueInUsd = getValueInUsd();
   const hasTotalValue = totalValue.trim() !== '';
-  const totalValueError =
-    hasTotalValue && valueInUsd <= 0 ? 'Total value must be greater than 0' : null;
-  const canSubmit = !isLoading && hasTotalValue && !totalValueError;
+  const totalValueRule = !hasTotalValue
+    ? 'Enter a total value'
+    : valueInUsd <= 0
+      ? 'Total value must be greater than 0'
+      : null;
+  // Validate on submit, not while typing, so the button never hides why it is blocked.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const totalValueError = submitAttempted ? totalValueRule : null;
+  const totalValueRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!canSubmit) return;
+    if (isLoading) return;
+    if (totalValueRule) {
+      setSubmitAttempted(true);
+      totalValueRef.current?.focus();
+      return;
+    }
 
     if (isEditing && snapshot) {
       await updateSnapshot.mutateAsync({
@@ -80,7 +91,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
   // Don't show mode toggle when editing
   if (isEditing) {
     return (
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="timestamp">Date</Label>
           <Input
@@ -107,6 +118,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
               </span>
               <FormattedNumberInput
                 id="totalValue"
+                ref={totalValueRef}
                 value={totalValue}
                 onValueChange={setTotalValue}
                 placeholder="0.00"
@@ -179,7 +191,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={!canSubmit}>
+          <Button type="submit" disabled={isLoading}>
             {isLoading ? 'Saving…' : 'Update'}
           </Button>
         </div>
@@ -222,7 +234,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
         </div>
       ) : (
         /* Add New Mode */
-        <form id="snapshot-panel-add" onSubmit={handleSubmit} className="space-y-4">
+        <form id="snapshot-panel-add" onSubmit={handleSubmit} noValidate className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="timestamp">Date</Label>
             <Input
@@ -243,6 +255,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
                 </span>
                 <FormattedNumberInput
                   id="totalValue"
+                  ref={totalValueRef}
                   value={totalValue}
                   onValueChange={setTotalValue}
                   placeholder="0.00"
@@ -315,7 +328,7 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!canSubmit}>
+            <Button type="submit" disabled={isLoading}>
               {isLoading ? 'Saving…' : 'Add Snapshot'}
             </Button>
           </div>

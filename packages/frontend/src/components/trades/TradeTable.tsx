@@ -26,7 +26,7 @@ import type { ColumnConfig } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { copyTradeToClipboard } from '@/components/trades/tradeClipboard';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { TradeDetailDialog } from '@/components/trades/TradeDetailDialog';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 import { AssetLabel } from '@/components/ui/asset-label';
@@ -361,7 +361,7 @@ export function TradeTable({
                           className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
                           onClick={() => handleCopy(trade)}
                           title="Copy trade"
-                          aria-label="Copy trade"
+                          aria-label={`Copy ${trade.asset.symbol} trade`}
                         >
                           {copiedId === trade.id ? (
                             <Check className="h-3.5 w-3.5 text-profit" />
@@ -375,7 +375,7 @@ export function TradeTable({
                           className="-mx-1 h-11 w-11 shrink-0 touch-manipulation md:mx-0 md:h-8 md:w-8"
                           onClick={() => onEdit(trade)}
                           title="Edit trade"
-                          aria-label="Edit trade"
+                          aria-label={`Edit ${trade.asset.symbol} trade`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -385,7 +385,7 @@ export function TradeTable({
                           className="-mx-1 h-11 w-11 shrink-0 text-destructive touch-manipulation hover:text-destructive md:mx-0 md:h-8 md:w-8"
                           onClick={() => onDelete(trade)}
                           title="Delete trade"
-                          aria-label="Delete trade"
+                          aria-label={`Delete ${trade.asset.symbol} trade`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>

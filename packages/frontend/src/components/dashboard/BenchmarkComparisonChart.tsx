@@ -569,13 +569,25 @@ export function BenchmarkComparisonChart() {
           </div>
         ) : (
           <div className="relative">
+            {/* Always mounted so the polite announcement fires when loading starts. */}
+            <span role="status" className="sr-only">
+              {isBenchmarkFetching ? 'Loading benchmarks' : ''}
+            </span>
             {isBenchmarkFetching && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <div
+                className="absolute inset-0 z-10 flex items-center justify-center"
+                aria-hidden="true"
+              >
                 <span className="text-sm text-muted-foreground animate-pulse">Loading…</span>
               </div>
             )}
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData} margin={{ top: 5, right: 56, left: 0, bottom: 5 }}>
+              <LineChart
+                accessibilityLayer
+                aria-label="Portfolio and benchmark returns. Use arrow keys to inspect dates."
+                data={chartData}
+                margin={{ top: 5, right: 56, left: 0, bottom: 5 }}
+              >
                 <XAxis
                   dataKey="displayDate"
                   tick={{ fontSize: 12 }}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { api } from '@/lib/api';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { useThemeStore, Theme } from '@/stores/themeStore';
@@ -45,6 +45,7 @@ export default function Settings() {
   });
 
   const handleRefreshPrices = async () => {
+    if (refreshingPrices) return;
     setRefreshingPrices(true);
     try {
       await api.refreshPrices();
@@ -61,6 +62,7 @@ export default function Settings() {
   };
 
   const handleRefreshFx = async () => {
+    if (refreshingFx) return;
     setRefreshingFx(true);
     try {
       await api.refreshFxRates();
@@ -80,6 +82,7 @@ export default function Settings() {
   };
 
   const handleCreateSnapshot = async () => {
+    if (creatingSnapshot) return;
     setCreatingSnapshot(true);
     try {
       await api.createSnapshot();
@@ -219,9 +222,10 @@ export default function Settings() {
             </div>
             <Button
               variant="outline"
-              className="self-start sm:self-auto touch-manipulation"
+              className="self-start sm:self-auto touch-manipulation aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
               onClick={handleRefreshPrices}
-              disabled={refreshingPrices}
+              aria-disabled={refreshingPrices}
+              aria-label={refreshingPrices ? 'Refreshing prices…' : 'Refresh prices'}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshingPrices ? 'animate-spin' : ''}`} />
               {refreshingPrices ? 'Refreshing…' : 'Refresh'}
@@ -239,9 +243,10 @@ export default function Settings() {
             </div>
             <Button
               variant="outline"
-              className="self-start sm:self-auto touch-manipulation"
+              className="self-start sm:self-auto touch-manipulation aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
               onClick={handleRefreshFx}
-              disabled={refreshingFx}
+              aria-disabled={refreshingFx}
+              aria-label={refreshingFx ? 'Refreshing FX rates…' : 'Refresh FX rates'}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshingFx ? 'animate-spin' : ''}`} />
               {refreshingFx ? 'Refreshing…' : 'Refresh'}
@@ -259,9 +264,9 @@ export default function Settings() {
             </div>
             <Button
               variant="outline"
-              className="self-start sm:self-auto touch-manipulation"
+              className="self-start sm:self-auto touch-manipulation aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
               onClick={handleCreateSnapshot}
-              disabled={creatingSnapshot}
+              aria-disabled={creatingSnapshot}
             >
               <Camera className={`h-4 w-4 mr-2`} />
               {creatingSnapshot ? 'Creating…' : 'Create Snapshot'}
@@ -302,6 +307,7 @@ export default function Settings() {
               variant="outline"
               className="self-start sm:self-auto touch-manipulation"
               onClick={() => window.open(api.exportPositionsCsv(), '_blank')}
+              aria-label="Export CSV of positions"
             >
               <Download className="h-4 w-4 mr-2" />
               Export CSV
@@ -319,6 +325,7 @@ export default function Settings() {
               variant="outline"
               className="self-start sm:self-auto touch-manipulation"
               onClick={() => window.open(api.exportTradesCsv(), '_blank')}
+              aria-label="Export CSV of trades"
             >
               <Download className="h-4 w-4 mr-2" />
               Export CSV

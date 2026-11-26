@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { api } from '@/lib/api';
 import { failureDescription } from '@/lib/mutationFeedback';
 import type { UserPreferences } from '@/lib/types';

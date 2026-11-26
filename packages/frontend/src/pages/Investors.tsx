@@ -1,5 +1,5 @@
 import { QueryErrorNotice } from '@/components/ui/QueryErrorNotice';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
@@ -551,9 +551,30 @@ function InvestorForm({
     .reduce((sum, inv) => sum + inv.stakePercentage, 0);
   const suggestedStake = Math.max(0, 100 - otherInvestorsStake);
 
+  // Validate on submit, not while typing, so the button never hides why it is blocked.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const stakeRef = useRef<HTMLInputElement>(null);
+  const nameError = submitAttempted && !name.trim() ? 'Enter a name' : null;
+  const stakeError =
+    submitAttempted && isEditing && stakePercentage.trim() === ''
+      ? 'Enter a stake percentage'
+      : null;
+  const noStakeAvailable = !isEditing && suggestedStake <= 0;
+  const stakeDescribedBy =
+    [stakeError ? 'investor-stake-error' : null, exceedsTotal ? 'investor-stake-total' : null]
+      .filter(Boolean)
+      .join(' ') || undefined;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading || (!isEditing && suggestedStake <= 0)) return;
+    if (isLoading) return;
+    if (!name.trim() || (isEditing && stakePercentage.trim() === '') || noStakeAvailable) {
+      setSubmitAttempted(true);
+      if (!name.trim()) nameRef.current?.focus();
+      else if (isEditing && stakePercentage.trim() === '') stakeRef.current?.focus();
+      return;
+    }
     if (isEditing) {
       // Edit mode: send the stake percentage
       onSubmit({
@@ -577,16 +598,24 @@ function InvestorForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
         <Input
           id="name"
+          ref={nameRef}
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Investor name"
           required
+          aria-invalid={nameError ? true : undefined}
+          aria-describedby={nameError ? 'investor-name-error' : undefined}
         />
+        {nameError && (
+          <p id="investor-name-error" className="text-xs text-destructive">
+            {nameError}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -596,6 +625,7 @@ function InvestorForm({
           <>
             <Input
               id="stake"
+              ref={stakeRef}
               type="number"
               step="0.00001"
               min="0"
@@ -604,7 +634,14 @@ function InvestorForm({
               onChange={(e) => setStakePercentage(e.target.value)}
               placeholder="0 - 100"
               required
+              aria-invalid={stakeError ? true : undefined}
+              aria-describedby={stakeDescribedBy}
             />
+            {stakeError && (
+              <p id="investor-stake-error" className="text-xs text-destructive">
+                {stakeError}
+              </p>
+            )}
             {isOwner && suggestedStake !== stakeValue && (
               <p className="text-xs text-muted-foreground">
                 Suggested (balancing): {formatStakePercentage(suggestedStake)}%,{' '}
@@ -618,7 +655,7 @@ function InvestorForm({
               </p>
             )}
             {exceedsTotal ? (
-              <p role="alert" className="text-xs text-warning">
+              <p id="investor-stake-total" role="alert" className="text-xs text-warning">
                 Total will be {formatStakePercentage(projectedTotal)}% — rebalancing needed
               </p>
             ) : null}
@@ -629,7 +666,15 @@ function InvestorForm({
             <div className="flex items-center h-10 px-3 rounded-md border bg-muted font-mono">
               {formatStakePercentage(suggestedStake)}%
             </div>
-            <p id="investor-stake-hint" role="status" className="text-xs text-muted-foreground">
+            <p
+              id="investor-stake-hint"
+              role={submitAttempted && noStakeAvailable ? 'alert' : 'status'}
+              className={
+                submitAttempted && noStakeAvailable
+                  ? 'text-xs text-destructive'
+                  : 'text-xs text-muted-foreground'
+              }
+            >
               {suggestedStake > 0
                 ? 'Automatically assigned remaining stake'
                 : "No stake is available. Reduce an existing investor's stake, then add the new investor."}
@@ -668,9 +713,7 @@ function InvestorForm({
         <Button
           type="submit"
           aria-describedby={!isEditing ? 'investor-stake-hint' : undefined}
-          disabled={
-            isLoading || !name.trim() || (isEditing ? !stakePercentage : suggestedStake <= 0)
-          }
+          disabled={isLoading}
         >
           {isLoading
             ? isEditing

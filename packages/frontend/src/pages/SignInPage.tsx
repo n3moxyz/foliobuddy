@@ -3,14 +3,16 @@ import { SignIn } from '@clerk/clerk-react';
 import { dark } from '@clerk/themes';
 import { ArrowLeft } from 'lucide-react';
 import { BrandMark } from '@/components/layout/BrandMark';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { useThemeStore, resolveTheme } from '@/stores/themeStore';
 
 /** Signed-out sign-in screen (moved out of App.tsx when the public landing took /). */
 export default function SignInPage() {
   const theme = useThemeStore((state) => state.theme);
+  usePageTitle('Sign in');
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <main className="flex min-h-screen items-center justify-center bg-background">
       <div className="space-y-6 text-center">
         <div className="flex flex-col items-center gap-2">
           <BrandMark className="mb-1 h-14 w-14" />
@@ -35,6 +37,6 @@ export default function SignInPage() {
           Back to overview
         </Link>
       </div>
-    </div>
+    </main>
   );
 }

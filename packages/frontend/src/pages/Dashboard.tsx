@@ -185,13 +185,22 @@ export default function Dashboard() {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="min-w-0 justify-between sm:flex-none">
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-w-0 justify-between sm:flex-none"
+              aria-label={`Filter by investor: ${getInvestorLabel()}`}
+            >
               <Users className="h-4 w-4 mr-2" />
               <span className="truncate">{getInvestorLabel()}</span>
               <ChevronDown className="h-3 w-3 ml-2" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-[calc(100vw-2rem)] max-w-56">
+          <PopoverContent
+            align="end"
+            className="w-[calc(100vw-2rem)] max-w-56"
+            aria-label="Filter by investor"
+          >
             <div className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b">
                 <span className="text-sm font-medium">Filter by Investor</span>

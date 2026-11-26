@@ -257,7 +257,9 @@ describe('News page', () => {
     expect(screen.getByText('yahoo down')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     // Holdings come from the feed, so search waits for it.
-    expect(screen.getByRole('combobox', { name: 'Search your holdings' })).toBeDisabled();
+    expect(
+      screen.getByRole('combobox', { name: 'Search holdings by symbol or name' })
+    ).toBeDisabled();
   });
 
   it('offers a Portfolio CTA when the feed is empty', () => {
@@ -637,7 +639,7 @@ describe('News page', () => {
     });
 
     function searchInput() {
-      return screen.getByRole('combobox', { name: 'Search your holdings' });
+      return screen.getByRole('combobox', { name: 'Search holdings by symbol or name' });
     }
 
     it('ranks symbol prefix, then name word, then substring, with status meta', () => {

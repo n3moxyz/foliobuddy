@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
@@ -22,6 +22,9 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedTrades, setParsedTrades] = useState<BulkImportTrade[] | null>(null);
   const [importing, setImporting] = useState(false);
+  // Parse feedback is passive while typing and becomes an alert only after an import attempt.
+  const [attempted, setAttempted] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [importResults, setImportResults] = useState<ImportResultItem[] | null>(null);
 
   const handlePaste = async () => {
@@ -31,10 +34,12 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
       parseJson(text);
     } catch {
       setParseError('Failed to read clipboard. Please paste manually.');
+      setAttempted(true);
     }
   };
 
   const parseJson = (text: string) => {
+    setAttempted(false);
     setParseError(null);
     setParsedTrades(null);
     setImportResults(null);
@@ -79,7 +84,13 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
   };
 
   const handleImport = async () => {
-    if (!parsedTrades) return;
+    if (importing) return;
+    if (!parsedTrades) {
+      setAttempted(true);
+      if (!jsonInput.trim()) setParseError('Paste JSON to import');
+      textareaRef.current?.focus();
+      return;
+    }
 
     setImporting(true);
 
@@ -88,6 +99,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
       setImportResults(response.results.map((r) => ({ ...r, label: r.symbol })));
     } catch (e) {
       setParseError(e instanceof Error ? e.message : 'Import failed — please try again');
+      setAttempted(true);
     } finally {
       setImporting(false);
     }
@@ -111,8 +123,9 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
       </div>
 
       <Textarea
+        ref={textareaRef}
         aria-label="Trade JSON to import"
-        aria-invalid={!!parseError}
+        aria-invalid={parseError ? true : undefined}
         aria-describedby={parseError ? 'trade-import-error' : undefined}
         placeholder='[{"asset": {"symbol": "BTC", "name": "Bitcoin", "category": "LIQUID_CRYPTO"}, "direction": "LONG", "entryPrice": 50000, "quantity": 0.5, "entryDate": "2026-01-15"}, ...]'
         value={jsonInput}
@@ -126,8 +139,9 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
 
       {parseError && (
         <div
+          key={attempted ? 'alert' : 'passive'}
           id="trade-import-error"
-          role="alert"
+          role={attempted ? 'alert' : undefined}
           className="flex items-start gap-2 break-words text-destructive text-sm"
         >
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -165,7 +179,7 @@ export function TradeImportTab({ onSuccess }: TradeImportTabProps) {
       )}
 
       <div className="flex justify-end">
-        <Button type="button" onClick={handleImport} disabled={!parsedTrades || importing}>
+        <Button type="button" onClick={handleImport} disabled={importing}>
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />

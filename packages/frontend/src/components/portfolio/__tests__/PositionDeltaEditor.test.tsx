@@ -87,7 +87,7 @@ describe('PositionDeltaEditor', () => {
         position: { ...position, quantity },
         onAdditionalQuantityChange: onChange,
       });
-      const reduceMax = screen.getByRole('button', { name: 'Reduce max SOL' });
+      const reduceMax = screen.getByRole('button', { name: /reduce by the full balance/ });
       expect(reduceMax).toHaveAttribute('type', 'button');
       expect(
         within(screen.getByRole('group', { name: 'Reduce quantity controls' })).getByText('SOL')
@@ -114,9 +114,9 @@ describe('PositionDeltaEditor', () => {
     renderEditor({ deltaMode: 'reduce' });
     const panel = screen.getByRole('group', { name: 'Reduce quantity controls' });
     expect(panel).toContainElement(screen.getByLabelText('Reduce Quantity'));
-    expect(within(panel).getByRole('button', { name: 'Reduce max SOL' })).toHaveTextContent(
-      'Balance:'
-    );
+    expect(
+      within(panel).getByRole('button', { name: /reduce by the full balance/ })
+    ).toHaveTextContent('Balance:');
     expect(within(panel).getByRole('group', { name: 'Reduce percentage' })).toBeInTheDocument();
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
   });
@@ -143,7 +143,7 @@ describe('PositionDeltaEditor', () => {
       'aria-pressed',
       'false'
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Reduce max SOL' }));
+    fireEvent.click(screen.getByRole('button', { name: /reduce by the full balance/ }));
     expect(screen.getByRole('button', { name: 'Reduce 100%' })).toHaveAttribute(
       'aria-pressed',
       'true'
@@ -185,7 +185,7 @@ describe('PositionDeltaEditor', () => {
   it('keeps the available balance masked when values are hidden', () => {
     act(() => usePrivacyStore.getState().setValuesHidden(true));
     renderEditor({ deltaMode: 'reduce' });
-    const reduceMax = screen.getByRole('button', { name: 'Reduce max SOL' });
+    const reduceMax = screen.getByRole('button', { name: /reduce by the full balance/ });
     expect(reduceMax).toHaveTextContent(MASKED_MONEY_VALUE);
     expect(reduceMax).not.toHaveTextContent('10');
   });
@@ -199,7 +199,7 @@ describe('PositionDeltaEditor', () => {
         position: { ...position, quantity },
         onAdditionalQuantityChange: onChange,
       });
-      const reduceMax = screen.getByRole('button', { name: 'Reduce max SOL' });
+      const reduceMax = screen.getByRole('button', { name: /reduce by the full balance/ });
       expect(reduceMax).toBeDisabled();
       for (const stop of [25, 50, 75, 100]) {
         expect(screen.getByRole('button', { name: 'Reduce ' + stop + '%' })).toBeDisabled();
@@ -211,10 +211,12 @@ describe('PositionDeltaEditor', () => {
 
   it('disables Reduce max while saving and omits it in Add mode', () => {
     const { unmount } = renderEditor({ deltaMode: 'reduce', isLoading: true });
-    expect(screen.getByRole('button', { name: 'Reduce max SOL' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /reduce by the full balance/ })).toBeDisabled();
     unmount();
     renderEditor({ deltaMode: 'add' });
-    expect(screen.queryByRole('button', { name: 'Reduce max SOL' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /reduce by the full balance/ })
+    ).not.toBeInTheDocument();
   });
 
   it('keeps the current balance in the Add amount panel without limiting the addition', () => {

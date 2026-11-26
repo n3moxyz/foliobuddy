@@ -54,7 +54,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/SortableHeader';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import type { ColumnConfig, SortDirection } from '@/hooks/useTableSort';
 import type { Position, PositionHistoryEntry } from '@/lib/types';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
@@ -543,11 +543,9 @@ export function PositionTable({
         nameOverride={position.ibkrCash ? 'IBKR Cash & Debt' : undefined}
         badge={
           options.showUnitTrustBadge && isUnitTrust ? (
-            <span
-              className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning"
-              aria-label="Unit Trust"
-            >
-              UT
+            <span className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning">
+              <span aria-hidden="true">UT</span>
+              <span className="sr-only">Unit Trust</span>
             </span>
           ) : undefined
         }
@@ -564,7 +562,6 @@ export function PositionTable({
             role="button"
             tabIndex={0}
             className="group cursor-pointer py-2.5 pl-3 pr-12 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-            aria-label={`View ${position.asset.symbol} position`}
             onClick={() => setViewPosition(position)}
             onKeyDown={(event) => {
               // Only when the row itself is focused — without this guard, Enter/Space on
@@ -581,6 +578,7 @@ export function PositionTable({
           >
             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
               <div className="min-w-0">
+                <span className="sr-only">View </span>
                 {assetLabel}
                 <NavStatus asset={position.asset} />
               </div>
@@ -613,7 +611,6 @@ export function PositionTable({
           role="button"
           tabIndex={0}
           className="group cursor-pointer py-2 pl-3 pr-12 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-          aria-label={`View ${position.asset.symbol} position`}
           onClick={() => setViewPosition(position)}
           onKeyDown={(event) => {
             // Only when the row itself is focused — without this guard, Enter/Space on
@@ -630,6 +627,7 @@ export function PositionTable({
         >
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2">
             <div className="min-w-0 flex-1">
+              <span className="sr-only">View </span>
               {assetLabel}
               <NavStatus asset={position.asset} />
             </div>
@@ -920,14 +918,13 @@ export function PositionTable({
             <span className="text-xs text-muted-foreground">({sectionPositions.length})</span>
             <span className="ml-auto flex shrink-0 flex-col items-end gap-0.5 font-mono text-xs leading-tight tabular-nums sm:flex-row sm:items-center sm:gap-2">
               {formattedGroupPnL && (
-                <span
-                  className={getPnLColorClass(groupPnL.pnlUsd)}
-                  aria-label={`Unrealised P and L ${formattedGroupPnL}`}
-                >
+                <span className={getPnLColorClass(groupPnL.pnlUsd)}>
+                  <span className="sr-only">Unrealised P and L </span>
                   {formattedGroupPnL}
                 </span>
               )}
-              <span className="text-muted-foreground" aria-label={`Group value ${formattedTotal}`}>
+              <span className="text-muted-foreground">
+                <span className="sr-only">Group value </span>
                 {formattedTotal}
               </span>
             </span>

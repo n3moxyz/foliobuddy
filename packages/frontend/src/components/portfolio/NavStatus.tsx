@@ -34,7 +34,14 @@ export function NavStatus({ asset, detailed = false }: { asset: Asset; detailed?
       className="text-xs"
       title={`${date}. ${source}. ${checked}${failed ? '. Refresh failed; retaining last known NAV.' : ''}`}
     >
-      <p className={priceAgeClass(getPriceAgeInfo(asset.priceAsOf).severity)}>{date}</p>
+      <p className={priceAgeClass(getPriceAgeInfo(asset.priceAsOf).severity)}>
+        {date}
+        {!detailed && (
+          <span className="sr-only">
+            . {source}. {checked}
+          </span>
+        )}
+      </p>
       {failed && <p className="text-warning">Refresh failed · last known NAV</p>}
       {detailed && (
         <div className="mt-1 space-y-1 text-muted-foreground">

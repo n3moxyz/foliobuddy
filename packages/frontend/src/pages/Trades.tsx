@@ -7,7 +7,7 @@ import {
   useDeleteAllTrades,
   useDeleteTrade,
 } from '@/hooks/useTrades';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { usePortfolioSummary } from '@/hooks/usePortfolio';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';

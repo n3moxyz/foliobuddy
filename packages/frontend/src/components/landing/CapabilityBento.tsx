@@ -132,7 +132,7 @@ function PrivacyDemo() {
           className="landing-press inline-flex h-11 w-11 items-center justify-center rounded-md border text-muted-foreground hover:bg-accent hover:text-accent-foreground sm:h-9 sm:w-9"
         >
           {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          <span className="sr-only">{hidden ? 'Show values' : 'Hide values'}</span>
+          <span className="sr-only">Hide values</span>
         </button>
       </div>
       <div className="mt-2 space-y-1.5">

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { UserButton } from '@clerk/clerk-react';
 import { dark } from '@clerk/themes';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -272,8 +272,9 @@ function AppShellContent({
       >
         Skip to main content
       </a>
+      {/* The <nav aria-label="Main"> inside is the landmark; a labelled aside around it
+          would announce the same region twice. */}
       <aside
-        aria-label="Main navigation"
         className={cn(
           'fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-card lg:flex',
           sidebarCollapsed ? 'w-[4.5rem]' : 'w-64'
@@ -343,7 +344,8 @@ function AppShellContent({
             size="icon"
             onClick={toggleValuesHidden}
             title={valuesHidden ? 'Show monetary values' : 'Hide monetary values'}
-            aria-label={valuesHidden ? 'Show monetary values' : 'Hide monetary values'}
+            // A toggle keeps one name; aria-pressed carries the state.
+            aria-label="Hide monetary values"
             aria-pressed={valuesHidden}
             className="h-11 w-11 touch-manipulation"
           >
@@ -422,6 +424,7 @@ function AppShellContent({
 
           {demoMode || localAuthBypass ? (
             <div
+              role="img"
               className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
               aria-label={demoMode ? 'Demo user' : 'Local user'}
               title={demoMode ? 'Demo mode' : 'Local auth bypass'}

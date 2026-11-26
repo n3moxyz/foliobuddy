@@ -62,14 +62,14 @@ export function ReduceQuantityInput({
       required
       disabled={disabled}
       aria-invalid={exceedsBalance || undefined}
-      aria-describedby="reduce-quantity-status"
+      aria-describedby={exceedsBalance ? 'reduce-quantity-error' : 'reduce-quantity-status'}
       balance={
         <Button
           type="button"
           variant="ghost"
           size="sm"
           className="-mr-2 h-auto min-h-11 max-w-full flex-wrap justify-end gap-x-1 px-2 py-1 text-xs sm:min-h-9"
-          aria-label={`Reduce max ${position.asset.symbol}`}
+          aria-label={`Balance: ${formatQuantity(balance, position.asset.category)} ${position.asset.symbol}, reduce by the full balance`}
           disabled={controlsDisabled}
           onClick={() => selectPercentage(100)}
         >
@@ -134,13 +134,14 @@ export function ReduceQuantityInput({
           }}
         />
       )}
-      <span
-        id="reduce-quantity-status"
-        role={exceedsBalance ? 'alert' : undefined}
-        className={exceedsBalance ? 'block text-xs text-loss' : 'sr-only'}
-      >
-        {exceedsBalance ? 'Exceeds balance' : percentageLabel}
+      <span id="reduce-quantity-status" role="status" className="sr-only">
+        {exceedsBalance ? '' : percentageLabel}
       </span>
+      {exceedsBalance && (
+        <span id="reduce-quantity-error" role="alert" className="block text-xs text-loss">
+          Exceeds balance
+        </span>
+      )}
     </PositionAmountInput>
   );
 }

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   formatCurrency as formatVisibleCurrency,
   formatPercent,
@@ -32,27 +31,10 @@ const STORAGE_TYPE_LABELS: Record<string, string> = {
 
 function UnitTrustBadge() {
   return (
-    <TooltipProvider delayDuration={150}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className="inline-flex h-5 shrink-0 cursor-default items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning outline-none ring-offset-background transition-colors hover:border-warning/50 hover:bg-warning/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            aria-label="Unit Trust"
-            tabIndex={0}
-            onClick={(event) => event.stopPropagation()}
-          >
-            UT
-          </span>
-        </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          sideOffset={6}
-          className="border-warning/25 bg-background/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/90"
-        >
-          Unit Trust
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <span className="inline-flex h-5 shrink-0 items-center rounded-sm border border-warning/35 bg-warning/15 px-1.5 text-[10px] font-semibold leading-none text-warning">
+      <span aria-hidden="true">UT</span>
+      <span className="sr-only">Unit Trust</span>
+    </span>
   );
 }
 
@@ -156,6 +138,7 @@ export const PositionRow = React.memo(function PositionRow({
           {ageInfo && (
             <p className={`text-xs ${priceAgeClass(ageInfo.severity)}`} title={priceUpdatedTitle}>
               NAV {ageInfo.label}
+              {priceUpdatedTitle && <span className="sr-only">. {priceUpdatedTitle}</span>}
             </p>
           )}
         </div>

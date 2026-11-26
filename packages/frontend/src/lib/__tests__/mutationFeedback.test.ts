@@ -57,6 +57,7 @@ describe('global mutation failure toast', () => {
 
     expect(toast.error).toHaveBeenCalledTimes(1);
     expect(toast.error).toHaveBeenCalledWith("Couldn't delete trade", {
+      duration: Infinity,
       description: 'Trade not found',
     });
   });
@@ -65,6 +66,7 @@ describe('global mutation failure toast', () => {
     await fail({ failureTitle: "Couldn't delete trade" }, new TypeError('Failed to fetch'));
 
     expect(toast.error).toHaveBeenCalledWith("Couldn't delete trade", {
+      duration: Infinity,
       description: CONNECTION_HINT,
     });
   });
@@ -79,6 +81,7 @@ describe('global mutation failure toast', () => {
     await fail(undefined, new ApiError('Validation error', 400));
 
     expect(toast.error).toHaveBeenCalledWith(DEFAULT_FAILURE_TITLE, {
+      duration: Infinity,
       description: 'Validation error',
     });
   });

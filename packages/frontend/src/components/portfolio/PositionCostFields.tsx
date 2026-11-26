@@ -63,12 +63,19 @@ export function PositionCostFields({
   const averageLabel = isProceeds ? 'Avg Price' : 'Average Cost';
   const totalId = `${idPrefix}totalCost`;
   const averageId = `${idPrefix}avgCost`;
+  const modeLabelId = `${idPrefix}costModeLabel`;
   const hintId = helperText ? `${idPrefix}amountHint` : undefined;
   return (
     <div className="space-y-2">
       <div className="space-y-2 rounded-xl border border-border/80 bg-muted/20 p-3">
-        <div className="flex flex-wrap items-center gap-x-4 text-sm">
-          <span className="text-muted-foreground">Enter:</span>
+        <div
+          className="flex flex-wrap items-center gap-x-4 text-sm"
+          role="radiogroup"
+          aria-labelledby={modeLabelId}
+        >
+          <span id={modeLabelId} className="text-muted-foreground">
+            Enter:
+          </span>
           <label className="flex min-h-11 items-center gap-1.5 cursor-pointer sm:min-h-0">
             <input
               type="radio"

@@ -141,6 +141,7 @@ export function TickerPnLCard({
                 tabIndex={0}
                 aria-label={`Filter by ${stat.label}`}
                 onKeyDown={(e) => {
+                  if (e.currentTarget !== e.target) return;
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     onTickerClick?.(stat);
