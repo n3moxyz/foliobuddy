@@ -1,14 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClientWrapper, createTestQueryClient } from '@/test/utils';
+import type { Snapshot } from '@/lib/types';
 import { SnapshotForm } from '../SnapshotForm';
 import { SnapshotImportTab } from '../SnapshotImportTab';
 
-const { createSnapshot } = vi.hoisted(() => ({ createSnapshot: vi.fn() }));
+const { createSnapshot, updateSnapshot } = vi.hoisted(() => ({
+  createSnapshot: vi.fn(),
+  updateSnapshot: vi.fn(),
+}));
 
 vi.mock('@/hooks/useSnapshots', () => ({
   useCreateManualSnapshot: () => ({ isPending: false, mutateAsync: createSnapshot }),
-  useUpdateSnapshot: () => ({ isPending: false, mutateAsync: vi.fn() }),
+  useUpdateSnapshot: () => ({ isPending: false, mutateAsync: updateSnapshot }),
 }));
 
 describe('SnapshotForm validation on submit', () => {
@@ -23,6 +27,63 @@ describe('SnapshotForm validation on submit', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a total value');
     expect(input).toHaveFocus();
     expect(createSnapshot).not.toHaveBeenCalled();
+  });
+});
+
+describe('SnapshotForm date validation', () => {
+  const snapshot = (source: 'MANUAL' | 'AUTOMATIC') =>
+    ({
+      id: 'snap-1',
+      timestamp: '2026-11-01T05:00:00.000Z',
+      totalValueUsd: 1000,
+      notes: null,
+      source,
+    }) as unknown as Snapshot;
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it('reports a cleared date when adding, focuses it and sends nothing', () => {
+    render(<SnapshotForm fxRate={1.3} onSuccess={vi.fn()} onCancel={vi.fn()} />);
+    const date = screen.getByLabelText('Date');
+    fireEvent.change(date, { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Total Value'), { target: { value: '500' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Snapshot' }));
+    expect(date).toHaveAttribute('aria-invalid', 'true');
+    expect(date).toHaveAccessibleDescription('Enter a date');
+    expect(date).toHaveFocus();
+    expect(createSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('reports a cleared date when editing a manual snapshot', () => {
+    render(
+      <SnapshotForm
+        snapshot={snapshot('MANUAL')}
+        fxRate={1.3}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+    const date = screen.getByLabelText('Date');
+    fireEvent.change(date, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Update' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a date');
+    expect(date).toHaveFocus();
+    expect(updateSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('never asks an automatic snapshot for a date', async () => {
+    render(
+      <SnapshotForm
+        snapshot={snapshot('AUTOMATIC')}
+        fxRate={1.3}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Update' }));
+    await waitFor(() => expect(updateSnapshot).toHaveBeenCalledOnce());
+    expect(updateSnapshot.mock.calls[0][0].data).not.toHaveProperty('timestamp');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
 

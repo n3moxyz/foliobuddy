@@ -52,18 +52,23 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
     : valueInUsd <= 0
       ? 'Total value must be greater than 0'
       : null;
+  // Automatic snapshots keep their scheduled date, so only manual ones need one.
+  const dateRule = !isAutomatic && !timestamp ? 'Enter a date' : null;
   // Validate on submit, not while typing, so the button never hides why it is blocked.
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const totalValueError = submitAttempted ? totalValueRule : null;
+  const dateError = submitAttempted ? dateRule : null;
   const totalValueRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (isLoading) return;
-    if (totalValueRule) {
+    if (dateRule || totalValueRule) {
       setSubmitAttempted(true);
-      totalValueRef.current?.focus();
+      // Date comes first on the form, so it takes focus first.
+      (dateRule ? dateRef : totalValueRef).current?.focus();
       return;
     }
 
@@ -98,10 +103,14 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
             id="timestamp"
             type="date"
             value={timestamp}
+            ref={dateRef}
             onChange={(e) => setTimestamp(e.target.value)}
             disabled={isAutomatic}
             required
+            aria-invalid={dateError ? true : undefined}
+            aria-describedby={dateError ? 'timestamp-error' : undefined}
           />
+          <DateError message={dateError} />
           {isAutomatic && (
             <p className="text-xs text-muted-foreground">
               Date cannot be changed for automatic snapshots
@@ -241,9 +250,13 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
               id="timestamp"
               type="date"
               value={timestamp}
+              ref={dateRef}
               onChange={(e) => setTimestamp(e.target.value)}
               required
+              aria-invalid={dateError ? true : undefined}
+              aria-describedby={dateError ? 'timestamp-error' : undefined}
             />
+            <DateError message={dateError} />
           </div>
 
           <div className="space-y-2">
@@ -335,5 +348,14 @@ export function SnapshotForm({ snapshot, fxRate, onSuccess, onCancel }: Snapshot
         </form>
       )}
     </div>
+  );
+}
+
+function DateError({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <p id="timestamp-error" role="alert" className="text-xs text-destructive">
+      {message}
+    </p>
   );
 }
