@@ -3094,3 +3094,13 @@ Checking in Chromium turned up a third problem: a box opened from a list never k
 ### IBKR rolling trade-history rejection (6 November 2026)
 
 The broker connector advertised rolling trade periods but returned INVALID_ARGUMENT for them. Month-to-date worked. Sync now retains the rejected receipt and uses that narrower range only for this exact error. The capture records its coverage boundary. Both server reconciliation and the helper checkpoint check block closing a missing holding when the prior sync falls outside that range. Failed reads never become empty execution lists.
+
+## An accessibility sweep, one screen reader at a time (26 November 2026)
+
+A full WCAG 2.2 review found that most problems were not missing features but labels doing too much. The mobile position rows were buttons with `aria-label="View BTC position"`. An `aria-label` replaces everything inside the element, so a screen reader heard the symbol and nothing else: no value, no P&L. The fix removes the label and adds a hidden "View " prefix, so the name now comes from what is on screen. The same mistake hid "Unit Trust" and "Unrealised P&L" in `aria-label`s on plain `<span>`s, which screen readers ignore.
+
+Forms kept submit disabled until every field was valid. A disabled button cannot say why, and in Log Trade the field messages never ran at all. Submit now stays enabled. On a bad submit each failing field gets `aria-invalid` and a linked message, and focus moves to the first one. That focus move is the announcement, so field errors carry no `role="alert"`.
+
+Error toasts vanished after four seconds, often with the only explanation of a failure. `@/lib/toast` wraps Sonner so errors stay until dismissed. The landing hero loops for about ten seconds, so it now has a Pause button. WCAG 2.2.2 asks for one once motion runs past five seconds. Trade Analytics sections could only be reordered by dragging, so each section has move up and down buttons too (2.5.7).
+
+The lesson: an accessible name is a replacement, not an addition. Check what an `aria-label` hides before adding one.
