@@ -179,7 +179,7 @@ Signed-out visitors use the local-data landing page. Follow the [landing page co
 
 ### React Doctor Quality Scan
 
-Advisory frontend audit — see pinned command in Commands. Triage input, not a refactor plan; be skeptical of React 19 advice on React 18. `react-doctor.config.json` suppresses reviewed noise. Don't suppress new accessibility/keyboard/ownership/render-correctness/data-integrity findings without noting why they're FPs. Known FPs (reviewed): `apiMockReady` in `demoMode.tsx`, `autoFocus` on Portfolio's inline perp input, `PerformersCard` index-suffixed key (same asset can appear twice — test-enforced).
+Advisory frontend audit (pinned command in Commands): triage input, not a refactor plan; doubt React 19 advice on React 18. `react-doctor.config.json` suppresses reviewed noise. Suppress new a11y/keyboard/ownership/render/data-integrity findings only with a noted FP reason. Known FPs (reviewed): `apiMockReady` in `demoMode.tsx`, `autoFocus` on Portfolio's inline perp input, `PerformersCard` index-suffixed key (same asset can appear twice — test-enforced).
 
 ### Ownership Checks on Mutations
 
@@ -200,9 +200,9 @@ Delete mutations (`usePortfolio`/`useTrades`/`useSnapshots`) use optimistic upda
 ### Async Feedback (Toasts + Status)
 
 - sonner `AppToaster` (`components/layout/AppToaster.tsx`): raw `theme` (Sonner resolves `system` + tracks OS); Radix `DismissableLayerBranch` prevents toast clicks/focus closing any Radix layer. Keep its Radix pin: `docs/DEPENDENCIES.md`.
-- Toaster `className="pointer-events-auto"` counters modal body pointer lock; `top-center` below `sm`, `offset`/`mobileOffset` top 64px clears `h-14`. Modal FocusScope traps Tab: toasts keyboard-unreachable while modal open (pre-existing).
-- `MutationCache.onError` toasts every failed mutation; handlers must never fail silently (`console.error`-only catch = bug); copy/refresh/snapshot toast success + failure. Story: FORET.md.
-- Skeletons `role="status"` + sr-only text; inline errors `role="alert"` + `aria-invalid`/`aria-describedby`.
+- Toaster `pointer-events-auto` counters modal pointer lock; `top-center` below `sm`, top offset 64px clears `h-14`. Modal FocusScope traps Tab: toasts unreachable by keyboard while a modal is open.
+- `MutationCache.onError` toasts every failed mutation; handlers never fail silently (`console.error`-only catch = bug); copy/refresh/snapshot toast success + failure. Import `toast` from `@/lib/toast`: error toasts stay until dismissed (WCAG 2.2.1). Story: FORET.md.
+- Skeletons announce via `DeferredStatus` (mounts empty); inline errors `role="alert"` + `aria-invalid`/`aria-describedby`.
 - Retry: `QueryErrorNotice` (search: `SearchErrorNotice`). Keep loaded data on refresh failure. Empty states need a successful empty response.
 
 ### Responsive Mobile Design
@@ -219,7 +219,7 @@ Use `useMoneyFormatter().formatQuantity()` for read-only quantity displays (tabl
 
 ### Formatted Amount Inputs
 
-Use `FormattedNumberInput` for editable amounts — renders `10,000` over raw-string state; payloads stay safe. Avoid raw `type="number"` for finance amounts unless min/max needed. Never coerce leading-negative input positive (`sanitizeNumberInput('-1')` → `''`). Gate submit on `isPositiveNumberInput()`/`isNonNegativeNumberInput()` (`src/lib/formValidation.ts`), not `required`/`parseFloat`, so UI guard matches backend Zod.
+Use `FormattedNumberInput` for editable amounts — renders `10,000` over raw-string state; payloads stay safe. Avoid raw `type="number"` for finance amounts unless min/max needed. Never coerce leading-negative input positive (`sanitizeNumberInput('-1')` → `''`). Validate on submit with `isPositiveNumberInput()`/`isNonNegativeNumberInput()` (`src/lib/formValidation.ts`), not `required`/`parseFloat`, so the UI matches backend Zod. Never disable submit until valid: show field errors, focus the first.
 
 ### Trades Review Lenses
 
@@ -303,7 +303,7 @@ Follow the [net worth contract](docs/UI-CONTRACTS.md#net-worth-card) before chan
 
 ### Performers Card
 
-Borderless `divide-y` list, profit/loss-tinted title icons, muted tabular ranks. Ranking (`getTopPerformers`/`getWorstPerformers`): by absolute `unrealizedPnL` USD, not %.
+Borderless `divide-y` list, P&L-tinted title icons, muted tabular ranks. `getTopPerformers`/`getWorstPerformers` rank by absolute USD `unrealizedPnL`, not %.
 
 ### Motion
 
@@ -311,7 +311,7 @@ Follow the [motion contract](docs/UI-CONTRACTS.md#motion) before adding, removin
 
 ### Settings & Investors Page Layouts
 
-Settings: flat layout, `<h2>` headings + `<Separator>`, no Card wrappers. Investors: summary stats in a flat inline row (matches History).
+Settings: flat, `<h2>` + `<Separator>`, no Cards. Investors: flat inline summary row (like History).
 
 ### Consistent Page Headers
 
@@ -319,7 +319,7 @@ All pages use same header pattern: `flex-col gap-3 sm:flex-row ... justify-betwe
 
 ### Destructive Actions in Headers
 
-"Delete All" MUST live inside overflow `DropdownMenu` (⋮), never standalone header button. Only non-destructive actions (Copy All, Add/Log) are visible header buttons.
+"Delete All" MUST live in the overflow `DropdownMenu` (⋮). Visible header buttons are non-destructive only (Copy All, Add/Log).
 
 ### Design System & Visual Identity
 
@@ -367,12 +367,12 @@ Automatic snapshot and position rows support pointer clicks. Snapshot expansion 
 
 ## Design Context
 
-See `PRODUCT.md` — source of truth for users, brand, aesthetic, design principles. Dark mode primary; Linear/Raycast polish × Dune data-density. Old tool asks for `.impeccable.md`? Point it at `PRODUCT.md`.
+`PRODUCT.md` is the source of truth for users, brand, aesthetic and design principles. Dark mode primary; Linear/Raycast polish × Dune data-density. Tools asking for `.impeccable.md` use `PRODUCT.md`.
 
 ## Gotchas & Notes
 
 - Wrong ports/"DB Down": check `.env.local` first; it overrides Vite `.env`.
-- Always Prisma `onDelete: Cascade` (avoids FK errors); snapshots need unique constraint + check-before-create.
+- Prisma relations use `onDelete: Cascade`. Snapshots need a unique constraint + check-before-create.
 - Position P&L displays as %; bulk import `skipPriceFetch: true`, scheduler fetches in 1 min.
 - Push/PR CI: typecheck, standalone backend Docker build, tests, NAV Postgres verify, frontend build, `npm run format:check`. Follow the publication authorization above. Enable Claude CI auto-fix when available (`ccd_pr` `set_monitor`, `auto_fix` + `address_comments`). Otherwise monitor CI and address findings directly.
 - npm 10.8.2/`uuid` override/ExcelJS rules: `docs/DEPENDENCIES.md`.

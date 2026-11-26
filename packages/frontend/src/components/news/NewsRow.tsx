@@ -99,6 +99,7 @@ export function NewsRow({
               className="ml-1.5 inline h-3 w-3 shrink-0 text-muted-foreground"
               aria-hidden="true"
             />
+            <span className="sr-only"> (opens in new tab)</span>
           </span>
           <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {showImportant && (

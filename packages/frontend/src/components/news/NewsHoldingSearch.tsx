@@ -112,7 +112,7 @@ export function NewsHoldingSearch({
       />
       <Input
         role="combobox"
-        aria-label="Search your holdings"
+        aria-label="Search holdings by symbol or name"
         aria-expanded={expanded}
         aria-haspopup="listbox"
         aria-autocomplete="list"

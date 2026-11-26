@@ -1,6 +1,6 @@
 import { useEffect, useState, type RefObject } from 'react';
 import { Check, Copy, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { copyChartAsPng } from '@/lib/chartCopy';

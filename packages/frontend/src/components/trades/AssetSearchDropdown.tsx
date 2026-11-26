@@ -6,7 +6,7 @@ import { useAssets, useSearchCoins, useCreateAssetFromCoinGecko } from '@/hooks/
 import { isStablecoinCategory } from '@/lib/utils';
 import { isListedCoinCandidate } from '@/components/portfolio/assetSearchMatching';
 import type { Asset, CoinSearchResult } from '@/lib/types';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { mismatchedPickToast, resolvedAssetMatchesPick } from '@/lib/assetPickGuard';
 import { AuthSessionChangedError } from '@/lib/authSession';
 import { failureDescription } from '@/lib/mutationFeedback';
@@ -16,6 +16,8 @@ interface AssetSearchDropdownProps {
   onSelectAsset: (assetId: string, asset: Asset) => void;
   disabled?: boolean;
   id?: string;
+  /** Id of the form's error message for this field. Marks the search input invalid. */
+  errorId?: string;
 }
 
 export function AssetSearchDropdown({
@@ -23,11 +25,15 @@ export function AssetSearchDropdown({
   onSelectAsset,
   disabled,
   id,
+  errorId,
 }: AssetSearchDropdownProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const changeButtonRef = useRef<HTMLButtonElement>(null);
+  // Which control gets focus once the swap between search and selected view lands.
+  const pendingFocusRef = useRef<'change' | 'search' | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
   const trimmedQuery = searchQuery.trim();
@@ -85,6 +91,7 @@ export function AssetSearchDropdown({
       : undefined;
 
   const handleSelectExistingAsset = (asset: Asset) => {
+    pendingFocusRef.current = 'change';
     onSelectAsset(asset.id, asset);
     setSearchQuery('');
     setShowDropdown(false);
@@ -111,6 +118,7 @@ export function AssetSearchDropdown({
       return;
     }
 
+    pendingFocusRef.current = 'change';
     onSelectAsset(asset.id, asset);
     setSearchQuery('');
     setShowDropdown(false);
@@ -169,8 +177,30 @@ export function AssetSearchDropdown({
   }, [highlightedIndex]);
 
   const handleClearSelection = () => {
+    pendingFocusRef.current = 'search';
     onSelectAsset('', null!);
   };
+
+  // The focused control unmounts on each swap, so move focus to its replacement.
+  useEffect(() => {
+    const pending = pendingFocusRef.current;
+    if (pending === 'change' && selectedAsset) {
+      changeButtonRef.current?.focus();
+      pendingFocusRef.current = null;
+    } else if (pending === 'search' && !selectedAsset) {
+      inputRef.current?.focus();
+      pendingFocusRef.current = null;
+    }
+  }, [selectedAsset]);
+
+  const hasListbox = showDropdown && (!coinSearch.isError || visibleResults.length > 0);
+  let statusText = '';
+  if (showDropdown) {
+    if (coinSearch.isSearching) statusText = 'Searching…';
+    else if (visibleResults.length > 0)
+      statusText = `${visibleResults.length} ${visibleResults.length === 1 ? 'result' : 'results'} available`;
+    else if (!coinSearch.isError && trimmedQuery.length >= 1) statusText = 'No matching assets';
+  }
 
   if (disabled && selectedAsset) {
     return (
@@ -192,7 +222,13 @@ export function AssetSearchDropdown({
           disabled
           className="bg-muted min-w-0 flex-1"
         />
-        <Button type="button" variant="outline" size="sm" onClick={handleClearSelection}>
+        <Button
+          ref={changeButtonRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleClearSelection}
+        >
           Change
         </Button>
       </div>
@@ -231,10 +267,15 @@ export function AssetSearchDropdown({
         aria-expanded={showDropdown}
         aria-haspopup="listbox"
         aria-autocomplete="list"
-        aria-controls={listboxId}
+        aria-controls={hasListbox ? listboxId : undefined}
+        aria-invalid={errorId ? true : undefined}
+        aria-describedby={errorId}
         aria-activedescendant={activeOptionId}
       />
 
+      <span role="status" aria-live="polite" className="sr-only">
+        {statusText}
+      </span>
       {showDropdown && (
         <div
           onMouseDown={(event) => event.preventDefault()}
@@ -250,7 +291,9 @@ export function AssetSearchDropdown({
               className="max-h-60 overflow-auto"
             >
               {coinSearch.isSearching ? (
-                <div className="p-3 text-sm text-muted-foreground">Searching…</div>
+                <div aria-hidden="true" className="p-3 text-sm text-muted-foreground">
+                  Searching…
+                </div>
               ) : visibleResults.length > 0 ? (
                 visibleResults.map((result, index) => (
                   <button
@@ -291,9 +334,13 @@ export function AssetSearchDropdown({
                 ))
               ) : trimmedQuery.length >= 1 ? (
                 // Reached only after a successful empty response for this input.
-                <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
+                <div aria-hidden="true" className="p-3 text-sm text-muted-foreground">
+                  No matching assets
+                </div>
               ) : (
-                <div className="p-3 text-sm text-muted-foreground">Type to search assets…</div>
+                <div aria-hidden="true" className="p-3 text-sm text-muted-foreground">
+                  Type to search assets…
+                </div>
               )}
             </div>
           )}

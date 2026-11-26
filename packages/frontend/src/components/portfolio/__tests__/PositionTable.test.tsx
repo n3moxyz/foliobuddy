@@ -146,7 +146,7 @@ it.each(['CASH', 'STABLECOIN', 'LIQUID_CRYPTO', 'EQUITY', 'UNIT_TRUST'])(
     vi.mocked(useMediaQuery).mockReturnValue(true);
     rerender(<PositionTable {...props} />);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    const mobile = within(screen.getByRole('button', { name: 'View PRIVATE position' }));
+    const mobile = within(screen.getByRole('button', { name: /^View PRIVATE/ }));
     expect(mobile.getByText('Qty')).toHaveTextContent(`Qty${MASKED_MONEY_VALUE}`);
     expect(mobile.getByText('Price')).toHaveTextContent('$12.34');
     expect(mobile.getByText('Avg')).toHaveTextContent(MASKED_MONEY_VALUE);

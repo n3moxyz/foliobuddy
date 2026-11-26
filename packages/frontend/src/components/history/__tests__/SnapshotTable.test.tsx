@@ -66,6 +66,7 @@ describe('SnapshotTable expand row', () => {
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('Could not load snapshot positions', {
+        duration: Infinity,
         description: 'Network down',
       })
     );

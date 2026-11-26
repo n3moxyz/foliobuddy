@@ -18,7 +18,7 @@ export function ErrorFallback({
   const handleReload = () => window.location.reload();
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <main className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <AlertTriangle className="mx-auto mb-4 h-10 w-10 text-destructive" />
@@ -42,6 +42,6 @@ export function ErrorFallback({
           </Button>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

@@ -1,5 +1,5 @@
 import { MutationCache, QueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { assertAuthSession, isAuthSessionCurrent, type AuthSession } from './authSession';
 import { DEFAULT_FAILURE_TITLE, failureDescription } from './mutationFeedback';
 

@@ -109,10 +109,26 @@ function chartDataKey(provider: ProviderName, providerAssetId: string) {
   return `benchmark-${provider}-${safeId || 'asset'}`.toLowerCase();
 }
 
+// Each benchmark line has its own dash pattern, so lines can be told apart without
+// color (WCAG 1.4.1). The portfolio line stays solid. Order follows the toggle buttons.
+const BENCHMARK_DASHES = ['6 4', '2 3', '10 3 2 3', '1 4', '12 4'];
+
+function BenchmarkSwatch({ color, dash }: { color: string; dash: string }) {
+  return (
+    <svg width="16" height="6" viewBox="0 0 16 6" aria-hidden="true" className="mr-1.5 shrink-0">
+      <line x1="0" y1="3" x2="16" y2="3" stroke={color} strokeWidth={2} strokeDasharray={dash} />
+    </svg>
+  );
+}
+
 export function BenchmarkComparisonChart() {
   const [period, setPeriod] = useState<TimePeriod>('YTD');
   const [benchmarks, setBenchmarks] = useState<BenchmarkConfig[]>(DEFAULT_BENCHMARKS);
   const [additionalBenchmarks, setAdditionalBenchmarks] = useState<BenchmarkConfig[]>([]);
+  const dashFor = (id: string) => {
+    const index = [...benchmarks, ...additionalBenchmarks].findIndex((b) => b.id === id);
+    return BENCHMARK_DASHES[Math.max(index, 0) % BENCHMARK_DASHES.length];
+  };
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const chartRef = useRef<HTMLDivElement>(null);
@@ -414,6 +430,7 @@ export function BenchmarkComparisonChart() {
               onClick={() => toggleBenchmark(benchmark.id)}
               aria-pressed={benchmark.enabled}
             >
+              <BenchmarkSwatch color={benchmark.color} dash={dashFor(benchmark.id)} />
               {benchmark.symbol}
               {benchmark.enabled && chartData.length > 0 && (
                 <span className="ml-1">
@@ -443,6 +460,7 @@ export function BenchmarkComparisonChart() {
                 onClick={() => toggleAdditionalBenchmark(benchmark.id)}
                 aria-pressed={benchmark.enabled}
               >
+                <BenchmarkSwatch color={benchmark.color} dash={dashFor(benchmark.id)} />
                 {benchmark.symbol}
                 {benchmark.enabled && chartData.length > 0 && (
                   <span className="ml-1">
@@ -569,13 +587,25 @@ export function BenchmarkComparisonChart() {
           </div>
         ) : (
           <div className="relative">
+            {/* Always mounted so the polite announcement fires when loading starts. */}
+            <span role="status" className="sr-only">
+              {isBenchmarkFetching ? 'Loading benchmarks' : ''}
+            </span>
             {isBenchmarkFetching && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <div
+                className="absolute inset-0 z-10 flex items-center justify-center"
+                aria-hidden="true"
+              >
                 <span className="text-sm text-muted-foreground animate-pulse">Loading…</span>
               </div>
             )}
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData} margin={{ top: 5, right: 56, left: 0, bottom: 5 }}>
+              <LineChart
+                accessibilityLayer
+                aria-label="Portfolio and benchmark returns. Use arrow keys to inspect dates."
+                data={chartData}
+                margin={{ top: 5, right: 56, left: 0, bottom: 5 }}
+              >
                 <XAxis
                   dataKey="displayDate"
                   tick={{ fontSize: 12 }}
@@ -640,6 +670,7 @@ export function BenchmarkComparisonChart() {
                       isAnimationActive={false}
                       stroke={benchmark.color}
                       strokeWidth={2}
+                      strokeDasharray={dashFor(benchmark.id)}
                       dot={(props: RechartsLineDotProps) => {
                         const { cx, cy, index, value } = props;
                         const dotKey = chartData[index]?.timestamp ?? `${cx}-${cy}`;

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { api, type IbkrSyncDevice } from '@/lib/api';
 import { captureAuthSession, isAuthSessionCurrent } from '@/lib/authSession';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,16 @@ export function IbkrDeviceSettings() {
     refetchOnReconnect: true,
   });
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // The trigger and the confirm row replace each other, so focus must follow the swap.
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const triggerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const focusTarget = useRef<{ kind: 'cancel' } | { kind: 'trigger'; id: string } | null>(null);
+  useEffect(() => {
+    const target = focusTarget.current;
+    focusTarget.current = null;
+    if (target?.kind === 'cancel') cancelRef.current?.focus();
+    else if (target) triggerRefs.current.get(target.id)?.focus();
+  }, [confirmId]);
   // The failed action, naming the Mac, then its cause or next step.
   const [error, setError] = useState<{ title: string; description: string } | null>(null);
   // Disconnect failures show inline in this section.
@@ -48,8 +59,9 @@ export function IbkrDeviceSettings() {
         </p>
       </div>
       {devices.isPending ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          Checking connections…
+        <p className="text-sm text-muted-foreground">
+          <span aria-hidden="true">Checking connections…</span>
+          <DeferredStatus>Checking connections…</DeferredStatus>
         </p>
       ) : devices.isError ? (
         <div className="space-y-2">
@@ -91,10 +103,12 @@ export function IbkrDeviceSettings() {
                       {revoke.isPending ? 'Disconnecting…' : 'Disconnect'}
                     </Button>
                     <Button
+                      ref={cancelRef}
                       variant="ghost"
                       size="sm"
                       disabled={revoke.isPending}
                       onClick={() => {
+                        focusTarget.current = { kind: 'trigger', id: device.deviceId };
                         setConfirmId(null);
                         setError(null);
                       }}
@@ -105,10 +119,15 @@ export function IbkrDeviceSettings() {
                 </>
               ) : (
                 <Button
+                  ref={(node) => {
+                    if (node) triggerRefs.current.set(device.deviceId, node);
+                    else triggerRefs.current.delete(device.deviceId);
+                  }}
                   variant="outline"
                   size="sm"
                   disabled={revoke.isPending}
                   onClick={() => {
+                    focusTarget.current = { kind: 'cancel' };
                     setConfirmId(device.deviceId);
                     setError(null);
                   }}

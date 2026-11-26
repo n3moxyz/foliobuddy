@@ -65,6 +65,19 @@ export function AssetSearchDropdown({
   const searching = searchLoading && trimmedQuery.length >= 1;
   // "Searching…" replaces the list, so no hidden option may be marked active.
   const visibleResults = searching ? [] : combinedResults;
+  const hasListbox = showDropdown && !searching && visibleResults.length > 0;
+  // Status text lives outside the listbox so it is announced as a live region.
+  const statusText = !showDropdown
+    ? ''
+    : searching
+      ? 'Searching for assets'
+      : visibleResults.length > 0
+        ? `${visibleResults.length} ${visibleResults.length === 1 ? 'result' : 'results'} available`
+        : searchFailed
+          ? ''
+          : trimmedQuery.length >= 1
+            ? 'No matching assets found'
+            : '';
   const activeOptionId =
     highlightedIndex >= 0 && highlightedIndex < visibleResults.length && showDropdown
       ? `${listboxId}-option-${highlightedIndex}`
@@ -138,9 +151,13 @@ export function AssetSearchDropdown({
         aria-expanded={showDropdown}
         aria-haspopup="listbox"
         aria-autocomplete="list"
-        aria-controls={listboxId}
+        aria-controls={hasListbox ? listboxId : undefined}
         aria-activedescendant={activeOptionId}
       />
+
+      <span role="status" aria-live="polite" className="sr-only">
+        {statusText}
+      </span>
 
       {showDropdown && (
         <div
@@ -148,7 +165,7 @@ export function AssetSearchDropdown({
           className="absolute z-10 w-full mt-1 overflow-hidden bg-background border rounded-md shadow-lg"
         >
           {/* A failed search with nothing to list shows only the notice below. */}
-          {(!searchFailed || visibleResults.length > 0) && (
+          {hasListbox ? (
             <div
               id={listboxId}
               ref={dropdownRef}
@@ -156,62 +173,60 @@ export function AssetSearchDropdown({
               aria-label="Matching assets"
               className="max-h-60 overflow-auto"
             >
-              {searching ? (
-                <div className="p-3 text-sm text-muted-foreground">Searching…</div>
-              ) : visibleResults.length > 0 ? (
-                visibleResults.map((result, index) => (
-                  <button
-                    key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
-                    id={`${listboxId}-option-${index}`}
-                    type="button"
-                    role="option"
-                    tabIndex={-1}
-                    aria-selected={index === highlightedIndex}
-                    className={`flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left sm:min-h-0 ${
-                      index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
-                    }`}
-                    onClick={() => {
-                      if (result.type === 'existing') {
-                        onSelectExistingAsset(result.asset!);
-                      } else {
-                        onSelectCoin(result.coin!);
-                      }
-                    }}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                  >
-                    <span className="min-w-0 break-words [overflow-wrap:anywhere]">
-                      <span className="font-medium">
-                        {result.type === 'existing'
-                          ? result.asset!.symbol
-                          : result.coin!.symbol.toUpperCase()}
-                      </span>
-                      <span className="text-muted-foreground ml-2">
-                        {result.type === 'existing' ? result.asset!.name : result.coin!.name}
-                      </span>
+              {visibleResults.map((result, index) => (
+                <button
+                  key={result.type === 'existing' ? result.asset!.id : result.coin!.id}
+                  id={`${listboxId}-option-${index}`}
+                  type="button"
+                  role="option"
+                  tabIndex={-1}
+                  aria-selected={index === highlightedIndex}
+                  className={`flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left sm:min-h-0 ${
+                    index === highlightedIndex ? 'bg-muted' : 'hover:bg-muted'
+                  }`}
+                  onClick={() => {
+                    if (result.type === 'existing') {
+                      onSelectExistingAsset(result.asset!);
+                    } else {
+                      onSelectCoin(result.coin!);
+                    }
+                  }}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                >
+                  <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                    <span className="font-medium">
+                      {result.type === 'existing'
+                        ? result.asset!.symbol
+                        : result.coin!.symbol.toUpperCase()}
                     </span>
-                    {result.type === 'search' &&
-                      'exchange' in result.coin! &&
-                      result.coin!.exchange && (
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          {result.coin!.exchange}
-                        </span>
-                      )}
-                    {result.type === 'search' &&
-                      !('exchange' in result.coin!) &&
-                      result.coin!.rank && (
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          #{result.coin!.rank}
-                        </span>
-                      )}
-                  </button>
-                ))
-              ) : trimmedQuery.length >= 1 ? (
-                // Reached only after a successful empty response for this query.
-                <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
-              ) : (
-                <div className="p-3 text-sm text-muted-foreground">Type to search assets…</div>
-              )}
+                    <span className="text-muted-foreground ml-2">
+                      {result.type === 'existing' ? result.asset!.name : result.coin!.name}
+                    </span>
+                  </span>
+                  {result.type === 'search' &&
+                    'exchange' in result.coin! &&
+                    result.coin!.exchange && (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {result.coin!.exchange}
+                      </span>
+                    )}
+                  {result.type === 'search' &&
+                    !('exchange' in result.coin!) &&
+                    result.coin!.rank && (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        #{result.coin!.rank}
+                      </span>
+                    )}
+                </button>
+              ))}
             </div>
+          ) : searching ? (
+            <div className="p-3 text-sm text-muted-foreground">Searching…</div>
+          ) : searchFailed ? null : trimmedQuery.length >= 1 ? (
+            // Reached only after a successful empty response for this query.
+            <div className="p-3 text-sm text-muted-foreground">No matching assets</div>
+          ) : (
+            <div className="p-3 text-sm text-muted-foreground">Type to search assets…</div>
           )}
           {searchFailed && (
             <SearchErrorNotice className="m-2" subject="assets" onRetry={retrySearch} />

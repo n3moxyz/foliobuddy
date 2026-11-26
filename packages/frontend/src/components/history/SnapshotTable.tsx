@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -21,7 +22,7 @@ import {
   DEFAULT_SNAPSHOT_TIMEZONE,
   describeSnapshotTime,
 } from '@/lib/snapshotPreferences';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import type { Snapshot, SnapshotPosition } from '@/lib/types';
 import {
   Bot,
@@ -176,8 +177,8 @@ export function SnapshotTable({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border" role="status" aria-live="polite">
-        <span className="sr-only">Loading snapshots…</span>
+      <div className="rounded-md border">
+        <DeferredStatus>Loading snapshots…</DeferredStatus>
         <div className="p-4 space-y-3">
           <div className="flex gap-4">
             {SNAPSHOT_TABLE_HEADER_SKELETON_KEYS.map((key) => (
@@ -246,6 +247,9 @@ export function SnapshotTable({
                       className="text-profit"
                       title={`Live portfolio value (snapshot at ${snapshotTime})`}
                     >
+                      <span className="sr-only">
+                        {`Live portfolio value (snapshot at ${snapshotTime}): `}
+                      </span>
                       <div>{displayValue(liveValueUsd!)}</div>
                       <div className="text-xs">(Live)</div>
                     </div>
@@ -316,7 +320,10 @@ export function SnapshotTable({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="flex items-center justify-end gap-1 text-warning">
-                                  <AlertTriangle className="h-3.5 w-3.5" />
+                                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                                  <span className="sr-only">
+                                    Snapshot captured a zero value — positions may have been empty:
+                                  </span>
                                   {displayValue(snapshot.totalValueUsd)}
                                 </span>
                               </TooltipTrigger>
@@ -364,7 +371,7 @@ export function SnapshotTable({
                                     e.stopPropagation();
                                     handleCopySnapshot(snapshot);
                                   }}
-                                  aria-label="Copy snapshot"
+                                  aria-label={`Copy snapshot from ${formatDate(snapshot.timestamp)}`}
                                 >
                                   {isCopied ? (
                                     <Check className="h-4 w-4 text-profit" />
@@ -388,7 +395,7 @@ export function SnapshotTable({
                               e.stopPropagation();
                               onEdit(snapshot);
                             }}
-                            aria-label="Edit snapshot"
+                            aria-label={`Edit snapshot from ${formatDate(snapshot.timestamp)}`}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -400,7 +407,7 @@ export function SnapshotTable({
                               e.stopPropagation();
                               onDelete(snapshot);
                             }}
-                            aria-label="Delete snapshot"
+                            aria-label={`Delete snapshot from ${formatDate(snapshot.timestamp)}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -413,7 +420,8 @@ export function SnapshotTable({
                           <div className="p-4">
                             {isLoadingPos ? (
                               <div className="text-center py-4 text-muted-foreground text-sm">
-                                Loading positions…
+                                <span aria-hidden="true">Loading positions…</span>
+                                <DeferredStatus>Loading positions…</DeferredStatus>
                               </div>
                             ) : positions && positions.length > 0 ? (
                               <div className="space-y-2">

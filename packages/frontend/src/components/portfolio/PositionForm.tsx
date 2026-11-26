@@ -55,7 +55,7 @@ import type {
   Position,
   ProviderSearchResult,
 } from '@/lib/types';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { mismatchedPickToast, resolvedAssetMatchesPick } from '@/lib/assetPickGuard';
 import { useQueryClient } from '@tanstack/react-query';
 import { AssetSearchDropdown } from './AssetSearchDropdown';

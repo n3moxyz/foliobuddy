@@ -64,11 +64,11 @@ describe('Trades asset picker: search states', () => {
 
     // No request has started, so there is no answer to report yet.
     expect(api.searchCoins).not.toHaveBeenCalled();
-    expect(screen.getByText('Searching…')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Searching…');
     expect(screen.queryByText('No matching assets')).not.toBeInTheDocument();
 
     // A successful empty response is a real "no match".
-    expect(await screen.findByText('No matching assets')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('No matching assets'));
     expect(api.searchCoins).toHaveBeenCalledWith('zzz');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -145,7 +145,7 @@ describe('Trades asset picker: search states', () => {
     await screen.findByRole('option', { name: /SOL\s*Solana/ });
 
     fireEvent.change(input, { target: { value: 'sol' } });
-    expect(screen.getByText('Searching…')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Searching…');
     fireEvent.keyDown(input, { key: 'ArrowDown' });
 
     // fireEvent returns false when the handler prevented the default (form submit).

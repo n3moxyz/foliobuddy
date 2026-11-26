@@ -3,6 +3,8 @@ import {
   History,
   LayoutDashboard,
   Newspaper,
+  Pause,
+  Play,
   Settings,
   TrendingUp,
   Users,
@@ -201,118 +203,137 @@ function Rail() {
  * Purely illustrative, like the hero it replaced: hidden from assistive tech,
  * the surrounding copy carries the meaning. Reduced motion shows the poster
  * (the drawdown beat) as a still.
+ *
+ * The loop runs longer than 5 seconds, so it has a pause control (WCAG 2.2.2).
+ * A Stage with no script stands still, so pausing needs no change to the kit.
+ * Reduced motion already shows a still, so the control is hidden there.
  */
 export function HeroNetWorthScrub() {
   // One marker per hero; it also remembers where the hairline and dot last
   // were, so they fade out in place
   const [marker] = useState(() => new ScrubMarker());
   const script = useMemo(() => createScript(marker), [marker]);
+  const [paused, setPaused] = useState(false);
 
   return (
-    <div className="fbn" aria-hidden="true">
-      <Stage<Scene>
-        width={500}
-        height={380}
-        compact={{ below: 480, width: 358, height: 340 }}
-        fill
-        theme="dark"
-        initial={{ day: null }}
-        poster={{ day: HERO_TROUGH }}
-        script={script}
-        cursor={{ at: REST }}
+    <div className="relative">
+      <div className="fbn" aria-hidden="true">
+        <Stage<Scene>
+          width={500}
+          height={380}
+          compact={{ below: 480, width: 358, height: 340 }}
+          fill
+          theme="dark"
+          initial={{ day: null }}
+          poster={{ day: HERO_TROUGH }}
+          script={paused ? undefined : script}
+          cursor={{ at: REST }}
+        >
+          {(s, _rect, layout) => {
+            const compact = layout === 'compact';
+            const { plotW, plotH } = DESIGN[compact ? 'compact' : 'wide'];
+            const pts = chartPoints({ data: HERO_PLOT, width: plotW, height: plotH, dot: false });
+            const r = heroReadout(s.day);
+            const view: Layout = compact ? 'compact' : 'wide';
+            // A new day (or layout) starts on that day's point; the scrub then
+            // moves the marker between renders
+            if (s.day !== null && (marker.at.day !== s.day || marker.at.layout !== view)) {
+              marker.at = { x: pts[s.day].x, y: pts[s.day].y, day: s.day, layout: view };
+            }
+            const on = s.day !== null;
+            const mark = marker.at;
+            const kind =
+              mark.day === HERO_TROUGH ? 'mdd' : mark.day === HERO_LAST ? 'ath' : undefined;
+            return (
+              // The app's collapsed 72px rail on desktop; the mobile app has no rail
+              <Window
+                title="Dashboard"
+                className="fbn-win"
+                sidebarWidth={72}
+                sidebar={compact ? undefined : <Rail />}
+              >
+                <div className="fbn-body">
+                  <div className="fbn-head">
+                    <div className="fbn-top" style={{ width: plotW }}>
+                      <div className="fbn-label">
+                        <Roll variant="fade">{r.label}</Roll>
+                      </div>
+                      <Badge tone={r.tone} className="fbn-badge">
+                        <Roll variant="fade">{r.badge}</Roll>
+                      </Badge>
+                    </div>
+                    <div className="fbn-value">
+                      <Roll stagger={22}>{r.value}</Roll>
+                    </div>
+                  </div>
+                  <div
+                    ref={(el) => {
+                      marker.plot = el;
+                    }}
+                    className="fbn-plot"
+                    data-target="plot"
+                    data-cursor="crosshair"
+                    style={{ width: plotW, height: plotH }}
+                  >
+                    <Chart data={HERO_PLOT} width={plotW} height={plotH} dot={false} />
+                    <span
+                      className="fbn-mile"
+                      data-kind="mdd"
+                      style={{ left: pts[HERO_TROUGH].x, top: pts[HERO_TROUGH].y }}
+                    />
+                    <span
+                      className="fbn-mile"
+                      data-kind="ath"
+                      style={{ left: pts[HERO_LAST].x, top: pts[HERO_LAST].y }}
+                    />
+                    <span
+                      ref={(el) => {
+                        marker.hair = el;
+                      }}
+                      className="fbn-hair"
+                      data-on={on || undefined}
+                      style={{ left: mark.x }}
+                    />
+                    <span
+                      ref={(el) => {
+                        marker.dot = el;
+                      }}
+                      className="fbn-dot"
+                      data-on={on || undefined}
+                      data-kind={kind}
+                      style={{ left: mark.x, top: mark.y }}
+                    />
+                  </div>
+                  <div className="fbn-axis" style={{ width: plotW }}>
+                    <span>{HERO_AXIS[0]}</span>
+                    <span>{HERO_AXIS[1]}</span>
+                  </div>
+                  <div className="fbn-stats">
+                    {STATS.slice(0, compact ? 2 : 3).map(([label, value], i) => (
+                      <div key={i} className="fbn-stat">
+                        <Bar w={label} h={6} tone={3} />
+                        <Bar w={value} h={10} tone={4} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Window>
+            );
+          }}
+        </Stage>
+      </div>
+      <button
+        type="button"
+        onClick={() => setPaused((value) => !value)}
+        aria-label={paused ? 'Play hero animation' : 'Pause hero animation'}
+        className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:hidden"
       >
-        {(s, _rect, layout) => {
-          const compact = layout === 'compact';
-          const { plotW, plotH } = DESIGN[compact ? 'compact' : 'wide'];
-          const pts = chartPoints({ data: HERO_PLOT, width: plotW, height: plotH, dot: false });
-          const r = heroReadout(s.day);
-          const view: Layout = compact ? 'compact' : 'wide';
-          // A new day (or layout) starts on that day's point; the scrub then
-          // moves the marker between renders
-          if (s.day !== null && (marker.at.day !== s.day || marker.at.layout !== view)) {
-            marker.at = { x: pts[s.day].x, y: pts[s.day].y, day: s.day, layout: view };
-          }
-          const on = s.day !== null;
-          const mark = marker.at;
-          const kind =
-            mark.day === HERO_TROUGH ? 'mdd' : mark.day === HERO_LAST ? 'ath' : undefined;
-          return (
-            // The app's collapsed 72px rail on desktop; the mobile app has no rail
-            <Window
-              title="Dashboard"
-              className="fbn-win"
-              sidebarWidth={72}
-              sidebar={compact ? undefined : <Rail />}
-            >
-              <div className="fbn-body">
-                <div className="fbn-head">
-                  <div className="fbn-top" style={{ width: plotW }}>
-                    <div className="fbn-label">
-                      <Roll variant="fade">{r.label}</Roll>
-                    </div>
-                    <Badge tone={r.tone} className="fbn-badge">
-                      <Roll variant="fade">{r.badge}</Roll>
-                    </Badge>
-                  </div>
-                  <div className="fbn-value">
-                    <Roll stagger={22}>{r.value}</Roll>
-                  </div>
-                </div>
-                <div
-                  ref={(el) => {
-                    marker.plot = el;
-                  }}
-                  className="fbn-plot"
-                  data-target="plot"
-                  data-cursor="crosshair"
-                  style={{ width: plotW, height: plotH }}
-                >
-                  <Chart data={HERO_PLOT} width={plotW} height={plotH} dot={false} />
-                  <span
-                    className="fbn-mile"
-                    data-kind="mdd"
-                    style={{ left: pts[HERO_TROUGH].x, top: pts[HERO_TROUGH].y }}
-                  />
-                  <span
-                    className="fbn-mile"
-                    data-kind="ath"
-                    style={{ left: pts[HERO_LAST].x, top: pts[HERO_LAST].y }}
-                  />
-                  <span
-                    ref={(el) => {
-                      marker.hair = el;
-                    }}
-                    className="fbn-hair"
-                    data-on={on || undefined}
-                    style={{ left: mark.x }}
-                  />
-                  <span
-                    ref={(el) => {
-                      marker.dot = el;
-                    }}
-                    className="fbn-dot"
-                    data-on={on || undefined}
-                    data-kind={kind}
-                    style={{ left: mark.x, top: mark.y }}
-                  />
-                </div>
-                <div className="fbn-axis" style={{ width: plotW }}>
-                  <span>{HERO_AXIS[0]}</span>
-                  <span>{HERO_AXIS[1]}</span>
-                </div>
-                <div className="fbn-stats">
-                  {STATS.slice(0, compact ? 2 : 3).map(([label, value], i) => (
-                    <div key={i} className="fbn-stat">
-                      <Bar w={label} h={6} tone={3} />
-                      <Bar w={value} h={10} tone={4} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Window>
-          );
-        }}
-      </Stage>
+        {paused ? (
+          <Play className="h-3.5 w-3.5" aria-hidden="true" />
+        ) : (
+          <Pause className="h-3.5 w-3.5" aria-hidden="true" />
+        )}
+      </button>
     </div>
   );
 }

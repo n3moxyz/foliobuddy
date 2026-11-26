@@ -1,7 +1,8 @@
 import { useId, useRef, useState, useSyncExternalStore } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, MoreHorizontal, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import type { Position } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -328,13 +329,10 @@ function IbkrSyncControl({ position, disabled }: { position: Position; disabled:
             </div>
           ) : (
             <div className="space-y-3">
-              <p
-                role="status"
-                aria-live="polite"
-                className="flex items-center gap-2 text-sm font-medium"
-              >
+              <p className="flex items-center gap-2 text-sm font-medium">
                 {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
-                {phaseLabels[visiblePhase]}
+                <span aria-hidden="true">{phaseLabels[visiblePhase]}</span>
+                <DeferredStatus>{phaseLabels[visiblePhase]}</DeferredStatus>
               </p>
               {visiblePhase === 'done' && (
                 <p className="text-sm text-muted-foreground">

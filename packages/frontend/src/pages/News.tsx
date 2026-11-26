@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { DeferredStatus } from '@/components/ui/deferred-status';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Coins, Globe, LineChart, Newspaper, RefreshCw, Sparkles } from 'lucide-react';
 import { PageActionHeader } from '@/components/layout/PageActionHeader';
 import { HoldingNewsCard, HoldingShortcutLine } from '@/components/news/HoldingNewsCard';
@@ -72,8 +73,8 @@ function SectionEmpty({ text }: { text: string }) {
 
 function NewsSkeleton() {
   return (
-    <div role="status" aria-live="polite" className="space-y-4">
-      <span className="sr-only">Loading news…</span>
+    <div className="space-y-4">
+      <DeferredStatus>Loading news…</DeferredStatus>
       <Skeleton className="h-44 w-full" />
       <Skeleton className="h-44 w-full" />
       <Skeleton className="h-44 w-full" />
@@ -223,7 +224,10 @@ export default function News() {
   };
 
   const activeFetching = selectedAssetId ? assetNews.isFetching : isFetching;
-  const refresh = () => (selectedAssetId ? assetNews.refetch() : refetch());
+  const refresh = () => {
+    if (activeFetching) return;
+    return selectedAssetId ? assetNews.refetch() : refetch();
+  };
 
   return (
     <div className="space-y-6">
@@ -239,9 +243,9 @@ export default function News() {
             <Button
               variant="outline"
               size="sm"
-              className="touch-manipulation"
+              className="touch-manipulation aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
               onClick={() => refresh()}
-              disabled={activeFetching}
+              aria-disabled={activeFetching}
             >
               <RefreshCw className={cn('h-4 w-4 mr-1', activeFetching && 'animate-spin')} />
               {activeFetching ? 'Refreshing…' : 'Refresh'}

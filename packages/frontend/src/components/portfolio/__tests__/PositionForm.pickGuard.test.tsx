@@ -210,6 +210,7 @@ describe('PositionForm: server returns a different asset than was picked', () =>
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Couldn't select StablecoinX Inc.", {
+        duration: Infinity,
         description: expect.stringContaining('Ethena USDe (Cash)'),
       })
     );
@@ -230,7 +231,9 @@ describe('PositionForm: server returns a different asset than was picked', () =>
     expect(amount).toContainElement(screen.getByLabelText('Shares'));
     expect(within(amount).getByText('USDE')).toBeInTheDocument();
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Reduce max/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /reduce by the full balance/ })
+    ).not.toBeInTheDocument();
     expect(toast.error).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Change' }));
@@ -249,6 +252,7 @@ describe('PositionForm: server returns a different asset than was picked', () =>
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Couldn't select Ethena USDe", {
+        duration: Infinity,
         description: expect.stringContaining('StablecoinX Inc. (Equities)'),
       })
     );
@@ -377,6 +381,8 @@ describe('PositionForm: amount panels', () => {
     fireEvent.change(screen.getByLabelText('Units'), { target: { value: '1234.56789' } });
     expect(screen.getByLabelText('Units')).toHaveValue('1,234.56789');
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Reduce max/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /reduce by the full balance/ })
+    ).not.toBeInTheDocument();
   });
 });

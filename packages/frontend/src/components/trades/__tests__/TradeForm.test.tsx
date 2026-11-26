@@ -243,3 +243,24 @@ describe('TradeForm P&L preview', () => {
     expect(preview.compareDocumentPosition(notes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+describe('TradeForm validation on submit', () => {
+  it('keeps submit enabled and reports invalid fields with aria wiring and focus', () => {
+    render(<TradeForm onSuccess={vi.fn()} />);
+    const submit = screen.getByRole('button', { name: 'Log Trade' });
+    expect(submit).toBeEnabled();
+    fireEvent.click(submit);
+    const entryPrice = screen.getByLabelText('Entry Price');
+    expect(entryPrice).toHaveAttribute('aria-invalid', 'true');
+    expect(entryPrice).toHaveAttribute('aria-describedby', 'entryPrice-error');
+    expect(screen.getByText('Entry price must be greater than 0')).toBeInTheDocument();
+    expect(screen.getByText('Quantity must be greater than 0')).toBeInTheDocument();
+    expect(screen.getByText('Please select an asset')).toBeInTheDocument();
+    // Enter in an invalid field submits without moving focus, so the errors announce
+    // themselves as alerts.
+    expect(screen.getByText('Entry price must be greater than 0')).toHaveAttribute('role', 'alert');
+    expect(createTrade).not.toHaveBeenCalled();
+    fireEvent.change(entryPrice, { target: { value: '10' } });
+    expect(entryPrice).not.toHaveAttribute('aria-invalid');
+  });
+});

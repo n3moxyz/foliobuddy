@@ -223,7 +223,7 @@ export function PortfolioChart({
           </div>
           <div className="-mx-1 overflow-x-auto pb-1">
             <div className="flex w-max items-center gap-2 px-1">
-              <div className="flex rounded-md border" aria-label="Chart value mode">
+              <div role="group" className="flex rounded-md border" aria-label="Chart value mode">
                 <Button
                   type="button"
                   variant={chartMode === 'value' ? 'secondary' : 'ghost'}
@@ -322,8 +322,15 @@ export function PortfolioChart({
               }
             }}
           >
+            {/* Always mounted so the polite announcement fires when loading starts. */}
+            <span role="status" className="sr-only">
+              {isFetching ? 'Loading chart' : ''}
+            </span>
             {isFetching && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <div
+                className="absolute inset-0 z-10 flex items-center justify-center"
+                aria-hidden="true"
+              >
                 <span className="text-sm text-muted-foreground animate-pulse">Loading…</span>
               </div>
             )}

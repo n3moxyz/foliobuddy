@@ -63,10 +63,17 @@ export function SnapshotScheduleSection() {
           ) : (
             <Select
               value={String(hour)}
-              disabled={isError || update.isPending}
-              onValueChange={(value) => update.mutate({ snapshotHour: Number(value) })}
+              disabled={isError}
+              onValueChange={(value) => {
+                if (update.isPending) return;
+                update.mutate({ snapshotHour: Number(value) });
+              }}
             >
-              <SelectTrigger id="snapshot-hour" className="w-full sm:w-[140px]">
+              <SelectTrigger
+                id="snapshot-hour"
+                aria-disabled={update.isPending}
+                className="w-full sm:w-[140px] aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -93,10 +100,17 @@ export function SnapshotScheduleSection() {
           ) : (
             <Select
               value={zone}
-              disabled={isError || update.isPending}
-              onValueChange={(value) => update.mutate({ snapshotTimezone: value })}
+              disabled={isError}
+              onValueChange={(value) => {
+                if (update.isPending) return;
+                update.mutate({ snapshotTimezone: value });
+              }}
             >
-              <SelectTrigger id="snapshot-timezone" className="w-full sm:w-[240px]">
+              <SelectTrigger
+                id="snapshot-timezone"
+                aria-disabled={update.isPending}
+                className="w-full sm:w-[240px] aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-[320px]">

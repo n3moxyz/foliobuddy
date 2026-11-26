@@ -220,6 +220,7 @@ describe('usePerpExposure', () => {
     });
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Couldn't save perp exposure", {
+        duration: Infinity,
         description: 'Network unavailable',
       })
     );
@@ -360,6 +361,7 @@ describe('usePerpExposure', () => {
     );
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith("Couldn't save perp exposure", {
+      duration: Infinity,
       description: 'offline',
     });
   });

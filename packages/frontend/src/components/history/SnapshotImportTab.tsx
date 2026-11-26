@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
@@ -19,9 +19,13 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedSnapshots, setParsedSnapshots] = useState<BulkImportSnapshot[] | null>(null);
   const [importing, setImporting] = useState(false);
+  // Parse feedback is passive while typing and becomes an alert only after an import attempt.
+  const [attempted, setAttempted] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [importResults, setImportResults] = useState<ImportResultItem[] | null>(null);
 
   const handleJsonChange = (value: string) => {
+    setAttempted(false);
     setJsonInput(value);
     setParseError(null);
     setParsedSnapshots(null);
@@ -50,7 +54,13 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
   };
 
   const handleImport = async () => {
-    if (!parsedSnapshots) return;
+    if (importing) return;
+    if (!parsedSnapshots) {
+      setAttempted(true);
+      if (!jsonInput.trim()) setParseError('Paste JSON to import');
+      textareaRef.current?.focus();
+      return;
+    }
 
     setImporting(true);
 
@@ -59,6 +69,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
       setImportResults(response.results.map((r) => ({ ...r, label: r.timestamp })));
     } catch (e) {
       setParseError(e instanceof Error ? e.message : 'Import failed — please try again');
+      setAttempted(true);
     } finally {
       setImporting(false);
     }
@@ -75,6 +86,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
       handleJsonChange(text);
     } catch {
       setParseError('Failed to read clipboard. Please paste manually.');
+      setAttempted(true);
     }
   };
 
@@ -92,8 +104,9 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
       </div>
 
       <Textarea
+        ref={textareaRef}
         aria-label="Snapshot JSON to import"
-        aria-invalid={!!parseError}
+        aria-invalid={parseError ? true : undefined}
         aria-describedby={parseError ? 'snapshot-import-error' : undefined}
         value={jsonInput}
         onChange={(e) => handleJsonChange(e.target.value)}
@@ -104,8 +117,9 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
 
       {parseError && (
         <div
+          key={attempted ? 'alert' : 'passive'}
           id="snapshot-import-error"
-          role="alert"
+          role={attempted ? 'alert' : undefined}
           className="flex items-start gap-2 break-words text-destructive text-sm"
         >
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -137,7 +151,7 @@ export function SnapshotImportTab({ onSuccess }: SnapshotImportTabProps) {
       )}
 
       <div className="flex justify-end">
-        <Button type="button" onClick={handleImport} disabled={!parsedSnapshots || importing}>
+        <Button type="button" onClick={handleImport} disabled={importing}>
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />

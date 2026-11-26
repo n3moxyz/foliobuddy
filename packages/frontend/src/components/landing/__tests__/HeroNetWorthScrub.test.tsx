@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HeroNetWorthScrub } from '../HeroNetWorthScrub';
 import { HERO_LAST, HERO_MDD, HERO_TROUGH, HERO_VALUES, heroReadout } from '../heroScrubData';
@@ -66,9 +66,16 @@ describe('HeroNetWorthScrub', () => {
 
   it('is hidden from assistive tech and shows the drawdown poster', () => {
     const { container } = render(<HeroNetWorthScrub />);
-    const root = container.firstElementChild as HTMLElement;
-    expect(root).toHaveAttribute('aria-hidden', 'true');
-    expect(root.textContent).toContain('Max drawdown');
-    expect(root.textContent).toContain('MDD');
+    const stage = container.querySelector('.fbn') as HTMLElement;
+    expect(stage).toHaveAttribute('aria-hidden', 'true');
+    expect(stage.textContent).toContain('Max drawdown');
+    expect(stage.textContent).toContain('MDD');
+  });
+
+  it('has a pause control outside the hidden stage (WCAG 2.2.2)', () => {
+    render(<HeroNetWorthScrub />);
+    const pause = screen.getByRole('button', { name: 'Pause hero animation' });
+    fireEvent.click(pause);
+    expect(screen.getByRole('button', { name: 'Play hero animation' })).toBe(pause);
   });
 });

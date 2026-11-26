@@ -23,6 +23,38 @@ interface TradeFormProps {
 }
 
 type FormMode = 'add' | 'import';
+type TradeField = 'asset' | 'entryPrice' | 'entryDate' | 'exitPrice' | 'quantity' | 'fundingCost';
+
+// DOM order, so the first invalid field receives focus.
+const FIELD_IDS: Record<TradeField, string> = {
+  asset: 'trade-asset',
+  entryPrice: 'entryPrice',
+  entryDate: 'entryDate',
+  exitPrice: 'exitPrice',
+  quantity: 'quantity',
+  fundingCost: 'fundingCost',
+};
+
+function fieldProps(field: TradeField, errors: Partial<Record<TradeField, string>>) {
+  return errors[field]
+    ? { 'aria-invalid': true as const, 'aria-describedby': `${FIELD_IDS[field]}-error` }
+    : {};
+}
+
+function FieldError({
+  field,
+  errors,
+}: {
+  field: TradeField;
+  errors: Partial<Record<TradeField, string>>;
+}) {
+  if (!errors[field]) return null;
+  return (
+    <p id={`${FIELD_IDS[field]}-error`} role="alert" className="text-xs text-destructive">
+      {errors[field]}
+    </p>
+  );
+}
 
 export function TradeForm({ trade, onSuccess }: TradeFormProps) {
   const isEditing = !!trade;
@@ -58,6 +90,8 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
   });
   const [notes, setNotes] = useState(trade?.notes || '');
   const [validationError, setValidationError] = useState<string | null>(null);
+  // Field errors appear on submit and clear as each field is edited.
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<TradeField, string>>>({});
   const submissionInFlight = useRef(false);
 
   // Hooks
@@ -73,10 +107,14 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
     isOptionalPositiveNumberInput(exitPrice) &&
     isOptionalNonNegativeNumberInput(fundingCost);
 
+  const clearFieldError = (field: TradeField) =>
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+
   const handleSelectAsset = (id: string, asset: Asset) => {
     setAssetId(id);
     setSelectedAsset(asset);
     setValidationError(null);
+    clearFieldError('asset');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,19 +123,19 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
     setValidationError(null);
 
     if (!isFormValid) {
-      if (!assetId) {
-        setValidationError('Please select an asset');
-      } else if (!isPositiveNumberInput(entryPrice)) {
-        setValidationError('Entry price must be greater than 0');
-      } else if (!isPositiveNumberInput(quantity)) {
-        setValidationError('Quantity must be greater than 0');
-      } else if (!entryDate) {
-        setValidationError('Entry date is required');
-      } else if (!isOptionalPositiveNumberInput(exitPrice)) {
-        setValidationError('Exit price must be greater than 0');
-      } else if (!isOptionalNonNegativeNumberInput(fundingCost)) {
-        setValidationError('Funding cost cannot be negative');
-      }
+      const errors: Partial<Record<TradeField, string>> = {};
+      if (!assetId) errors.asset = 'Please select an asset';
+      if (!isPositiveNumberInput(entryPrice))
+        errors.entryPrice = 'Entry price must be greater than 0';
+      if (!entryDate) errors.entryDate = 'Entry date is required';
+      if (!isOptionalPositiveNumberInput(exitPrice))
+        errors.exitPrice = 'Exit price must be greater than 0';
+      if (!isPositiveNumberInput(quantity)) errors.quantity = 'Quantity must be greater than 0';
+      if (!isOptionalNonNegativeNumberInput(fundingCost))
+        errors.fundingCost = 'Funding cost cannot be negative';
+      setFieldErrors(errors);
+      const first = (Object.keys(FIELD_IDS) as TradeField[]).find((field) => errors[field]);
+      if (first) document.getElementById(FIELD_IDS[first])?.focus();
       return;
     }
 
@@ -171,7 +209,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
           <TradeImportTab onSuccess={onSuccess} />
         ) : (
           /* Add/Edit Mode - Form */
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="trade-asset">Asset</Label>
               <AssetSearchDropdown
@@ -179,7 +217,9 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                 selectedAsset={selectedAsset}
                 onSelectAsset={handleSelectAsset}
                 disabled={isEditing}
+                errorId={fieldErrors.asset ? `${FIELD_IDS.asset}-error` : undefined}
               />
+              <FieldError field="asset" errors={fieldErrors} />
             </div>
 
             <div className="space-y-2">
@@ -223,10 +263,13 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                   onValueChange={(value) => {
                     setEntryPrice(value);
                     setValidationError(null);
+                    clearFieldError('entryPrice');
                   }}
                   placeholder="0.00"
                   required
+                  {...fieldProps('entryPrice', fieldErrors)}
                 />
+                <FieldError field="entryPrice" errors={fieldErrors} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="entryDate">Entry Date</Label>
@@ -237,9 +280,12 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                   onChange={(e) => {
                     setEntryDate(e.target.value);
                     setValidationError(null);
+                    clearFieldError('entryDate');
                   }}
                   required
+                  {...fieldProps('entryDate', fieldErrors)}
                 />
+                <FieldError field="entryDate" errors={fieldErrors} />
               </div>
             </div>
 
@@ -252,9 +298,12 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                   onValueChange={(value) => {
                     setExitPrice(value);
                     setValidationError(null);
+                    clearFieldError('exitPrice');
                   }}
                   placeholder="Leave empty for open trade"
+                  {...fieldProps('exitPrice', fieldErrors)}
                 />
+                <FieldError field="exitPrice" errors={fieldErrors} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="exitDate">Exit Date</Label>
@@ -278,10 +327,13 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                 onValueChange={(value) => {
                   setQuantity(value);
                   setValidationError(null);
+                  clearFieldError('quantity');
                 }}
                 placeholder="0.00"
                 required
+                {...fieldProps('quantity', fieldErrors)}
               />
+              <FieldError field="quantity" errors={fieldErrors} />
             </div>
 
             <div className="space-y-2">
@@ -292,10 +344,17 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
                 onValueChange={(value) => {
                   setFundingCost(value);
                   setValidationError(null);
+                  clearFieldError('fundingCost');
                 }}
                 placeholder="0.00"
-                aria-describedby="fundingCost-description"
+                {...fieldProps('fundingCost', fieldErrors)}
+                aria-describedby={
+                  fieldErrors.fundingCost
+                    ? 'fundingCost-error fundingCost-description'
+                    : 'fundingCost-description'
+                }
               />
+              <FieldError field="fundingCost" errors={fieldErrors} />
               <p id="fundingCost-description" className="text-xs text-muted-foreground">
                 USD amount paid; deducted from realised P&amp;L.
               </p>
@@ -326,7 +385,7 @@ export function TradeForm({ trade, onSuccess }: TradeFormProps) {
             )}
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="submit" disabled={isLoading || !isFormValid}>
+              <Button type="submit" disabled={isLoading}>
                 {isLoading ? 'Saving…' : isEditing ? 'Update Trade' : 'Log Trade'}
               </Button>
             </div>

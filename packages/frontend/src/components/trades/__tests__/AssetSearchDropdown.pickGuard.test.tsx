@@ -79,6 +79,7 @@ describe('Trades asset picker: server returns a different asset', () => {
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Couldn't select Ethena USDe", {
+        duration: Infinity,
         description: expect.stringContaining('StablecoinX Inc. (Equities)'),
       })
     );
@@ -104,6 +105,7 @@ describe('Trades asset picker: server returns a different asset', () => {
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Couldn't select Ethena USDe", {
+        duration: Infinity,
         description: 'Check your connection and try again.',
       })
     );

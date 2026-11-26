@@ -51,8 +51,13 @@ it('explains full allocation before submission and lets the user return to rebal
   fireEvent.click(opener);
   const dialog = screen.getByRole('dialog');
   fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'New investor' } });
-  expect(within(dialog).getByRole('button', { name: 'Add Investor' })).toBeDisabled();
+  const submit = within(dialog).getByRole('button', { name: 'Add Investor' });
+  expect(submit).toBeEnabled();
   expect(within(dialog).getByRole('status')).toHaveTextContent(
+    "No stake is available. Reduce an existing investor's stake"
+  );
+  fireEvent.click(submit);
+  expect(within(dialog).getByRole('alert')).toHaveTextContent(
     "No stake is available. Reduce an existing investor's stake"
   );
   expect(create).not.toHaveBeenCalled();
@@ -113,4 +118,41 @@ it('names the investor in the delete description and ends with the undo warning'
     'Are you sure you want to delete Alice from the investor list? Historical data will not be affected. This action cannot be undone.'
   );
   client.clear();
+});
+
+it('shows an inline name error with aria wiring and focus when submitting an empty name', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
+  vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}));
+  vi.spyOn(api, 'getInvestors').mockResolvedValue([
+    { id: 'owner', name: 'Owner', stakePercentage: 50, isOwner: true } as Investor,
+  ]);
+  const create = vi.spyOn(api, 'createInvestor');
+  const Wrapper = createQueryClientWrapper(createTestQueryClient());
+  render(
+    <Wrapper>
+      <TooltipProvider>
+        <MemoryRouter>
+          <Investors />
+        </MemoryRouter>
+      </TooltipProvider>
+    </Wrapper>
+  );
+  await screen.findAllByText('Owner');
+  fireEvent.click(screen.getByRole('button', { name: 'Add Investor' }));
+  const dialog = screen.getByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Add Investor' }));
+  const name = within(dialog).getByLabelText('Name');
+  expect(name).toHaveAttribute('aria-invalid', 'true');
+  expect(name).toHaveAttribute('aria-describedby', 'investor-name-error');
+  expect(name).toHaveAccessibleDescription('Enter a name');
+  expect(within(dialog).getByRole('alert')).toHaveTextContent('Enter a name');
+  expect(name).toHaveFocus();
+  expect(create).not.toHaveBeenCalled();
 });

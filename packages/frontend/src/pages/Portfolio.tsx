@@ -7,7 +7,7 @@ import {
   useDrawdownStats,
   useFxRates,
 } from '@/hooks/usePortfolio';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { USD_SGD_FALLBACK_RATE } from '@foliobuddy/shared';
 import {
@@ -74,6 +74,9 @@ import { formatMilestoneDate } from '@/lib/portfolioHistory';
 
 const PERP_EXPOSURE_INPUT_ID = 'perp-exposure-input';
 const PERP_EXPOSURE_INLINE_INPUT_ID = 'perp-exposure-inline-input';
+const PERP_EXPOSURE_ERROR_ID = 'perp-exposure-error';
+const PERP_EXPOSURE_INLINE_ERROR_ID = 'perp-exposure-inline-error';
+const PERP_EXPOSURE_ERROR_TEXT = 'Enter a perp exposure of 0 or more.';
 const PORTFOLIO_SECTION_SKELETON_KEYS = ['primary', 'secondary'] as const;
 const PORTFOLIO_ROW_SKELETON_KEYS = ['first', 'second', 'third'] as const;
 const EQUITY_GROUP_BY_KEY = 'foliobuddy-equity-group-by';
@@ -285,6 +288,7 @@ export default function Portfolio() {
   };
 
   const perpInputIsValid = isNonNegativeNumberInput(perpInput);
+  const perpInputShowsError = perpInput.length > 0 && !perpInputIsValid;
 
   const handleEquityGroupByChange = (value: EquityGroupBy) => {
     setEquityGroupBy(value);
@@ -771,9 +775,11 @@ export default function Portfolio() {
         />
       )}
 
+      <div role="status" aria-live="polite" className="sr-only">
+        {positionsPending ? 'Loading positions…' : ''}
+      </div>
       {positionsPending && (
-        <div className="space-y-3" role="status" aria-live="polite">
-          <span className="sr-only">Loading positions…</span>
+        <div className="space-y-3" aria-hidden="true">
           {PORTFOLIO_SECTION_SKELETON_KEYS.map((sectionKey) => (
             <div key={sectionKey} className="rounded-md border p-4 space-y-3">
               <div className="flex items-center gap-2">
@@ -948,12 +954,8 @@ export default function Portfolio() {
                   {section.pnlUsd !== null && (
                     <span
                       className={`shrink-0 font-mono text-sm font-medium tabular-nums ${getPnLColorClass(section.pnlUsd)}`}
-                      aria-label={`Unrealised P and L ${formatCurrency(
-                        convertValue(section.pnlUsd),
-                        currency,
-                        0
-                      )} (${formatPercent(section.pnlPct)})`}
                     >
+                      <span className="sr-only">Unrealised P and L </span>
                       {formatCurrency(convertValue(section.pnlUsd), currency, 0)} (
                       {formatPercent(section.pnlPct)})
                     </span>
@@ -992,6 +994,9 @@ export default function Portfolio() {
                             className="h-8 w-28 px-2 text-right font-mono text-xs tabular-nums"
                             aria-label={`Perp exposure in ${currency}`}
                             aria-invalid={!perpInputIsValid}
+                            aria-describedby={
+                              perpInputShowsError ? PERP_EXPOSURE_INLINE_ERROR_ID : undefined
+                            }
                             autoFocus
                           />
                         ) : (
@@ -1045,6 +1050,15 @@ export default function Portfolio() {
                           </>
                         )}
                       </div>
+                      {editingPerpInline && perpInputShowsError && (
+                        <p
+                          id={PERP_EXPOSURE_INLINE_ERROR_ID}
+                          role="alert"
+                          className="text-xs text-destructive"
+                        >
+                          {PERP_EXPOSURE_ERROR_TEXT}
+                        </p>
+                      )}
                     </div>
                   )}
                 </>
@@ -1089,12 +1103,8 @@ export default function Portfolio() {
                 {custodyGroupPnL.pnlUsd !== null && (
                   <span
                     className={`shrink-0 font-mono text-sm font-medium tabular-nums ${getPnLColorClass(custodyGroupPnL.pnlUsd)}`}
-                    aria-label={`Unrealised P and L ${formatCurrency(
-                      convertValue(custodyGroupPnL.pnlUsd),
-                      currency,
-                      0
-                    )} (${formatPercent(custodyGroupPnL.pnlPct)})`}
                   >
+                    <span className="sr-only">Unrealised P and L </span>
                     {formatCurrency(convertValue(custodyGroupPnL.pnlUsd), currency, 0)} (
                     {formatPercent(custodyGroupPnL.pnlPct)})
                   </span>
@@ -1176,8 +1186,14 @@ export default function Portfolio() {
                 onValueChange={setPerpInput}
                 onKeyDown={handlePerpKeyDown}
                 placeholder="0"
-                aria-invalid={perpInput.length > 0 && !perpInputIsValid}
+                aria-invalid={perpInputShowsError}
+                aria-describedby={perpInputShowsError ? PERP_EXPOSURE_ERROR_ID : undefined}
               />
+              {perpInputShowsError && (
+                <p id={PERP_EXPOSURE_ERROR_ID} className="text-xs text-destructive">
+                  {PERP_EXPOSURE_ERROR_TEXT}
+                </p>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               {/* Remove lives here too: without a Cash section, the menu is the only way in. */}

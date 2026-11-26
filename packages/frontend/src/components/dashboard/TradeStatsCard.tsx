@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { CollapsibleCard } from '@/components/portfolio/CollapsibleCard';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import {
@@ -33,7 +33,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
 // Definitions use HelpTooltip, which opens on hover, focus or tap. A hover-only tooltip on the
@@ -72,13 +72,23 @@ function ratingLabel(
 
 // --- Sortable segment wrapper ---
 
+// Arrow buttons give a single-pointer way to reorder (WCAG 2.5.7): dragging the grip is not
+// the only path. They use aria-disabled, not disabled, so focus stays on a button that
+// reaches the first or last position.
+const MOVE_BUTTON_CLASS =
+  'inline-flex min-h-8 min-w-11 items-center justify-center rounded-sm text-muted-foreground/80 transition-colors hover:text-muted-foreground aria-disabled:cursor-not-allowed aria-disabled:opacity-40 md:h-6 md:min-h-0 md:w-6 md:min-w-0';
+
 function SortableSegment({
   id,
   isFirst,
+  isLast,
+  onMove,
   children,
 }: {
   id: SegmentId;
   isFirst: boolean;
+  isLast: boolean;
+  onMove: (id: SegmentId, direction: -1 | 1) => void;
   children: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -106,9 +116,33 @@ function SortableSegment({
           {...attributes}
           {...listeners}
         >
-          <GripVertical className="h-4 w-4" />
+          <GripVertical className="h-4 w-4" aria-hidden="true" />
         </button>
         <div className="flex-1 min-w-0">{children}</div>
+        <div className="flex shrink-0 flex-col items-center">
+          <button
+            type="button"
+            aria-label={`Move ${segmentLabel(id)} section up`}
+            aria-disabled={isFirst}
+            className={MOVE_BUTTON_CLASS}
+            onClick={() => {
+              if (!isFirst) onMove(id, -1);
+            }}
+          >
+            <ChevronUp className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-label={`Move ${segmentLabel(id)} section down`}
+            aria-disabled={isLast}
+            className={MOVE_BUTTON_CLASS}
+            onClick={() => {
+              if (!isLast) onMove(id, 1);
+            }}
+          >
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -378,6 +412,7 @@ export function TradeStatsCard({
   const { segmentOrder, setOrder } = useTradeStatsStore();
   const { formatCurrency } = useMoneyFormatter();
   const pickedUpRef = useRef<UniqueIdentifier | null>(null);
+  const [moveAnnouncement, setMoveAnnouncement] = useState('');
 
   const convert = (usdValue: number | null | undefined) => {
     if (usdValue === null || usdValue === undefined) return usdValue;
@@ -435,6 +470,17 @@ export function TradeStatsCard({
   // Filter out notableTrades if no data
   const hasNotableTrades = !!(analytics.bestTrade || analytics.worstTrade);
   const visibleOrder = segmentOrder.filter((id) => id !== 'notableTrades' || hasNotableTrades);
+
+  // Swap with the visible neighbour. A hidden section keeps its saved slot.
+  function moveSegment(id: SegmentId, direction: -1 | 1) {
+    const visibleIndex = visibleOrder.indexOf(id);
+    const neighbour = visibleOrder[visibleIndex + direction];
+    if (!neighbour) return;
+    setOrder(arrayMove(segmentOrder, segmentOrder.indexOf(id), segmentOrder.indexOf(neighbour)));
+    setMoveAnnouncement(
+      `${segmentLabel(id)} section moved to position ${visibleIndex + direction + 1} of ${visibleOrder.length}.`
+    );
+  }
 
   function renderSegment(id: SegmentId) {
     switch (id) {
@@ -501,12 +547,21 @@ export function TradeStatsCard({
         >
           <SortableContext items={visibleOrder} strategy={verticalListSortingStrategy}>
             {visibleOrder.map((id, index) => (
-              <SortableSegment key={id} id={id} isFirst={index === 0}>
+              <SortableSegment
+                key={id}
+                id={id}
+                isFirst={index === 0}
+                isLast={index === visibleOrder.length - 1}
+                onMove={moveSegment}
+              >
                 {renderSegment(id)}
               </SortableSegment>
             ))}
           </SortableContext>
         </DndContext>
+        <p role="status" className="sr-only">
+          {moveAnnouncement}
+        </p>
       </div>
     </CollapsibleCard>
   );
