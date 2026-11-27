@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.71.0
+
+- Label Portfolio Value chart markers directly on the chart instead of in a legend below it. The `?` beside the title explains each marker, and the hover tooltip stays short.
+
 ## v1.70.2
 
 - Show whole dollars and up to one decimal for percentages and ratios in Trade Analytics.

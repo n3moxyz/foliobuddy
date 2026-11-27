@@ -1,8 +1,9 @@
 import type { ReactElement } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PerformancePoint } from '@/lib/types';
 import type { PortfolioMilestone } from '@/lib/portfolioHistory';
+import { MASKED_MONEY_VALUE, usePrivacyStore } from '@/stores/privacyStore';
 import { PortfolioChart } from '../PortfolioChart';
 
 // Render the real Recharts plot at a fixed size. jsdom has no layout measurement.
@@ -55,61 +56,130 @@ beforeEach(() => {
   performanceHistory = history;
 });
 
-describe('legend-linked chart highlights', () => {
-  it('highlights only the matching point on hover and clears it on leave', async () => {
+const label = (container: HTMLElement, kind: string) =>
+  container.querySelector(`[data-milestone-label="${kind}"]`);
+const markerY = (container: HTMLElement, kinds: string) => {
+  const transform = container
+    .querySelector(`[data-portfolio-milestone="${kinds}"]`)
+    ?.getAttribute('transform');
+  return Number(transform?.match(/translate\([^,]+,\s*([^)]+)\)/)?.[1]);
+};
+const markerX = (container: HTMLElement, kinds: string) => {
+  const transform = container
+    .querySelector(`[data-portfolio-milestone="${kinds}"]`)
+    ?.getAttribute('transform');
+  return Number(transform?.match(/translate\(([^,]+),/)?.[1]);
+};
+// Chart height 300 minus the bottom margin (5) and the date axis (30).
+const PLOT_BOTTOM = 265;
+const LABEL_HALF_HEIGHT = 7;
+
+describe('direct milestone labels', () => {
+  afterEach(() => usePrivacyStore.setState({ valuesHidden: false }));
+
+  it('labels each milestone on the plot and drops the legend row', () => {
     const { container } = render(<PortfolioChart {...props} />);
-    const high = container.querySelector('[data-portfolio-milestone="ath"]');
-    const trough = container.querySelector('[data-portfolio-milestone="mdd daily"]');
-    expect(high).toBeInTheDocument();
-    expect(trough).toBeInTheDocument();
-    expect(container.querySelector('[data-highlighted="true"]')).not.toBeInTheDocument();
-    const trigger = screen.getByRole('button', { name: 'Explain YTD ATH' });
-    fireEvent.pointerMove(trigger, { pointerType: 'mouse' });
-    await waitFor(() => expect(high).toHaveAttribute('data-highlighted', 'true'));
-    expect(high?.querySelector('[data-milestone-highlight]')).toBeInTheDocument();
-    expect(trough).not.toHaveAttribute('data-highlighted');
-    fireEvent.pointerLeave(trigger, { pointerType: 'mouse' });
-    fireEvent.pointerMove(document.body, { pointerType: 'mouse', clientX: 1000, clientY: 1000 });
-    await waitFor(() =>
-      expect(container.querySelector('[data-highlighted="true"]')).not.toBeInTheDocument()
-    );
+    expect(label(container, 'ath')).toHaveTextContent('YTD ATH $120.00');
+    expect(label(container, 'mdd')).toHaveTextContent('MDD -33.33%');
+    expect(label(container, 'daily')).toHaveTextContent('MDD (1D) -33.33%');
+    expect(container.querySelector('[data-chart-end-label]')).toHaveTextContent('$110.00');
+    expect(container.querySelector('[data-portfolio-milestone="mdd daily"]')).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Portfolio chart milestones' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Help: Portfolio chart milestones' })).toBeVisible();
   });
 
-  it('supports grouped events by keyboard and clears on dismissal or a display-mode change', async () => {
+  it('stacks labels that share a point so they never overlap', () => {
     const { container } = render(<PortfolioChart {...props} />);
-    const trigger = screen.getByRole('button', { name: 'Explain MDD · MDD (1D)' });
-    fireEvent.focus(trigger);
-    await waitFor(() =>
-      expect(container.querySelector('[data-portfolio-milestone="mdd daily"]')).toHaveAttribute(
-        'data-highlighted',
-        'true'
-      )
+    const mddY = Number(label(container, 'mdd')?.getAttribute('y'));
+    const dailyY = Number(label(container, 'daily')?.getAttribute('y'));
+    expect(Math.abs(dailyY - mddY)).toBeGreaterThanOrEqual(14);
+  });
+
+  it('flips trough labels above the point when they would reach the date axis', () => {
+    const { container } = render(<PortfolioChart {...props} />);
+    const troughY = markerY(container, 'mdd daily');
+    for (const kind of ['mdd', 'daily']) {
+      const y = Number(label(container, kind)?.getAttribute('y'));
+      expect(y).toBeLessThan(troughY);
+      expect(y + LABEL_HALF_HEIGHT).toBeLessThanOrEqual(PLOT_BOTTOM);
+    }
+  });
+
+  it('keeps trough labels below the point when there is room', () => {
+    performanceHistory = [60, 120, 90, 110].map((value, index) => ({
+      ...history[index],
+      totalValueUsd: value,
+    }));
+    const trough = { ...performanceHistory[2] };
+    const { container } = render(
+      <PortfolioChart
+        {...props}
+        milestones={[
+          { ...performanceHistory[1], kind: 'ath' },
+          { ...trough, kind: 'mdd', drawdownPct: 25 },
+          { ...trough, kind: 'daily', drawdownPct: 18.18 },
+          milestones[3],
+        ]}
+      />
     );
-    expect(container.querySelectorAll('[data-milestone-highlight]')).toHaveLength(1);
-    fireEvent.keyDown(trigger, { key: 'Escape' });
-    await waitFor(() =>
-      expect(container.querySelectorAll('[data-milestone-highlight]')).toHaveLength(0)
+    const troughY = markerY(container, 'mdd daily');
+    const dailyY = Number(label(container, 'daily')?.getAttribute('y'));
+    expect(Number(label(container, 'mdd')?.getAttribute('y'))).toBeGreaterThan(troughY);
+    expect(dailyY).toBeGreaterThan(troughY);
+    expect(dailyY + LABEL_HALF_HEIGHT).toBeLessThanOrEqual(PLOT_BOTTOM);
+  });
+
+  it('keeps labels from neighbouring points apart', () => {
+    // A worst day right before a mid-chart trough puts both drawdown labels side by side.
+    const values = [80, 88, 96, 104, 112, 120, 118, 117, 116, 115, 95, 94, 96, 97, 98];
+    performanceHistory = values.map((value, index) => ({
+      ...history[0],
+      timestamp: new Date(Date.UTC(2026, 0, index + 1, 12)).toISOString(),
+      totalValueUsd: value,
+    }));
+    const at = (index: number) => performanceHistory[index];
+    const last = at(values.length - 1);
+    const { container } = render(
+      <PortfolioChart
+        liveValueUsd={last.totalValueUsd}
+        liveTimestamp={last.timestamp}
+        milestones={[
+          { ...at(5), kind: 'ath' },
+          { ...at(11), kind: 'mdd', drawdownPct: 21.67 },
+          { ...at(10), kind: 'daily', drawdownPct: 17.39 },
+          { ...last, kind: 'live', drawdownPct: 18.33 },
+        ]}
+      />
     );
-    fireEvent.focus(trigger);
+    const mdd = label(container, 'mdd');
+    const daily = label(container, 'daily');
+    expect(mdd).toHaveTextContent('MDD -21.67%');
+    expect(daily).toHaveTextContent('MDD (1D) -17.39%');
+    expect(
+      Math.abs(Number(mdd?.getAttribute('y')) - Number(daily?.getAttribute('y')))
+    ).toBeGreaterThanOrEqual(14);
+  });
+
+  it('masks money labels while keeping drawdown percentages visible', () => {
+    usePrivacyStore.setState({ valuesHidden: true });
+    const { container } = render(<PortfolioChart {...props} />);
+    expect(label(container, 'ath')).toHaveTextContent(`YTD ATH ${MASKED_MONEY_VALUE}`);
+    expect(container.querySelector('[data-chart-end-label]')).toHaveTextContent(MASKED_MONEY_VALUE);
+    expect(label(container, 'mdd')).toHaveTextContent('MDD -33.33%');
+  });
+
+  it('shows percentage labels in percentage mode', () => {
+    const { container } = render(<PortfolioChart {...props} />);
     fireEvent.click(
       screen.getByRole('button', { name: 'Show portfolio value as percentage change' })
     );
-    await waitFor(() =>
-      expect(container.querySelectorAll('[data-milestone-highlight]')).toHaveLength(0)
-    );
+    expect(label(container, 'ath')).toHaveTextContent('YTD ATH +20.00%');
+    expect(container.querySelector('[data-chart-end-label]')).toHaveTextContent('+10.00%');
   });
 
-  it('keeps the live selection on its updated point when it becomes the new high', async () => {
-    const { container, rerender } = render(<PortfolioChart {...props} />);
-    fireEvent.focus(screen.getByRole('button', { name: 'Explain Today (Live)' }));
-    await waitFor(() =>
-      expect(container.querySelector('[data-portfolio-milestone="live"]')).toHaveAttribute(
-        'data-highlighted',
-        'true'
-      )
-    );
+  it('does not repeat the value when the live point sets the high', () => {
     const next = { timestamp: '2026-01-05T12:00:00Z', totalValueUsd: 130 };
-    rerender(
+    const { container } = render(
       <PortfolioChart
         liveValueUsd={130}
         liveTimestamp={next.timestamp}
@@ -121,59 +191,11 @@ describe('legend-linked chart highlights', () => {
         ]}
       />
     );
-    await waitFor(() =>
-      expect(container.querySelector('[data-portfolio-milestone="ath live"]')).toHaveAttribute(
-        'data-highlighted',
-        'true'
-      )
+    expect(label(container, 'ath')?.textContent).toBe('YTD ATH');
+    // It sits left of the point, clear of the end value on the right.
+    expect(Number(label(container, 'ath')?.getAttribute('x'))).toBeLessThan(
+      markerX(container, 'ath live')
     );
-    expect(container.querySelectorAll('[data-milestone-highlight]')).toHaveLength(1);
-    expect(screen.getByRole('tooltip')).toHaveTextContent('5 Jan 2026');
-  });
-  it('clears a vanished drawdown selection and does not revive it on another dip', async () => {
-    performanceHistory = history.slice(0, 2);
-    const dip = { timestamp: '2026-01-03T12:00:00Z', totalValueUsd: 110 };
-    const dipMilestones: PortfolioMilestone[] = [
-      { ...history[1], kind: 'ath' },
-      { ...dip, kind: 'mdd', drawdownPct: 8.33 },
-      { ...dip, kind: 'live', drawdownPct: 8.33 },
-    ];
-    const { container, rerender } = render(
-      <PortfolioChart liveValueUsd={110} liveTimestamp={dip.timestamp} milestones={dipMilestones} />
-    );
-    fireEvent.focus(screen.getByRole('button', { name: 'Explain MDD · Today (Live)' }));
-    await waitFor(() =>
-      expect(container.querySelector('[data-portfolio-milestone="mdd live"]')).toHaveAttribute(
-        'data-highlighted',
-        'true'
-      )
-    );
-    const recovery = { timestamp: '2026-01-03T13:00:00Z', totalValueUsd: 130 };
-    rerender(
-      <PortfolioChart
-        liveValueUsd={130}
-        liveTimestamp={recovery.timestamp}
-        milestones={[
-          { ...recovery, kind: 'ath' },
-          { ...recovery, kind: 'live', drawdownPct: 0 },
-        ]}
-      />
-    );
-    await waitFor(() =>
-      expect(container.querySelector('[data-highlighted="true"]')).not.toBeInTheDocument()
-    );
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
-    const nextDipTime = '2026-01-03T14:00:00Z';
-    rerender(
-      <PortfolioChart
-        liveValueUsd={110}
-        liveTimestamp={nextDipTime}
-        milestones={dipMilestones.map((event) =>
-          event.kind === 'ath' ? event : { ...event, timestamp: nextDipTime }
-        )}
-      />
-    );
-    expect(container.querySelector('[data-highlighted="true"]')).not.toBeInTheDocument();
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-chart-end-label]')).toHaveTextContent('$130.00');
   });
 });

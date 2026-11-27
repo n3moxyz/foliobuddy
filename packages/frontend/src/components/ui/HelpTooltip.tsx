@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { HelpCircle } from 'lucide-react';
 import {
   Tooltip,
@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/tooltip';
 
 interface HelpTooltipProps {
-  content: string;
+  /** Usually a sentence. A short list is fine when it defines several related terms. */
+  content: ReactNode;
   /** What the tooltip explains, e.g. "Exposure" — differentiates the accessible
    * name ("Help: Exposure") so screen-reader control lists aren't all "Help". */
   label?: string;
