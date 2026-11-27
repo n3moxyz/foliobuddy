@@ -7,6 +7,7 @@ import {
   Tooltip,
   ReferenceLine,
   ResponsiveContainer,
+  Customized,
   type TooltipProps,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +26,7 @@ import {
   PORTFOLIO_MILESTONE_EXPLANATIONS,
   type PortfolioMilestone,
 } from '@/lib/portfolioHistory';
+import { PortfolioMilestoneLabels } from './PortfolioMilestoneLabels';
 import { PortfolioMilestoneMarker } from './PortfolioMilestoneMarker';
 import { DollarSign, Percent } from 'lucide-react';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
@@ -59,11 +61,7 @@ const MILESTONE_DEFINITIONS = (
     ))}
   </dl>
 );
-const CHART_HEIGHT = 300;
 const CHART_MARGIN = { top: 24, right: 56, left: 0, bottom: 5 };
-const Y_AXIS_WIDTH = 56;
-const X_AXIS_HEIGHT = 30;
-const PLOT_BOTTOM = CHART_HEIGHT - CHART_MARGIN.bottom - X_AXIS_HEIGHT;
 // Two decimals keep on-chart labels distinct ("$4.66M"), where the axis uses one.
 const CHART_LABEL_FORMATTER = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -203,10 +201,10 @@ export function PortfolioChart({
     const formatted = CHART_LABEL_FORMATTER.format(value);
     return maskMoney(currency === 'SGD' ? formatted.replace('$', 'S$') : formatted);
   };
-  const plotBounds =
-    chartWidth > 0
-      ? { left: CHART_MARGIN.left + Y_AXIS_WIDTH, right: chartWidth - CHART_MARGIN.right }
-      : null;
+  const valueLabelAt = (index: number) =>
+    chartMode === 'percent'
+      ? formatPercent(chartData[index].percentChange)
+      : formatChartLabel(chartData[index].value);
 
   return (
     <Card ref={chartRef} className="chart-card col-span-2">
@@ -215,7 +213,7 @@ export function PortfolioChart({
           <div className="chart-title-layout flex min-w-0 flex-col gap-1">
             <div className="flex items-center gap-1">
               <CardTitle className="text-base">Portfolio Value</CardTitle>
-              <HelpTooltip label="Portfolio chart markers" content={MILESTONE_DEFINITIONS} />
+              <HelpTooltip label="Portfolio chart milestones" content={MILESTONE_DEFINITIONS} />
             </div>
             {valueChange && (
               <div className={`text-sm ${valueChange.change >= 0 ? 'text-profit' : 'text-loss'}`}>
@@ -344,7 +342,7 @@ export function PortfolioChart({
                 <span className="text-sm text-muted-foreground animate-pulse">Loading…</span>
               </div>
             )}
-            <ResponsiveContainer width="100%" height={CHART_HEIGHT} onResize={setChartWidth}>
+            <ResponsiveContainer width="100%" height={300} onResize={setChartWidth}>
               <AreaChart
                 accessibilityLayer
                 aria-label="Portfolio value history. Use arrow keys to inspect dates and milestones."
@@ -359,7 +357,6 @@ export function PortfolioChart({
                 </defs>
                 <XAxis
                   dataKey="date"
-                  height={X_AXIS_HEIGHT}
                   tick={{ fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
@@ -377,7 +374,7 @@ export function PortfolioChart({
                   tickLine={false}
                   axisLine={false}
                   className="text-muted-foreground"
-                  width={Y_AXIS_WIDTH}
+                  width={56}
                 />
                 <Tooltip content={renderTooltip} />
                 {chartData.length > 0 && (
@@ -409,19 +406,18 @@ export function PortfolioChart({
                         cy={cy}
                         events={point.milestones}
                         pointDate={point.tooltipDate}
-                        valueLabel={
-                          chartMode === 'percent'
-                            ? formatPercent(point.percentChange)
-                            : formatChartLabel(point.value)
-                        }
+                        valueLabel={valueLabelAt(index)}
                         isLast={isLast}
                         isLive={point.isLive}
-                        plotBounds={plotBounds}
-                        plotBottom={PLOT_BOTTOM}
                       />
                     );
                   }}
                   activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+                <Customized
+                  component={
+                    <PortfolioMilestoneLabels data={chartData} valueLabelAt={valueLabelAt} />
+                  }
                 />
               </AreaChart>
             </ResponsiveContainer>

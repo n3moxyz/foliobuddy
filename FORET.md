@@ -6,6 +6,8 @@ The Portfolio Value chart used a legend row below the plot. Readers had to match
 
 Each marker now carries its name and number on the plot ("YTD ATH $4.66M", "MDD -35.65%"). The lesson: a legend is a lookup table, and a lookup costs a round trip for the eye. With four or fewer series, label the marks themselves. When marks share a point, stack the labels and move them away from the end value instead of letting them overlap. The full definitions now live in the `?` beside the title, so the hover tooltip stays one line per event and the line stays visible.
 
+The first version placed each point's labels on their own, and an interface review caught the flaw: a worst day one day before the drawdown low printed both labels on top of each other. Label placement is a group decision. `layoutMilestoneLabels()` now sees every label at once, using the plotted points Recharts hands to `<Customized>`, and moves any label that would collide or leave the plot.
+
 ## Editing notes on timestamped trades (25 November 2026)
 
 Trade date inputs display UTC calendar days. The editor omits unchanged dates from updates so the backend keeps the full timestamps. When a user clears an existing note, the editor sends an empty string so the backend saves the change.

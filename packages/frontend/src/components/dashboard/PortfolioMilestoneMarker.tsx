@@ -1,30 +1,10 @@
-import type { ReactNode } from 'react';
 import { PORTFOLIO_MILESTONE_COLORS } from '@/lib/chartColors';
 import {
   PORTFOLIO_MILESTONE_EXPLANATIONS,
   PORTFOLIO_MILESTONE_LABELS,
   type PortfolioMilestone,
 } from '@/lib/portfolioHistory';
-import { formatDrawdown } from '@/lib/utils';
 import { PortfolioMilestoneGlyph } from './PortfolioMilestoneGlyph';
-
-/** Space between a marker and its label. */
-const LABEL_GAP = 13;
-/** Line height when two labels stack at one point. */
-const LABEL_LINE = 14;
-/** Half a label's height, so its lower edge can be checked against the plot. */
-const LABEL_HALF_HEIGHT = 7;
-/** A centred label this close to a plot edge anchors to that edge instead. */
-const EDGE_ZONE = 64;
-/** Labels below a point, in stacking order. */
-const BELOW_KINDS = ['mdd', 'daily'] as const;
-
-type Anchor = 'start' | 'middle' | 'end';
-
-export interface PlotBounds {
-  left: number;
-  right: number;
-}
 
 interface PortfolioMilestoneMarkerProps {
   cx: number;
@@ -35,54 +15,12 @@ interface PortfolioMilestoneMarkerProps {
   valueLabel: string;
   isLast: boolean;
   isLive: boolean;
-  /** Plot edges in SVG pixels, or null before the chart is measured. */
-  plotBounds: PlotBounds | null;
-  /** The plot's lower edge in SVG pixels. Labels below it would cover the date axis. */
-  plotBottom: number;
 }
 
-function anchorFor(x: number, plotBounds: PlotBounds | null): Anchor {
-  if (!plotBounds) return 'middle';
-  if (x < plotBounds.left + EDGE_ZONE) return 'start';
-  if (x > plotBounds.right - EDGE_ZONE) return 'end';
-  return 'middle';
-}
-
-function MilestoneLabel({
-  x,
-  y,
-  anchor,
-  kind,
-  children,
-}: {
-  x: number;
-  y: number;
-  anchor: Anchor;
-  kind: PortfolioMilestone['kind'];
-  children: ReactNode;
-}) {
-  return (
-    <text
-      x={x}
-      y={y}
-      textAnchor={anchor}
-      dominantBaseline="middle"
-      fontSize={11}
-      fontWeight={500}
-      fill={PORTFOLIO_MILESTONE_COLORS[kind]}
-      // A halo in the card colour keeps the label legible where it crosses the line.
-      stroke="hsl(var(--card))"
-      strokeWidth={4}
-      strokeLinejoin="round"
-      paintOrder="stroke"
-      data-milestone-label={kind}
-    >
-      {children}
-    </text>
-  );
-}
-
-/** A chart point's milestone marker, its direct labels, and the end-of-line value label. */
+/**
+ * A chart point's milestone marker and, on the last point, the end-of-line value.
+ * `PortfolioMilestoneLabels` places the milestone names, because that needs every label at once.
+ */
 export function PortfolioMilestoneMarker({
   cx,
   cy,
@@ -91,24 +29,8 @@ export function PortfolioMilestoneMarker({
   valueLabel,
   isLast,
   isLive,
-  plotBounds,
-  plotBottom,
 }: PortfolioMilestoneMarkerProps) {
   const marker = events.find((event) => event.kind === 'mdd') ?? events[0];
-  const ath = events.find((event) => event.kind === 'ath');
-  const below = BELOW_KINDS.flatMap((kind) => events.filter((event) => event.kind === kind));
-  // The end label owns the right of the last point, so its other labels sit to the left.
-  const anchor = isLast ? 'end' : anchorFor(cx, plotBounds);
-  const labelX = isLast ? cx - 6 : cx;
-  // Drawdown labels go below their trough. If the stack would reach the date axis,
-  // it flips above the point instead, after any ATH label there.
-  const belowEdge = cy + LABEL_GAP + 2 + (below.length - 1) * LABEL_LINE + LABEL_HALF_HEIGHT;
-  const flipAbove = below.length > 0 && belowEdge > plotBottom;
-  const drawdownLabelY = (index: number) =>
-    flipAbove
-      ? cy - LABEL_GAP - (index + (ath ? 1 : 0)) * LABEL_LINE
-      : cy + LABEL_GAP + 2 + index * LABEL_LINE;
-
   return (
     <g>
       <g
@@ -127,25 +49,6 @@ export function PortfolioMilestoneMarker({
         </title>
         <PortfolioMilestoneGlyph kind={marker?.kind ?? 'live'} />
       </g>
-      {ath && (
-        <MilestoneLabel x={labelX} y={cy - LABEL_GAP} anchor={anchor} kind="ath">
-          {/* The end label already shows the value of a high set today. */}
-          {isLast
-            ? PORTFOLIO_MILESTONE_LABELS.ath
-            : `${PORTFOLIO_MILESTONE_LABELS.ath} ${valueLabel}`}
-        </MilestoneLabel>
-      )}
-      {below.map((event, index) => (
-        <MilestoneLabel
-          key={event.kind}
-          x={labelX}
-          y={drawdownLabelY(index)}
-          anchor={anchor}
-          kind={event.kind}
-        >
-          {`${PORTFOLIO_MILESTONE_LABELS[event.kind]} ${formatDrawdown(event.drawdownPct)}`}
-        </MilestoneLabel>
-      ))}
       {isLast && (
         <>
           <text

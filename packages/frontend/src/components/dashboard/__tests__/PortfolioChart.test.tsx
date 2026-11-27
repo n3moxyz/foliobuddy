@@ -64,6 +64,12 @@ const markerY = (container: HTMLElement, kinds: string) => {
     ?.getAttribute('transform');
   return Number(transform?.match(/translate\([^,]+,\s*([^)]+)\)/)?.[1]);
 };
+const markerX = (container: HTMLElement, kinds: string) => {
+  const transform = container
+    .querySelector(`[data-portfolio-milestone="${kinds}"]`)
+    ?.getAttribute('transform');
+  return Number(transform?.match(/translate\(([^,]+),/)?.[1]);
+};
 // Chart height 300 minus the bottom margin (5) and the date axis (30).
 const PLOT_BOTTOM = 265;
 const LABEL_HALF_HEIGHT = 7;
@@ -79,7 +85,7 @@ describe('direct milestone labels', () => {
     expect(container.querySelector('[data-chart-end-label]')).toHaveTextContent('$110.00');
     expect(container.querySelector('[data-portfolio-milestone="mdd daily"]')).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Portfolio chart milestones' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Help: Portfolio chart markers' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Help: Portfolio chart milestones' })).toBeVisible();
   });
 
   it('stacks labels that share a point so they never overlap', () => {
@@ -123,6 +129,37 @@ describe('direct milestone labels', () => {
     expect(dailyY + LABEL_HALF_HEIGHT).toBeLessThanOrEqual(PLOT_BOTTOM);
   });
 
+  it('keeps labels from neighbouring points apart', () => {
+    // A worst day right before a mid-chart trough puts both drawdown labels side by side.
+    const values = [80, 88, 96, 104, 112, 120, 118, 117, 116, 115, 95, 94, 96, 97, 98];
+    performanceHistory = values.map((value, index) => ({
+      ...history[0],
+      timestamp: new Date(Date.UTC(2026, 0, index + 1, 12)).toISOString(),
+      totalValueUsd: value,
+    }));
+    const at = (index: number) => performanceHistory[index];
+    const last = at(values.length - 1);
+    const { container } = render(
+      <PortfolioChart
+        liveValueUsd={last.totalValueUsd}
+        liveTimestamp={last.timestamp}
+        milestones={[
+          { ...at(5), kind: 'ath' },
+          { ...at(11), kind: 'mdd', drawdownPct: 21.67 },
+          { ...at(10), kind: 'daily', drawdownPct: 17.39 },
+          { ...last, kind: 'live', drawdownPct: 18.33 },
+        ]}
+      />
+    );
+    const mdd = label(container, 'mdd');
+    const daily = label(container, 'daily');
+    expect(mdd).toHaveTextContent('MDD -21.67%');
+    expect(daily).toHaveTextContent('MDD (1D) -17.39%');
+    expect(
+      Math.abs(Number(mdd?.getAttribute('y')) - Number(daily?.getAttribute('y')))
+    ).toBeGreaterThanOrEqual(14);
+  });
+
   it('masks money labels while keeping drawdown percentages visible', () => {
     usePrivacyStore.setState({ valuesHidden: true });
     const { container } = render(<PortfolioChart {...props} />);
@@ -155,7 +192,10 @@ describe('direct milestone labels', () => {
       />
     );
     expect(label(container, 'ath')?.textContent).toBe('YTD ATH');
-    expect(label(container, 'ath')).toHaveAttribute('text-anchor', 'end');
+    // It sits left of the point, clear of the end value on the right.
+    expect(Number(label(container, 'ath')?.getAttribute('x'))).toBeLessThan(
+      markerX(container, 'ath live')
+    );
     expect(container.querySelector('[data-chart-end-label]')).toHaveTextContent('$130.00');
   });
 });
