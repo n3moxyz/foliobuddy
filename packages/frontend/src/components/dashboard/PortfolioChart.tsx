@@ -14,9 +14,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ChartCopyButton } from '@/components/dashboard/ChartCopyButton';
 import { usePerformanceHistory } from '@/hooks/usePortfolio';
-import { formatPercent } from '@/lib/utils';
+import { HelpTooltip } from '@/components/ui/HelpTooltip';
+import { formatDrawdown, formatPercent } from '@/lib/utils';
 import { formatPercentAxisTick, getDateRange } from '@/lib/chartUtils';
-import { PORTFOLIO_LINE_COLOR } from '@/lib/chartColors';
+import { PORTFOLIO_LINE_COLOR, PORTFOLIO_MILESTONE_COLORS } from '@/lib/chartColors';
 import type { TimePeriod } from '@/lib/types';
 import {
   buildPortfolioChartData,
@@ -24,8 +25,7 @@ import {
   PORTFOLIO_MILESTONE_EXPLANATIONS,
   type PortfolioMilestone,
 } from '@/lib/portfolioHistory';
-import { PortfolioMilestoneGlyph } from './PortfolioMilestoneGlyph';
-import { PortfolioMilestoneDetails, PortfolioMilestoneLegend } from './PortfolioMilestoneLegend';
+import { PortfolioMilestoneMarker } from './PortfolioMilestoneMarker';
 import { DollarSign, Percent } from 'lucide-react';
 import { useMoneyFormatter } from '@/hooks/useMoneyFormatter';
 
@@ -46,6 +46,29 @@ interface RechartsAreaDotProps {
 }
 
 const EMPTY_MILESTONES: PortfolioMilestone[] = [];
+const MILESTONE_KINDS = Object.keys(PORTFOLIO_MILESTONE_LABELS) as PortfolioMilestone['kind'][];
+const MILESTONE_DEFINITIONS = (
+  <dl className="space-y-1.5">
+    {MILESTONE_KINDS.map((kind) => (
+      <div key={kind}>
+        <dt className="font-medium" style={{ color: PORTFOLIO_MILESTONE_COLORS[kind] }}>
+          {PORTFOLIO_MILESTONE_LABELS[kind]}
+        </dt>
+        <dd className="text-muted-foreground">{PORTFOLIO_MILESTONE_EXPLANATIONS[kind]}</dd>
+      </div>
+    ))}
+  </dl>
+);
+const CHART_MARGIN = { top: 24, right: 56, left: 0, bottom: 5 };
+const Y_AXIS_WIDTH = 56;
+// Two decimals keep on-chart labels distinct ("$4.66M"), where the axis uses one.
+const CHART_LABEL_FORMATTER = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  notation: 'compact',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 const CHART_SKELETON_TICKS = ['start', 'early', 'middle', 'late', 'end'] as const;
 type ChartMode = 'value' | 'percent';
 
@@ -62,15 +85,8 @@ export function PortfolioChart({
   // The period cue answers a period or mode change, so the chart's first appearance stays still.
   const [showPeriodCue, setShowPeriodCue] = useState(false);
   const [chartWidth, setChartWidth] = useState(0);
-  const [activeMilestone, setActiveMilestone] = useState<PortfolioMilestone['kind'] | null>(null);
-  const handleMilestoneActiveChange = useCallback(
-    (kind: PortfolioMilestone['kind'], active: boolean) => {
-      setActiveMilestone((current) => (active ? kind : current === kind ? null : current));
-    },
-    []
-  );
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrency, formatSignedCurrency } = useMoneyFormatter();
+  const { formatCurrency, formatSignedCurrency, maskMoney } = useMoneyFormatter();
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const { data: performanceData, isLoading, isFetching } = usePerformanceHistory(dateRange);
@@ -82,7 +98,7 @@ export function PortfolioChart({
       if (!active || !payload?.length) return null;
       const data = payload[0].payload;
       return (
-        <div className="max-w-[280px] rounded-lg border bg-background p-3 shadow-md">
+        <div className="max-w-[240px] rounded-lg border bg-background px-3 py-2 shadow-md">
           <p className="text-xs text-muted-foreground mb-1">
             {data.tooltipDate}
             {data.isLive && <span className="ml-1 text-profit">(Live)</span>}
@@ -97,11 +113,16 @@ export function PortfolioChart({
               {formatCurrency(data.value, currency, 0)}
             </p>
           )}
-          {data.milestones.length > 0 && (
-            <div className="mt-2 border-t pt-2">
-              <PortfolioMilestoneDetails events={data.milestones} showDate={false} />
-            </div>
-          )}
+          {data.milestones.map((event: PortfolioMilestone) => (
+            <p
+              key={event.kind}
+              className="mt-1 text-xs font-medium"
+              style={{ color: PORTFOLIO_MILESTONE_COLORS[event.kind] }}
+            >
+              {PORTFOLIO_MILESTONE_LABELS[event.kind]}
+              {event.drawdownPct != null && ` · ${formatDrawdown(event.drawdownPct)}`}
+            </p>
+          ))}
           {currency === 'SGD' && data.milestones.length > 0 && (
             <p className="mt-1 text-xs text-muted-foreground">Milestones use USD history.</p>
           )}
@@ -129,28 +150,6 @@ export function PortfolioChart({
       }),
     [performanceData, liveValueUsd, liveTimestamp, milestones, currency, fxRate, stakeMultiplier]
   );
-  const visibleMilestones = useMemo(() => {
-    const visible = new Set(
-      chartData.flatMap((point) => point.milestones.map((event) => event.kind))
-    );
-    const groups = new Map<number, PortfolioMilestone[]>();
-    for (const event of milestones.filter((item) => visible.has(item.kind))) {
-      const time = Date.parse(event.timestamp);
-      const group = groups.get(time) ?? [];
-      group.push(event);
-      groups.set(time, group);
-    }
-    return [...groups.values()];
-  }, [chartData, milestones]);
-
-  // A live-only drawdown can disappear on recovery. Do not retain its selection.
-  if (
-    activeMilestone !== null &&
-    !visibleMilestones.some((events) => events.some((event) => event.kind === activeMilestone))
-  ) {
-    setActiveMilestone(null);
-  }
-
   // Calculate change from first to last point
   const valueChange = useMemo(() => {
     if (chartData.length < 2) return null;
@@ -197,13 +196,24 @@ export function PortfolioChart({
   const formattedCurrencyChange = valueChange
     ? formatSignedCurrency(valueChange.change, currency, 0)
     : '';
+  const formatChartLabel = (value: number) => {
+    const formatted = CHART_LABEL_FORMATTER.format(value);
+    return maskMoney(currency === 'SGD' ? formatted.replace('$', 'S$') : formatted);
+  };
+  const plotBounds =
+    chartWidth > 0
+      ? { left: CHART_MARGIN.left + Y_AXIS_WIDTH, right: chartWidth - CHART_MARGIN.right }
+      : null;
 
   return (
     <Card ref={chartRef} className="chart-card col-span-2">
       <CardHeader className="pb-4">
         <div className="chart-toolbar-layout flex flex-col gap-3">
           <div className="chart-title-layout flex min-w-0 flex-col gap-1">
-            <CardTitle className="text-base">Portfolio Value</CardTitle>
+            <div className="flex items-center gap-1">
+              <CardTitle className="text-base">Portfolio Value</CardTitle>
+              <HelpTooltip label="Portfolio chart markers" content={MILESTONE_DEFINITIONS} />
+            </div>
             {valueChange && (
               <div className={`text-sm ${valueChange.change >= 0 ? 'text-profit' : 'text-loss'}`}>
                 <span className="font-medium">
@@ -230,7 +240,6 @@ export function PortfolioChart({
                   size="icon"
                   className="h-11 w-11 rounded-r-none sm:h-8 sm:w-8"
                   onClick={() => {
-                    setActiveMilestone(null);
                     setShowPeriodCue(true);
                     setChartMode('value');
                   }}
@@ -246,7 +255,6 @@ export function PortfolioChart({
                   size="icon"
                   className="h-11 w-11 rounded-l-none sm:h-8 sm:w-8"
                   onClick={() => {
-                    setActiveMilestone(null);
                     setShowPeriodCue(true);
                     setChartMode('percent');
                   }}
@@ -268,7 +276,6 @@ export function PortfolioChart({
                       period === p ? '' : 'hover:bg-muted'
                     }`}
                     onClick={() => {
-                      setActiveMilestone(null);
                       setShowPeriodCue(true);
                       setPeriod(p);
                     }}
@@ -339,7 +346,7 @@ export function PortfolioChart({
                 accessibilityLayer
                 aria-label="Portfolio value history. Use arrow keys to inspect dates and milestones."
                 data={chartData}
-                margin={{ top: 5, right: 56, left: 0, bottom: 5 }}
+                margin={CHART_MARGIN}
               >
                 <defs>
                   <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
@@ -366,13 +373,9 @@ export function PortfolioChart({
                   tickLine={false}
                   axisLine={false}
                   className="text-muted-foreground"
-                  width={56}
+                  width={Y_AXIS_WIDTH}
                 />
-                <Tooltip
-                  content={renderTooltip}
-                  active={activeMilestone ? false : undefined}
-                  cursor={activeMilestone ? false : undefined}
-                />
+                <Tooltip content={renderTooltip} />
                 {chartData.length > 0 && (
                   <ReferenceLine
                     y={chartMode === 'percent' ? 0 : chartData[0].value}
@@ -395,77 +398,28 @@ export function PortfolioChart({
                     const isLast = index === chartData.length - 1;
                     if (!point || (!isLast && point.milestones.length === 0))
                       return <g key={`portfolio-dot-${dotKey}`} />;
-                    const event =
-                      point.milestones.find((item) => item.kind === 'mdd') ?? point.milestones[0];
-                    const highlighted = point.milestones.some(
-                      (item) => item.kind === activeMilestone
-                    );
                     return (
-                      <g key={`portfolio-dot-${dotKey}`}>
-                        <g
-                          transform={`translate(${cx}, ${cy})`}
-                          className="cursor-help"
-                          data-portfolio-milestone={point.milestones
-                            .map((item) => item.kind)
-                            .join(' ')}
-                          data-highlighted={highlighted ? 'true' : undefined}
-                        >
-                          <title>
-                            {point.milestones
-                              .map(
-                                (item) =>
-                                  `${PORTFOLIO_MILESTONE_LABELS[item.kind]}: ${PORTFOLIO_MILESTONE_EXPLANATIONS[item.kind]}`
-                              )
-                              .join(' ')}{' '}
-                            — {point.tooltipDate}
-                          </title>
-                          <PortfolioMilestoneGlyph
-                            kind={event?.kind ?? 'live'}
-                            highlighted={highlighted}
-                          />
-                        </g>
-                        {isLast && (
-                          <>
-                            <text
-                              x={cx + 8}
-                              y={cy}
-                              fontSize={11}
-                              dominantBaseline="middle"
-                              fontWeight={500}
-                              fill="currentColor"
-                              opacity={0.7}
-                            >
-                              {chartMode === 'percent'
-                                ? formatPercent(chartData[index].percentChange)
-                                : formatCurrency(chartData[index].value, currency, true)}
-                            </text>
-                            {point.isLive && (
-                              <text
-                                x={cx + 8}
-                                y={cy + 15}
-                                fontSize={10}
-                                fill="currentColor"
-                                className="text-muted-foreground"
-                              >
-                                Live
-                              </text>
-                            )}
-                          </>
-                        )}
-                      </g>
+                      <PortfolioMilestoneMarker
+                        key={`portfolio-dot-${dotKey}`}
+                        cx={cx}
+                        cy={cy}
+                        events={point.milestones}
+                        pointDate={point.tooltipDate}
+                        valueLabel={
+                          chartMode === 'percent'
+                            ? formatPercent(point.percentChange)
+                            : formatChartLabel(point.value)
+                        }
+                        isLast={isLast}
+                        isLive={point.isLive}
+                        plotBounds={plotBounds}
+                      />
                     );
                   }}
-                  activeDot={activeMilestone ? false : { r: 4, strokeWidth: 0 }}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
-            {visibleMilestones.length > 0 && (
-              <PortfolioMilestoneLegend
-                groups={visibleMilestones}
-                activeKind={activeMilestone}
-                onActiveChange={handleMilestoneActiveChange}
-              />
-            )}
           </div>
         )}
       </CardContent>
