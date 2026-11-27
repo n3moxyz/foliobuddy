@@ -10,8 +10,10 @@ import { PortfolioMilestoneGlyph } from './PortfolioMilestoneGlyph';
 
 /** Space between a marker and its label. */
 const LABEL_GAP = 13;
-/** Line height when two labels stack below one point. */
+/** Line height when two labels stack at one point. */
 const LABEL_LINE = 14;
+/** Half a label's height, so its lower edge can be checked against the plot. */
+const LABEL_HALF_HEIGHT = 7;
 /** A centred label this close to a plot edge anchors to that edge instead. */
 const EDGE_ZONE = 64;
 /** Labels below a point, in stacking order. */
@@ -35,6 +37,8 @@ interface PortfolioMilestoneMarkerProps {
   isLive: boolean;
   /** Plot edges in SVG pixels, or null before the chart is measured. */
   plotBounds: PlotBounds | null;
+  /** The plot's lower edge in SVG pixels. Labels below it would cover the date axis. */
+  plotBottom: number;
 }
 
 function anchorFor(x: number, plotBounds: PlotBounds | null): Anchor {
@@ -88,6 +92,7 @@ export function PortfolioMilestoneMarker({
   isLast,
   isLive,
   plotBounds,
+  plotBottom,
 }: PortfolioMilestoneMarkerProps) {
   const marker = events.find((event) => event.kind === 'mdd') ?? events[0];
   const ath = events.find((event) => event.kind === 'ath');
@@ -95,6 +100,14 @@ export function PortfolioMilestoneMarker({
   // The end label owns the right of the last point, so its other labels sit to the left.
   const anchor = isLast ? 'end' : anchorFor(cx, plotBounds);
   const labelX = isLast ? cx - 6 : cx;
+  // Drawdown labels go below their trough. If the stack would reach the date axis,
+  // it flips above the point instead, after any ATH label there.
+  const belowEdge = cy + LABEL_GAP + 2 + (below.length - 1) * LABEL_LINE + LABEL_HALF_HEIGHT;
+  const flipAbove = below.length > 0 && belowEdge > plotBottom;
+  const drawdownLabelY = (index: number) =>
+    flipAbove
+      ? cy - LABEL_GAP - (index + (ath ? 1 : 0)) * LABEL_LINE
+      : cy + LABEL_GAP + 2 + index * LABEL_LINE;
 
   return (
     <g>
@@ -126,7 +139,7 @@ export function PortfolioMilestoneMarker({
         <MilestoneLabel
           key={event.kind}
           x={labelX}
-          y={cy + LABEL_GAP + 2 + index * LABEL_LINE}
+          y={drawdownLabelY(index)}
           anchor={anchor}
           kind={event.kind}
         >

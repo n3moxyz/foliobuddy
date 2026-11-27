@@ -59,8 +59,11 @@ const MILESTONE_DEFINITIONS = (
     ))}
   </dl>
 );
+const CHART_HEIGHT = 300;
 const CHART_MARGIN = { top: 24, right: 56, left: 0, bottom: 5 };
 const Y_AXIS_WIDTH = 56;
+const X_AXIS_HEIGHT = 30;
+const PLOT_BOTTOM = CHART_HEIGHT - CHART_MARGIN.bottom - X_AXIS_HEIGHT;
 // Two decimals keep on-chart labels distinct ("$4.66M"), where the axis uses one.
 const CHART_LABEL_FORMATTER = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -341,7 +344,7 @@ export function PortfolioChart({
                 <span className="text-sm text-muted-foreground animate-pulse">Loading…</span>
               </div>
             )}
-            <ResponsiveContainer width="100%" height={300} onResize={setChartWidth}>
+            <ResponsiveContainer width="100%" height={CHART_HEIGHT} onResize={setChartWidth}>
               <AreaChart
                 accessibilityLayer
                 aria-label="Portfolio value history. Use arrow keys to inspect dates and milestones."
@@ -356,6 +359,7 @@ export function PortfolioChart({
                 </defs>
                 <XAxis
                   dataKey="date"
+                  height={X_AXIS_HEIGHT}
                   tick={{ fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
@@ -413,6 +417,7 @@ export function PortfolioChart({
                         isLast={isLast}
                         isLive={point.isLive}
                         plotBounds={plotBounds}
+                        plotBottom={PLOT_BOTTOM}
                       />
                     );
                   }}

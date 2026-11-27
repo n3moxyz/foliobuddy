@@ -58,6 +58,15 @@ beforeEach(() => {
 
 const label = (container: HTMLElement, kind: string) =>
   container.querySelector(`[data-milestone-label="${kind}"]`);
+const markerY = (container: HTMLElement, kinds: string) => {
+  const transform = container
+    .querySelector(`[data-portfolio-milestone="${kinds}"]`)
+    ?.getAttribute('transform');
+  return Number(transform?.match(/translate\([^,]+,\s*([^)]+)\)/)?.[1]);
+};
+// Chart height 300 minus the bottom margin (5) and the date axis (30).
+const PLOT_BOTTOM = 265;
+const LABEL_HALF_HEIGHT = 7;
 
 describe('direct milestone labels', () => {
   afterEach(() => usePrivacyStore.setState({ valuesHidden: false }));
@@ -77,7 +86,41 @@ describe('direct milestone labels', () => {
     const { container } = render(<PortfolioChart {...props} />);
     const mddY = Number(label(container, 'mdd')?.getAttribute('y'));
     const dailyY = Number(label(container, 'daily')?.getAttribute('y'));
-    expect(dailyY - mddY).toBeGreaterThanOrEqual(14);
+    expect(Math.abs(dailyY - mddY)).toBeGreaterThanOrEqual(14);
+  });
+
+  it('flips trough labels above the point when they would reach the date axis', () => {
+    const { container } = render(<PortfolioChart {...props} />);
+    const troughY = markerY(container, 'mdd daily');
+    for (const kind of ['mdd', 'daily']) {
+      const y = Number(label(container, kind)?.getAttribute('y'));
+      expect(y).toBeLessThan(troughY);
+      expect(y + LABEL_HALF_HEIGHT).toBeLessThanOrEqual(PLOT_BOTTOM);
+    }
+  });
+
+  it('keeps trough labels below the point when there is room', () => {
+    performanceHistory = [60, 120, 90, 110].map((value, index) => ({
+      ...history[index],
+      totalValueUsd: value,
+    }));
+    const trough = { ...performanceHistory[2] };
+    const { container } = render(
+      <PortfolioChart
+        {...props}
+        milestones={[
+          { ...performanceHistory[1], kind: 'ath' },
+          { ...trough, kind: 'mdd', drawdownPct: 25 },
+          { ...trough, kind: 'daily', drawdownPct: 18.18 },
+          milestones[3],
+        ]}
+      />
+    );
+    const troughY = markerY(container, 'mdd daily');
+    const dailyY = Number(label(container, 'daily')?.getAttribute('y'));
+    expect(Number(label(container, 'mdd')?.getAttribute('y'))).toBeGreaterThan(troughY);
+    expect(dailyY).toBeGreaterThan(troughY);
+    expect(dailyY + LABEL_HALF_HEIGHT).toBeLessThanOrEqual(PLOT_BOTTOM);
   });
 
   it('masks money labels while keeping drawdown percentages visible', () => {
