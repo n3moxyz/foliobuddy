@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.71.1
+
+- Keep Portfolio Value chart labels off the chart line. A label that would cross the line moves beside its marker or to the other side.
+
 ## v1.71.0
 
 - Label Portfolio Value chart markers directly on the chart instead of in a legend below it. The `?` beside the title explains each marker, and the hover tooltip stays short.

@@ -5,6 +5,7 @@ import type { PerformancePoint } from '@/lib/types';
 import type { PortfolioMilestone } from '@/lib/portfolioHistory';
 import { MASKED_MONEY_VALUE, usePrivacyStore } from '@/stores/privacyStore';
 import { PortfolioChart } from '../PortfolioChart';
+import { labelWidth } from '../milestoneLabelLayout';
 
 // Render the real Recharts plot at a fixed size. jsdom has no layout measurement.
 vi.mock('recharts', async (importOriginal) => {
@@ -74,6 +75,76 @@ const markerX = (container: HTMLElement, kinds: string) => {
 const PLOT_BOTTOM = 265;
 const LABEL_HALF_HEIGHT = 7;
 
+interface Box {
+  kind: string;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+const labelBoxes = (container: HTMLElement): Box[] =>
+  Array.from(container.querySelectorAll('[data-milestone-label]')).map((element) => {
+    const x = Number(element.getAttribute('x'));
+    const y = Number(element.getAttribute('y'));
+    return {
+      kind: element.getAttribute('data-milestone-label') ?? '',
+      left: x,
+      right: x + labelWidth(element.textContent ?? ''),
+      top: y - LABEL_HALF_HEIGHT,
+      bottom: y + LABEL_HALF_HEIGHT,
+    };
+  });
+
+/** Points along the curve Recharts drew, read back from its SVG path. */
+function drawnLine(container: HTMLElement) {
+  const d = container.querySelector('.recharts-area-curve')?.getAttribute('d') ?? '';
+  const points: Array<{ x: number; y: number }> = [];
+  for (const command of d.match(/[MLC][^MLC]*/g) ?? []) {
+    const n = command
+      .slice(1)
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .map(Number);
+    if (command[0] !== 'C') {
+      points.push({ x: n[0], y: n[1] });
+      continue;
+    }
+    const start = points[points.length - 1];
+    for (let step = 1; step <= 40; step++) {
+      const t = step / 40;
+      const u = 1 - t;
+      const at = (a: number, b: number, c: number, e: number) =>
+        u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * e;
+      points.push({ x: at(start.x, n[0], n[2], n[4]), y: at(start.y, n[1], n[3], n[5]) });
+    }
+  }
+  return points;
+}
+
+/** The labels that the drawn line passes through. */
+function labelsOnLine(container: HTMLElement) {
+  const line = drawnLine(container);
+  expect(line.length).toBeGreaterThan(1);
+  return labelBoxes(container)
+    .filter((box) =>
+      line.some(
+        (point) =>
+          point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom
+      )
+    )
+    .map((box) => box.kind);
+}
+
+const overlapping = (a: Box, b: Box) =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+const dailyHistory = (values: number[]): PerformancePoint[] =>
+  values.map((value, index) => ({
+    ...history[0],
+    timestamp: new Date(Date.UTC(2026, 0, index + 1, 12)).toISOString(),
+    totalValueUsd: value,
+  }));
+
 describe('direct milestone labels', () => {
   afterEach(() => usePrivacyStore.setState({ valuesHidden: false }));
 
@@ -127,16 +198,13 @@ describe('direct milestone labels', () => {
     expect(Number(label(container, 'mdd')?.getAttribute('y'))).toBeGreaterThan(troughY);
     expect(dailyY).toBeGreaterThan(troughY);
     expect(dailyY + LABEL_HALF_HEIGHT).toBeLessThanOrEqual(PLOT_BOTTOM);
+    expect(labelsOnLine(container)).toEqual([]);
   });
 
   it('keeps labels from neighbouring points apart', () => {
     // A worst day right before a mid-chart trough puts both drawdown labels side by side.
     const values = [80, 88, 96, 104, 112, 120, 118, 117, 116, 115, 95, 94, 96, 97, 98];
-    performanceHistory = values.map((value, index) => ({
-      ...history[0],
-      timestamp: new Date(Date.UTC(2026, 0, index + 1, 12)).toISOString(),
-      totalValueUsd: value,
-    }));
+    performanceHistory = dailyHistory(values);
     const at = (index: number) => performanceHistory[index];
     const last = at(values.length - 1);
     const { container } = render(
@@ -155,9 +223,43 @@ describe('direct milestone labels', () => {
     const daily = label(container, 'daily');
     expect(mdd).toHaveTextContent('MDD -21.67%');
     expect(daily).toHaveTextContent('MDD (1D) -17.39%');
+    const boxes = labelBoxes(container);
+    for (const box of boxes) {
+      for (const other of boxes) {
+        if (other !== box) expect(overlapping(box, other)).toBe(false);
+      }
+    }
+    expect(labelsOnLine(container)).toEqual([]);
+  });
+
+  it('keeps labels off the line where it keeps falling past a marker', () => {
+    // A worst day mid-slide, then a slow bleed whose deepest point sits one day before live.
+    const values = [
+      100, 104, 108, 112, 116, 115, 114, 110, 100, 96, 92, 95, 98, 101, 104, 103, 100, 96, 92, 88,
+      84, 82, 80, 81,
+    ];
+    performanceHistory = dailyHistory(values);
+    const at = (index: number) => performanceHistory[index];
+    const last = at(values.length - 1);
+    const { container } = render(
+      <PortfolioChart
+        liveValueUsd={last.totalValueUsd}
+        liveTimestamp={last.timestamp}
+        milestones={[
+          { ...at(4), kind: 'ath' },
+          { ...at(22), kind: 'mdd', drawdownPct: 31.03 },
+          { ...at(8), kind: 'daily', drawdownPct: 9.09 },
+          { ...last, kind: 'live', drawdownPct: 30.17 },
+        ]}
+      />
+    );
     expect(
-      Math.abs(Number(mdd?.getAttribute('y')) - Number(daily?.getAttribute('y')))
-    ).toBeGreaterThanOrEqual(14);
+      labelBoxes(container)
+        .map((box) => box.kind)
+        .sort()
+    ).toEqual(['ath', 'daily', 'mdd']);
+    expect(labelsOnLine(container)).toEqual([]);
+    for (const box of labelBoxes(container)) expect(box.bottom).toBeLessThanOrEqual(PLOT_BOTTOM);
   });
 
   it('masks money labels while keeping drawdown percentages visible', () => {
