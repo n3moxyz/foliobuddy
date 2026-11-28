@@ -1,7 +1,7 @@
 import { PORTFOLIO_MILESTONE_COLORS } from '@/lib/chartColors';
 import { PORTFOLIO_MILESTONE_LABELS, type PortfolioMilestone } from '@/lib/portfolioHistory';
 import { formatDrawdown } from '@/lib/utils';
-import { layoutMilestoneLabels, type LabelRequest } from './milestoneLabelLayout';
+import { layoutMilestoneLabels, type LabelRequest, type Point } from './milestoneLabelLayout';
 
 /** Kinds named on the plot. Live is named by the end-of-line label instead. */
 const LABELLED_KINDS = new Set<PortfolioMilestone['kind']>(['ath', 'mdd', 'daily']);
@@ -32,7 +32,10 @@ function labelText(event: PortfolioMilestone, isLast: boolean, valueLabel: strin
   return `${name} ${formatDrawdown(event.drawdownPct)}`;
 }
 
-/** Names each milestone beside its marker, laid out together so no two labels collide. */
+/**
+ * Names each milestone beside its marker. The labels are laid out together, so none of them
+ * collides with another label, a marker or the chart line.
+ */
 export function PortfolioMilestoneLabels({
   data,
   valueLabelAt,
@@ -42,10 +45,16 @@ export function PortfolioMilestoneLabels({
   const points = formattedGraphicalItems?.[0]?.props?.points;
   if (!points || !offset) return null;
 
+  const isPoint = (point: Point | undefined): point is Point =>
+    !!point && Number.isFinite(point.x) && Number.isFinite(point.y);
+  const line = points.filter(isPoint);
+  const markers = data.flatMap((point, index) =>
+    point.milestones.length > 0 && isPoint(points[index]) ? [points[index]] : []
+  );
   const lastIndex = data.length - 1;
   const requests: LabelRequest[] = data.flatMap((point, index) => {
     const position = points[index];
-    if (!position || !Number.isFinite(position.y)) return [];
+    if (!isPoint(position)) return [];
     const isLast = index === lastIndex;
     return point.milestones
       .filter((event) => LABELLED_KINDS.has(event.kind))
@@ -57,12 +66,16 @@ export function PortfolioMilestoneLabels({
         isLast,
       }));
   });
-  const labels = layoutMilestoneLabels(requests, {
-    left: offset.left,
-    right: offset.left + offset.width,
-    top: offset.top,
-    bottom: offset.top + offset.height,
-  });
+  const labels = layoutMilestoneLabels(
+    requests,
+    {
+      left: offset.left,
+      right: offset.left + offset.width,
+      top: offset.top,
+      bottom: offset.top + offset.height,
+    },
+    { line, markers }
+  );
 
   return (
     <g>

@@ -8,6 +8,8 @@ Each marker now carries its name and number on the plot ("YTD ATH $4.66M", "MDD 
 
 The first version placed each point's labels on their own, and an interface review caught the flaw: a worst day one day before the drawdown low printed both labels on top of each other. Label placement is a group decision. `layoutMilestoneLabels()` now sees every label at once, using the plotted points Recharts hands to `<Customized>`, and moves any label that would collide or leave the plot.
 
+Once live, a second flaw showed: labels avoided each other but not the line. A drawdown label centred below its marker sat right where the line kept falling. Now the line is an obstacle too. The trap was the curve: Recharts draws `type="monotone"`, which bows away from the straight path between points. A straight-line check passes on dense YTD data and fails on a sparse 1W chart. So `traceMonotoneLine()` re-traces the curve with the same tangents d3 uses, and the tests read Recharts' own SVG path back to prove no label crosses it. Lesson: when you check against something drawn, check against what is drawn, not a simpler shape you hope is close.
+
 ## Editing notes on timestamped trades (25 November 2026)
 
 Trade date inputs display UTC calendar days. The editor omits unchanged dates from updates so the backend keeps the full timestamps. When a user clears an existing note, the editor sends an empty string so the backend saves the change.
